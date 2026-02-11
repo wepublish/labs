@@ -11,7 +11,7 @@ interface ScoutsState {
 }
 
 function createScoutsStore() {
-  const { subscribe, set, update } = writable<ScoutsState>({
+  const { subscribe, update } = writable<ScoutsState>({
     scouts: [],
     loading: false,
     error: null,

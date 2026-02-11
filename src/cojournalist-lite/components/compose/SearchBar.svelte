@@ -6,9 +6,9 @@
     onsearch: (query: string) => void;
   }
 
-  let { value, onsearch }: Props = $props();
+  let { value: initialValue, onsearch }: Props = $props();
 
-  let query = $state(value);
+  let query = $state(initialValue);
 
   function handleSubmit(e: Event) {
     e.preventDefault();

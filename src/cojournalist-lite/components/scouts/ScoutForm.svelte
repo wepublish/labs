@@ -10,18 +10,18 @@
     oncancel?: () => void;
   }
 
-  let { scout, onsubmit, oncancel }: Props = $props();
+  let { scout: initialScout, onsubmit, oncancel }: Props = $props();
 
-  const isEdit = !!scout;
+  const isEdit = !!initialScout;
 
   // Form state
-  let name = $state(scout?.name || '');
-  let url = $state(scout?.url || '');
-  let criteria = $state(scout?.criteria || '');
-  let frequency = $state<'daily' | 'weekly' | 'monthly'>(scout?.frequency || 'daily');
-  let notificationEmail = $state(scout?.notification_email || '');
-  let locationCity = $state(scout?.location?.city || '');
-  let isActive = $state(scout?.is_active ?? true);
+  let name = $state(initialScout?.name || '');
+  let url = $state(initialScout?.url || '');
+  let criteria = $state(initialScout?.criteria || '');
+  let frequency = $state<'daily' | 'weekly' | 'monthly'>(initialScout?.frequency || 'daily');
+  let notificationEmail = $state(initialScout?.notification_email || '');
+  let locationCity = $state(initialScout?.location?.city || '');
+  let isActive = $state(initialScout?.is_active ?? true);
 
   let saving = $state(false);
   let error = $state('');
@@ -59,7 +59,7 @@
         ? { city: locationCity.trim(), country: 'Germany' }
         : null;
 
-      if (isEdit && scout) {
+      if (isEdit && initialScout) {
         const updates: ScoutUpdateInput = {
           name: name.trim(),
           url: url.trim(),
@@ -69,7 +69,7 @@
           location,
           is_active: isActive,
         };
-        await scouts.update(scout.id, updates);
+        await scouts.update(initialScout.id, updates);
       } else {
         const input: ScoutCreateInput = {
           name: name.trim(),

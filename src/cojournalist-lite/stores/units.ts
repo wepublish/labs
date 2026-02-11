@@ -14,7 +14,7 @@ interface UnitsState {
 }
 
 function createUnitsStore() {
-  const { subscribe, set, update } = writable<UnitsState>({
+  const { subscribe, update } = writable<UnitsState>({
     units: [],
     locations: [],
     selectedLocation: null,
@@ -89,16 +89,12 @@ function createUnitsStore() {
      * Mark units as used in article
      */
     async markUsed(unitIds: string[]) {
-      try {
-        await unitsApi.markUsed(unitIds);
-        // Remove marked units from the list
-        update((s) => ({
-          ...s,
-          units: s.units.filter((u) => !unitIds.includes(u.id)),
-        }));
-      } catch (error) {
-        throw error;
-      }
+      await unitsApi.markUsed(unitIds);
+      // Remove marked units from the list
+      update((s) => ({
+        ...s,
+        units: s.units.filter((u) => !unitIds.includes(u.id)),
+      }));
     },
 
     /**

@@ -1,7 +1,7 @@
 // coJournalist-Lite API client
 
 import { getUserId } from '../stores/auth';
-import type { ApiResponse, ApiError } from './types';
+import type { ApiError } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;

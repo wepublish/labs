@@ -21,7 +21,7 @@ export const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || ''
  * Set auth header for Supabase client
  * Used when direct database access is needed
  */
-export function setUserId(userId: string) {
+export function setUserId(_userId: string) {
   // For mock auth, we pass user_id via custom header
   // Edge Functions extract this from x-user-id header
   supabase.realtime.setAuth(null);

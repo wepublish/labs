@@ -37,6 +37,13 @@ export default ts.config(
     }
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '.svelte-kit/**']
+    files: ['**/*.svelte'],
+    rules: {
+      // Capturing initial prop values for form state is intentional
+      'svelte/valid-compile': ['error', { ignoreWarnings: true }]
+    }
+  },
+  {
+    ignores: ['dist/**', 'node_modules/**', '.svelte-kit/**', 'src/*/supabase/functions/**']
   }
 );

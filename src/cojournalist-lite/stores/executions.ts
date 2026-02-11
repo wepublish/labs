@@ -15,7 +15,7 @@ interface ExecutionsState {
 const LIMIT = 20;
 
 function createExecutionsStore() {
-  const { subscribe, set, update } = writable<ExecutionsState>({
+  const { subscribe, update } = writable<ExecutionsState>({
     executions: [],
     loading: false,
     error: null,
