@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting...</title>
+  <script>
+    // GitHub Pages SPA workaround
+    // Preserves the path and redirects to the app with the route as a query param
+    (function() {
+      var path = window.location.pathname;
+      var segments = path.split('/').filter(Boolean);
+
+      // Expected: /labs/app-name/some/route
+      // segments: ['labs', 'app-name', 'some', 'route']
+      if (segments.length >= 2 && segments[0] === 'labs') {
+        // Base path: /labs/app-name/
+        var base = '/' + segments.slice(0, 2).join('/') + '/';
+        // Route: /some/route
+        var route = segments.length > 2 ? '/' + segments.slice(2).join('/') : '/';
+        // Preserve query string and hash
+        var search = window.location.search;
+        var hash = window.location.hash;
+
+        // Redirect to app with route as query param
+        window.location.replace(base + '?route=' + encodeURIComponent(route) + search.replace('?', '&') + hash);
+      } else if (segments.length >= 1 && segments[0] === 'labs') {
+        // Just /labs/ - show index or redirect
+        window.location.replace('/labs/');
+      } else {
+        // Unknown path - redirect to labs root
+        window.location.replace('/labs/');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <noscript>
+    <p>JavaScript is required for navigation. Please enable JavaScript or visit the <a href="/labs/">home page</a>.</p>
+  </noscript>
+  <p>Redirecting...</p>
+</body>
+</html>
