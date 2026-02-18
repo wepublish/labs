@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { get } from 'svelte/store';
 import { writable } from 'svelte/store';
 
 // Create a mock shared auth store with the methods the auth module uses

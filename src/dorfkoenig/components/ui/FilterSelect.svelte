@@ -6,7 +6,7 @@
   }
 
   interface Props {
-    icon?: any;
+    icon?: typeof import('lucide-svelte').Globe;
     options: Option[];
     value: string;
     onchange: (value: string) => void;

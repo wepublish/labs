@@ -89,6 +89,17 @@ npm run new-app my-app
 # Access at https://localhost:3200/my-app/
 ```
 
+## Pre-Commit Checklist
+
+Always run these before committing:
+
+```bash
+npm run lint         # Must pass with 0 errors and 0 warnings
+npm run build        # Must succeed
+```
+
+CI will reject pushes that fail lint or build.
+
 ## Deployment
 
 Push to `main` triggers GitHub Actions: typecheck → lint → build → deploy to Pages.

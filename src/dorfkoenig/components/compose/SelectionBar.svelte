@@ -45,7 +45,7 @@
 - Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen`;
 
   let showPromptEditor = $state(false);
-  let editedPrompt = $state(customPrompt || ''); // eslint-disable-line -- intentional initial capture
+  let editedPrompt = $state(customPrompt || '');
 
   function savePrompt() {
     onPromptChange(editedPrompt.trim() || null);

@@ -23,7 +23,7 @@
     isGenerating,
     generationError,
     selectedCount,
-    customPrompt,
+    customPrompt: _customPrompt,
     onClose,
     onRetry,
     onRegenerate,

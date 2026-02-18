@@ -8,7 +8,7 @@
   import SelectionBar from './SelectionBar.svelte';
   import DraftSlideOver from './DraftSlideOver.svelte';
   import { Loading } from '@shared/components';
-  import type { Draft, InformationUnit, Scout } from '../../lib/types';
+  import type { Draft, Scout } from '../../lib/types';
 
   let selectedUnitIds = $state<Set<string>>(new Set());
   let draft = $state<Draft | null>(null);

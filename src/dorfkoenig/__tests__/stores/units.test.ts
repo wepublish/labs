@@ -14,7 +14,7 @@ vi.mock('../../lib/api', () => ({
 const { unitsApi } = await import('../../lib/api');
 const { units } = await import('../../stores/units');
 
-import type { InformationUnit, Location } from '../../lib/types';
+import type { InformationUnit } from '../../lib/types';
 
 function makeUnit(overrides: Partial<InformationUnit> = {}): InformationUnit {
   return {
