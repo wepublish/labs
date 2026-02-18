@@ -3,10 +3,10 @@
   import { Loading } from '@shared/components';
   import Layout from './components/Layout.svelte';
   import Login from './routes/Login.svelte';
-  import Dashboard from './routes/Dashboard.svelte';
+  import Manage from './routes/Manage.svelte';
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
-  import Compose from './routes/Compose.svelte';
+  import Feed from './routes/Feed.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -20,8 +20,8 @@
   });
 
   // Parse route and params from hash
-  // Examples: #/dashboard, #/scout/uuid, #/history
-  let route = $derived(hash.slice(2).split('/')[0] || 'dashboard');
+  // Examples: #/manage, #/scout/uuid, #/history, #/feed
+  let route = $derived(hash.slice(2).split('/')[0] || 'manage');
   let routeParams = $derived(hash.slice(2).split('/').slice(1));
 </script>
 
@@ -33,16 +33,16 @@
   <Login />
 {:else}
   <Layout>
-    {#if route === 'dashboard' || route === ''}
-      <Dashboard />
+    {#if route === 'manage' || route === ''}
+      <Manage />
     {:else if route === 'scout' && routeParams[0]}
       <ScoutDetail scoutId={routeParams[0]} />
     {:else if route === 'history'}
       <History />
-    {:else if route === 'compose'}
-      <Compose />
+    {:else if route === 'feed'}
+      <Feed />
     {:else}
-      <Dashboard />
+      <Manage />
     {/if}
   </Layout>
 {/if}

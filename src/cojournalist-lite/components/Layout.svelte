@@ -12,17 +12,17 @@
 <div class="layout">
   <nav class="navbar">
     <div class="nav-brand">
-      <a href="#/">coJournalist-Lite</a>
+      <a href="#/">Dorfkönig</a>
     </div>
     <div class="nav-links">
-      <a href="#/dashboard" class:active={location.hash === '#/' || location.hash === '#/dashboard'}>
-        Dashboard
+      <a href="#/manage" class:active={location.hash === '#/' || location.hash === '#/manage'}>
+        Manage
       </a>
       <a href="#/history" class:active={location.hash === '#/history'}>
         Verlauf
       </a>
-      <a href="#/compose" class:active={location.hash === '#/compose'}>
-        Komponieren
+      <a href="#/feed" class:active={location.hash === '#/feed'}>
+        Feed
       </a>
     </div>
     <div class="nav-user">

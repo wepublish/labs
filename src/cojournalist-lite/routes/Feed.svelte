@@ -2,16 +2,16 @@
   import ComposePanel from '../components/compose/ComposePanel.svelte';
 </script>
 
-<div class="compose-page">
+<div class="feed-page">
   <header class="page-header">
-    <h1>Komponieren</h1>
+    <h1>Feed</h1>
   </header>
 
   <ComposePanel />
 </div>
 
 <style>
-  .compose-page {
+  .feed-page {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);

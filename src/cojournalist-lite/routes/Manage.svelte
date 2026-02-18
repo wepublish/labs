@@ -25,7 +25,7 @@
 
 <div class="dashboard">
   <header class="page-header">
-    <h1>Dashboard</h1>
+    <h1>Manage</h1>
     <Button onclick={() => (showForm = true)}>Neuer Scout</Button>
   </header>
 
