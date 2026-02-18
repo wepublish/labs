@@ -15,6 +15,13 @@ export default defineConfig(({ mode }) => {
     return [appName, resolve(__dirname, file)];
   });
 
+  // Discover slide sub-decks (src/slides/*/index.html)
+  const slideEntries = globSync('src/slides/*/index.html').map((file) => {
+    const normalizedPath = file.replace(/\\/g, '/');
+    const parts = normalizedPath.split('/');
+    return [`${parts[1]}/${parts[2]}`, resolve(__dirname, file)];
+  });
+
   return {
     // Conditional base: /labs/ for prod, / for dev
     base: mode === 'production' ? '/labs/' : '/',
@@ -50,7 +57,7 @@ export default defineConfig(({ mode }) => {
       outDir: resolve(__dirname, 'dist'),
       emptyOutDir: true,
       rollupOptions: {
-        input: Object.fromEntries(appEntries),
+        input: Object.fromEntries([...appEntries, ...slideEntries]),
         output: {
           // Shared vendor chunks to reduce duplication
           manualChunks: {

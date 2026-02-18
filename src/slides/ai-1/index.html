@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Strategy for We.Publish</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23ea726e'/%3E%3Ctext x='16' y='22' font-family='system-ui' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3Ew.%3C/text%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -592,9 +593,9 @@
       <div class="card card--pain anim" style="--anim-order: 2">
         <div class="icon">&#9881;</div>
         <h3>Dev Velocity</h3>
-        <p>Small team, large open-source codebase. Every feature takes longer than it should. Code review bottlenecks slow releases.</p>
+        <p>Engineering time spent on routine tasks &mdash; boilerplate, reviews, test scaffolding &mdash; is time not spent on innovation. Automating the repetitive frees the team for strategic technical work.</p>
         <div class="meta">
-          <span class="tag tag--coral">High impact</span>
+          <span class="tag tag--coral">Opportunity</span>
         </div>
       </div>
       <div class="card card--pain anim" style="--anim-order: 3">
@@ -802,7 +803,7 @@
           <li>Editor override always available</li>
         </ul>
         <div class="meta">
-          <span class="tag">3-4 weeks</span>
+          <span class="tag">3&ndash;5 days</span>
           <span class="tag tag--coral">Dev Velocity</span>
         </div>
       </div>
@@ -815,21 +816,21 @@
           <li>Social post drafts</li>
         </ul>
         <div class="meta">
-          <span class="tag">4-6 weeks</span>
+          <span class="tag">3&ndash;5 days</span>
           <span class="tag tag--coral">Ops</span>
         </div>
       </div>
       <div class="card anim" style="--anim-order: 4">
-        <h3>Translation</h3>
-        <p>One-click DE/FR translation with editorial review. Critical for a bilingual Swiss audience.</p>
+        <h3>&#129514; AI Experimentation Lab</h3>
+        <p>Rapid prototyping of AI features in a sandbox environment. Experiment fast, pilot with users, then integrate validated ideas into the CMS.</p>
         <ul>
-          <li>Context-aware translation</li>
-          <li>Preserve formatting and links</li>
-          <li>Side-by-side editor review</li>
+          <li>Build prototypes in the labs monorepo</li>
+          <li>Pilot with a single outlet for feedback</li>
+          <li>Promote validated features to production</li>
         </ul>
         <div class="meta">
-          <span class="tag">4-6 weeks</span>
-          <span class="tag tag--coral">Onboarding</span>
+          <span class="tag">3&ndash;5 days per experiment</span>
+          <span class="tag tag--coral">Innovation</span>
         </div>
       </div>
     </div>
@@ -850,7 +851,7 @@
           <li>Brand extraction (colors, fonts, logo) from URL</li>
         </ul>
         <div class="meta">
-          <span class="tag">6-8 weeks</span>
+          <span class="tag">~2 weeks</span>
           <span class="tag tag--coral">Onboarding</span>
         </div>
       </div>
@@ -864,44 +865,80 @@
           <li>Validation report with editor review</li>
         </ul>
         <div class="meta">
-          <span class="tag">8-10 weeks</span>
+          <span class="tag">~3 weeks</span>
           <span class="tag tag--coral">Onboarding</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Slide 9: Next Steps -->
+  <!-- Slide 9: Section Divider - Looking Ahead -->
+  <section class="slide slide--divider slide--coral">
+    <h2 class="anim" style="--anim-order: 0">Looking Ahead</h2>
+    <p class="anim" style="--anim-order: 1">The agent economy is coming &mdash; and the CMS is the gateway</p>
+  </section>
+
+  <!-- Slide 10: The Agent Economy -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">The Agent Content Economy</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">When AI agents negotiate directly for content, the CMS becomes the storefront</p>
+    <div class="grid-2">
+      <div class="card anim" style="--anim-order: 2">
+        <h3>&#129302; Agent-to-Agent Commerce</h3>
+        <p>Google's <strong>Agent2Agent (A2A) protocol</strong> enables AI agents to discover, negotiate with, and transact from other agents &mdash; no human in the loop. Combined with a content gating layer (Cloudflare-based or a rights platform like <strong>Unido</strong>), a CMS can expose an agent-facing API that sells access to articles, archives, and media assets in real time.</p>
+        <ul>
+          <li>Agents discover available content via A2A Agent Cards</li>
+          <li>Gating layer handles licensing, metering, and payment</li>
+          <li>Publishers set terms; agents negotiate programmatically</li>
+        </ul>
+        <div class="meta">
+          <span class="tag tag--coral">New revenue stream</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 3">
+        <h3>&#127760; Generative Engine Optimization</h3>
+        <p>As AI-generated answers replace search results, traditional SEO fades. <strong>GEO</strong> (Generative Engine Optimization) is about making content citable by LLMs. An A2A-compatible CMS provides the base layer: structured, licensed, machine-readable content that AI models prefer to surface and attribute.</p>
+        <ul>
+          <li>Structured metadata makes content LLM-friendly</li>
+          <li>Licensed feeds ensure attribution and compliance</li>
+          <li>Early movers define the standard others follow</li>
+        </ul>
+        <div class="meta">
+          <span class="tag tag--coral">Future-proof discoverability</span>
+        </div>
+      </div>
+    </div>
+    <div class="slide-meta anim" style="--anim-order: 4">
+      <span class="tag tag--coral">Massive upsell for existing outlets</span>
+      <span class="tag tag--coral">Lock-in: hard to leave once agents know your CMS</span>
+      <span class="tag">Attracts new media who want agent-ready publishing</span>
+    </div>
+  </section>
+
+  <!-- Slide 11: Next Steps -->
   <section class="slide">
     <h2 class="anim" style="--anim-order: 0">Next Steps</h2>
-    <p class="slide-subtitle anim" style="--anim-order: 1">Practical actions to start this week</p>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Practical actions starting this week</p>
     <div class="steps-list">
       <div class="step-item anim" style="--anim-order: 2">
         <div class="step-num">1</div>
         <div class="step-content">
-          <h3>Adopt Claude Code team-wide</h3>
-          <p>Install Claude Code, set up the wepublish-brand skill, and run a 30-min team workshop on plan mode and skills.</p>
+          <h3>CLI agent adoption &amp; process automation</h3>
+          <p>Roll out Claude Code team-wide with skills, CI agent reviews, and automated pipelines. Free developer bandwidth from routine maintenance and client tasks so the team can focus on strategic work.</p>
         </div>
       </div>
       <div class="step-item anim" style="--anim-order: 3">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h3>Add claude-code-action to CI</h3>
-          <p>Enable automated PR reviews on the main repo. Immediate quality improvement with zero workflow change.</p>
+          <h3>Pilot with Dorfk&ouml;nig</h3>
+          <p>3-week pilot using the Dorfk&ouml;nig app as a live testbed &mdash; auto-tagging, content suggestions, and AI Lab experiments validated with a real outlet.</p>
         </div>
       </div>
       <div class="step-item anim" style="--anim-order: 4">
         <div class="step-num">3</div>
         <div class="step-content">
-          <h3>Prototype auto-tagging</h3>
-          <p>Build a proof-of-concept auto-tagging feature in a 2-week sprint. Validate with one pilot outlet.</p>
-        </div>
-      </div>
-      <div class="step-item anim" style="--anim-order: 5">
-        <div class="step-num">4</div>
-        <div class="step-content">
-          <h3>Scope onboarding automation</h3>
-          <p>Document the current onboarding process end-to-end. Identify the highest-effort manual steps for AI assistance.</p>
+          <h3>Build onboarding automation</h3>
+          <p>3-week sprint: AI-guided setup wizard and content migration pipeline. Reduce new-outlet onboarding from weeks to days.</p>
         </div>
       </div>
     </div>
