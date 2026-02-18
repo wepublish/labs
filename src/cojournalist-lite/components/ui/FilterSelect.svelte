@@ -1,6 +1,4 @@
 <script lang="ts">
-  import type { Component } from 'svelte';
-
   interface Option {
     value: string;
     label: string;
@@ -8,7 +6,7 @@
   }
 
   interface Props {
-    icon?: Component<{ size?: number }>;
+    icon?: any;
     options: Option[];
     value: string;
     onchange: (value: string) => void;
@@ -20,8 +18,9 @@
 
 <div class="filter-select" class:disabled>
   {#if icon}
+    {@const Icon = icon}
     <span class="filter-icon">
-      <svelte:component this={icon} size={14} />
+      <Icon size={14} />
     </span>
   {/if}
   <select

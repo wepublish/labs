@@ -131,6 +131,7 @@
           class="criteria-track"
           class:specific={criteriaMode === 'specific'}
           onclick={() => { criteriaMode = criteriaMode === 'any' ? 'specific' : 'any'; }}
+          aria-label="Kriterienmodus umschalten"
         >
           <span class="criteria-thumb"></span>
         </button>
@@ -200,6 +201,7 @@
             class="criteria-track"
             class:specific={extractBaseline}
             onclick={() => { extractBaseline = !extractBaseline; }}
+            aria-label="Baseline-Import umschalten"
           >
             <span class="criteria-thumb"></span>
           </button>
