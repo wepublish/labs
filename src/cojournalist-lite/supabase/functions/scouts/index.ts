@@ -14,9 +14,10 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    // Extract scout ID if present (e.g., /scouts/uuid or /scouts/uuid/run)
-    const scoutId = pathParts.length > 2 ? pathParts[2] : null;
-    const action = pathParts.length > 3 ? pathParts[3] : null;
+    // Supabase strips /functions/v1/ prefix — function sees /scouts/{id}/{action}
+    // pathParts: ['scouts', '{id}', '{action}']
+    const scoutId = pathParts.length > 1 ? pathParts[1] : null;
+    const action = pathParts.length > 2 ? pathParts[2] : null;
 
     // Route based on method and path
     switch (req.method) {
@@ -59,9 +60,9 @@ Deno.serve(async (req) => {
   }
 });
 
-// List all scouts for user
+// List all scouts for user (with latest execution status)
 async function listScouts(supabase: ReturnType<typeof createServiceClient>, userId: string) {
-  const { data, error } = await supabase
+  const { data: scouts, error } = await supabase
     .from('scouts')
     .select('*')
     .eq('user_id', userId)
@@ -72,7 +73,52 @@ async function listScouts(supabase: ReturnType<typeof createServiceClient>, user
     return errorResponse('Fehler beim Laden der Scouts', 500);
   }
 
-  return jsonResponse({ data });
+  if (!scouts || scouts.length === 0) {
+    return jsonResponse({ data: [] });
+  }
+
+  // Fetch latest execution per scout
+  const scoutIds = scouts.map(s => s.id);
+  const { data: executions } = await supabase
+    .from('scout_executions')
+    .select('scout_id, status, criteria_matched, change_status, summary_text, completed_at')
+    .in('scout_id', scoutIds)
+    .order('started_at', { ascending: false });
+
+  // Build map of latest execution per scout (first occurrence = most recent)
+  const latestExecMap = new Map<string, {
+    status: string;
+    criteria_matched: boolean | null;
+    change_status: string | null;
+    summary_text: string | null;
+  }>();
+
+  if (executions) {
+    for (const exec of executions) {
+      if (!latestExecMap.has(exec.scout_id)) {
+        latestExecMap.set(exec.scout_id, {
+          status: exec.status,
+          criteria_matched: exec.criteria_matched,
+          change_status: exec.change_status,
+          summary_text: exec.summary_text,
+        });
+      }
+    }
+  }
+
+  // Merge execution data into scouts
+  const enrichedScouts = scouts.map(scout => {
+    const lastExec = latestExecMap.get(scout.id);
+    return {
+      ...scout,
+      last_execution_status: lastExec?.status ?? null,
+      last_criteria_matched: lastExec?.criteria_matched ?? null,
+      last_change_status: lastExec?.change_status ?? null,
+      last_summary_text: lastExec?.summary_text ?? null,
+    };
+  });
+
+  return jsonResponse({ data: enrichedScouts });
 }
 
 // Get single scout
@@ -114,8 +160,9 @@ async function createScout(
   if (!body.url?.trim()) {
     return errorResponse('URL ist erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (!body.criteria?.trim()) {
-    return errorResponse('Kriterien sind erforderlich', 400, 'VALIDATION_ERROR');
+  // criteria can be empty (criteria_mode === 'any' means monitor all changes)
+  if (body.criteria === undefined || body.criteria === null) {
+    return errorResponse('Kriterien-Feld ist erforderlich', 400, 'VALIDATION_ERROR');
   }
   if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) {
     return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
@@ -134,7 +181,7 @@ async function createScout(
       user_id: userId,
       name: body.name.trim(),
       url: body.url.trim(),
-      criteria: body.criteria.trim(),
+      criteria: (body.criteria || '').trim(),
       location: body.location || null,
       frequency: body.frequency,
       notification_email: body.notification_email?.trim() || null,
