@@ -1,33 +1,43 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { Button } from '@shared/components';
   import { scouts } from '../../stores/scouts';
   import { FREQUENCY_OPTIONS } from '../../lib/constants';
-  import type { Scout, ScoutCreateInput, ScoutUpdateInput } from '../../lib/types';
+  import ScopeToggle from '../ui/ScopeToggle.svelte';
+  import type { Scout, ScoutUpdateInput, Location } from '../../lib/types';
 
   interface Props {
-    scout?: Scout;
+    scout: Scout;
     onsubmit?: () => void;
     oncancel?: () => void;
   }
 
   let { scout: initialScout, onsubmit, oncancel }: Props = $props();
 
-  const isEdit = !!initialScout;
+  // Capture initial values once (intentionally non-reactive for form fields)
+  const init = untrack(() => initialScout);
 
   // Form state
-  let name = $state(initialScout?.name || '');
-  let url = $state(initialScout?.url || '');
-  let criteria = $state(initialScout?.criteria || '');
-  let criteriaMode = $state<'any' | 'specific'>(initialScout?.criteria ? 'specific' : 'any');
-  let frequency = $state<'daily' | 'weekly' | 'monthly'>(initialScout?.frequency || 'daily');
-  let notificationEmail = $state(initialScout?.notification_email || '');
-  let locationCity = $state(initialScout?.location?.city || '');
-  let topic = $state('');
-  let isActive = $state(initialScout?.is_active ?? true);
-  let extractBaseline = $state(false);
+  let name = $state(init.name || '');
+  let url = $state(init.url || '');
+  let criteria = $state(init.criteria || '');
+  let criteriaMode = $state<'any' | 'specific'>(init.criteria ? 'specific' : 'any');
+  let frequency = $state<'daily' | 'weekly' | 'biweekly' | 'monthly'>(init.frequency || 'daily');
+  let scopeMode = $state<'location' | 'topic'>(init.topic ? 'topic' : 'location');
+  let location = $state<Location | null>(init.location || null);
+  let topic = $state(init.topic || '');
+
+  // Derive existing topics from all scouts for autocomplete suggestions
+  let existingTopics = $derived(
+    [...new Set(
+      $scouts.scouts
+        .filter(s => s.topic)
+        .flatMap(s => s.topic!.split(',').map(t => t.trim()))
+        .filter(Boolean)
+    )].sort()
+  );
 
   let saving = $state(false);
-  let runningInitial = $state(false);
   let error = $state('');
 
   async function handleSubmit(e: Event) {
@@ -47,45 +57,21 @@
     saving = true;
 
     try {
-      const location = locationCity.trim()
-        ? { city: locationCity.trim(), country: 'Germany' }
+      const effectiveLocation = scopeMode === 'location' ? location : null;
+      const effectiveTopic = scopeMode === 'topic' && topic.trim()
+        ? topic.trim()
         : null;
-
       const effectiveCriteria = criteriaMode === 'any' ? '' : criteria.trim();
 
-      if (isEdit && initialScout) {
-        const updates: ScoutUpdateInput = {
-          name: name.trim(),
-          url: url.trim(),
-          criteria: effectiveCriteria,
-          frequency,
-          notification_email: notificationEmail.trim() || null,
-          location,
-          is_active: isActive,
-        };
-        await scouts.update(initialScout.id, updates);
-      } else {
-        const input: ScoutCreateInput = {
-          name: name.trim(),
-          url: url.trim(),
-          criteria: effectiveCriteria,
-          frequency,
-          notification_email: notificationEmail.trim() || null,
-          location,
-          is_active: isActive,
-        };
-        const newScout = await scouts.create(input);
-
-        // Trigger initial run
-        runningInitial = true;
-        try {
-          await scouts.run(newScout.id, { extract_units: extractBaseline });
-        } catch (runErr) {
-          console.warn('Initial run failed (scout was created):', runErr);
-        } finally {
-          runningInitial = false;
-        }
-      }
+      const updates: ScoutUpdateInput = {
+        name: name.trim(),
+        url: url.trim(),
+        criteria: effectiveCriteria,
+        frequency,
+        location: effectiveLocation,
+        topic: effectiveTopic,
+      };
+      await scouts.update(init.id, updates);
 
       onsubmit?.();
     } catch (err) {
@@ -97,7 +83,7 @@
 </script>
 
 <form onsubmit={handleSubmit} class="scout-form">
-  <h2>{isEdit ? 'Scout bearbeiten' : 'Neuer Scout'}</h2>
+  <h2>Scout bearbeiten</h2>
 
   {#if error}
     <div class="error-message">{error}</div>
@@ -114,8 +100,8 @@
   </div>
 
   <!-- Criteria Mode Toggle -->
-  <div class="form-group">
-    <label>Benachrichtigung bei</label>
+  <div class="form-group" role="group" aria-label="Benachrichtigung bei">
+    <span class="form-label">Benachrichtigung bei</span>
     <div class="criteria-toggle-wrapper">
       <div class="criteria-toggle">
         <button
@@ -124,7 +110,7 @@
           class:active={criteriaMode === 'any'}
           onclick={() => { criteriaMode = 'any'; }}
         >
-          🔔 Jede Änderung
+          Jede Änderung
         </button>
         <button
           type="button"
@@ -141,7 +127,7 @@
           class:active={criteriaMode === 'specific'}
           onclick={() => { criteriaMode = 'specific'; }}
         >
-          🎯 Bestimmte Kriterien
+          Bestimmte Kriterien
         </button>
       </div>
     </div>
@@ -168,70 +154,29 @@
         {/each}
       </select>
     </div>
-    <div class="form-group">
-      <label for="location">Ort (optional)</label>
-      <input id="location" type="text" bind:value={locationCity} placeholder="z.B. Berlin" />
+    <div class="form-group" role="group" aria-label="Ort oder Thema">
+      <span class="form-label">Ort oder Thema (optional)</span>
+      <ScopeToggle
+        mode={scopeMode}
+        {location}
+        {topic}
+        {existingTopics}
+        onmodechange={(m) => { scopeMode = m; }}
+        onlocationchange={(loc) => { location = loc; }}
+        ontopicchange={(t) => { topic = t; }}
+      />
     </div>
   </div>
-
-  <div class="form-group">
-    <label for="topic">Thema (optional)</label>
-    <input id="topic" type="text" bind:value={topic} placeholder="z.B. Stadtentwicklung" />
-  </div>
-
-  <div class="form-group">
-    <label for="email">Benachrichtigungs-E-Mail (optional)</label>
-    <input id="email" type="email" bind:value={notificationEmail} placeholder="email@example.com" />
-  </div>
-
-  <div class="form-group checkbox-group">
-    <label>
-      <input type="checkbox" bind:checked={isActive} />
-      <span>Scout aktiv</span>
-    </label>
-  </div>
-
-  {#if !isEdit}
-    <!-- Extract Baseline Toggle -->
-    <div class="form-group">
-      <div class="criteria-toggle-wrapper">
-        <div class="criteria-toggle">
-          <button
-            type="button"
-            class="criteria-track"
-            class:specific={extractBaseline}
-            onclick={() => { extractBaseline = !extractBaseline; }}
-            aria-label="Baseline-Import umschalten"
-          >
-            <span class="criteria-thumb"></span>
-          </button>
-          <button
-            type="button"
-            class="criteria-label"
-            class:active={extractBaseline}
-            onclick={() => { extractBaseline = !extractBaseline; }}
-          >
-            Aktuelle Seiteninhalte importieren
-          </button>
-        </div>
-      </div>
-      <p class="hint-text">
-        Wenn aktiviert, werden vorhandene Inhalte der Seite beim ersten Lauf als Informationseinheiten gespeichert.
-      </p>
-    </div>
-  {/if}
 
   <div class="form-actions">
     {#if oncancel}
       <Button variant="ghost" onclick={oncancel}>Abbrechen</Button>
     {/if}
-    <Button type="submit" variant="primary" loading={saving || runningInitial}>
-      {#if runningInitial}
-        Erster Lauf...
-      {:else if saving}
+    <Button type="submit" variant="primary" loading={saving}>
+      {#if saving}
         Speichern...
       {:else}
-        {isEdit ? 'Speichern' : 'Erstellen & Ausführen'}
+        Speichern
       {/if}
     </Button>
   </div>
@@ -240,14 +185,11 @@
 <style>
   h2 { margin: 0 0 var(--spacing-lg); }
 
-  .checkbox-group { flex-direction: row !important; }
-  .checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    cursor: pointer;
+  .form-label {
+    display: block;
+    font-size: inherit;
+    font-weight: 500;
   }
-  .checkbox-group input[type='checkbox'] { width: auto; }
 
   .criteria-toggle-wrapper {
     display: flex;
@@ -306,12 +248,5 @@
 
   .criteria-track.specific .criteria-thumb {
     transform: translateX(16px);
-  }
-
-  .hint-text {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
-    margin-top: 0.375rem;
-    line-height: 1.4;
   }
 </style>

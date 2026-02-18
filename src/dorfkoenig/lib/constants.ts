@@ -7,6 +7,25 @@ export const FREQUENCY_OPTIONS = [
   { value: 'monthly', label: 'Monatlich' },
 ] as const;
 
+// Extended frequency options (for scout creation wizard)
+export const FREQUENCY_OPTIONS_EXTENDED = [
+  { value: 'daily', label: 'Täglich' },
+  { value: 'weekly', label: 'Wöchentlich' },
+  { value: 'biweekly', label: 'Alle 2 Wochen' },
+  { value: 'monthly', label: 'Monatlich' },
+] as const;
+
+// Day of week options
+export const DAY_OF_WEEK_OPTIONS = [
+  { value: 'monday', label: 'Montag' },
+  { value: 'tuesday', label: 'Dienstag' },
+  { value: 'wednesday', label: 'Mittwoch' },
+  { value: 'thursday', label: 'Donnerstag' },
+  { value: 'friday', label: 'Freitag' },
+  { value: 'saturday', label: 'Samstag' },
+  { value: 'sunday', label: 'Sonntag' },
+] as const;
+
 // Unit type labels
 export const UNIT_TYPE_LABELS: Record<string, string> = {
   fact: 'Fakt',

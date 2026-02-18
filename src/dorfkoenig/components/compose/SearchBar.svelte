@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { Button } from '@shared/components';
 
   interface Props {
@@ -8,7 +9,7 @@
 
   let { value: initialValue, onsearch }: Props = $props();
 
-  let query = $state(initialValue);
+  let query = $state(untrack(() => initialValue));
 
   function handleSubmit(e: Event) {
     e.preventDefault();

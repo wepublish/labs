@@ -58,8 +58,8 @@
   }
 
   .mode-btn.active {
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--color-primary, #6366f1);
+    background: rgba(234, 114, 110, 0.12);
+    color: var(--color-primary);
   }
 
   .mode-btn:hover:not(.active) {

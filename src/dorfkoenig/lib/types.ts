@@ -16,7 +16,8 @@ export interface Scout {
   url: string;
   criteria: string;
   location: Location | null;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  topic?: string | null;
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
@@ -34,12 +35,11 @@ export interface ScoutCreateInput {
   name: string;
   url: string;
   criteria: string;
-  criteria_mode?: 'any' | 'specific';
   location?: Location | null;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  topic?: string | null;
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
   is_active?: boolean;
-  extract_baseline?: boolean;
 }
 
 export interface ScoutUpdateInput {
@@ -47,7 +47,8 @@ export interface ScoutUpdateInput {
   url?: string;
   criteria?: string;
   location?: Location | null;
-  frequency?: 'daily' | 'weekly' | 'monthly';
+  topic?: string | null;
+  frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
   is_active?: boolean;
 }

@@ -45,13 +45,14 @@ function createUnitsStore() {
     /**
      * Load units with optional filters
      */
-    async load(locationCity?: string, unusedOnly = true) {
+    async load(locationCity?: string, unusedOnly = true, topic?: string) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         const data = await unitsApi.list({
           location_city: locationCity,
           unused_only: unusedOnly,
           limit: 100,
+          ...(topic && { topic }),
         });
         const topics = [...new Set(data.filter(u => u.topic).map(u => u.topic!))].sort();
         update((s) => ({ ...s, units: data, topics, loading: false }));

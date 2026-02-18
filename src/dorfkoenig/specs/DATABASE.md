@@ -1,4 +1,4 @@
-# coJournalist-Lite Database Schema
+# Dorfkoenig Database Schema
 
 ## Overview
 
@@ -57,7 +57,8 @@ CREATE TABLE scouts (
 
     -- Constraints
     CONSTRAINT valid_frequency CHECK (frequency IN ('daily', 'weekly', 'monthly')),
-    CONSTRAINT valid_url CHECK (url ~ '^https?://')
+    CONSTRAINT valid_url CHECK (url ~ '^https?://'),
+    CONSTRAINT scouts_criteria_length CHECK (char_length(criteria) <= 1000)
 );
 
 -- Indexes

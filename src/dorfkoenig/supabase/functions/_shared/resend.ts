@@ -18,7 +18,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
   id?: string;
   error?: string;
 }> {
-  const { to, subject, html, from = 'coJournalist <noreply@resend.dev>' } = options;
+  const { to, subject, html, from = 'Dorfkönig <noreply@labs.wepublish.cloud>' } = options;
 
   try {
     const response = await fetch(`${RESEND_BASE_URL}/emails`, {
@@ -57,6 +57,17 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
 }
 
 /**
+ * Escape HTML special characters to prevent XSS in email templates
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
  * Build scout alert email HTML
  */
 export function buildScoutAlertEmail(params: {
@@ -75,36 +86,39 @@ export function buildScoutAlertEmail(params: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
-      color: #1f2937;
+      color: #1c1917;
       margin: 0;
       padding: 0;
-      background-color: #f3f4f6;
+      background-color: #fafaf9;
     }
     .container {
       max-width: 600px;
       margin: 0 auto;
       background: white;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
     .header {
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      background: #ea726e;
       color: white;
       padding: 32px 24px;
       text-align: center;
     }
     .header h1 {
       margin: 0;
+      font-family: 'Crimson Pro', Georgia, serif;
       font-size: 24px;
       font-weight: 600;
     }
     .header .subtitle {
       margin: 8px 0 0;
+      font-family: 'DM Sans', -apple-system, sans-serif;
       font-size: 14px;
       opacity: 0.9;
     }
@@ -113,25 +127,26 @@ export function buildScoutAlertEmail(params: {
     }
     .summary {
       font-size: 18px;
-      color: #374151;
+      color: #1c1917;
       margin-bottom: 24px;
       padding: 16px;
-      background: #f9fafb;
+      background: #fafaf9;
       border-radius: 8px;
-      border-left: 4px solid #6366f1;
+      border-left: 4px solid #ea726e;
     }
     .findings {
       background: #fefefe;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #e7e5e4;
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 24px;
     }
     .findings h3 {
       margin: 0 0 12px;
+      font-family: 'Crimson Pro', Georgia, serif;
       font-size: 14px;
       font-weight: 600;
-      color: #6b7280;
+      color: #57534e;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -141,11 +156,11 @@ export function buildScoutAlertEmail(params: {
     }
     .findings li {
       margin-bottom: 8px;
-      color: #374151;
+      color: #1c1917;
     }
     .cta {
       display: inline-block;
-      background: #6366f1;
+      background: #ea726e;
       color: white;
       padding: 14px 28px;
       border-radius: 8px;
@@ -154,14 +169,14 @@ export function buildScoutAlertEmail(params: {
       font-size: 16px;
     }
     .cta:hover {
-      background: #4f46e5;
+      background: #d45a56;
     }
     .footer {
       padding: 24px;
       text-align: center;
-      color: #9ca3af;
+      color: #a8a29e;
       font-size: 13px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid #e7e5e4;
     }
   </style>
 </head>
@@ -169,11 +184,11 @@ export function buildScoutAlertEmail(params: {
   <div class="container">
     <div class="header">
       <h1>Scout-Alarm</h1>
-      <p class="subtitle">${scoutName}${locationLabel}</p>
+      <p class="subtitle">${escapeHtml(scoutName)}${escapeHtml(locationLabel)}</p>
     </div>
     <div class="content">
       <div class="summary">
-        ${summary}
+        ${escapeHtml(summary)}
       </div>
       ${
         keyFindings.length > 0
@@ -181,7 +196,7 @@ export function buildScoutAlertEmail(params: {
       <div class="findings">
         <h3>Kernpunkte</h3>
         <ul>
-          ${keyFindings.map((f) => `<li>${f}</li>`).join('')}
+          ${keyFindings.map((f) => `<li>${escapeHtml(f)}</li>`).join('')}
         </ul>
       </div>
       `
@@ -190,7 +205,7 @@ export function buildScoutAlertEmail(params: {
       <a href="${sourceUrl}" class="cta">Quelle ansehen</a>
     </div>
     <div class="footer">
-      <p>Diese E-Mail wurde automatisch von coJournalist-Lite gesendet.</p>
+      <p>Diese E-Mail wurde automatisch von Dorfkönig gesendet.</p>
     </div>
   </div>
 </body>

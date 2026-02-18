@@ -1,24 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { scouts } from '../stores/scouts';
-  import ScoutForm from '../components/scouts/ScoutForm.svelte';
   import ScoutCard from '../components/scouts/ScoutCard.svelte';
   import PanelFilterBar from '../components/ui/PanelFilterBar.svelte';
-  import { Button, Card, Loading } from '@shared/components';
+  import { Loading } from '@shared/components';
   import type { Scout } from '../lib/types';
-
-  let showForm = $state(false);
 
   // Filter state
   let filterMode = $state<'location' | 'topic'>('location');
   let selectedLocation = $state<string | null>(null);
   let selectedTopic = $state<string | null>(null);
-  let typeFilter = $state('all');
-
+  let selectedScout = $state<string | null>(null);
   // Expansion state
   let expandedScoutId = $state<string | null>(null);
 
   // Load data on mount
-  $effect(() => {
+  onMount(() => {
     scouts.load();
   });
 
@@ -31,13 +28,14 @@
     )].sort()
   );
 
-  // Derive topics from scouts (using criteria as topic proxy)
+  // Derive topics from scouts' topic field (split comma-separated, deduplicate, sort)
   let uniqueTopics = $derived(
     [...new Set(
       $scouts.scouts
-        .filter((s: Scout) => s.criteria)
-        .map((s: Scout) => s.criteria)
-    )].sort().slice(0, 20)
+        .filter((s: Scout) => s.topic)
+        .flatMap((s: Scout) => s.topic!.split(',').map(t => t.trim()))
+        .filter(Boolean)
+    )].sort()
   );
 
   let locationOptions = $derived(
@@ -57,39 +55,51 @@
     uniqueTopics.length === 0
       ? [{ value: '', label: 'Keine Themen' }]
       : [
-          { value: '', label: 'Alle Themen', count: $scouts.scouts.length },
-          ...uniqueTopics.map(t => ({ value: t, label: t.slice(0, 40) }))
+          { value: '', label: 'Alle Themen', count: $scouts.scouts.filter((s: Scout) => s.topic).length },
+          ...uniqueTopics.map(t => ({
+            value: t,
+            label: t.slice(0, 40),
+            count: $scouts.scouts.filter((s: Scout) =>
+              s.topic?.split(',').map(x => x.trim()).includes(t)
+            ).length
+          }))
         ]
   );
 
-  let typeOptions = $derived([
-    { value: 'all', label: 'Alle', count: $scouts.scouts.length },
-    { value: 'web', label: 'Website', count: $scouts.scouts.length },
-  ]);
-
-  // Filtered scouts
+  // Filtered scouts (by location/topic)
   let filteredScouts = $derived(
     $scouts.scouts.filter((scout: Scout) => {
-      const typeMatch = typeFilter === 'all' || true; // only web scouts for now
-      const dimMatch = filterMode === 'location'
-        ? (!selectedLocation || scout.location?.city === selectedLocation)
-        : (!selectedTopic || scout.criteria === selectedTopic);
-      return typeMatch && dimMatch;
+      if (filterMode === 'location') {
+        return !selectedLocation || scout.location?.city === selectedLocation;
+      }
+      if (!selectedTopic) return true;
+      const scoutTopics = scout.topic?.split(',').map(t => t.trim()) || [];
+      return scoutTopics.includes(selectedTopic);
     })
+  );
+
+  // Scout name options from filtered scouts
+  let scoutNameOptions = $derived(
+    filteredScouts.length === 0
+      ? [{ value: '', label: 'Keine Scouts' }]
+      : [
+          { value: '', label: 'Alle Scouts', count: filteredScouts.length },
+          ...filteredScouts.map(s => ({ value: s.id, label: s.name }))
+        ]
+  );
+
+  // Further filter by selected scout
+  let displayedScouts = $derived(
+    selectedScout
+      ? filteredScouts.filter(s => s.id === selectedScout)
+      : filteredScouts
   );
 
   function handleModeChange(mode: 'location' | 'topic') {
     filterMode = mode;
     selectedLocation = null;
     selectedTopic = null;
-  }
-
-  function handleFormSubmit() {
-    showForm = false;
-  }
-
-  function handleFormCancel() {
-    showForm = false;
+    selectedScout = null;
   }
 
   function toggleExpand(id: string) {
@@ -97,67 +107,49 @@
   }
 </script>
 
-<div class="manage">
-  <header class="page-header">
-    <h1>Manage</h1>
-    <Button onclick={() => (showForm = true)}>Neuer Scout</Button>
-  </header>
+<PanelFilterBar
+  {filterMode}
+  onModeChange={handleModeChange}
+  {locationOptions}
+  {topicOptions}
+  {selectedLocation}
+  {selectedTopic}
+  onLocationChange={(v) => { selectedLocation = v; selectedScout = null; }}
+  onTopicChange={(v) => { selectedTopic = v; selectedScout = null; }}
+  scoutOptions={scoutNameOptions}
+  {selectedScout}
+  onScoutChange={(v) => { selectedScout = v; }}
+  loading={$scouts.loading}
+/>
 
-  {#if showForm}
-    <Card shadow="md" padding="lg">
-      <ScoutForm onsubmit={handleFormSubmit} oncancel={handleFormCancel} />
-    </Card>
+<div class="panel-content">
+  {#if $scouts.loading && $scouts.scouts.length === 0}
+    <Loading label="Scouts laden..." />
+  {:else if $scouts.error}
+    <div class="error-message">{$scouts.error}</div>
+  {:else if displayedScouts.length === 0}
+    <div class="empty-state">
+      <p>Keine Scouts gefunden.</p>
+    </div>
+  {:else}
+    <div class="scouts-grid">
+      {#each displayedScouts as scout (scout.id)}
+        <ScoutCard
+          {scout}
+          expanded={expandedScoutId === scout.id}
+          ontoggle={() => toggleExpand(scout.id)}
+        />
+      {/each}
+    </div>
   {/if}
-
-  <PanelFilterBar
-    {filterMode}
-    onModeChange={handleModeChange}
-    {locationOptions}
-    {topicOptions}
-    {selectedLocation}
-    {selectedTopic}
-    onLocationChange={(v) => { selectedLocation = v; }}
-    onTopicChange={(v) => { selectedTopic = v; }}
-    {typeFilter}
-    {typeOptions}
-    onTypeChange={(v) => { typeFilter = v; }}
-    loading={$scouts.loading}
-  />
-
-  <section class="scouts-section">
-    {#if $scouts.loading}
-      <Loading label="Scouts laden..." />
-    {:else if $scouts.error}
-      <div class="error-message">{$scouts.error}</div>
-    {:else if filteredScouts.length === 0}
-      <div class="empty-state">
-        <p>Keine Scouts gefunden.</p>
-      </div>
-    {:else}
-      <div class="scouts-grid">
-        {#each filteredScouts as scout (scout.id)}
-          <ScoutCard
-            {scout}
-            expanded={expandedScoutId === scout.id}
-            ontoggle={() => toggleExpand(scout.id)}
-          />
-        {/each}
-      </div>
-    {/if}
-  </section>
 </div>
 
 <style>
-  .manage {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-  }
-
-  .scouts-section {
+  .panel-content {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+    padding: var(--spacing-md) 1.5rem;
   }
 
   .scouts-grid {

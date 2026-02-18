@@ -1,4 +1,4 @@
-# coJournalist-Lite Backend - Agent Guide
+# Dorfkoenig Backend - Agent Guide
 
 PostgreSQL + pgvector database with 5 Edge Functions (Deno runtime) and 6 shared modules. All functions have `verify_jwt = false` and authenticate via `x-user-id` header or service role key.
 
@@ -6,7 +6,7 @@ PostgreSQL + pgvector database with 5 Edge Functions (Deno runtime) and 6 shared
 
 | Function | Purpose | Auth | Trigger |
 |----------|---------|------|---------|
-| `scouts` | CRUD for scout configurations | x-user-id header | Frontend API calls |
+| `scouts` | CRUD for scout configurations. `listScouts()` enriches each scout with latest execution data (`last_execution_status`, `last_criteria_matched`, `last_change_status`, `last_summary_text`). | x-user-id header | Frontend API calls |
 | `execute-scout` | 9-step execution pipeline | Service role (pg_cron) or x-user-id | pg_cron dispatch or manual run |
 | `units` | List, search, mark-used for information units | x-user-id header | Frontend API calls |
 | `compose` | Generate article drafts from selected units | x-user-id header | Frontend API calls |
@@ -87,20 +87,24 @@ All Supabase CLI commands require `--workdir` flag from repo root:
 
 ```bash
 # Link project
-supabase link --project-ref <ref> --workdir ./src/cojournalist-lite/supabase
+supabase link --project-ref <ref> --workdir ./src/dorfkoenig/supabase
 
 # Push schema
-supabase db push --workdir ./src/cojournalist-lite/supabase
+supabase db push --workdir ./src/dorfkoenig/supabase
 
 # Deploy all functions
-supabase functions deploy --workdir ./src/cojournalist-lite/supabase
+supabase functions deploy --workdir ./src/dorfkoenig/supabase
 
 # Deploy single function
-supabase functions deploy scouts --workdir ./src/cojournalist-lite/supabase
+supabase functions deploy scouts --workdir ./src/dorfkoenig/supabase
 
 # View function logs
-supabase functions logs execute-scout --workdir ./src/cojournalist-lite/supabase
+supabase functions logs execute-scout --workdir ./src/dorfkoenig/supabase
 ```
+
+## MCP Deployment (No CLI)
+
+Supabase CLI is not installed locally. Use the MCP `deploy_edge_function` tool to deploy Edge Functions. Import paths must use `./_shared/` (not `../_shared/`) when deploying via MCP, because the deploy tool places the entrypoint in a `source/` subdirectory. Include all shared module files with names like `_shared/cors.ts` so they become siblings to the entrypoint.
 
 ## Adding a New Edge Function
 
@@ -111,4 +115,4 @@ supabase functions logs execute-scout --workdir ./src/cojournalist-lite/supabase
 5. Use `createServiceClient()` only for internal/scheduled functions
 6. Add `[functions.{name}]` section to `config.toml` with `verify_jwt = false`
 7. Return responses via `jsonResponse()` / `errorResponse()`
-8. Deploy: `supabase functions deploy {name} --workdir ./src/cojournalist-lite/supabase`
+8. Deploy: `supabase functions deploy {name} --workdir ./src/dorfkoenig/supabase`

@@ -50,8 +50,8 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://cojournalist-lite.labs.wepublish.ch',
-      'X-Title': 'coJournalist-Lite',
+      'HTTP-Referer': 'https://dorfkoenig.labs.wepublish.ch',
+      'X-Title': 'DorfKönig',
     },
     body: JSON.stringify({
       model,
@@ -70,10 +70,13 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
   return response.json();
 }
 
+const MAX_EMBEDDING_CHARS = 30000;
+
 /**
  * Generate embeddings using OpenRouter
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
+  const truncated = text.slice(0, MAX_EMBEDDING_CHARS);
   const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
@@ -82,7 +85,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     },
     body: JSON.stringify({
       model: 'openai/text-embedding-3-small',
-      input: text,
+      input: truncated,
     }),
   });
 
@@ -99,6 +102,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  * Generate embeddings for multiple texts (batch)
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  const truncated = texts.map(t => t.slice(0, MAX_EMBEDDING_CHARS));
   const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
@@ -107,7 +111,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     },
     body: JSON.stringify({
       model: 'openai/text-embedding-3-small',
-      input: texts,
+      input: truncated,
     }),
   });
 

@@ -14,8 +14,9 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    // Extract execution ID if present
-    const executionId = pathParts.length > 2 ? pathParts[2] : null;
+    // Supabase strips /functions/v1/ prefix — function sees /executions/{id}
+    // pathParts: ['executions', '{id}']
+    const executionId = pathParts.length > 1 ? pathParts[1] : null;
 
     if (req.method !== 'GET') {
       return errorResponse('Methode nicht erlaubt', 405);

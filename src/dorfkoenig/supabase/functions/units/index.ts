@@ -15,8 +15,9 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    // Determine endpoint: /units, /units/locations, /units/search
-    const endpoint = pathParts.length > 2 ? pathParts[2] : null;
+    // Supabase strips /functions/v1/ prefix — function sees /units/{endpoint}
+    // pathParts: ['units', '{endpoint}']
+    const endpoint = pathParts.length > 1 ? pathParts[1] : null;
 
     switch (req.method) {
       case 'GET':
@@ -53,6 +54,7 @@ async function listUnits(
   url: URL
 ) {
   const locationCity = url.searchParams.get('location_city');
+  const topic = url.searchParams.get('topic');
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const scoutId = url.searchParams.get('scout_id');
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
@@ -60,13 +62,17 @@ async function listUnits(
 
   let query = supabase
     .from('information_units')
-    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, created_at, used_in_article', { count: 'exact' })
+    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, created_at, used_in_article', { count: 'exact' })
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (locationCity) {
     query = query.eq('location->>city', locationCity);
+  }
+
+  if (topic) {
+    query = query.ilike('topic', `%${topic}%`);
   }
 
   if (unusedOnly) {

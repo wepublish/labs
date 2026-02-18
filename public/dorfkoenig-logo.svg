@@ -1,0 +1,24 @@
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dorf König Logo: Crown with signal waves over a village silhouette (500x500) -->
+
+  <!-- Signal waves (monitoring/radar) -->
+  <path d="M250 50 Q325 100 325 175" stroke="#ea726e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.35"/>
+  <path d="M250 50 Q375 125 375 225" stroke="#ea726e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.2"/>
+
+  <!-- Crown (König) -->
+  <path d="M150 225 L175 137.5 L212.5 187.5 L250 112.5 L287.5 187.5 L325 137.5 L350 225 Z" fill="#ea726e"/>
+
+  <!-- Village silhouette (Dorf) -->
+  <rect x="162.5" y="250" width="175" height="125" rx="18.75" fill="#ea726e" opacity="0.6"/>
+  <rect x="212.5" y="225" width="75" height="150" rx="12.5" fill="#ea726e" opacity="0.8"/>
+  <!-- Church spire -->
+  <rect x="237.5" y="175" width="25" height="50" fill="#ea726e" opacity="0.8"/>
+  <!-- Windows -->
+  <rect x="187.5" y="287.5" width="31.25" height="31.25" rx="6.25" fill="white" opacity="0.8"/>
+  <rect x="281.25" y="287.5" width="31.25" height="31.25" rx="6.25" fill="white" opacity="0.8"/>
+  <!-- Door -->
+  <rect x="231.25" y="325" width="37.5" height="50" rx="9.375" fill="white" opacity="0.8"/>
+
+  <!-- Base line -->
+  <line x1="100" y1="375" x2="400" y2="375" stroke="#ea726e" stroke-width="8" stroke-linecap="round" opacity="0.3"/>
+</svg>

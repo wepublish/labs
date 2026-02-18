@@ -105,12 +105,4 @@ function createScoutsStore() {
 export const scouts = createScoutsStore();
 
 // Derived stores
-export const activeScouts = derived(scouts, ($s) =>
-  $s.scouts.filter((s) => s.is_active)
-);
-
-export const inactiveScouts = derived(scouts, ($s) =>
-  $s.scouts.filter((s) => !s.is_active)
-);
-
 export const scoutsCount = derived(scouts, ($s) => $s.scouts.length);

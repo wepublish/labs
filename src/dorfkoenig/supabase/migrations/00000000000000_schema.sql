@@ -406,6 +406,7 @@ BEGIN
     threshold_hours := CASE p_frequency
         WHEN 'daily' THEN 24
         WHEN 'weekly' THEN 168
+        WHEN 'biweekly' THEN 336
         WHEN 'monthly' THEN 720
         ELSE 24
     END;

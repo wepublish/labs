@@ -247,7 +247,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.3);
-    z-index: 60;
+    z-index: var(--z-modal);
   }
 
   .slide-over {
@@ -259,7 +259,7 @@
     min-width: 500px;
     max-width: 900px;
     background: white;
-    z-index: 70;
+    z-index: calc(var(--z-modal) + 1);
     display: flex;
     flex-direction: column;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);

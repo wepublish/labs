@@ -89,7 +89,7 @@
 
   .reset-button {
     padding: 0.5rem 1rem;
-    background-color: var(--color-primary, #6366f1);
+    background-color: var(--color-primary, #ea726e);
     color: white;
     border: none;
     border-radius: 0.375rem;

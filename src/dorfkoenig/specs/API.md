@@ -1,4 +1,4 @@
-# coJournalist-Lite API Specification
+# Dorfkoenig API Specification
 
 ## Overview
 
@@ -80,11 +80,17 @@ x-user-id: tester-1
       "consecutive_failures": 0,
       "notification_email": "user@example.com",
       "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
+      "updated_at": "2024-01-15T10:30:00Z",
+      "last_execution_status": "completed",
+      "last_criteria_matched": true,
+      "last_change_status": "changed",
+      "last_summary_text": "Neue Bauvorhaben in Berlin-Mitte wurden angekündigt."
     }
   ]
 }
 ```
+
+> **Note:** The `last_execution_*` fields are joined from the most recent `scout_executions` row for each scout. They are not stored on the `scouts` table itself. Scouts with no executions will have `null` for all four fields.
 
 ### POST /scouts
 
@@ -115,7 +121,7 @@ x-user-id: tester-1
 **Validation:**
 - `name`: Required, 1-100 characters
 - `url`: Required, valid HTTP(S) URL
-- `criteria`: Required, 10-1000 characters
+- `criteria`: Required, 0-1000 characters (empty allowed for monitor-all mode)
 - `location`: Optional, JSONB object
 - `frequency`: Required, one of: `daily`, `weekly`, `monthly`
 - `notification_email`: Optional, valid email format

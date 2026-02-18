@@ -1,4 +1,4 @@
-// Firecrawl API client for web scraping with change tracking
+// Firecrawl API client for web scraping
 
 const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY')!;
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2';
@@ -6,12 +6,9 @@ const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2';
 interface ScrapeOptions {
   url: string;
   formats?: ('markdown' | 'html' | 'rawHtml' | 'screenshot')[];
-  changeTracking?: {
-    mode: 'git-diff';
-    tag: string;
-  };
   timeout?: number;
   waitFor?: number;
+  changeTrackingTag?: string;
 }
 
 interface ScrapeResponse {
@@ -27,48 +24,43 @@ interface ScrapeResponse {
       statusCode?: number;
     };
     changeTracking?: {
-      isFirstScrape: boolean;
-      hasChanged: boolean;
-      changePercentage?: number;
-      previousContent?: string;
-      diff?: string;
+      changeStatus?: string;
     };
   };
   error?: string;
 }
 
 /**
- * Scrape a URL with optional change tracking
+ * Scrape a URL and return markdown content
  */
 export async function scrape(options: ScrapeOptions): Promise<{
   success: boolean;
   markdown: string | null;
   title: string | null;
-  changeTracking: {
-    isFirstScrape: boolean;
-    hasChanged: boolean;
-  } | null;
+  changeStatus: string | null;
   error: string | null;
 }> {
   const {
     url,
     formats = ['markdown'],
-    changeTracking,
-    timeout = 30000,
+    timeout = 60000,
+    changeTrackingTag,
   } = options;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+    // Build formats array: include changeTracking object if tag provided
+    const resolvedFormats: (string | { type: string; tag: string })[] = [...formats];
+    if (changeTrackingTag) {
+      resolvedFormats.push({ type: 'changeTracking', tag: changeTrackingTag });
+    }
+
     const body: Record<string, unknown> = {
       url,
-      formats,
+      formats: resolvedFormats,
     };
-
-    if (changeTracking) {
-      body.changeTracking = changeTracking;
-    }
 
     const response = await fetch(`${FIRECRAWL_BASE_URL}/scrape`, {
       method: 'POST',
@@ -88,7 +80,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
         success: false,
         markdown: null,
         title: null,
-        changeTracking: null,
+        changeStatus: null,
         error: `Firecrawl API error: ${response.status} - ${error}`,
       };
     }
@@ -100,7 +92,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
         success: false,
         markdown: null,
         title: null,
-        changeTracking: null,
+        changeStatus: null,
         error: data.error || 'Unknown scraping error',
       };
     }
@@ -109,12 +101,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       success: true,
       markdown: data.data.markdown || null,
       title: data.data.metadata?.title || null,
-      changeTracking: data.data.changeTracking
-        ? {
-            isFirstScrape: data.data.changeTracking.isFirstScrape,
-            hasChanged: data.data.changeTracking.hasChanged,
-          }
-        : null,
+      changeStatus: data.data.changeTracking?.changeStatus || null,
       error: null,
     };
   } catch (error) {
@@ -123,7 +110,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
         success: false,
         markdown: null,
         title: null,
-        changeTracking: null,
+        changeStatus: null,
         error: 'Scraping timed out',
       };
     }
@@ -131,7 +118,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       success: false,
       markdown: null,
       title: null,
-      changeTracking: null,
+      changeStatus: null,
       error: error.message,
     };
   }

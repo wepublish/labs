@@ -10,6 +10,7 @@
     PenTool,
     RotateCcw,
     Eye,
+    Trash2,
   } from 'lucide-svelte';
 
   interface Props {
@@ -21,6 +22,7 @@
     onGenerate: () => void;
     onViewDraft: () => void;
     onPromptChange: (prompt: string | null) => void;
+    onDelete?: () => void;
   }
 
   let {
@@ -32,6 +34,7 @@
     onGenerate,
     onViewDraft,
     onPromptChange,
+    onDelete,
   }: Props = $props();
 
   const DEFAULT_PROMPT = `SCHREIBRICHTLINIEN:
@@ -42,7 +45,7 @@
 - Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen`;
 
   let showPromptEditor = $state(false);
-  let editedPrompt = $state(customPrompt || '');
+  let editedPrompt = $state(customPrompt || ''); // eslint-disable-line -- intentional initial capture
 
   function savePrompt() {
     onPromptChange(editedPrompt.trim() || null);
@@ -82,6 +85,9 @@
         <CheckSquare size={14} />
         {selectedCount} ausgewählt
       </span>
+      <button class="delete-btn" onclick={onDelete} type="button">
+        <Trash2 size={14} />
+      </button>
     {/if}
 
     <button
@@ -126,7 +132,7 @@
     position: fixed;
     bottom: 1.25rem;
     right: 2rem;
-    z-index: 50;
+    z-index: var(--z-sticky);
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -222,6 +228,25 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
+  }
+
+  .delete-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+    background: white;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 6px;
+    color: var(--color-text-muted, #6b7280);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .delete-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
   }
 
   .settings-btn {

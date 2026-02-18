@@ -27,7 +27,7 @@
   .spinner {
     border-radius: 50%;
     border-style: solid;
-    border-color: var(--color-primary, #6366f1);
+    border-color: var(--color-primary, #ea726e);
     border-right-color: transparent;
     animation: spin 0.75s linear infinite;
   }

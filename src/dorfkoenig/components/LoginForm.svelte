@@ -32,8 +32,8 @@
   <Card shadow="lg" padding="lg">
     {#snippet header()}
       <div class="login-header">
-        <h1>coJournalist-Lite</h1>
-        <p class="subtitle">Web Scout Monitoring</p>
+        <h1>DorfKönig</h1>
+        <p class="subtitle">Lokales Nachrichten-Monitoring</p>
       </div>
     {/snippet}
 
@@ -129,7 +129,7 @@
   .form-group input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(234, 114, 110, 0.12);
   }
 
   .error {

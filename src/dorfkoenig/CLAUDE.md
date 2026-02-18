@@ -1,4 +1,4 @@
-# coJournalist-Lite - Agent Guide
+# Dorfkoenig - Agent Guide
 
 Web scout monitoring system for journalists. Svelte 5 SPA + Supabase backend. German-only UI. Part of the `labs` monorepo.
 
@@ -7,7 +7,7 @@ Users configure **Scouts** (URL + criteria + location), which are scraped on sch
 ## Directory Structure
 
 ```
-src/cojournalist-lite/
+src/dorfkoenig/
 ├── CLAUDE.md              # This file
 ├── index.html             # Entry point (Vite app discovery)
 ├── main.ts                # Mounts Svelte app
@@ -35,6 +35,16 @@ src/cojournalist-lite/
 │   ├── scouts/            # ScoutCard, ScoutForm, ScoutList
 │   ├── executions/        # ExecutionCard, ExecutionList
 │   └── compose/           # ComposePanel, DraftPreview, LocationFilter, SearchBar, UnitList
+├── __tests__/             # Vitest unit tests
+│   ├── setup.ts           # Test setup (localStorage mock)
+│   ├── lib/
+│   │   ├── api.test.ts    # API client + all typed helpers
+│   │   └── constants.test.ts  # Constants + formatting functions
+│   └── stores/
+│       ├── auth.test.ts   # Auth store (login/logout/init)
+│       ├── scouts.test.ts # Scouts store CRUD + run/test
+│       ├── scout-wizard.test.ts  # Two-step wizard flow
+│       └── units.test.ts  # Units store load/search/markUsed
 ├── supabase/              # Backend (see supabase/CLAUDE.md)
 ├── specs/                 # Detailed specifications
 │   ├── ARCHITECTURE.md
@@ -60,8 +70,8 @@ import { auth } from '@shared/stores/auth';
 import '@shared/styles/global.css';
 ```
 
-- Dev: `https://localhost:3200/cojournalist-lite/`
-- Prod: `https://wepublish.github.io/labs/cojournalist-lite/`
+- Dev: `https://localhost:3200/dorfkoenig/`
+- Prod: `https://wepublish.github.io/labs/dorfkoenig/`
 - Commands run from repo root: `npm run dev`, `npm run build`, `npm run typecheck`
 
 ## Architecture Overview
@@ -81,7 +91,7 @@ Scheduling:
 
 | Type | Key Fields |
 |------|-----------|
-| `Scout` | id, user_id, name, url, criteria, location, frequency, is_active, notification_email |
+| `Scout` | id, user_id, name, url, criteria, location, frequency, is_active, notification_email, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
 | `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted |
 | `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, source_url, used_in_article |
 | `Draft` | title, headline, sections[], gaps[], sources[], word_count |
@@ -91,7 +101,7 @@ Scheduling:
 
 ### `scouts` (`stores/scouts.ts`)
 `load()`, `get(id)`, `create(input)`, `update(id, input)`, `delete(id)`, `run(id, opts?)`, `test(id)`, `clearError()`
-Derived: `activeScouts`, `inactiveScouts`, `scoutsCount`
+Derived: `scoutsCount`
 
 ### `units` (`stores/units.ts`)
 `loadLocations()`, `load(city?, unusedOnly?)`, `search(query, city?)`, `setLocation(city)`, `clearSearch()`, `markUsed(ids[])`, `clearError()`
@@ -190,3 +200,9 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 | `docs/SETUP.md` | Step-by-step setup guide |
 | `docs/MANUAL_SETUP.md` | Manual setup via Dashboard (no CLI) |
 | `supabase/CLAUDE.md` | Backend-specific agent guide |
+
+## Testing
+
+`npm test` (single run) or `npm run test:watch`. Vitest 4.0.18, Node environment.
+
+See `__tests__/CLAUDE.md` for the full test map, conventions, and instructions for adding tests.

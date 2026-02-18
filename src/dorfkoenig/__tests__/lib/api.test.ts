@@ -14,7 +14,7 @@ vi.stubEnv('VITE_SUPABASE_URL', 'https://test.supabase.co');
 vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key');
 
 // Import after mocks are in place
-const { api, scoutsApi, unitsApi, composeApi, ApiClientError } = await import('../../lib/api');
+const { api, scoutsApi, unitsApi, composeApi, executionsApi, ApiClientError } = await import('../../lib/api');
 const { getUserId } = await import('../../stores/auth');
 
 function createMockResponse(body: unknown, status = 200): Response {
@@ -180,6 +180,30 @@ describe('scoutsApi', () => {
     );
   });
 
+  it('get() calls GET /scouts/:id', async () => {
+    const scout = { id: 'scout-1', name: 'My Scout' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: scout }));
+
+    const result = await scoutsApi.get('scout-1');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/scouts/scout-1',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(result).toEqual(scout);
+  });
+
+  it('delete() calls DELETE /scouts/:id', async () => {
+    mockFetch.mockResolvedValue(createNoContentResponse());
+
+    await scoutsApi.delete('scout-1');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/scouts/scout-1',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+
   it('run() calls POST /scouts/:id/run', async () => {
     mockFetch.mockResolvedValue(
       createMockResponse({
@@ -196,6 +220,139 @@ describe('scoutsApi', () => {
         body: JSON.stringify({ skip_notification: true }),
       })
     );
+  });
+
+  it('run() sends extract_units option', async () => {
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        data: { execution_id: 'exec-1', status: 'running', message: 'Started' },
+      })
+    );
+
+    await scoutsApi.run('scout-1', { extract_units: true });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.extract_units).toBe(true);
+  });
+
+  it('test() calls POST /scouts/:id/test', async () => {
+    const testResult = {
+      scrape_result: { success: true, word_count: 500, title: 'Test' },
+      criteria_analysis: null,
+      would_notify: false,
+      would_extract_units: true,
+    };
+    mockFetch.mockResolvedValue(createMockResponse({ data: testResult }));
+
+    const result = await scoutsApi.test('scout-1');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/scouts/scout-1/test',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(result).toEqual(testResult);
+  });
+
+  it('create() sends is_active in body', async () => {
+    const scout = { id: '1', name: 'Draft' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: scout }));
+
+    await scoutsApi.create({
+      name: 'Draft',
+      url: 'https://example.com',
+      criteria: '',
+      frequency: 'daily',
+      is_active: false,
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.is_active).toBe(false);
+  });
+
+  it('create() sends location object in body', async () => {
+    const scout = { id: '1', name: 'Loc Scout' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: scout }));
+
+    await scoutsApi.create({
+      name: 'Loc Scout',
+      url: 'https://example.com',
+      criteria: '',
+      frequency: 'daily',
+      location: { city: 'Berlin', country: 'Germany', latitude: 52.52, longitude: 13.405 },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.location).toEqual({ city: 'Berlin', country: 'Germany', latitude: 52.52, longitude: 13.405 });
+  });
+
+  it('update() sends is_active and frequency', async () => {
+    const scout = { id: 'scout-1', name: 'Test' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: scout }));
+
+    await scoutsApi.update('scout-1', { is_active: true, frequency: 'biweekly' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.is_active).toBe(true);
+    expect(body.frequency).toBe('biweekly');
+  });
+});
+
+describe('executionsApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getUserId).mockReturnValue('test-user-123');
+  });
+
+  it('list() calls GET /executions with default params', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await executionsApi.list();
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('https://test.supabase.co/functions/v1/executions'),
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('list() filters by scout_id', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await executionsApi.list({ scout_id: 'scout-1' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('scout_id=scout-1');
+  });
+
+  it('list() supports pagination with limit and offset', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await executionsApi.list({ limit: 10, offset: 20 });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('limit=10');
+    expect(calledUrl).toContain('offset=20');
+  });
+
+  it('list() filters by status', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await executionsApi.list({ status: 'completed' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('status=completed');
+  });
+
+  it('get() calls GET /executions/:id', async () => {
+    const execution = { id: 'exec-1', scout_id: 'scout-1', status: 'completed' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: execution }));
+
+    const result = await executionsApi.get('exec-1');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/executions/exec-1',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(result).toEqual(execution);
   });
 });
 

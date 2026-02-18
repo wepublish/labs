@@ -78,12 +78,12 @@
 
   /* Variants */
   .btn-primary {
-    background-color: var(--color-primary, #6366f1);
+    background-color: var(--color-primary, #ea726e);
     color: white;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-dark, #4f46e5);
+    background-color: var(--color-primary-dark, #d45a56);
   }
 
   .btn-secondary {

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { MapPin, Tag, Filter, Search, Loader2 } from 'lucide-svelte';
+  import { untrack } from 'svelte';
+  import { Search, Loader2 } from 'lucide-svelte';
   import ModeToggle from './ModeToggle.svelte';
   import FilterSelect from './FilterSelect.svelte';
   import type { Snippet } from 'svelte';
@@ -19,9 +20,9 @@
     selectedTopic: string | null;
     onLocationChange: (value: string | null) => void;
     onTopicChange: (value: string | null) => void;
-    typeFilter: string;
-    typeOptions: Option[];
-    onTypeChange: (value: string) => void;
+    scoutOptions?: Option[];
+    selectedScout?: string | null;
+    onScoutChange?: (value: string | null) => void;
     loading?: boolean;
     showSearch?: boolean;
     searchQuery?: string;
@@ -40,9 +41,9 @@
     selectedTopic,
     onLocationChange,
     onTopicChange,
-    typeFilter,
-    typeOptions,
-    onTypeChange,
+    scoutOptions,
+    selectedScout,
+    onScoutChange,
     loading = false,
     showSearch = false,
     searchQuery = '',
@@ -52,8 +53,20 @@
     toolbar,
   }: Props = $props();
 
-  let searchInput = $state(searchQuery);
+  let searchInput = $state(untrack(() => searchQuery));
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Sync searchInput when prop changes externally (e.g. mode change clears it)
+  $effect(() => {
+    searchInput = searchQuery;
+  });
+
+  // Cleanup debounce timeout on unmount
+  $effect(() => {
+    return () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+    };
+  });
 
   function handleSearchInput(e: Event) {
     const value = (e.target as HTMLInputElement).value;
@@ -80,42 +93,42 @@
     {:else}
       <ModeToggle mode={filterMode} onchange={onModeChange} />
 
+      <div class="filter-divider"></div>
+
       <FilterSelect
-        icon={filterMode === 'location' ? MapPin : Tag}
         options={filterMode === 'location' ? locationOptions : topicOptions}
         value={filterMode === 'location' ? (selectedLocation || '') : (selectedTopic || '')}
         onchange={(v) => filterMode === 'location' ? onLocationChange(v || null) : onTopicChange(v || null)}
       />
 
-      <div class="filter-divider"></div>
+      {#if scoutOptions && scoutOptions.length > 1}
+        <div class="filter-divider"></div>
+        <FilterSelect
+          options={scoutOptions}
+          value={selectedScout || ''}
+          onchange={(v) => onScoutChange?.(v || null)}
+        />
+      {/if}
 
-      <FilterSelect
-        icon={Filter}
-        options={typeOptions}
-        value={typeFilter}
-        onchange={(v) => onTypeChange(v)}
-      />
+      {#if showSearch}
+        <div class="filter-divider"></div>
+        <div class="search-input-wrapper">
+          <Search size={14} />
+          <input
+            type="text"
+            value={searchInput}
+            oninput={handleSearchInput}
+            placeholder={searchPlaceholder}
+          />
+          {#if isSearching}
+            <Loader2 size={14} class="spin" />
+          {:else if searchInput}
+            <button class="search-clear" onclick={handleSearchClear}>&times;</button>
+          {/if}
+        </div>
+      {/if}
     {/if}
   </div>
-
-  {#if showSearch}
-    <div class="search-row">
-      <div class="search-input-wrapper">
-        <Search size={14} />
-        <input
-          type="text"
-          value={searchInput}
-          oninput={handleSearchInput}
-          placeholder={searchPlaceholder}
-        />
-        {#if isSearching}
-          <Loader2 size={14} class="spin" />
-        {:else if searchInput}
-          <button class="search-clear" onclick={handleSearchClear}>&times;</button>
-        {/if}
-      </div>
-    </div>
-  {/if}
 
   {#if toolbar}
     <div class="toolbar-row">
@@ -129,7 +142,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--color-border, #e5e7eb);
     background: var(--color-surface, white);
   }
@@ -144,8 +157,8 @@
   .filter-divider {
     width: 1px;
     height: 20px;
-    background: var(--color-border, #d1d5db);
-    margin: 0 0.25rem;
+    background: var(--color-border);
+    margin: 0 0.125rem;
     flex-shrink: 0;
   }
 
@@ -155,10 +168,6 @@
     gap: 0.5rem;
     font-size: 0.8125rem;
     color: var(--color-text-muted, #6b7280);
-  }
-
-  .search-row {
-    display: flex;
   }
 
   .search-input-wrapper {

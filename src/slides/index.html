@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Strategy for We.Publish</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #ea726e;
+      --color-text: #000000;
+      --color-secondary: #6d6d6d;
+      --color-bg: #ffffff;
+      --color-border: #dbdbdb;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'Instrument Sans', system-ui, -apple-system, sans-serif;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background: var(--color-bg);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Dot grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, rgba(0,0,0,0.06) 0.75px, transparent 0.75px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Slide base ─── */
+    .slide {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: absolute;
+      inset: 0;
+      padding: 60px 80px 80px;
+      overflow-y: auto;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(12px);
+      transition:
+        opacity 0.5s var(--ease-out),
+        transform 0.5s var(--ease-out),
+        visibility 0s linear 0.5s;
+      z-index: 1;
+    }
+    .slide.active {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 0.5s var(--ease-out),
+        transform 0.5s var(--ease-out),
+        visibility 0s linear 0s;
+      z-index: 2;
+    }
+
+    /* ─── Chrome: logo ─── */
+    .chrome-logo {
+      position: fixed;
+      top: 24px;
+      left: 32px;
+      height: 28px;
+      z-index: 100;
+    }
+
+    /* ─── Chrome: slide counter ─── */
+    .chrome-counter {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      color: var(--color-secondary);
+      z-index: 100;
+      transition: color 0.4s ease;
+    }
+
+    /* ─── Chrome: nav arrows ─── */
+    .chrome-nav {
+      position: fixed;
+      bottom: 20px;
+      right: 32px;
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+    }
+    .chrome-nav button {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s, color 0.4s, border-color 0.4s;
+    }
+    .chrome-nav button:hover {
+      background: #f5f5f5;
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    /* ─── Section dividers ─── */
+    .slide--divider {
+      align-items: center;
+      text-align: center;
+    }
+    .slide--divider h2 {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 400;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+    }
+    .slide--divider p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 12px;
+      font-weight: 400;
+    }
+
+    /* Coral divider */
+    .slide--coral {
+      background: radial-gradient(ellipse at 30% 50%, #f08a7a, #ea726e 40%, #d95f5b 100%);
+    }
+    .slide--coral::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      top: -80px;
+      right: -60px;
+      pointer-events: none;
+    }
+    .slide--coral::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      bottom: -40px;
+      left: 10%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Dark divider */
+    .slide--dark {
+      background: radial-gradient(ellipse at 60% 40%, #2a2a2a, #1a1a1a 50%, #111 100%);
+    }
+    .slide--dark::after {
+      content: '';
+      position: absolute;
+      width: 350px;
+      height: 350px;
+      border-radius: 50%;
+      background: rgba(234,114,110,0.04);
+      bottom: -100px;
+      right: -50px;
+      pointer-events: none;
+    }
+
+    /* ─── Title slide ─── */
+    .title-slide {
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+    }
+    .title-slide h1 {
+      font-family: var(--font-display);
+      font-size: 56px;
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+    .title-slide .subtitle {
+      font-size: 17px;
+      color: var(--color-secondary);
+      font-weight: 400;
+    }
+    .title-slide .date {
+      font-size: 13px;
+      color: var(--color-secondary);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 500;
+    }
+    /* ─── Content slide headings ─── */
+    .slide h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 400;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+      position: relative;
+      display: inline-block;
+    }
+    /* Heading accent line (not on dividers) */
+    .slide:not(.slide--divider) h2::after {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 2px;
+      background: var(--color-primary);
+      margin-top: 10px;
+      border-radius: 1px;
+    }
+    .slide .slide-subtitle {
+      font-size: 15px;
+      color: var(--color-secondary);
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    /* ─── Grid layouts ─── */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      align-content: start;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      align-content: start;
+    }
+
+    /* ─── Unified card base ─── */
+    .card {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.25s ease, transform 0.25s ease;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .card h3 {
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .card p, .card li {
+      font-size: 15px;
+      color: var(--color-secondary);
+      line-height: 1.55;
+    }
+    .card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .card ul li::before {
+      content: "\2022";
+      color: var(--color-primary);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+    .card .meta {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* Card modifier: pain (icon treatment) */
+    .card--pain {
+      gap: 14px;
+    }
+    .card--pain .icon {
+      font-size: 28px;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border-radius: 12px;
+    }
+    /* Card modifier: feature (compact, clickable) */
+    .card--feature {
+      padding: 18px 20px;
+      gap: 0;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .card--feature:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+    .card--feature.expanded {
+      border-color: var(--color-primary);
+      background: rgba(234,114,110,0.03);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ─── Feature internals ─── */
+    .feature-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .feature-header h4 {
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .feature-chevron {
+      font-size: 11px;
+      color: var(--color-secondary);
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+    }
+    .card--feature.expanded .feature-chevron {
+      transform: rotate(180deg);
+    }
+    .feature-summary {
+      font-size: 13px;
+      color: var(--color-secondary);
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+    .feature-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, margin-top 0.3s ease, opacity 0.25s ease;
+      opacity: 0;
+      margin-top: 0;
+    }
+    .card--feature.expanded .feature-details {
+      max-height: 300px;
+      opacity: 1;
+      margin-top: 10px;
+    }
+    .feature-details ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      padding-top: 10px;
+      border-top: 1px solid var(--color-border);
+    }
+    .feature-details li {
+      font-size: 13px;
+      color: var(--color-secondary);
+      line-height: 1.5;
+      padding: 2px 0;
+    }
+    .feature-details li::before {
+      content: "\2022";
+      color: var(--color-primary);
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .feature-details .detail-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    /* Feature grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      align-content: start;
+    }
+
+    /* ─── CLI callout ─── */
+    .callout-cli {
+      margin-top: 16px;
+      padding: 16px 20px;
+      background: #1a1a1a;
+      border-radius: 10px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .cli-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .callout-cli .cli-label {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .cli-link {
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .cli-link:hover {
+      color: var(--color-primary);
+    }
+    .callout-cli code {
+      display: block;
+      color: rgba(255,255,255,0.5);
+    }
+    .callout-cli code span {
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* ─── Tags / pills ─── */
+    .tag {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 100px;
+      background: #f5f5f5;
+      color: var(--color-secondary);
+    }
+    .tag--coral {
+      background: rgba(234,114,110,0.12);
+      color: var(--color-primary);
+    }
+
+    /* Slide meta row (loose tags below grids) */
+    .slide-meta {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* ─── Next steps ─── */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 720px;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      position: relative;
+    }
+    /* Connecting line between steps */
+    .step-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 20px;
+      top: 44px;
+      width: 2px;
+      height: calc(100% + 4px);
+      background: rgba(234,114,110,0.2);
+      border-radius: 1px;
+    }
+    .step-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .step-content h3 {
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .step-content p {
+      font-size: 15px;
+      color: var(--color-secondary);
+      line-height: 1.55;
+    }
+
+    /* ─── Staggered entrance animations ─── */
+    .slide .anim {
+      opacity: 0;
+      transform: translateY(16px);
+      transition:
+        opacity 0.5s var(--ease-out),
+        transform 0.5s var(--ease-out);
+      transition-delay: 0s;
+    }
+    .slide.active .anim {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: calc(0.1s + var(--anim-order, 0) * 0.08s);
+    }
+
+    /* Title slide: slower stagger */
+    .title-slide.active .anim {
+      transition-delay: calc(0.3s + var(--anim-order, 0) * 0.15s);
+    }
+
+    /* Dividers: subtle scale */
+    .slide--divider .anim {
+      opacity: 0;
+      transform: scale(0.97) translateY(6px);
+    }
+    .slide--divider.active .anim {
+      opacity: 1;
+      transform: scale(1);
+      transition-delay: calc(0.2s + var(--anim-order, 0) * 0.12s);
+    }
+
+    /* Animation reset state */
+    .slide .anim.anim-reset {
+      transition: none !important;
+      opacity: 0 !important;
+      transform: translateY(16px) !important;
+    }
+    .slide--divider .anim.anim-reset {
+      transform: scale(0.97) translateY(6px) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Chrome -->
+  <img class="chrome-logo" src="https://wepublish.ch/wp-content/uploads/2020/11/cropped-wepublishlogo-1.png" alt="We.Publish">
+  <div class="chrome-counter" id="counter"></div>
+  <div class="chrome-nav">
+    <button onclick="navigate(-1)" aria-label="Previous slide">&larr;</button>
+    <button onclick="navigate(1)" aria-label="Next slide">&rarr;</button>
+  </div>
+
+  <!-- Slide 1: Title -->
+  <section class="slide title-slide active">
+    <h1 class="anim" style="--anim-order: 0">AI Strategy for<br>We.Publish</h1>
+    <p class="subtitle anim" style="--anim-order: 1">From quick wins to strategic investments</p>
+    <p class="date anim" style="--anim-order: 2">February 2026</p>
+  </section>
+
+  <!-- Slide 2: Pain Points -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">Where It Hurts</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Three areas where AI can have immediate and long-term impact</p>
+    <div class="grid-3">
+      <div class="card card--pain anim" style="--anim-order: 2">
+        <div class="icon">&#9881;</div>
+        <h3>Dev Velocity</h3>
+        <p>Small team, large open-source codebase. Every feature takes longer than it should. Code review bottlenecks slow releases.</p>
+        <div class="meta">
+          <span class="tag tag--coral">High impact</span>
+        </div>
+      </div>
+      <div class="card card--pain anim" style="--anim-order: 3">
+        <div class="icon">&#128640;</div>
+        <h3>Onboarding Media</h3>
+        <p>Each new outlet requires custom setup, content migration, and training. Onboarding is manual and time-intensive.</p>
+        <div class="meta">
+          <span class="tag tag--coral">Growth blocker</span>
+        </div>
+      </div>
+      <div class="card card--pain anim" style="--anim-order: 4">
+        <div class="icon">&#128202;</div>
+        <h3>Business Ops</h3>
+        <p>Reporting, grant writing, partner communication, and documentation consume time that could go to product.</p>
+        <div class="meta">
+          <span class="tag">Efficiency</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 3: Section Divider - Quick Wins -->
+  <section class="slide slide--divider slide--coral">
+    <h2 class="anim" style="--anim-order: 0">Quick Wins</h2>
+    <p class="anim" style="--anim-order: 1">High impact, low effort &mdash; start this week</p>
+  </section>
+
+  <!-- Slide 4: Why CLI Coding Assistance -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">Why AI Coding Assistants?</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">The highest-leverage quick win for a small team with a large codebase</p>
+    <div class="grid-3">
+      <div class="card anim" style="--anim-order: 2">
+        <h3>&#9881; Dev Velocity</h3>
+        <p>6&ndash;10 developers maintaining an open-source CMS used by 12 outlets. AI coding tools act as a force multiplier &mdash; handling boilerplate, first-pass reviews, and test generation so the team focuses on architecture decisions.</p>
+        <div class="meta">
+          <span class="tag tag--coral">2&ndash;3x faster for routine tasks</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 3">
+        <h3>&#128640; Onboarding Devs</h3>
+        <p>New contributors face a steep learning curve on an unfamiliar monorepo. With skill files and plan mode, AI becomes an always-available guide that knows the codebase conventions, patterns, and architecture.</p>
+        <div class="meta">
+          <span class="tag tag--coral">Ramp-up in days, not weeks</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 4">
+        <h3>&#128202; Code Quality</h3>
+        <p>Manual code review is a bottleneck when everyone is busy shipping. Automated PR reviews catch issues before human review, and code simplification agents reduce tech debt incrementally.</p>
+        <div class="meta">
+          <span class="tag tag--coral">Review every PR, not just some</span>
+        </div>
+      </div>
+    </div>
+    <div class="slide-meta anim" style="--anim-order: 5">
+      <span class="tag">Zero infrastructure</span>
+      <span class="tag">No code changes needed</span>
+      <span class="tag tag--coral">Start this week</span>
+    </div>
+  </section>
+
+  <!-- Slide 5: Claude Code Deep-Dive -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">How: Claude Code in Practice</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Claude Code as the team's AI-powered development environment &mdash; click a card to explore</p>
+    <div class="feature-grid">
+
+      <div class="card card--feature anim" style="--anim-order: 2" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>Plan Mode</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary">Design before you code &mdash; explore, plan, get approval.</p>
+        <div class="feature-details">
+          <p class="detail-label">Ideas for We.Publish</p>
+          <ul>
+            <li>Plan complex GraphQL schema changes before touching code</li>
+            <li>Architect new outlet templates with full codebase awareness</li>
+            <li>Explore unfamiliar parts of the monorepo safely</li>
+            <li>Onboard new devs by letting them plan features with AI guidance</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card--feature anim" style="--anim-order: 3" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>Skill Files</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary">Auto-loaded domain knowledge in <code>.claude/skills/</code>.</p>
+        <div class="feature-details">
+          <p class="detail-label">Ideas for We.Publish</p>
+          <ul>
+            <li>Brand skill ensures all generated output matches We.Publish identity</li>
+            <li>Codebase conventions skill enforces consistent patterns across PRs</li>
+            <li>Outlet-specific skills for each media partner's requirements</li>
+            <li>Editorial guidelines skill for content-related AI features</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card--feature anim" style="--anim-order: 4" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>MCP Integrations</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary">Connect Supabase, Jira, GitHub &mdash; AI acts on live data.</p>
+        <div class="feature-details">
+          <p class="detail-label">Ideas for We.Publish</p>
+          <ul>
+            <li>Supabase MCP for direct database queries during development</li>
+            <li>Jira/Linear MCP to auto-create tickets from code TODOs</li>
+            <li>GitHub MCP for PR reviews with full repo context</li>
+            <li>Custom MCP for the We.Publish API to test endpoints live</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card--feature anim" style="--anim-order: 5" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>Specialized Agents</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary">Purpose-built agents: backend, UI, code review, simplifier.</p>
+        <div class="feature-details">
+          <p class="detail-label">Ideas for We.Publish</p>
+          <ul>
+            <li>backend-architect for API and database schema design</li>
+            <li>code-reviewer as a first-pass review before human review</li>
+            <li>code-simplifier to reduce complexity in legacy modules</li>
+            <li>ui-designer for rapid prototyping of editor interfaces</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card--feature anim" style="--anim-order: 6" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>GitHub Actions</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary"><code>claude-code-action</code> for automated PR reviews in CI.</p>
+        <div class="feature-details">
+          <p class="detail-label">Ideas for We.Publish</p>
+          <ul>
+            <li>Auto-review every PR for security issues and code quality</li>
+            <li>Generate PR descriptions from commit diffs automatically</li>
+            <li>Flag breaking changes to the public API before merge</li>
+            <li>Suggest test coverage improvements on each PR</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card--feature anim" style="--anim-order: 7" onclick="toggleFeature(this)">
+        <div class="feature-header">
+          <h4>Voice Transcription</h4>
+          <span class="feature-chevron">&#9660;</span>
+        </div>
+        <p class="feature-summary">Dictate prompts instead of typing &mdash; better prompts, faster.</p>
+        <div class="feature-details">
+          <p class="detail-label">Tools: Wispr Flow, Monologue</p>
+          <ul>
+            <li>Dictate complex feature specs while sketching on a whiteboard</li>
+            <li>Voice-describe bugs during debugging sessions</li>
+            <li>Hands-free coding during pair programming with AI</li>
+            <li>Accessibility &mdash; lower the barrier for non-native English speakers</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+    <div class="callout-cli anim" style="--anim-order: 8">
+      <div class="cli-header">
+        <span class="cli-label">We.Publish Skills Marketplace</span>
+        <a class="cli-link" href="https://github.com/wepublish/skills" target="_blank" rel="noopener">github.com/wepublish/skills</a>
+      </div>
+      <div>
+        <code>$ <span>/plugin marketplace add wepublish/skills</span></code>
+        <code>$ <span>/plugin install branding@wepublish</span></code>
+      </div>
+    </div>
+    <div class="slide-meta anim" style="--anim-order: 9">
+      <span class="tag tag--coral">Addresses: Dev Velocity</span>
+      <span class="tag">Timeline: This week</span>
+      <span class="tag">Cost: Free tier available</span>
+    </div>
+  </section>
+
+  <!-- Slide 6: Section Divider - Strategic Investments -->
+  <section class="slide slide--divider slide--dark">
+    <h2 class="anim" style="--anim-order: 0">Strategic Investments</h2>
+    <p class="anim" style="--anim-order: 1">Medium-term initiatives for lasting competitive advantage</p>
+  </section>
+
+  <!-- Slide 7: AI Features in the CMS -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">AI Features in the CMS</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Intelligent tools embedded directly in the editorial workflow</p>
+    <div class="grid-3">
+      <div class="card anim" style="--anim-order: 2">
+        <h3>Auto-Tagging</h3>
+        <p>Automatically categorize and tag articles on publish. Consistent taxonomy across all outlets without manual effort.</p>
+        <ul>
+          <li>NLP-based entity extraction</li>
+          <li>Outlet-specific tag vocabularies</li>
+          <li>Editor override always available</li>
+        </ul>
+        <div class="meta">
+          <span class="tag">3-4 weeks</span>
+          <span class="tag tag--coral">Dev Velocity</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 3">
+        <h3>Content Suggestions</h3>
+        <p>AI-powered headline alternatives, SEO summaries, and social media snippets generated from article content.</p>
+        <ul>
+          <li>Headline A/B variants</li>
+          <li>Auto-generated teaser text</li>
+          <li>Social post drafts</li>
+        </ul>
+        <div class="meta">
+          <span class="tag">4-6 weeks</span>
+          <span class="tag tag--coral">Ops</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 4">
+        <h3>Translation</h3>
+        <p>One-click DE/FR translation with editorial review. Critical for a bilingual Swiss audience.</p>
+        <ul>
+          <li>Context-aware translation</li>
+          <li>Preserve formatting and links</li>
+          <li>Side-by-side editor review</li>
+        </ul>
+        <div class="meta">
+          <span class="tag">4-6 weeks</span>
+          <span class="tag tag--coral">Onboarding</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 8: AI-Assisted Onboarding -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">AI-Assisted Onboarding</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Reduce time-to-launch for new media outlets from weeks to days</p>
+    <div class="grid-2">
+      <div class="card anim" style="--anim-order: 2">
+        <h3>Automated Setup</h3>
+        <p>AI-guided configuration wizard that understands outlet requirements and generates initial CMS setup.</p>
+        <ul>
+          <li>Template selection based on outlet type</li>
+          <li>Auto-configure navigation and page structure</li>
+          <li>Generate starter content from existing website</li>
+          <li>Brand extraction (colors, fonts, logo) from URL</li>
+        </ul>
+        <div class="meta">
+          <span class="tag">6-8 weeks</span>
+          <span class="tag tag--coral">Onboarding</span>
+        </div>
+      </div>
+      <div class="card anim" style="--anim-order: 3">
+        <h3>Content Migration</h3>
+        <p>Intelligent import pipeline that maps content from legacy CMS to We.Publish schema with minimal manual intervention.</p>
+        <ul>
+          <li>Auto-detect source CMS structure</li>
+          <li>Map fields and taxonomies intelligently</li>
+          <li>Preserve media assets and relationships</li>
+          <li>Validation report with editor review</li>
+        </ul>
+        <div class="meta">
+          <span class="tag">8-10 weeks</span>
+          <span class="tag tag--coral">Onboarding</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 9: Next Steps -->
+  <section class="slide">
+    <h2 class="anim" style="--anim-order: 0">Next Steps</h2>
+    <p class="slide-subtitle anim" style="--anim-order: 1">Practical actions to start this week</p>
+    <div class="steps-list">
+      <div class="step-item anim" style="--anim-order: 2">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Adopt Claude Code team-wide</h3>
+          <p>Install Claude Code, set up the wepublish-brand skill, and run a 30-min team workshop on plan mode and skills.</p>
+        </div>
+      </div>
+      <div class="step-item anim" style="--anim-order: 3">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Add claude-code-action to CI</h3>
+          <p>Enable automated PR reviews on the main repo. Immediate quality improvement with zero workflow change.</p>
+        </div>
+      </div>
+      <div class="step-item anim" style="--anim-order: 4">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Prototype auto-tagging</h3>
+          <p>Build a proof-of-concept auto-tagging feature in a 2-week sprint. Validate with one pilot outlet.</p>
+        </div>
+      </div>
+      <div class="step-item anim" style="--anim-order: 5">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Scope onboarding automation</h3>
+          <p>Document the current onboarding process end-to-end. Identify the highest-effort manual steps for AI assistance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('counter');
+    const logo = document.querySelector('.chrome-logo');
+    const navButtons = document.querySelectorAll('.chrome-nav button');
+    let current = 0;
+
+    function updateChrome() {
+      const slide = slides[current];
+      const isDivider = slide.classList.contains('slide--divider');
+
+      // Counter
+      counter.style.color = isDivider ? 'rgba(255,255,255,0.6)' : '';
+
+      // Nav buttons
+      navButtons.forEach(btn => {
+        btn.style.background = isDivider ? 'rgba(255,255,255,0.15)' : '';
+        btn.style.color = isDivider ? '#fff' : '';
+        btn.style.borderColor = isDivider ? 'rgba(255,255,255,0.25)' : '';
+      });
+    }
+
+    function resetAnimations(slide) {
+      const anims = slide.querySelectorAll('.anim');
+      // Force reset: add reset class, force reflow, remove after a frame
+      anims.forEach(el => el.classList.add('anim-reset'));
+      // Force reflow
+      void slide.offsetHeight;
+      // Remove reset class after a frame so transitions can fire
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          anims.forEach(el => el.classList.remove('anim-reset'));
+        });
+      });
+    }
+
+    function showSlide(index) {
+      const prev = current;
+      current = Math.max(0, Math.min(index, slides.length - 1));
+      if (prev === current && slides[current].classList.contains('active')) return;
+
+      // Deactivate previous
+      slides[prev].classList.remove('active');
+
+      // Reset animations on new slide before activating
+      resetAnimations(slides[current]);
+
+      // Activate new slide (after reset is applied)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          slides[current].classList.add('active');
+          counter.textContent = `${current + 1} / ${slides.length}`;
+          updateChrome();
+        });
+      });
+    }
+
+    function navigate(delta) {
+      showSlide(current + delta);
+    }
+
+    function toggleFeature(el) {
+      const wasExpanded = el.classList.contains('expanded');
+      el.parentElement.querySelectorAll('.card--feature.expanded').forEach(f => {
+        f.classList.remove('expanded');
+      });
+      if (!wasExpanded) el.classList.add('expanded');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigate(-1);
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.card--feature.expanded').forEach(f => f.classList.remove('expanded'));
+      }
+    });
+
+    // Initialize
+    counter.textContent = `1 / ${slides.length}`;
+    updateChrome();
+    resetAnimations(slides[0]);
+  </script>
+
+</body>
+</html>

@@ -150,6 +150,12 @@
     }
   }
 
+  async function handleDeleteSelected() {
+    if (selectedUnitIds.size === 0) return;
+    await units.markUsed(Array.from(selectedUnitIds));
+    selectedUnitIds = new Set();
+  }
+
   async function generateDraft() {
     if (selectedUnitIds.size === 0) return;
     generating = true;
@@ -247,6 +253,7 @@
   onGenerate={generateDraft}
   onViewDraft={() => showDraftSlideOver = true}
   onPromptChange={handlePromptChange}
+  onDelete={handleDeleteSelected}
 />
 
 <DraftSlideOver

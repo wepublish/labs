@@ -24,7 +24,8 @@ src/
 │   ├── utils/        # supabase, jwt, iframe-bridge
 │   └── styles/       # global.css
 ├── _template/        # Template for new apps (NOT deployed)
-├── demo-app/         # Example app
+├── dorfkoenig/       # Dorfkoenig app
+├── slides/           # We.Publish AI strategy presentation (static HTML, no Svelte)
 └── {app-name}/       # Your apps (auto-discovered)
 ```
 
