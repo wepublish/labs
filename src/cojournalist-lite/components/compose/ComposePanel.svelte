@@ -1,37 +1,93 @@
 <script lang="ts">
   import { units } from '../../stores/units';
   import { composeApi } from '../../lib/api';
-  import LocationFilter from './LocationFilter.svelte';
-  import SearchBar from './SearchBar.svelte';
+  import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import DraftPreview from './DraftPreview.svelte';
   import { Button, Loading } from '@shared/components';
-  import type { Draft } from '../../lib/types';
+  import type { Draft, InformationUnit } from '../../lib/types';
 
   let selectedUnitIds = $state<Set<string>>(new Set());
   let draft = $state<Draft | null>(null);
   let generating = $state(false);
   let error = $state('');
 
-  // Load locations and initial units on mount
+  // Filter state
+  let filterMode = $state<'location' | 'topic'>('location');
+  let selectedLocation = $state<string | null>(null);
+  let selectedTopic = $state<string | null>(null);
+  let typeFilter = $state('all');
+  let searchQuery = $state('');
+  let isSearching = $state(false);
+
+  // Load on mount
   $effect(() => {
     units.loadLocations();
     units.load();
   });
 
+  // Derive options
+  let locationOptions = $derived(
+    $units.locations.length === 0
+      ? [{ value: '', label: 'Keine Orte' }]
+      : [
+          { value: '', label: 'Alle Orte' },
+          ...$units.locations.map(loc => ({ value: loc.city, label: loc.city, count: loc.count }))
+        ]
+  );
+
+  let topicOptions = $derived(
+    ($units.topics ?? []).length === 0
+      ? [{ value: '', label: 'Keine Themen' }]
+      : [
+          { value: '', label: 'Alle Themen' },
+          ...($units.topics ?? []).map((t: string) => ({ value: t, label: t }))
+        ]
+  );
+
+  let typeOptions = $derived([
+    { value: 'all', label: 'Alle', count: $units.units.filter(u => !u.used_in_article).length },
+  ]);
+
+  // Filtered units (client-side)
+  let filteredUnits = $derived(
+    $units.units
+      .filter(u => !u.used_in_article)
+      .filter(u => typeFilter === 'all' || true)
+  );
+
+  function handleModeChange(mode: 'location' | 'topic') {
+    filterMode = mode;
+    selectedLocation = null;
+    selectedTopic = null;
+    searchQuery = '';
+  }
+
   function handleLocationChange(city: string | null) {
+    selectedLocation = city;
     units.setLocation(city);
     units.load(city ?? undefined);
     selectedUnitIds = new Set();
     draft = null;
   }
 
+  function handleTopicChange(topic: string | null) {
+    selectedTopic = topic;
+    units.setTopic(topic);
+    units.load(selectedLocation ?? undefined);
+    selectedUnitIds = new Set();
+    draft = null;
+  }
+
   function handleSearch(query: string) {
-    const location = $units.selectedLocation;
+    searchQuery = query;
     if (query) {
-      units.search(query, location ?? undefined);
+      isSearching = true;
+      units.search(query, selectedLocation ?? undefined).then(() => {
+        isSearching = false;
+      });
     } else {
-      units.load(location ?? undefined);
+      units.load(selectedLocation ?? undefined);
     }
   }
 
@@ -47,10 +103,8 @@
 
   async function generateDraft() {
     if (selectedUnitIds.size === 0) return;
-
     generating = true;
     error = '';
-
     try {
       const result = await composeApi.generate({
         unit_ids: Array.from(selectedUnitIds),
@@ -59,8 +113,6 @@
         include_sources: true,
       });
       draft = result;
-
-      // Mark units as used
       await units.markUsed(Array.from(selectedUnitIds));
       selectedUnitIds = new Set();
     } catch (err) {
@@ -75,72 +127,120 @@
   }
 </script>
 
-<div class="compose-layout">
-  <div class="compose-sidebar">
-    <h2>Informationseinheiten</h2>
+<div class="feed-layout">
+  <PanelFilterBar
+    {filterMode}
+    onModeChange={handleModeChange}
+    {locationOptions}
+    {topicOptions}
+    selectedLocation={selectedLocation}
+    selectedTopic={selectedTopic}
+    onLocationChange={handleLocationChange}
+    onTopicChange={handleTopicChange}
+    {typeFilter}
+    {typeOptions}
+    onTypeChange={(v) => { typeFilter = v; }}
+    loading={$units.loading}
+    showSearch={true}
+    {searchQuery}
+    searchPlaceholder="Semantische Suche..."
+    onSearch={handleSearch}
+    {isSearching}
+  >
+    {#snippet toolbar()}
+      {#if filteredUnits.length > 0}
+        <span class="count-label">{filteredUnits.length} verfügbar</span>
+      {/if}
+    {/snippet}
+  </PanelFilterBar>
 
-    <LocationFilter
-      locations={$units.locations}
-      selected={$units.selectedLocation}
-      onchange={handleLocationChange}
-    />
+  {#if $units.error}
+    <div class="error-message">{$units.error}</div>
+  {/if}
 
-    <SearchBar value={$units.searchQuery} onsearch={handleSearch} />
-
+  <div class="feed-content">
     {#if $units.loading}
       <Loading label="Laden..." />
-    {:else if $units.error}
-      <div class="error-message">{$units.error}</div>
     {:else}
       <UnitList
-        units={$units.units}
+        units={filteredUnits}
         selected={selectedUnitIds}
         ontoggle={toggleUnit}
       />
     {/if}
-
-    <div class="compose-actions">
-      <span class="selection-count">{selectedUnitIds.size} ausgewählt</span>
-      <Button
-        onclick={generateDraft}
-        disabled={selectedUnitIds.size === 0}
-        loading={generating}
-      >
-        Entwurf erstellen
-      </Button>
-    </div>
   </div>
 
-  <div class="compose-preview">
-    <div class="preview-header">
-      <h2>Entwurf</h2>
-      {#if draft}
+  <div class="feed-actions">
+    <span class="selection-count">{selectedUnitIds.size} ausgewählt</span>
+    <Button
+      onclick={generateDraft}
+      disabled={selectedUnitIds.size === 0}
+      loading={generating}
+    >
+      Entwurf erstellen
+    </Button>
+  </div>
+
+  {#if error}
+    <div class="error-message">{error}</div>
+  {/if}
+
+  {#if draft}
+    <div class="draft-section">
+      <div class="draft-header">
+        <h2>Entwurf</h2>
         <Button variant="ghost" size="sm" onclick={clearDraft}>Zurücksetzen</Button>
-      {/if}
-    </div>
-
-    {#if error}
-      <div class="error-message">{error}</div>
-    {:else if draft}
-      <DraftPreview {draft} />
-    {:else}
-      <div class="empty-state">
-        <p>Wählen Sie Informationseinheiten aus und klicken Sie auf "Entwurf erstellen"</p>
       </div>
-    {/if}
-  </div>
+      <DraftPreview {draft} />
+    </div>
+  {/if}
 </div>
 
 <style>
-  .preview-header {
+  .feed-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .feed-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+  }
+
+  .feed-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .selection-count {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .count-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .draft-section {
+    border-top: 1px solid var(--color-border);
+    padding: var(--spacing-md);
+  }
+
+  .draft-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
   }
 
-  .preview-header h2 {
+  .draft-header h2 {
     margin: 0;
   }
 </style>

@@ -7,7 +7,9 @@ import type { InformationUnit, Location } from '../lib/types';
 interface UnitsState {
   units: InformationUnit[];
   locations: Location[];
+  topics: string[];
   selectedLocation: string | null;
+  selectedTopic: string | null;
   searchQuery: string;
   loading: boolean;
   error: string | null;
@@ -17,7 +19,9 @@ function createUnitsStore() {
   const { subscribe, update } = writable<UnitsState>({
     units: [],
     locations: [],
+    topics: [],
     selectedLocation: null,
+    selectedTopic: null,
     searchQuery: '',
     loading: false,
     error: null,
@@ -49,7 +53,8 @@ function createUnitsStore() {
           unused_only: unusedOnly,
           limit: 100,
         });
-        update((s) => ({ ...s, units: data, loading: false }));
+        const topics = [...new Set(data.filter(u => u.topic).map(u => u.topic!))].sort();
+        update((s) => ({ ...s, units: data, topics, loading: false }));
       } catch (error) {
         update((s) => ({ ...s, error: (error as Error).message, loading: false }));
       }
@@ -76,6 +81,13 @@ function createUnitsStore() {
      */
     setLocation(city: string | null) {
       update((s) => ({ ...s, selectedLocation: city }));
+    },
+
+    /**
+     * Set selected topic filter
+     */
+    setTopic(topic: string | null) {
+      update((s) => ({ ...s, selectedTopic: topic }));
     },
 
     /**
