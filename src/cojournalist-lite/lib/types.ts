@@ -23,16 +23,23 @@ export interface Scout {
   notification_email: string | null;
   created_at: string;
   updated_at: string;
+  // Last execution data (joined from scout_executions)
+  last_execution_status?: 'running' | 'completed' | 'failed' | null;
+  last_criteria_matched?: boolean | null;
+  last_change_status?: 'changed' | 'same' | 'error' | 'first_run' | null;
+  last_summary_text?: string | null;
 }
 
 export interface ScoutCreateInput {
   name: string;
   url: string;
   criteria: string;
+  criteria_mode?: 'any' | 'specific';
   location?: Location | null;
   frequency: 'daily' | 'weekly' | 'monthly';
   notification_email?: string | null;
   is_active?: boolean;
+  extract_baseline?: boolean;
 }
 
 export interface ScoutUpdateInput {
@@ -78,6 +85,8 @@ export interface InformationUnit {
   source_domain: string;
   source_title: string | null;
   location: Location | null;
+  topic?: string | null;
+  scout_id?: string;
   created_at: string;
   used_in_article: boolean;
   similarity?: number;
