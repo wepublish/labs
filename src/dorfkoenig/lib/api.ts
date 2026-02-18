@@ -115,9 +115,10 @@ export const scoutsApi = {
 };
 
 export const unitsApi = {
-  list: (params?: { location_city?: string; unused_only?: boolean; limit?: number }) => {
+  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.location_city) searchParams.set('location_city', params.location_city);
+    if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     return api.get<import('./types').InformationUnit[]>(`units?${searchParams}`);
@@ -139,6 +140,7 @@ export const composeApi = {
     style?: 'news' | 'summary' | 'analysis';
     max_words?: number;
     include_sources?: boolean;
+    custom_system_prompt?: string;
   }) => api.post<import('./types').Draft>('compose/generate', params),
 };
 
