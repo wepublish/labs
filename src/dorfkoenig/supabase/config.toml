@@ -88,5 +88,8 @@ verify_jwt = false
 [functions.bajour-send-verification]
 verify_jwt = false
 
+[functions.bajour-whatsapp-webhook]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"
