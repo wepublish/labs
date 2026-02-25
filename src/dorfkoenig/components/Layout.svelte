@@ -4,6 +4,7 @@
   import { showScoutModal, showUploadModal, showDraftModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
+  import DraftModal from './bajour/DraftModal.svelte';
   import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
 
   interface Props {
@@ -102,7 +103,7 @@
   <UploadModal open={$showUploadModal} onclose={() => showUploadModal.set(false)} />
 
   {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-    <!-- DraftModal will be mounted here in Task 13 -->
+    <DraftModal open={$showDraftModal} onclose={() => showDraftModal.set(false)} />
   {/if}
 </div>
 
