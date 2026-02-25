@@ -35,6 +35,12 @@ Deno.serve(async (req) => {
         }
         return errorResponse('Endpoint nicht gefunden', 404);
 
+      case 'DELETE':
+        if (endpoint) {
+          return await deleteUnit(supabase, userId, endpoint);
+        }
+        return errorResponse('Unit-ID erforderlich', 400, 'VALIDATION_ERROR');
+
       default:
         return errorResponse('Methode nicht erlaubt', 405);
     }
@@ -62,7 +68,7 @@ async function listUnits(
 
   let query = supabase
     .from('information_units')
-    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, created_at, used_in_article', { count: 'exact' })
+    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, source_type, file_path, created_at, used_in_article', { count: 'exact' })
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -89,6 +95,18 @@ async function listUnits(
   if (error) {
     console.error('List units error:', error);
     return errorResponse('Fehler beim Laden der Einheiten', 500);
+  }
+
+  // Generate signed URLs for units with file_path
+  if (data) {
+    for (const unit of data) {
+      if (unit.file_path) {
+        const { data: signedUrl } = await supabase.storage
+          .from('uploads')
+          .createSignedUrl(unit.file_path, 3600);
+        (unit as Record<string, unknown>).file_url = signedUrl?.signedUrl || null;
+      }
+    }
   }
 
   return jsonResponse({
@@ -183,6 +201,44 @@ async function searchUnits(
   }
 
   return jsonResponse({ data });
+}
+
+// Delete a single unit (for removing mistaken uploads)
+async function deleteUnit(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  unitId: string
+): Promise<Response> {
+  // First fetch the unit to check ownership and get file_path
+  const { data: unit, error: fetchError } = await supabase
+    .from('information_units')
+    .select('id, file_path')
+    .eq('id', unitId)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !unit) {
+    return errorResponse('Einheit nicht gefunden', 404, 'NOT_FOUND');
+  }
+
+  // Delete the unit
+  const { error: deleteError } = await supabase
+    .from('information_units')
+    .delete()
+    .eq('id', unitId)
+    .eq('user_id', userId);
+
+  if (deleteError) {
+    console.error('Delete unit error:', deleteError);
+    return errorResponse('Fehler beim Löschen der Einheit', 500);
+  }
+
+  // If unit had a file, remove from storage
+  if (unit.file_path) {
+    await supabase.storage.from('uploads').remove([unit.file_path]);
+  }
+
+  return jsonResponse({ data: { deleted: true } });
 }
 
 // Mark units as used in article

@@ -560,7 +560,7 @@ SELECT vault.create_secret('service_role_key', 'eyJ...');
 -- Insert test scout
 INSERT INTO scouts (user_id, name, url, criteria, location, frequency)
 VALUES (
-    'tester-1',
+    '493c6d51531c7444365b0ec094bc2d67',
     'Berlin News Monitor',
     'https://www.berlin.de/aktuelles/',
     'Neuigkeiten zu Bauvorhaben oder Stadtplanung in Berlin',

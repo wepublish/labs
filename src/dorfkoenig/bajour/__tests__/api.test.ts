@@ -99,4 +99,36 @@ describe('bajourApi', () => {
       })
     );
   });
+
+  it('updateDraft() calls PATCH /bajour-drafts/{id} with verification_status', async () => {
+    const updated = { id: 'd-1', verification_status: 'bestätigt' };
+    mockFetch.mockResolvedValue(createMockResponse({ data: updated }));
+
+    const result = await bajourApi.updateDraft('d-1', { verification_status: 'bestätigt' });
+
+    expect(result).toEqual(updated);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/bajour-drafts/d-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: expect.stringContaining('"verification_status":"bestätigt"'),
+      })
+    );
+  });
+
+  it('sendToMailchimp() calls POST /bajour-send-mailchimp', async () => {
+    const result = { campaign_id: 'camp-1', village_count: 3 };
+    mockFetch.mockResolvedValue(createMockResponse({ data: result }));
+
+    const response = await bajourApi.sendToMailchimp();
+
+    expect(response).toEqual(result);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/bajour-send-mailchimp',
+      expect.objectContaining({
+        method: 'POST',
+        body: '{}',
+      })
+    );
+  });
 });

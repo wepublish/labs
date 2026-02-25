@@ -6,12 +6,6 @@ export interface Village {
   canton: string;
   latitude: number;
   longitude: number;
-  correspondents: Correspondent[];
-}
-
-export interface Correspondent {
-  name: string;
-  phone: string;
 }
 
 export type VerificationStatus = 'ausstehend' | 'bestätigt' | 'abgelehnt';

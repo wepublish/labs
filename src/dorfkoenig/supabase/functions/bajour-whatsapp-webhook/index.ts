@@ -5,53 +5,10 @@ import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 
 // Environment secrets
-const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN')!;
+const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET')!;
 const WHATSAPP_WEBHOOK_VERIFY_TOKEN = Deno.env.get('WHATSAPP_WEBHOOK_VERIFY_TOKEN')!;
 
-// Dorfkorrespondenten pro Gemeinde — hardcoded, da Deno Edge Functions
-// keine JSON-Dateien ausserhalb des Funktionsverzeichnisses importieren koennen
-const VILLAGE_CORRESPONDENTS: Record<string, { name: string; phone: string }[]> = {
-  riehen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  bettingen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  allschwil: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  binningen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  arlesheim: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  muttenz: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  muenchenstein: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  reinach: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  oberwil: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  birsfelden: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-};
+import { VILLAGE_CORRESPONDENTS } from '../_shared/correspondents.ts';
 
 // --- HMAC-SHA256 Signaturpruefung ---
 
@@ -69,7 +26,7 @@ async function verifySignature(
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(WHATSAPP_API_TOKEN),
+    encoder.encode(WHATSAPP_APP_SECRET),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -123,6 +80,11 @@ function resolveVerificationStatus(
 
 function normalizePhone(phone: string): string {
   return phone.replace(/^\+/, '');
+}
+
+function maskPhone(phone: string): string {
+  if (phone.length <= 6) return '***';
+  return phone.slice(0, 3) + '***' + phone.slice(-3);
 }
 
 // --- Korrespondenten fuer eine Telefonnummer finden ---
@@ -198,7 +160,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   }
 
   const fromPhone = message.from; // z.B. "41783124547" (ohne +)
-  const responseTitle = buttonReply.title as string; // "bestätigt" oder "abgelehnt"
+  const responseTitle = (buttonReply.title as string).toLowerCase(); // case-insensitive
 
   // Antwort validieren
   if (responseTitle !== 'bestätigt' && responseTitle !== 'abgelehnt') {
@@ -209,7 +171,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   // Korrespondent anhand der Telefonnummer identifizieren
   const correspondent = findCorrespondentByPhone(fromPhone);
   if (!correspondent) {
-    console.error('Unbekannte Telefonnummer:', fromPhone);
+    console.error('Unbekannte Telefonnummer:', maskPhone(fromPhone));
     return jsonResponse({ status: 'unknown_phone' });
   }
 
@@ -243,7 +205,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
     console.error(
       'Kein offener Entwurf fuer Korrespondent gefunden:',
       correspondent.name,
-      fromPhone
+      maskPhone(fromPhone)
     );
     return jsonResponse({ status: 'no_pending_draft' });
   }
@@ -329,12 +291,13 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({ error: 'Methode nicht erlaubt' }, 405);
-  } catch (error) {
+  } catch (err) {
     // Meta erwartet immer 200 — bei POST-Fehlern trotzdem 200 zurueckgeben
-    console.error('bajour-whatsapp-webhook Fehler:', error);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-whatsapp-webhook Fehler:', message);
     if (req.method === 'POST') {
-      return jsonResponse({ status: 'error', message: error.message });
+      return jsonResponse({ status: 'error', message });
     }
-    return jsonResponse({ error: error.message }, 500);
+    return jsonResponse({ error: message }, 500);
   }
 });

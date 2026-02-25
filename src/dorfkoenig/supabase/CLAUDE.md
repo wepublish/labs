@@ -1,6 +1,6 @@
 # Dorfkoenig Backend - Agent Guide
 
-PostgreSQL + pgvector database with 5 Edge Functions (Deno runtime) and 6 shared modules. All functions have `verify_jwt = false` and authenticate via `x-user-id` header or service role key.
+PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared modules. All functions have `verify_jwt = false` and authenticate via `x-user-id` header or service role key.
 
 ## Edge Functions
 
@@ -11,6 +11,12 @@ PostgreSQL + pgvector database with 5 Edge Functions (Deno runtime) and 6 shared
 | `units` | List, search, mark-used for information units | x-user-id header | Frontend API calls |
 | `compose` | Generate article drafts from selected units | x-user-id header | Frontend API calls |
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
+| `bajour-drafts` | CRUD for Bajour village newsletter drafts (GET list, POST create, PATCH update) | x-user-id header | Frontend API calls |
+| `bajour-select-units` | AI-powered selection of relevant information units for a village | x-user-id header | Frontend API calls |
+| `bajour-generate-draft` | Generate newsletter draft from selected units via LLM | x-user-id header | Frontend API calls |
+| `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
+| `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
+| `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign from the "Dorfkönig-Basis" template | x-user-id header | Frontend API calls |
 
 ## Shared Modules (`functions/_shared/`)
 
@@ -62,12 +68,16 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
+**`bajour_drafts`** -- Village newsletter drafts with verification workflow
+- PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (TEXT[]), `custom_system_prompt`, `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (TEXT[])
+
 ### RLS Policies
 
 All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`:
 - **scouts**: user CRUD on own rows
 - **scout_executions**: user SELECT on own rows, service_role ALL
 - **information_units**: user SELECT + UPDATE on own rows, service_role ALL
+- **bajour_drafts**: user CRUD on own rows, service_role ALL
 
 ## Critical Architecture Notes
 

@@ -70,10 +70,10 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
-    // Use tester-1 who has seed data with executions
+    // Use CMS token user who has seed data with executions
     const res = await fetch(BASE_URL, {
       method: 'GET',
-      headers: headers('tester-1'),
+      headers: headers('493c6d51531c7444365b0ec094bc2d67'),
     });
     const body = await res.json();
 
@@ -131,7 +131,7 @@ Deno.test({
       );
     } else {
       console.log(
-        '[WARN] Scout aa000000-0001-4000-a000-000000000001 not found for tester-1. ' +
+        '[WARN] Scout aa000000-0001-4000-a000-000000000001 not found for CMS token user. ' +
           'Seed data may not be loaded. Skipping enrichment value assertions.'
       );
     }

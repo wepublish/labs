@@ -91,5 +91,8 @@ verify_jwt = false
 [functions.bajour-whatsapp-webhook]
 verify_jwt = false
 
+[functions.bajour-send-mailchimp]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"

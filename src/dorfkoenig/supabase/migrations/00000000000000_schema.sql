@@ -544,7 +544,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 --
 -- INSERT INTO scouts (user_id, name, url, criteria, location, frequency, notification_email)
 -- VALUES (
---     'tester-1',
+--     '493c6d51531c7444365b0ec094bc2d67',
 --     'Berlin News Monitor',
 --     'https://www.berlin.de/aktuelles/',
 --     'Neuigkeiten zu Bauvorhaben oder Stadtplanung in Berlin',

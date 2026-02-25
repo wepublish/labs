@@ -182,11 +182,12 @@ ${LAYER_3_OUTPUT_FORMAT}`;
         units_used: units.length,
       },
     });
-  } catch (error) {
-    console.error('bajour-generate-draft error:', error);
-    if (error.message === 'Authentication required') {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-generate-draft error:', message);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });

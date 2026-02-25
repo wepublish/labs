@@ -29,6 +29,10 @@
   <div class="loading-container">
     <Loading label="Authentifizierung..." />
   </div>
+{:else if $auth.error}
+  <div class="auth-error">
+    <p>{$auth.error}</p>
+  </div>
 {:else if !$auth.user}
   <Login />
 {:else}
@@ -53,5 +57,14 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+  }
+
+  .auth-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
   }
 </style>

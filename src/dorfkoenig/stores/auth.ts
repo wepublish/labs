@@ -9,11 +9,39 @@ export const auth = sharedAuth;
 
 /**
  * Initialize authentication
- * Checks for existing mock user session in localStorage
+ * Priority: URL token > localStorage session > iframe error > login page
  */
-export function initAuth() {
-  const existingUserId = localStorage.getItem('dev_user_id');
+export function initAuth(urlToken?: string | null, inIframe: boolean = false) {
+  const token = urlToken?.trim();
 
+  // Priority 1: URL token (iframe embedding from CMS)
+  if (token) {
+    localStorage.setItem('dev_user_id', token);
+
+    // Strip token from URL for security (browser history, Referer headers)
+    if (typeof window !== 'undefined' && window.location) {
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentParams.has('token')) {
+        currentParams.delete('token');
+        const newSearch = currentParams.toString();
+        const cleanUrl = window.location.pathname +
+          (newSearch ? `?${newSearch}` : '') +
+          window.location.hash;
+        history.replaceState(null, '', cleanUrl);
+      }
+    }
+
+    sharedAuth.mockAuth({
+      sub: token,
+      email: `${token}@wepublish.ch`,
+      name: `CMS Benutzer (${token.slice(0, 8)}...)`,
+      roles: ['user'],
+    });
+    return;
+  }
+
+  // Priority 2: Existing localStorage session
+  const existingUserId = localStorage.getItem('dev_user_id');
   if (existingUserId) {
     sharedAuth.mockAuth({
       sub: existingUserId,
@@ -21,10 +49,17 @@ export function initAuth() {
       name: `Test Benutzer (${existingUserId})`,
       roles: ['user'],
     });
-  } else {
-    // Not logged in - auth store will show loading=false, user=null
-    sharedAuth.setLoading(false);
+    return;
   }
+
+  // Priority 3: In iframe without token = error
+  if (inIframe) {
+    sharedAuth.setError('Kein Token gefunden. Bitte über das CMS zugreifen.');
+    return;
+  }
+
+  // Priority 4: Not in iframe = show login page (local dev)
+  sharedAuth.setLoading(false);
 }
 
 /**

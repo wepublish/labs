@@ -55,11 +55,11 @@ export const COMPOSE_STYLE_OPTIONS = [
   { value: 'analysis', label: 'Analyse' },
 ] as const;
 
-// Preset test users
+// Preset users
 export const PRESET_USERS = [
+  { id: '493c6d51531c7444365b0ec094bc2d67', name: 'We.Publish Redaktion' },
   { id: 'journalist-1', name: 'Journalist Berlin' },
   { id: 'journalist-2', name: 'Journalist Hamburg' },
-  { id: 'tester-1', name: 'Tester' },
 ];
 
 // Date formatting for German locale

@@ -61,9 +61,14 @@
         class:selected={isSelected}
         onclick={() => ontoggle(unit.id)}
       >
-        <span class="unit-type {unit.unit_type}">
-          {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
-        </span>
+        <div class="unit-badges">
+          <span class="unit-type {unit.unit_type}">
+            {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
+          </span>
+          {#if unit.source_type?.startsWith('manual_')}
+            <span class="source-badge manual">Manuell</span>
+          {/if}
+        </div>
 
         <!-- Statement with 4-line clamp -->
         <p

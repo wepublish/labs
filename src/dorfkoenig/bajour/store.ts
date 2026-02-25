@@ -2,7 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import { bajourApi } from './api';
-import type { BajourDraft } from './types';
+import type { BajourDraft, VerificationStatus } from './types';
 
 interface BajourDraftsState {
   drafts: BajourDraft[];
@@ -58,6 +58,25 @@ function createBajourDraftsStore() {
      */
     async sendVerification(draftId: string): Promise<{ sent_count: number }> {
       return bajourApi.sendVerification(draftId);
+    },
+
+    /**
+     * Update verification status of a draft (manual override)
+     */
+    async updateVerificationStatus(draftId: string, status: VerificationStatus): Promise<BajourDraft> {
+      const updated = await bajourApi.updateDraft(draftId, { verification_status: status });
+      update((s) => ({
+        ...s,
+        drafts: s.drafts.map((d) => (d.id === draftId ? updated : d)),
+      }));
+      return updated;
+    },
+
+    /**
+     * Send all verified drafts to Mailchimp
+     */
+    async sendToMailchimp(): Promise<{ campaign_id: string; village_count: number }> {
+      return bajourApi.sendToMailchimp();
     },
 
     /**

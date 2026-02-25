@@ -105,10 +105,10 @@ describe('PRESET_USERS', () => {
     expect(PRESET_USERS).toHaveLength(3);
   });
 
-  it('has journalist-1 as the first user', () => {
+  it('has We.Publish Redaktion as the first user', () => {
     expect(PRESET_USERS[0]).toEqual({
-      id: 'journalist-1',
-      name: 'Journalist Berlin',
+      id: '493c6d51531c7444365b0ec094bc2d67',
+      name: 'We.Publish Redaktion',
     });
   });
 });

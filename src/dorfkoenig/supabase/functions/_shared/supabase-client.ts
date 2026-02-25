@@ -112,8 +112,8 @@ export interface ScoutExecution {
 export interface InformationUnit {
   id: string;
   user_id: string;
-  scout_id: string;
-  execution_id: string;
+  scout_id: string | null;
+  execution_id: string | null;
   statement: string;
   unit_type: 'fact' | 'event' | 'entity_update';
   entities: string[];
@@ -121,6 +121,9 @@ export interface InformationUnit {
   source_domain: string;
   source_title: string | null;
   location: Location | null;
+  topic: string | null;
+  source_type: 'scout' | 'manual_text' | 'manual_photo' | 'manual_pdf';
+  file_path: string | null;
   embedding: number[];
   used_in_article: boolean;
   used_at: string | null;

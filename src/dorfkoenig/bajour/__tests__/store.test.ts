@@ -6,6 +6,8 @@ vi.mock('../api', () => ({
     listDrafts: vi.fn(),
     createDraft: vi.fn(),
     sendVerification: vi.fn(),
+    updateDraft: vi.fn(),
+    sendToMailchimp: vi.fn(),
   },
 }));
 
@@ -155,6 +157,47 @@ describe('bajourDrafts store', () => {
       vi.mocked(bajourApi.listDrafts).mockResolvedValue([pendingDraft]);
       await vi.advanceTimersByTimeAsync(30000);
       expect(bajourApi.listDrafts).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateVerificationStatus', () => {
+    it('calls updateDraft and updates the draft in state', async () => {
+      const draft = makeDraft({ id: 'draft-1', verification_status: 'ausstehend' });
+      vi.mocked(bajourApi.listDrafts).mockResolvedValue([draft]);
+      await bajourDrafts.load();
+
+      const updated = makeDraft({ id: 'draft-1', verification_status: 'bestätigt' });
+      vi.mocked(bajourApi.updateDraft).mockResolvedValue(updated);
+
+      const result = await bajourDrafts.updateVerificationStatus('draft-1', 'bestätigt');
+
+      expect(result.verification_status).toBe('bestätigt');
+      expect(bajourApi.updateDraft).toHaveBeenCalledWith('draft-1', { verification_status: 'bestätigt' });
+      expect(get(bajourDrafts).drafts[0].verification_status).toBe('bestätigt');
+    });
+
+    it('propagates API errors', async () => {
+      vi.mocked(bajourApi.updateDraft).mockRejectedValue(new Error('Netzwerkfehler'));
+
+      await expect(bajourDrafts.updateVerificationStatus('draft-1', 'abgelehnt')).rejects.toThrow('Netzwerkfehler');
+    });
+  });
+
+  describe('sendToMailchimp', () => {
+    it('delegates to bajourApi.sendToMailchimp and returns result', async () => {
+      const result = { campaign_id: 'camp-1', village_count: 3 };
+      vi.mocked(bajourApi.sendToMailchimp).mockResolvedValue(result);
+
+      const response = await bajourDrafts.sendToMailchimp();
+
+      expect(response).toEqual(result);
+      expect(bajourApi.sendToMailchimp).toHaveBeenCalled();
+    });
+
+    it('propagates API errors', async () => {
+      vi.mocked(bajourApi.sendToMailchimp).mockRejectedValue(new Error('Mailchimp-Fehler'));
+
+      await expect(bajourDrafts.sendToMailchimp()).rejects.toThrow('Mailchimp-Fehler');
     });
   });
 

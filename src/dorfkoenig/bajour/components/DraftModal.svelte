@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { X, FileEdit, ChevronDown, ChevronUp, Send, RefreshCw, CheckCircle } from 'lucide-svelte';
+  import { X, FileEdit, ChevronDown, ChevronUp, Send, RefreshCw, CheckCircle, Mail, Loader2 } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { bajourApi } from '../api';
   import { bajourDrafts } from '../store';
-  import type { Village, BajourDraft, BajourDraftGenerated } from '../types';
+  import type { Village, BajourDraft, BajourDraftGenerated, VerificationStatus } from '../types';
   import ProgressIndicator from '../../components/ui/ProgressIndicator.svelte';
   import VillageSelect from './VillageSelect.svelte';
   import DraftList from './DraftList.svelte';
@@ -71,6 +71,9 @@
   let error = $state('');
   let progress = $state(0);
   let existingDraft = $state<BajourDraft | null>(null);
+  let statusLoading = $state(false);
+  let mailchimpLoading = $state(false);
+  let mailchimpResult = $state<{ campaign_id: string; village_count: number } | null>(null);
 
   // Derive the subtitle based on step
   let subtitle = $derived(
@@ -123,6 +126,9 @@
     error = '';
     progress = 0;
     existingDraft = null;
+    statusLoading = false;
+    mailchimpLoading = false;
+    mailchimpResult = null;
     onclose();
   }
 
@@ -266,6 +272,37 @@
     existingDraft = null;
     error = '';
     step = 0;
+  }
+
+  // Manual verification override
+  async function handleStatusOverride(status: VerificationStatus) {
+    if (!existingDraft || statusLoading) return;
+    statusLoading = true;
+    error = '';
+    try {
+      const updated = await bajourDrafts.updateVerificationStatus(existingDraft.id, status);
+      existingDraft = updated;
+    } catch (err) {
+      error = (err as Error).message;
+    } finally {
+      statusLoading = false;
+    }
+  }
+
+  // Send to Mailchimp
+  async function handleSendToMailchimp() {
+    if (mailchimpLoading) return;
+    mailchimpLoading = true;
+    error = '';
+    try {
+      const result = await bajourDrafts.sendToMailchimp();
+      mailchimpResult = result;
+      step = 5;
+    } catch (err) {
+      error = (err as Error).message;
+    } finally {
+      mailchimpLoading = false;
+    }
   }
 </script>
 
@@ -416,6 +453,36 @@
               {/if}
               <span class="existing-draft-village">{existingDraft.village_name}</span>
             </div>
+
+            <!-- Manual verification override -->
+            <div class="status-override">
+              <span class="status-override-hint">Status manuell überschreiben</span>
+              <div class="status-toggle">
+                <button
+                  class="toggle-btn toggle-confirm"
+                  class:active={existingDraft.verification_status === 'bestätigt'}
+                  disabled={statusLoading}
+                  onclick={() => handleStatusOverride('bestätigt')}
+                >
+                  {#if statusLoading && existingDraft.verification_status !== 'bestätigt'}
+                    <Loader2 size={12} class="spin" />
+                  {/if}
+                  Bestätigt
+                </button>
+                <button
+                  class="toggle-btn toggle-reject"
+                  class:active={existingDraft.verification_status === 'abgelehnt'}
+                  disabled={statusLoading}
+                  onclick={() => handleStatusOverride('abgelehnt')}
+                >
+                  {#if statusLoading && existingDraft.verification_status !== 'abgelehnt'}
+                    <Loader2 size={12} class="spin" />
+                  {/if}
+                  Abgelehnt
+                </button>
+              </div>
+            </div>
+
             <div class="existing-draft-body">
               {#each existingDraft.body.split('\n') as line}
                 {#if line.trim()}
@@ -433,6 +500,12 @@
         <div class="modal-footer">
           {#if existingDraft}
             <Button variant="ghost" onclick={handleBackToList}>Zurück</Button>
+            {#if existingDraft.verification_status === 'bestätigt'}
+              <Button onclick={handleSendToMailchimp} loading={mailchimpLoading}>
+                <Mail size={14} />
+                An Mailchimp senden
+              </Button>
+            {/if}
           {:else}
             <Button variant="ghost" onclick={handleRegenerate} disabled={loading}>
               <RefreshCw size={14} />
@@ -450,12 +523,23 @@
         <div class="modal-body">
           <div class="confirmation">
             <div class="confirmation-icon">
-              <CheckCircle size={40} />
+              {#if mailchimpResult}
+                <Mail size={40} />
+              {:else}
+                <CheckCircle size={40} />
+              {/if}
             </div>
-            <h3 class="confirmation-title">Entwurf gesendet</h3>
-            <p class="confirmation-message">
-              Entwurf wurde an die Dorfkönige gesendet. Die Verifizierung läuft.
-            </p>
+            {#if mailchimpResult}
+              <h3 class="confirmation-title">Newsletter-Kampagne erstellt</h3>
+              <p class="confirmation-message">
+                {mailchimpResult.village_count} Dörfer wurden eingefügt. Bitte in Mailchimp überprüfen und senden.
+              </p>
+            {:else}
+              <h3 class="confirmation-title">Entwurf gesendet</h3>
+              <p class="confirmation-message">
+                Entwurf wurde an die Dorfkönige gesendet. Die Verifizierung läuft.
+              </p>
+            {/if}
           </div>
         </div>
 
@@ -629,6 +713,74 @@
   .prompt-editor textarea:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* Status override toggle */
+  .status-override {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .status-override-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #6b7280);
+  }
+
+  .status-toggle {
+    display: flex;
+    gap: 0;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #e5e7eb);
+    width: fit-content;
+  }
+
+  .toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: none;
+    background: var(--color-surface, white);
+    color: var(--color-text-muted, #6b7280);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .toggle-btn:not(:last-child) {
+    border-right: 1px solid var(--color-border, #e5e7eb);
+  }
+
+  .toggle-btn:hover:not(.active):not(:disabled) {
+    background: var(--color-surface-muted, #f3f4f6);
+  }
+
+  .toggle-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .toggle-confirm.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .toggle-reject.active {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Spin animation for loader */
+  .status-override :global(.spin) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   /* Existing draft view */

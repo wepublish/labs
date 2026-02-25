@@ -55,11 +55,12 @@ Deno.serve(async (req) => {
       return errorResponse('scout_id erforderlich', 400, 'VALIDATION_ERROR');
     }
 
-    // Query unused information units for this scout, ordered by recency
+    // Query unused information units for this scout (owned by user), ordered by recency
     const { data: units, error } = await supabase
       .from('information_units')
       .select('id, statement, unit_type, event_date, created_at')
       .eq('scout_id', scout_id)
+      .eq('user_id', userId)
       .eq('used_in_article', false)
       .order('event_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
@@ -114,11 +115,12 @@ Deno.serve(async (req) => {
     );
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });
-  } catch (error) {
-    console.error('bajour-select-units error:', error);
-    if (error.message === 'Authentication required') {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-select-units error:', message);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });

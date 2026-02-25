@@ -1,7 +1,7 @@
 // Bajour API client
 
 import { api } from '../lib/api';
-import type { BajourDraft, BajourDraftGenerated } from './types';
+import type { BajourDraft, BajourDraftGenerated, VerificationStatus } from './types';
 
 export const bajourApi = {
   listDrafts: () => api.get<BajourDraft[]>('bajour-drafts'),
@@ -14,6 +14,9 @@ export const bajourApi = {
     custom_system_prompt?: string | null;
   }) => api.post<BajourDraft>('bajour-drafts', data),
 
+  updateDraft: (draftId: string, data: { verification_status?: VerificationStatus }) =>
+    api.patch<BajourDraft>(`bajour-drafts/${draftId}`, data),
+
   selectUnits: (data: { village_id: string; scout_id: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
   generateDraft: (data: {
@@ -25,4 +28,7 @@ export const bajourApi = {
 
   sendVerification: (draftId: string) =>
     api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
+
+  sendToMailchimp: () =>
+    api.post<{ campaign_id: string; village_count: number }>('bajour-send-mailchimp', {}),
 };

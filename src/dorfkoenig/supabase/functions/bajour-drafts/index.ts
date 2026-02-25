@@ -33,12 +33,13 @@ Deno.serve(async (req) => {
       default:
         return errorResponse('Methode nicht erlaubt', 405);
     }
-  } catch (error) {
-    console.error('bajour-drafts error:', error);
-    if (error.message === 'Authentication required') {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-drafts error:', message);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });
 
@@ -125,12 +126,9 @@ async function updateDraft(
   if (body.custom_system_prompt !== undefined) {
     updates.custom_system_prompt = body.custom_system_prompt?.trim() || null;
   }
-  if (body.verification_status !== undefined) updates.verification_status = body.verification_status;
-  if (body.verification_responses !== undefined) updates.verification_responses = body.verification_responses;
-  if (body.verification_sent_at !== undefined) updates.verification_sent_at = body.verification_sent_at;
-  if (body.verification_resolved_at !== undefined) updates.verification_resolved_at = body.verification_resolved_at;
-  if (body.verification_timeout_at !== undefined) updates.verification_timeout_at = body.verification_timeout_at;
-  if (body.whatsapp_message_ids !== undefined) updates.whatsapp_message_ids = body.whatsapp_message_ids;
+  // verification_status, verification_responses, verification_sent_at,
+  // verification_resolved_at, verification_timeout_at, whatsapp_message_ids
+  // are NOT user-editable — only writable by service role (webhook + send-verification)
 
   if (Object.keys(updates).length === 0) {
     return errorResponse('Keine Änderungen angegeben', 400, 'VALIDATION_ERROR');

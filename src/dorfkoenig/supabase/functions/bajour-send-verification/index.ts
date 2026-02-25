@@ -3,61 +3,16 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
+import { VILLAGE_CORRESPONDENTS } from '../_shared/correspondents.ts';
 
 // WhatsApp Business API credentials
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!;
 const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN')!;
 
-// Village correspondents lookup — hardcoded because Deno edge functions
-// cannot import JSON from outside the function directory
-const VILLAGE_CORRESPONDENTS: Record<string, { name: string; phone: string }[]> = {
-  riehen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  bettingen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  allschwil: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  binningen: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  arlesheim: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  muttenz: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  muenchenstein: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  reinach: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  oberwil: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-  birsfelden: [
-    { name: 'Bob', phone: '+41783124547' },
-    { name: 'Laura', phone: '+41764999298' },
-  ],
-};
-
 // --- WhatsApp API helper ---
 
 async function sendWhatsAppMessage(
-  to: string,
-  payload: object
+  payload: Record<string, unknown>
 ): Promise<{ message_id: string }> {
   const response = await fetch(
     `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
@@ -133,7 +88,7 @@ Deno.serve(async (req) => {
 
     for (const correspondent of correspondents) {
       // Message 1: Full draft text
-      const textResult = await sendWhatsAppMessage(correspondent.phone, {
+      const textResult = await sendWhatsAppMessage({
         to: correspondent.phone,
         type: 'text',
         text: { body: draft.body },
@@ -141,7 +96,7 @@ Deno.serve(async (req) => {
       allMessageIds.push(textResult.message_id);
 
       // Message 2: Template with verification buttons
-      const templateResult = await sendWhatsAppMessage(correspondent.phone, {
+      const templateResult = await sendWhatsAppMessage({
         to: correspondent.phone,
         type: 'template',
         template: {
@@ -180,11 +135,12 @@ Deno.serve(async (req) => {
     return jsonResponse({
       data: { sent_count: correspondents.length },
     });
-  } catch (error) {
-    console.error('bajour-send-verification error:', error);
-    if (error.message === 'Authentication required') {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-send-verification error:', message);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });

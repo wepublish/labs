@@ -35,6 +35,22 @@ src/dorfkoenig/
 │   ├── scouts/            # ScoutCard, ScoutForm, ScoutList
 │   ├── executions/        # ExecutionCard, ExecutionList
 │   └── compose/           # ComposePanel, DraftPreview, LocationFilter, SearchBar, UnitList
+├── bajour/                # Bajour village newsletter feature (feature-flagged)
+│   ├── api.ts             # Bajour API client (drafts, units, generate, verify, mailchimp)
+│   ├── store.ts           # Bajour drafts store
+│   ├── types.ts           # Village, Correspondent, BajourDraft, VerificationStatus
+│   ├── utils.ts           # Utility functions
+│   ├── villages.json      # Village configuration data
+│   ├── components/
+│   │   ├── DraftModal.svelte        # 6-step modal (list → village → units → generate → preview → confirm)
+│   │   ├── DraftList.svelte         # List of existing drafts
+│   │   ├── DraftPreview.svelte      # Generated draft preview
+│   │   ├── VillageSelect.svelte     # Village picker
+│   │   └── VerificationBadge.svelte # Status badge (ausstehend/bestätigt/abgelehnt)
+│   └── __tests__/
+│       ├── api.test.ts    # Bajour API client tests
+│       ├── store.test.ts  # Bajour store tests
+│       └── utils.test.ts  # Utility tests
 ├── __tests__/             # Vitest unit tests
 │   ├── setup.ts           # Test setup (localStorage mock)
 │   ├── lib/
@@ -110,9 +126,13 @@ Derived: `scoutsCount`
 `load(scoutId?, reset?)`, `loadMore(scoutId?)`, `getDetail(id)`, `clearError()`
 Pagination: page size 20, `hasMore` flag.
 
+### `bajourDrafts` (`bajour/store.ts`)
+`load()`, `create(data)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
+Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts.
+
 ### `auth` (`stores/auth.ts`)
-Re-exports `@shared/stores/auth`. Functions: `initAuth()`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`
-Mock auth via `localStorage` key `dev_user_id`.
+Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`
+Auth priority: URL `?token=` param > `localStorage` session > iframe error > login page. Session stored via `localStorage` key `dev_user_id`.
 
 ## API Client (`lib/api.ts`)
 
@@ -128,7 +148,7 @@ headers: {
 // Response auto-unwraps { data: ... }
 ```
 
-Type-safe helpers: `scoutsApi`, `unitsApi`, `composeApi`, `executionsApi`.
+Type-safe helpers: `scoutsApi`, `unitsApi`, `composeApi`, `executionsApi`, `bajourApi`.
 
 ## Routing (`App.svelte`)
 
@@ -141,7 +161,7 @@ Hash-based routing (required for GitHub Pages + iframe embedding):
 | `#/history` | History | - |
 | `#/compose` | Compose | - |
 
-Auth gate: shows `Loading` while checking, `Login` if no user, `Layout > Route` if authenticated.
+Auth gate: shows `Loading` while checking, error message if `$auth.error`, `Login` if no user, `Layout > Route` if authenticated.
 
 ## Svelte 5 Patterns
 
@@ -165,7 +185,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 ## Critical Architecture Notes
 
 1. **Hash routing required** -- GitHub Pages SPA + iframe embedding. Do not switch to path-based routing.
-2. **x-user-id header auth** -- Mock auth for dev. Edge Functions read `x-user-id` header, not JWT claims. `verify_jwt = false` on all functions.
+2. **x-user-id header auth** -- URL token auth for CMS iframe embedding (`?token=`), mock auth for local dev. Edge Functions read `x-user-id` header, not JWT claims. `verify_jwt = false` on all functions.
 3. **Firecrawl changeTracking tag** -- Format: `scout-{scoutId}`. Firecrawl tracks content per tag for diff detection.
 4. **Test mode baseline isolation** -- Test runs use separate Firecrawl tags to avoid polluting production baselines.
 5. **Unit extraction requires location or topic** -- Information units only extracted if scout has a location or topic set. Both are optional but at least one is required for scout creation.
@@ -181,6 +201,8 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 - `OPENROUTER_API_KEY` -- LLM via OpenRouter (model: `openai/gpt-4o-mini`)
 - `FIRECRAWL_API_KEY` -- Web scraping + change tracking
 - `RESEND_API_KEY` -- Email notifications
+- `MAILCHIMP_API_KEY` -- Mailchimp API key for Bajour newsletter campaigns (server: `us21`)
+- `MAILCHIMP_SERVER` -- Mailchimp data center (`us21`)
 
 ### Vault Secrets (SQL `vault.create_secret`)
 - `project_url` -- Supabase project URL (for pg_cron → pg_net calls)
@@ -195,7 +217,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 | `specs/API.md` | Edge Function endpoints, request/response formats |
 | `specs/PIPELINES.md` | 9-step execution pipeline, scheduling, deduplication |
 | `specs/FRONTEND.md` | Components, stores, routing, UI patterns |
-| `specs/AUTH.md` | Mock auth flow, x-user-id, future JWT plan |
+| `specs/AUTH.md` | Auth v1 (URL token + iframe), mock auth (local dev), CTO questions for v2 |
 | `specs/DEPLOYMENT.md` | CI/CD, GitHub Pages, Supabase deployment |
 | `docs/SETUP.md` | Step-by-step setup guide |
 | `docs/MANUAL_SETUP.md` | Manual setup via Dashboard (no CLI) |

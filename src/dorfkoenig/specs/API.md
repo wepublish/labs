@@ -57,7 +57,7 @@ List all scouts for the authenticated user.
 **Request:**
 ```http
 GET /functions/v1/scouts
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Response:**
@@ -100,7 +100,7 @@ Create a new scout.
 ```http
 POST /functions/v1/scouts
 Content-Type: application/json
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "name": "Berlin News Monitor",
@@ -146,7 +146,7 @@ Update an existing scout.
 ```http
 PUT /functions/v1/scouts/uuid
 Content-Type: application/json
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "name": "Berlin Nachrichten Monitor",
@@ -171,7 +171,7 @@ Delete a scout and all associated data.
 **Request:**
 ```http
 DELETE /functions/v1/scouts/uuid
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Response:** `204 No Content`
@@ -183,7 +183,7 @@ Manually trigger a scout execution.
 **Request:**
 ```http
 POST /functions/v1/scouts/uuid/run
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "skip_notification": false,
@@ -213,7 +213,7 @@ Preview scout execution without side effects.
 **Request:**
 ```http
 POST /functions/v1/scouts/uuid/test
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Response:** `200 OK`
@@ -298,7 +298,7 @@ List information units with filtering.
 **Request:**
 ```http
 GET /functions/v1/units?location_city=Berlin&topic=Verkehr&unused_only=true&limit=50
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Query Parameters:**
@@ -347,7 +347,7 @@ Get distinct locations for filter dropdown.
 **Request:**
 ```http
 GET /functions/v1/units/locations
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Response:**
@@ -377,7 +377,7 @@ Semantic search for units.
 **Request:**
 ```http
 GET /functions/v1/units/search?q=U-Bahn+Erweiterung&location_city=Berlin&topic=Verkehr&min_similarity=0.4
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Query Parameters:**
@@ -412,7 +412,7 @@ Mark units as used in an article.
 ```http
 PATCH /functions/v1/units/mark-used
 Content-Type: application/json
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "unit_ids": ["uuid1", "uuid2", "uuid3"]
@@ -440,7 +440,7 @@ Generate an article draft from selected units.
 ```http
 POST /functions/v1/compose/generate
 Content-Type: application/json
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "unit_ids": ["uuid1", "uuid2", "uuid3"],
@@ -502,7 +502,7 @@ List execution history.
 **Request:**
 ```http
 GET /functions/v1/executions?scout_id=uuid&status=completed&limit=20
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Query Parameters:**
@@ -547,7 +547,7 @@ Get execution details.
 **Request:**
 ```http
 GET /functions/v1/executions/uuid
-x-user-id: tester-1
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 **Response:**
@@ -583,6 +583,183 @@ x-user-id: tester-1
   }
 }
 ```
+
+---
+
+## Bajour API
+
+Feature-flagged (`VITE_FEATURE_BAJOUR=true`). Village newsletter draft workflow with WhatsApp verification and Mailchimp campaign creation.
+
+### GET /bajour-drafts
+
+List all Bajour drafts for the authenticated user.
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "user_id": "string",
+      "village_id": "riehen",
+      "village_name": "Riehen",
+      "title": "Wochenüberblick Riehen",
+      "body": "Newsletter body text...",
+      "selected_unit_ids": ["uuid1", "uuid2"],
+      "custom_system_prompt": null,
+      "verification_status": "ausstehend",
+      "verification_responses": [],
+      "verification_sent_at": null,
+      "verification_resolved_at": null,
+      "verification_timeout_at": null,
+      "whatsapp_message_ids": [],
+      "created_at": "2026-02-25T10:00:00Z",
+      "updated_at": "2026-02-25T10:00:00Z"
+    }
+  ]
+}
+```
+
+### POST /bajour-drafts
+
+Create a new Bajour draft.
+
+**Request:**
+```json
+{
+  "village_id": "riehen",
+  "village_name": "Riehen",
+  "title": "Wochenüberblick Riehen",
+  "body": "Newsletter body text...",
+  "selected_unit_ids": ["uuid1", "uuid2"],
+  "custom_system_prompt": null
+}
+```
+
+**Response:** `201 Created` — same shape as GET item.
+
+### PATCH /bajour-drafts/:id
+
+Update an existing draft (only own drafts). Used for manual verification status override.
+
+**Request:**
+```json
+{
+  "verification_status": "bestätigt"
+}
+```
+
+**Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `verification_status`, `verification_responses`, `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids`.
+
+**Response:** `200 OK` — full draft object.
+
+### POST /bajour-select-units
+
+AI-selects relevant information units for a village based on its scout's data.
+
+**Request:**
+```json
+{
+  "village_id": "riehen",
+  "scout_id": "ba000000-0001-4000-a000-000000000001"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "selected_unit_ids": ["uuid1", "uuid2", "uuid3"]
+  }
+}
+```
+
+### POST /bajour-generate-draft
+
+Generate a newsletter draft from selected units via LLM.
+
+**Request:**
+```json
+{
+  "village_id": "riehen",
+  "village_name": "Riehen",
+  "unit_ids": ["uuid1", "uuid2"],
+  "custom_system_prompt": "Schreibe in einem formellen Ton"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "title": "Wochenüberblick Riehen",
+    "greeting": "Liebe Riehenerinnen und Riehener",
+    "sections": [
+      { "heading": "Gemeinderat", "body": "..." }
+    ],
+    "outlook": "Nächste Woche...",
+    "sign_off": "Euer Dorfkönig"
+  }
+}
+```
+
+### POST /bajour-send-verification
+
+Send a draft to village correspondents via WhatsApp for verification.
+
+**Request:**
+```json
+{
+  "draft_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "sent_count": 2
+  }
+}
+```
+
+### POST /bajour-send-mailchimp
+
+Aggregate all verified (`bestätigt`) drafts and create a Mailchimp campaign from the "Dorfkönig-Basis" template.
+
+**Request:** `{}` (empty body — aggregates all verified drafts for the user)
+
+**Flow:**
+1. Fetches all `bestätigt` drafts for the user
+2. Finds the "Dorfkönig-Basis" template campaign in Mailchimp
+3. Loads its HTML and replaces `text:{villageId}` placeholders with draft content using cheerio
+4. Villages without verified drafts get fallback text: "Heute leider keine News für dieses Dorf :("
+5. Deletes any existing same-day campaign, creates new one titled `Dorfkönig-Basis - {YYYY-MM-DD}`
+6. Does NOT send — admins review in Mailchimp first
+
+**Response:**
+```json
+{
+  "data": {
+    "campaign_id": "abc123",
+    "village_count": 3
+  }
+}
+```
+
+**Error Codes:**
+| Code | Status | Description |
+|------|--------|-------------|
+| `NO_VERIFIED_DRAFTS` | 400 | No drafts with `bestätigt` status |
+| `TEMPLATE_NOT_FOUND` | 404 | "Dorfkönig-Basis" campaign not found in Mailchimp |
+| `TEMPLATE_HTML_MISSING` | 500 | Template campaign has no HTML content |
+
+**Environment:** Requires `MAILCHIMP_API_KEY` and `MAILCHIMP_SERVER` as Edge Function secrets.
+
+**Mailchimp config:**
+- Template campaign: "Dorfkönig-Basis" (ID: `c708a857cc`)
+- List: "WePublish" (ID: `851436c80e`)
+- Placeholders: `text:{villageId}` in `<p>` elements (e.g., `text:riehen`, `text:bettingen`)
 
 ---
 
@@ -634,7 +811,7 @@ For future integrations, Edge Functions can emit events:
   "data": {
     "execution_id": "uuid",
     "scout_id": "uuid",
-    "user_id": "tester-1",
+    "user_id": "493c6d51531c7444365b0ec094bc2d67",
     "status": "completed",
     "criteria_matched": true
   }

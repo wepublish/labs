@@ -20,5 +20,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Only callable by service_role (webhook edge function and pg_cron)
+REVOKE EXECUTE ON FUNCTION resolve_bajour_timeouts FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION resolve_bajour_timeouts TO service_role;
+
 COMMENT ON FUNCTION resolve_bajour_timeouts IS
   'Bajour-specific: Auto-resolve draft verifications that exceed the 2-hour timeout. Defaults to bestätigt.';

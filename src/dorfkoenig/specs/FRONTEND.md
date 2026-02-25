@@ -561,7 +561,7 @@ export const executions = createExecutionsStore();
   const presetUsers = [
     { id: 'journalist-1', name: 'Journalist Berlin' },
     { id: 'journalist-2', name: 'Journalist Hamburg' },
-    { id: 'tester-1', name: 'Tester' },
+    { id: '493c6d51531c7444365b0ec094bc2d67', name: 'Tester' },
   ];
 
   function handleSubmit(e: Event) {

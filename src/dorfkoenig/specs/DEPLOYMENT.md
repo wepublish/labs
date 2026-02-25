@@ -291,7 +291,7 @@ Create `public/404.html` for GitHub Pages SPA routing:
 # Test scouts endpoint
 curl -X GET "https://YOUR_PROJECT.supabase.co/functions/v1/scouts" \
   -H "Authorization: Bearer YOUR_ANON_KEY" \
-  -H "x-user-id: tester-1"
+  -H "x-user-id: 493c6d51531c7444365b0ec094bc2d67"
 
 # Expected: {"data":[]}
 ```

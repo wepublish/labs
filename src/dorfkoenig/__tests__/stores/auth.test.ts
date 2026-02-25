@@ -126,5 +126,70 @@ describe('auth store', () => {
       expect(mockSharedAuth.setLoading).toHaveBeenCalledWith(false);
       expect(mockSharedAuth.mockAuth).not.toHaveBeenCalled();
     });
+
+    it('authenticates with URL token when provided', () => {
+      vi.clearAllMocks();
+
+      initAuth('493c6d51531c7444365b0ec094bc2d67', false);
+
+      expect(mockSharedAuth.mockAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: '493c6d51531c7444365b0ec094bc2d67',
+          email: '493c6d51531c7444365b0ec094bc2d67@wepublish.ch',
+        })
+      );
+    });
+
+    it('stores URL token in localStorage', () => {
+      vi.clearAllMocks();
+
+      initAuth('493c6d51531c7444365b0ec094bc2d67', false);
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'dev_user_id',
+        '493c6d51531c7444365b0ec094bc2d67'
+      );
+    });
+
+    it('URL token takes priority over localStorage session', () => {
+      localStorage.setItem('dev_user_id', 'old-session');
+      vi.clearAllMocks();
+
+      initAuth('new-token', false);
+
+      expect(mockSharedAuth.mockAuth).toHaveBeenCalledWith(
+        expect.objectContaining({ sub: 'new-token' })
+      );
+    });
+
+    it('falls back to localStorage when URL token is empty/whitespace', () => {
+      localStorage.setItem('dev_user_id', 'journalist-2');
+      vi.clearAllMocks();
+
+      initAuth('   ', false);
+
+      expect(mockSharedAuth.mockAuth).toHaveBeenCalledWith(
+        expect.objectContaining({ sub: 'journalist-2' })
+      );
+    });
+
+    it('sets error when in iframe without token', () => {
+      vi.clearAllMocks();
+
+      initAuth(null, true);
+
+      expect(mockSharedAuth.setError).toHaveBeenCalledWith(
+        'Kein Token gefunden. Bitte über das CMS zugreifen.'
+      );
+    });
+
+    it('shows login page when not in iframe and no token', () => {
+      vi.clearAllMocks();
+
+      initAuth(null, false);
+
+      expect(mockSharedAuth.setLoading).toHaveBeenCalledWith(false);
+      expect(mockSharedAuth.mockAuth).not.toHaveBeenCalled();
+    });
   });
 });
