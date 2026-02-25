@@ -1,0 +1,112 @@
+[
+  {
+    "id": "riehen",
+    "name": "Riehen",
+    "canton": "BS",
+    "latitude": 47.5789,
+    "longitude": 7.6469,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "bettingen",
+    "name": "Bettingen",
+    "canton": "BS",
+    "latitude": 47.5726,
+    "longitude": 7.6639,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "allschwil",
+    "name": "Allschwil",
+    "canton": "BL",
+    "latitude": 47.5508,
+    "longitude": 7.5362,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "binningen",
+    "name": "Binningen",
+    "canton": "BL",
+    "latitude": 47.5407,
+    "longitude": 7.5695,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "arlesheim",
+    "name": "Arlesheim",
+    "canton": "BL",
+    "latitude": 47.4949,
+    "longitude": 7.6207,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "muttenz",
+    "name": "Muttenz",
+    "canton": "BL",
+    "latitude": 47.5225,
+    "longitude": 7.6451,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "muenchenstein",
+    "name": "Münchenstein",
+    "canton": "BL",
+    "latitude": 47.5167,
+    "longitude": 7.6167,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "reinach",
+    "name": "Reinach",
+    "canton": "BL",
+    "latitude": 47.4935,
+    "longitude": 7.5912,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "oberwil",
+    "name": "Oberwil",
+    "canton": "BL",
+    "latitude": 47.5148,
+    "longitude": 7.5555,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  },
+  {
+    "id": "birsfelden",
+    "name": "Birsfelden",
+    "canton": "BL",
+    "latitude": 47.5528,
+    "longitude": 7.6222,
+    "correspondents": [
+      { "name": "Bob", "phone": "+41783124547" },
+      { "name": "Laura", "phone": "+41764999298" }
+    ]
+  }
+]
