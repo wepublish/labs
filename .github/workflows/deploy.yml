@@ -43,6 +43,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_JWT_PUBLIC_KEY: ${{ secrets.VITE_JWT_PUBLIC_KEY }}
           VITE_JWT_ISSUER: ${{ secrets.VITE_JWT_ISSUER }}
+          VITE_FEATURE_BAJOUR: 'true'
 
       - name: Disable Jekyll
         run: touch dist/.nojekyll
