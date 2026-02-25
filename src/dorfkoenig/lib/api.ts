@@ -133,6 +133,45 @@ export const unitsApi = {
   },
   markUsed: (unitIds: string[]) =>
     api.patch<{ marked_count: number }>('units/mark-used', { unit_ids: unitIds }),
+  delete: (id: string) => api.delete(`units/${id}`),
+};
+
+export const manualUploadApi = {
+  submitText: (data: {
+    text: string;
+    location?: import('./types').Location | null;
+    topic?: string | null;
+    source_title?: string | null;
+  }) =>
+    api.post<import('./types').ManualUploadResult>('manual-upload', {
+      content_type: 'text',
+      ...data,
+    }),
+
+  requestUploadUrl: (data: {
+    content_type: 'photo' | 'pdf';
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+  }) =>
+    api.post<import('./types').PresignedUploadResult>('manual-upload', data),
+
+  confirmUpload: (data: {
+    content_type: 'photo_confirm' | 'pdf_confirm';
+    storage_path: string;
+    description: string;
+    location?: import('./types').Location | null;
+    topic?: string | null;
+    source_title?: string | null;
+  }) =>
+    api.post<import('./types').ManualUploadResult>('manual-upload', data),
+
+  uploadFile: (url: string, file: File) =>
+    fetch(url, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+    }),
 };
 
 export const composeApi = {
@@ -155,4 +194,28 @@ export const executionsApi = {
     return api.get<import('./types').Execution[]>(`executions?${searchParams}`);
   },
   get: (id: string) => api.get<import('./types').Execution>(`executions/${id}`),
+};
+
+export const bajourApi = {
+  listDrafts: () => api.get<import('./types').BajourDraft[]>('bajour-drafts'),
+  createDraft: (data: {
+    village_id: string;
+    village_name: string;
+    title: string | null;
+    body: string;
+    selected_unit_ids: string[];
+    custom_system_prompt?: string | null;
+  }) => api.post<import('./types').BajourDraft>('bajour-drafts', data),
+
+  selectUnits: (data: { village_id: string; scout_id: string }) =>
+    api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
+  generateDraft: (data: {
+    village_id: string;
+    village_name: string;
+    unit_ids: string[];
+    custom_system_prompt?: string;
+  }) => api.post<import('./types').BajourDraftGenerated>('bajour-generate-draft', data),
+
+  sendVerification: (draftId: string) =>
+    api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
 };
