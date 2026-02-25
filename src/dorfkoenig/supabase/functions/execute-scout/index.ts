@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       url: scout.url,
       formats: ['markdown'],
       timeout: 60000,
-      changeTrackingTag: `${scout.user_id}-${scoutId}`,
+      changeTrackingTag: `scout-${scoutId}`,
     });
 
     const scrapeDurationMs = Date.now() - startTime;
@@ -427,6 +427,8 @@ REGELN:
 - Maximal 8 Einheiten pro Text
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
+- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD (wenn im Text erwähnt)
+- Wenn kein Datum erkennbar, setze eventDate auf null
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -439,7 +441,8 @@ AUSGABEFORMAT (JSON):
     {
       "statement": "Vollständiger Satz",
       "unitType": "fact",
-      "entities": ["Entity1", "Entity2"]
+      "entities": ["Entity1", "Entity2"],
+      "eventDate": "2026-02-20"
     }
   ]
 }`;
@@ -453,7 +456,7 @@ AUSGABEFORMAT (JSON):
     response_format: { type: 'json_object' },
   });
 
-  let units: { statement: string; unitType: string; entities: string[] }[] = [];
+  let units: { statement: string; unitType: string; entities: string[]; eventDate?: string | null }[] = [];
   try {
     const result = JSON.parse(response.choices[0].message.content);
     units = result.units || [];
@@ -508,6 +511,7 @@ AUSGABEFORMAT (JSON):
       location: scout.location,
       topic: scout.topic || null,
       embedding: unitEmbeddings[i],
+      event_date: unit.eventDate || null,
     });
 
     if (!error) storedCount++;

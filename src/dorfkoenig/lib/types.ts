@@ -88,9 +88,24 @@ export interface InformationUnit {
   location: Location | null;
   topic?: string | null;
   scout_id?: string;
+  source_type?: 'scout' | 'manual_text' | 'manual_photo' | 'manual_pdf';
+  file_path?: string | null;
+  file_url?: string | null;
   created_at: string;
   used_in_article: boolean;
+  event_date?: string | null;
   similarity?: number;
+}
+
+export interface ManualUploadResult {
+  units_created: number;
+  unit_ids: string[];
+}
+
+export interface PresignedUploadResult {
+  upload_url: string;
+  storage_path: string;
+  token: string;
 }
 
 export interface Draft {
