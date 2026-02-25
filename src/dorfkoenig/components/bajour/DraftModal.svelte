@@ -82,12 +82,17 @@
     'Gesendet'
   );
 
-  // Load drafts when modal opens
+  // Load drafts and start polling when modal opens
   $effect(() => {
     if (open) {
       bajourDrafts.load();
+      bajourDrafts.startPolling();
       customPrompt = loadSavedPrompt();
     }
+
+    return () => {
+      bajourDrafts.stopPolling();
+    };
   });
 
   // Progress simulation
@@ -107,6 +112,7 @@
 
   // Close and reset
   function handleClose() {
+    bajourDrafts.stopPolling();
     step = 0;
     selectedVillage = null;
     selectedUnitIds = [];

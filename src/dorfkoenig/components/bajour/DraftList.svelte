@@ -12,6 +12,23 @@
 
   let { drafts, onselect, oncreate }: Props = $props();
 
+  import type { VerificationStatus } from '../../lib/types';
+
+  /**
+   * Optimistic display status: if timeout has passed and still ausstehend,
+   * show as bestätigt while waiting for server-side resolution.
+   */
+  function displayStatus(draft: BajourDraft): VerificationStatus {
+    if (
+      draft.verification_status === 'ausstehend' &&
+      draft.verification_timeout_at &&
+      new Date(draft.verification_timeout_at).getTime() < Date.now()
+    ) {
+      return 'bestätigt';
+    }
+    return draft.verification_status;
+  }
+
   /**
    * Format a date string relative to now in German.
    */
@@ -58,7 +75,7 @@
             <span class="draft-date">{formatRelativeDate(draft.created_at)}</span>
           </div>
           <div class="draft-row-meta">
-            <VerificationBadge status={draft.verification_status} />
+            <VerificationBadge status={displayStatus(draft)} />
           </div>
         </button>
       {/each}
