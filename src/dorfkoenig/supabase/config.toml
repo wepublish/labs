@@ -79,5 +79,8 @@ verify_jwt = false
 [functions.bajour-select-units]
 verify_jwt = false
 
+[functions.bajour-generate-draft]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"
