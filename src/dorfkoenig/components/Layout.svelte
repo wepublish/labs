@@ -4,7 +4,7 @@
   import { showScoutModal, showUploadModal, showDraftModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
-  import DraftModal from './bajour/DraftModal.svelte';
+  import DraftModal from '../bajour/components/DraftModal.svelte';
   import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
 
   interface Props {

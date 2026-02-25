@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Clock, CheckCircle, XCircle } from 'lucide-svelte';
-  import type { VerificationStatus } from '../../lib/types';
+  import type { VerificationStatus } from '../types';
 
   interface Props {
     status: VerificationStatus;

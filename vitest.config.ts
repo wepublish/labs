@@ -11,7 +11,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/dorfkoenig/__tests__/**/*.test.ts'],
+    include: ['src/dorfkoenig/__tests__/**/*.test.ts', 'src/dorfkoenig/bajour/__tests__/**/*.test.ts'],
     setupFiles: ['src/dorfkoenig/__tests__/setup.ts'],
   },
 });

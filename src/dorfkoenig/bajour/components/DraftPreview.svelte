@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BajourDraftGenerated } from '../../lib/types';
+  import type { BajourDraftGenerated } from '../types';
 
   interface Props {
     draft: BajourDraftGenerated;

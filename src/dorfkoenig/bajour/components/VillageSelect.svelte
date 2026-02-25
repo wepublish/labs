@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Village } from '../../lib/types';
-  import villagesData from '../../data/villages.json';
+  import type { Village } from '../types';
+  import villagesData from '../villages.json';
 
   interface Props {
     selectedVillageId: string | null;

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { X, FileEdit, ChevronDown, ChevronUp, Send, RefreshCw, CheckCircle } from 'lucide-svelte';
   import { Button } from '@shared/components';
-  import { bajourApi } from '../../lib/api';
-  import { bajourDrafts } from '../../stores/bajour-drafts';
-  import type { Village, BajourDraft, BajourDraftGenerated } from '../../lib/types';
-  import ProgressIndicator from '../ui/ProgressIndicator.svelte';
+  import { bajourApi } from '../api';
+  import { bajourDrafts } from '../store';
+  import type { Village, BajourDraft, BajourDraftGenerated } from '../types';
+  import ProgressIndicator from '../../components/ui/ProgressIndicator.svelte';
   import VillageSelect from './VillageSelect.svelte';
   import DraftList from './DraftList.svelte';
   import DraftPreview from './DraftPreview.svelte';

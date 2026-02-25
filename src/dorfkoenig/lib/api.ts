@@ -196,26 +196,3 @@ export const executionsApi = {
   get: (id: string) => api.get<import('./types').Execution>(`executions/${id}`),
 };
 
-export const bajourApi = {
-  listDrafts: () => api.get<import('./types').BajourDraft[]>('bajour-drafts'),
-  createDraft: (data: {
-    village_id: string;
-    village_name: string;
-    title: string | null;
-    body: string;
-    selected_unit_ids: string[];
-    custom_system_prompt?: string | null;
-  }) => api.post<import('./types').BajourDraft>('bajour-drafts', data),
-
-  selectUnits: (data: { village_id: string; scout_id: string }) =>
-    api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
-  generateDraft: (data: {
-    village_id: string;
-    village_name: string;
-    unit_ids: string[];
-    custom_system_prompt?: string;
-  }) => api.post<import('./types').BajourDraftGenerated>('bajour-generate-draft', data),
-
-  sendVerification: (draftId: string) =>
-    api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
-};

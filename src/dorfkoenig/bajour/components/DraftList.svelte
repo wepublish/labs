@@ -2,7 +2,8 @@
   import { Plus } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import VerificationBadge from './VerificationBadge.svelte';
-  import type { BajourDraft } from '../../lib/types';
+  import type { BajourDraft } from '../types';
+  import { displayStatus } from '../utils';
 
   interface Props {
     drafts: BajourDraft[];
@@ -11,23 +12,6 @@
   }
 
   let { drafts, onselect, oncreate }: Props = $props();
-
-  import type { VerificationStatus } from '../../lib/types';
-
-  /**
-   * Optimistic display status: if timeout has passed and still ausstehend,
-   * show as bestätigt while waiting for server-side resolution.
-   */
-  function displayStatus(draft: BajourDraft): VerificationStatus {
-    if (
-      draft.verification_status === 'ausstehend' &&
-      draft.verification_timeout_at &&
-      new Date(draft.verification_timeout_at).getTime() < Date.now()
-    ) {
-      return 'bestätigt';
-    }
-    return draft.verification_status;
-  }
 
   /**
    * Format a date string relative to now in German.

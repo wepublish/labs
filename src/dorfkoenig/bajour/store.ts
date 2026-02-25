@@ -1,8 +1,8 @@
 // Bajour Drafts Store
 
 import { writable, get } from 'svelte/store';
-import { bajourApi } from '../lib/api';
-import type { BajourDraft } from '../lib/types';
+import { bajourApi } from './api';
+import type { BajourDraft } from './types';
 
 interface BajourDraftsState {
   drafts: BajourDraft[];
