@@ -122,7 +122,8 @@ x-user-id: tester-1
 - `name`: Required, 1-100 characters
 - `url`: Required, valid HTTP(S) URL
 - `criteria`: Required, 0-1000 characters (empty allowed for monitor-all mode)
-- `location`: Optional, JSONB object
+- `location`: Optional, JSONB object (at least one of `location` or `topic` is required)
+- `topic`: Optional, comma-separated string (at least one of `location` or `topic` is required)
 - `frequency`: Required, one of: `daily`, `weekly`, `monthly`
 - `notification_email`: Optional, valid email format
 
@@ -296,7 +297,7 @@ List information units with filtering.
 
 **Request:**
 ```http
-GET /functions/v1/units?location_city=Berlin&unused_only=true&limit=50
+GET /functions/v1/units?location_city=Berlin&topic=Verkehr&unused_only=true&limit=50
 x-user-id: tester-1
 ```
 
@@ -304,6 +305,7 @@ x-user-id: tester-1
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `location_city` | string | - | Filter by city name |
+| `topic` | string | - | Filter by topic (ILIKE match, wildcards escaped) |
 | `unused_only` | boolean | `true` | Only show unused units |
 | `scout_id` | uuid | - | Filter by scout |
 | `limit` | integer | `50` | Max results (1-100) |
@@ -374,7 +376,7 @@ Semantic search for units.
 
 **Request:**
 ```http
-GET /functions/v1/units/search?q=U-Bahn+Erweiterung&location_city=Berlin&min_similarity=0.4
+GET /functions/v1/units/search?q=U-Bahn+Erweiterung&location_city=Berlin&topic=Verkehr&min_similarity=0.4
 x-user-id: tester-1
 ```
 
@@ -383,6 +385,7 @@ x-user-id: tester-1
 |-----------|------|---------|-------------|
 | `q` | string | Required | Search query (German) |
 | `location_city` | string | - | Filter by city |
+| `topic` | string | - | Filter by topic (ILIKE match, wildcards escaped) |
 | `unused_only` | boolean | `true` | Only unused units |
 | `min_similarity` | float | `0.3` | Min cosine similarity (0-1) |
 | `limit` | integer | `20` | Max results |

@@ -23,7 +23,6 @@
   let criteria = $state(init.criteria || '');
   let criteriaMode = $state<'any' | 'specific'>(init.criteria ? 'specific' : 'any');
   let frequency = $state<'daily' | 'weekly' | 'biweekly' | 'monthly'>(init.frequency || 'daily');
-  let scopeMode = $state<'location' | 'topic'>(init.topic ? 'topic' : 'location');
   let location = $state<Location | null>(init.location || null);
   let topic = $state(init.topic || '');
 
@@ -57,10 +56,8 @@
     saving = true;
 
     try {
-      const effectiveLocation = scopeMode === 'location' ? location : null;
-      const effectiveTopic = scopeMode === 'topic' && topic.trim()
-        ? topic.trim()
-        : null;
+      const effectiveLocation = location;
+      const effectiveTopic = topic.trim() || null;
       const effectiveCriteria = criteriaMode === 'any' ? '' : criteria.trim();
 
       const updates: ScoutUpdateInput = {
@@ -154,14 +151,12 @@
         {/each}
       </select>
     </div>
-    <div class="form-group" role="group" aria-label="Ort oder Thema">
-      <span class="form-label">Ort oder Thema (optional)</span>
+    <div class="form-group" role="group" aria-label="Ort und/oder Thema">
+      <span class="form-label">Ort und/oder Thema (optional)</span>
       <ScopeToggle
-        mode={scopeMode}
         {location}
         {topic}
         {existingTopics}
-        onmodechange={(m) => { scopeMode = m; }}
         onlocationchange={(loc) => { location = loc; }}
         ontopicchange={(t) => { topic = t; }}
       />

@@ -19,7 +19,6 @@
   let unitsUsedForDraft = $state<string[]>([]);
 
   // Filter state
-  let filterMode = $state<'location' | 'topic'>('location');
   let selectedLocation = $state<string | null>(null);
   let selectedTopic = $state<string | null>(null);
   let selectedScoutId = $state<string | null>(null);
@@ -64,14 +63,12 @@
         ]
   );
 
-  // Scouts matching current filter
+  // Scouts matching current filter (AND logic)
   let matchingScouts = $derived(
     $scouts.scouts.filter((s: Scout) => {
-      if (filterMode === 'location') {
-        return !selectedLocation || s.location?.city === selectedLocation;
-      }
-      if (!selectedTopic) return true;
-      return s.topic?.split(',').map(t => t.trim()).includes(selectedTopic);
+      const locationMatch = !selectedLocation || s.location?.city === selectedLocation;
+      const topicMatch = !selectedTopic || s.topic?.split(',').map(t => t.trim()).includes(selectedTopic);
+      return locationMatch && topicMatch;
     })
   );
 
@@ -90,14 +87,6 @@
       .filter(u => !u.used_in_article)
       .filter(u => !selectedScoutId || u.scout_id === selectedScoutId)
   );
-
-  function handleModeChange(mode: 'location' | 'topic') {
-    filterMode = mode;
-    selectedLocation = null;
-    selectedTopic = null;
-    selectedScoutId = null;
-    searchQuery = '';
-  }
 
   function handleLocationChange(city: string | null) {
     selectedLocation = city;
@@ -122,12 +111,12 @@
     if (query) {
       isSearching = true;
       try {
-        await units.search(query, selectedLocation ?? undefined);
+        await units.search(query, selectedLocation ?? undefined, selectedTopic ?? undefined);
       } finally {
         isSearching = false;
       }
     } else {
-      units.load(selectedLocation ?? undefined);
+      units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined);
     }
   }
 
@@ -203,8 +192,6 @@
 </script>
 
 <PanelFilterBar
-  {filterMode}
-  onModeChange={handleModeChange}
   {locationOptions}
   {topicOptions}
   selectedLocation={selectedLocation}

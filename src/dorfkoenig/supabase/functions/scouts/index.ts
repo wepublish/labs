@@ -176,6 +176,11 @@ async function createScout(
     return errorResponse('Ungültige URL', 400, 'VALIDATION_ERROR');
   }
 
+  // Require at least location or topic
+  if (!body.location && !body.topic?.trim()) {
+    return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
+  }
+
   const { data, error } = await supabase
     .from('scouts')
     .insert({
@@ -458,7 +463,7 @@ Analysiere den Inhalt und prüfe, ob er den Kriterien entspricht.`;
         key_findings: analysis.key_findings,
       },
       would_notify: analysis.matches && !!scout.notification_email,
-      would_extract_units: !!scout.location,
+      would_extract_units: !!(scout.location || scout.topic),
     },
   });
 }

@@ -133,6 +133,39 @@ describe('units store', () => {
         min_similarity: 0.3,
       });
     });
+
+    it('passes topic to search when provided', async () => {
+      vi.mocked(unitsApi.search).mockResolvedValue([]);
+
+      await units.search('Bauprojekt', undefined, 'Stadtentwicklung');
+
+      expect(unitsApi.search).toHaveBeenCalledWith('Bauprojekt', {
+        location_city: undefined,
+        topic: 'Stadtentwicklung',
+        min_similarity: 0.3,
+      });
+    });
+
+    it('passes both location and topic to search', async () => {
+      vi.mocked(unitsApi.search).mockResolvedValue([]);
+
+      await units.search('test', 'Berlin', 'Verkehr');
+
+      expect(unitsApi.search).toHaveBeenCalledWith('test', {
+        location_city: 'Berlin',
+        topic: 'Verkehr',
+        min_similarity: 0.3,
+      });
+    });
+
+    it('does not include topic param when not provided', async () => {
+      vi.mocked(unitsApi.search).mockResolvedValue([]);
+
+      await units.search('test', 'Berlin');
+
+      const callArgs = vi.mocked(unitsApi.search).mock.calls[0][1];
+      expect(callArgs).not.toHaveProperty('topic');
+    });
   });
 
   describe('setLocation / setTopic', () => {

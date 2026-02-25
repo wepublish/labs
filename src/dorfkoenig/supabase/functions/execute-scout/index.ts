@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
     // =========================================================================
     let unitsExtracted = 0;
 
-    if (extractUnits && analysis.matches && scout.location) {
+    if (extractUnits && analysis.matches && (scout.location || scout.topic)) {
       console.log(`[${executionId}] Step 6: Extracting information units`);
 
       try {

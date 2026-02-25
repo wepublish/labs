@@ -1,7 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { Search, Loader2 } from 'lucide-svelte';
-  import ModeToggle from './ModeToggle.svelte';
   import FilterSelect from './FilterSelect.svelte';
   import type { Snippet } from 'svelte';
 
@@ -12,8 +11,6 @@
   }
 
   interface Props {
-    filterMode: 'location' | 'topic';
-    onModeChange: (mode: 'location' | 'topic') => void;
     locationOptions: Option[];
     topicOptions: Option[];
     selectedLocation: string | null;
@@ -33,8 +30,6 @@
   }
 
   let {
-    filterMode,
-    onModeChange,
     locationOptions,
     topicOptions,
     selectedLocation,
@@ -91,14 +86,18 @@
         <span>Laden...</span>
       </div>
     {:else}
-      <ModeToggle mode={filterMode} onchange={onModeChange} />
+      <FilterSelect
+        options={locationOptions}
+        value={selectedLocation || ''}
+        onchange={(v) => onLocationChange(v || null)}
+      />
 
       <div class="filter-divider"></div>
 
       <FilterSelect
-        options={filterMode === 'location' ? locationOptions : topicOptions}
-        value={filterMode === 'location' ? (selectedLocation || '') : (selectedTopic || '')}
-        onchange={(v) => filterMode === 'location' ? onLocationChange(v || null) : onTopicChange(v || null)}
+        options={topicOptions}
+        value={selectedTopic || ''}
+        onchange={(v) => onTopicChange(v || null)}
       />
 
       {#if scoutOptions && scoutOptions.length > 1}

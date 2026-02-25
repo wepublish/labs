@@ -409,6 +409,35 @@ describe('unitsApi', () => {
     expect(calledUrl).toContain('location_city=Berlin');
     expect(calledUrl).toContain('topic=Verkehr');
   });
+
+  it('search() includes topic query param when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.search('Bauprojekt', { topic: 'Stadtentwicklung' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('q=Bauprojekt');
+    expect(calledUrl).toContain('topic=Stadtentwicklung');
+  });
+
+  it('search() does not include topic param when not provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.search('test', { location_city: 'Berlin' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).not.toContain('topic=');
+  });
+
+  it('search() combines location_city and topic params', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.search('query', { location_city: 'Berlin', topic: 'Verkehr' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('location_city=Berlin');
+    expect(calledUrl).toContain('topic=Verkehr');
+  });
 });
 
 describe('composeApi', () => {

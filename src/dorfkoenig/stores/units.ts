@@ -64,11 +64,12 @@ function createUnitsStore() {
     /**
      * Semantic search for units
      */
-    async search(query: string, locationCity?: string) {
+    async search(query: string, locationCity?: string, topic?: string) {
       update((s) => ({ ...s, loading: true, searchQuery: query, error: null }));
       try {
         const data = await unitsApi.search(query, {
           location_city: locationCity,
+          ...(topic && { topic }),
           min_similarity: 0.3,
         });
         update((s) => ({ ...s, units: data, loading: false }));

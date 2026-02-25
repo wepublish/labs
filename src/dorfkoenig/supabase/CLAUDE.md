@@ -30,7 +30,7 @@ PostgreSQL + pgvector database with 5 Edge Functions (Deno runtime) and 6 shared
 3. **Analyze criteria** -- OpenRouter GPT-4o-mini: does content match scout's criteria? Returns `{ matches, summary, keyFindings }`. German prompts.
 4. **Check duplicates** -- Generate embedding for summary, call `check_duplicate_execution()` DB function (threshold: 0.85, lookback: 30 days).
 5. **Store execution** -- Update `scout_executions` row with results.
-6. **Extract units** -- Only if `criteria_matched && scout.location`. OpenRouter extracts atomic facts. Embed each, deduplicate within batch (threshold: 0.75). Store in `information_units`.
+6. **Extract units** -- Only if `criteria_matched && (scout.location || scout.topic)`. OpenRouter extracts atomic facts. Embed each, deduplicate within batch (threshold: 0.75). Store in `information_units`.
 7. **Send notification** -- Only if `matched && !duplicate && !skipNotification && notification_email`. Resend email with German template.
 8. **Update scout** -- Set `last_run_at`, reset `consecutive_failures` to 0.
 9. **Finalize** -- Set execution status to `completed`, return results.
@@ -55,7 +55,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | Function | Purpose |
 |----------|---------|
 | `check_duplicate_execution(scout_id, embedding, threshold, lookback_days)` | Cosine similarity dedup against recent executions |
-| `search_units_semantic(user_id, embedding, location_city?, unused_only?, min_similarity?, limit?)` | Semantic search for Compose panel |
+| `search_units_semantic(user_id, embedding, location_city?, topic?, unused_only?, min_similarity?, limit?)` | Semantic search for Compose panel |
 | `should_run_scout(frequency, last_run_at)` | Check if scout is due |
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |

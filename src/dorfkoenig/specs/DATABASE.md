@@ -39,6 +39,10 @@ CREATE TABLE scouts (
     --   "longitude": 13.405
     -- }
 
+    -- Topic (comma-separated, e.g. "Stadtentwicklung, Verkehr")
+    -- At least one of location or topic is required
+    topic TEXT,
+
     -- Scheduling
     frequency TEXT NOT NULL DEFAULT 'daily',
     -- Values: 'daily' | 'weekly' | 'monthly'
@@ -168,6 +172,9 @@ CREATE TABLE information_units (
     -- Location (inherited from scout)
     location JSONB,
 
+    -- Topic (inherited from scout, comma-separated)
+    topic TEXT,
+
     -- Embedding for semantic search
     embedding vector(1536) NOT NULL,
 
@@ -296,13 +303,14 @@ $$ LANGUAGE plpgsql;
 
 ### 2. search_units_semantic
 
-Semantic search for information units in the Compose panel.
+Semantic search for information units in the Compose panel. Supports filtering by location city and/or topic.
 
 ```sql
 CREATE OR REPLACE FUNCTION search_units_semantic(
     p_user_id TEXT,
     p_query_embedding vector(1536),
     p_location_city TEXT DEFAULT NULL,
+    p_topic TEXT DEFAULT NULL,
     p_unused_only BOOLEAN DEFAULT true,
     p_min_similarity REAL DEFAULT 0.3,
     p_limit INTEGER DEFAULT 50
@@ -316,6 +324,7 @@ RETURNS TABLE (
     source_domain TEXT,
     source_title TEXT,
     location JSONB,
+    topic TEXT,
     created_at TIMESTAMPTZ,
     similarity REAL
 ) AS $$
@@ -330,11 +339,13 @@ BEGIN
         u.source_domain,
         u.source_title,
         u.location,
+        u.topic,
         u.created_at,
         (1 - (u.embedding <=> p_query_embedding))::REAL AS similarity
     FROM information_units u
     WHERE u.user_id = p_user_id
       AND (p_location_city IS NULL OR u.location->>'city' = p_location_city)
+      AND (p_topic IS NULL OR u.topic ILIKE '%' || replace(replace(p_topic, '%', '\%'), '_', '\_') || '%')
       AND (NOT p_unused_only OR u.used_in_article = false)
       AND (1 - (u.embedding <=> p_query_embedding)) >= p_min_similarity
     ORDER BY u.embedding <=> p_query_embedding

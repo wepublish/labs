@@ -334,12 +334,13 @@ function createUnitsStore() {
       update(s => ({ ...s, locations: data }));
     },
 
-    async load(locationCity?: string, unusedOnly = true) {
+    async load(locationCity?: string, unusedOnly = true, topic?: string) {
       update(s => ({ ...s, loading: true, error: null }));
       try {
         const params = new URLSearchParams();
         if (locationCity) params.set('location_city', locationCity);
         if (unusedOnly) params.set('unused_only', 'true');
+        if (topic) params.set('topic', topic);
 
         const data = await api.get<InformationUnit[]>(`units?${params}`);
         update(s => ({ ...s, units: data, loading: false }));
@@ -348,11 +349,12 @@ function createUnitsStore() {
       }
     },
 
-    async search(query: string, locationCity?: string) {
+    async search(query: string, locationCity?: string, topic?: string) {
       update(s => ({ ...s, loading: true, searchQuery: query }));
       try {
         const params = new URLSearchParams({ q: query });
         if (locationCity) params.set('location_city', locationCity);
+        if (topic) params.set('topic', topic);
 
         const data = await api.get<InformationUnit[]>(`units/search?${params}`);
         update(s => ({ ...s, units: data, loading: false }));

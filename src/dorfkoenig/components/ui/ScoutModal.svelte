@@ -31,7 +31,6 @@
   let url = $state('');
   let criteriaMode = $state<'any' | 'specific'>('any');
   let criteria = $state('');
-  let scopeMode = $state<'location' | 'topic'>('location');
   let location = $state<Location | null>(null);
   let topic = $state('');
 
@@ -62,7 +61,6 @@
     url = '';
     criteriaMode = 'any';
     criteria = '';
-    scopeMode = 'location';
     location = null;
     topic = '';
     testing = false;
@@ -133,12 +131,8 @@
       return;
     }
 
-    if (scopeMode === 'location' && !location) {
-      step1Error = 'Ort ist erforderlich';
-      return;
-    }
-    if (scopeMode === 'topic' && !topic.trim()) {
-      step1Error = 'Thema ist erforderlich';
+    if (!location && !topic.trim()) {
+      step1Error = 'Ort oder Thema ist erforderlich';
       return;
     }
 
@@ -153,8 +147,8 @@
       }
 
       // Create draft scout (inactive)
-      const effectiveLocation = scopeMode === 'location' ? location : null;
-      const effectiveTopic = scopeMode === 'topic' && topic.trim() ? topic.trim() : null;
+      const effectiveLocation = location;
+      const effectiveTopic = topic.trim() || null;
 
       const scout = await scouts.create({
         name: new URL(url).hostname,
@@ -234,7 +228,7 @@
   let step1Valid = $derived(
     url.trim() !== '' &&
     (criteriaMode === 'any' || criteria.trim() !== '') &&
-    (scopeMode === 'location' ? location !== null : topic.trim() !== '')
+    (location !== null || topic.trim() !== '')
   );
 
   // Show day-of-week picker for weekly/biweekly
@@ -358,14 +352,12 @@
           {/if}
 
           <!-- Scope toggle -->
-          <div class="form-group" role="group" aria-label="Ort oder Thema">
-            <span class="form-label">Ort oder Thema</span>
+          <div class="form-group" role="group" aria-label="Ort und/oder Thema">
+            <span class="form-label">Ort und/oder Thema</span>
             <ScopeToggle
-              mode={scopeMode}
               {location}
               {topic}
               {existingTopics}
-              onmodechange={(m) => { scopeMode = m; testResult = null; }}
               onlocationchange={(loc) => { location = loc; testResult = null; }}
               ontopicchange={(t) => { topic = t; testResult = null; }}
             />

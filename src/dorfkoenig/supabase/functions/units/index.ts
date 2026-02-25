@@ -72,7 +72,8 @@ async function listUnits(
   }
 
   if (topic) {
-    query = query.ilike('topic', `%${topic}%`);
+    const escaped = topic.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    query = query.ilike('topic', `%${escaped}%`);
   }
 
   if (unusedOnly) {
@@ -157,6 +158,7 @@ async function searchUnits(
   }
 
   const locationCity = url.searchParams.get('location_city') || null;
+  const topic = url.searchParams.get('topic') || null;
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || '0.3');
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
@@ -169,6 +171,7 @@ async function searchUnits(
     p_user_id: userId,
     p_query_embedding: queryEmbedding,
     p_location_city: locationCity,
+    p_topic: topic,
     p_unused_only: unusedOnly,
     p_min_similarity: minSimilarity,
     p_limit: limit,

@@ -91,9 +91,9 @@ Scheduling:
 
 | Type | Key Fields |
 |------|-----------|
-| `Scout` | id, user_id, name, url, criteria, location, frequency, is_active, notification_email, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
+| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
 | `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted |
-| `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, source_url, used_in_article |
+| `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, topic, source_url, used_in_article |
 | `Draft` | title, headline, sections[], gaps[], sources[], word_count |
 | `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units |
 
@@ -104,7 +104,7 @@ Scheduling:
 Derived: `scoutsCount`
 
 ### `units` (`stores/units.ts`)
-`loadLocations()`, `load(city?, unusedOnly?)`, `search(query, city?)`, `setLocation(city)`, `clearSearch()`, `markUsed(ids[])`, `clearError()`
+`loadLocations()`, `load(city?, unusedOnly?, topic?)`, `search(query, city?, topic?)`, `setLocation(city)`, `setTopic(topic)`, `clearSearch()`, `markUsed(ids[])`, `clearError()`
 
 ### `executions` (`stores/executions.ts`)
 `load(scoutId?, reset?)`, `loadMore(scoutId?)`, `getDetail(id)`, `clearError()`
@@ -168,7 +168,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 2. **x-user-id header auth** -- Mock auth for dev. Edge Functions read `x-user-id` header, not JWT claims. `verify_jwt = false` on all functions.
 3. **Firecrawl changeTracking tag** -- Format: `scout-{scoutId}`. Firecrawl tracks content per tag for diff detection.
 4. **Test mode baseline isolation** -- Test runs use separate Firecrawl tags to avoid polluting production baselines.
-5. **Unit extraction requires location** -- Information units only extracted if scout has a location set.
+5. **Unit extraction requires location or topic** -- Information units only extracted if scout has a location or topic set. Both are optional but at least one is required for scout creation.
 6. **German-only UI** -- All user-facing text, error messages, and LLM prompts are in German.
 
 ## Environment Variables

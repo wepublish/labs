@@ -1,24 +1,19 @@
 <script lang="ts">
-  import ModeToggle from './ModeToggle.svelte';
   import LocationAutocomplete from './LocationAutocomplete.svelte';
   import type { Location } from '../../lib/types';
 
   interface Props {
-    mode: 'location' | 'topic';
     location: Location | null;
     topic: string;
     existingTopics?: string[];
-    onmodechange: (mode: 'location' | 'topic') => void;
     onlocationchange: (loc: Location | null) => void;
     ontopicchange: (topic: string) => void;
   }
 
   let {
-    mode,
     location: loc,
     topic,
     existingTopics = [],
-    onmodechange,
     onlocationchange,
     ontopicchange,
   }: Props = $props();
@@ -111,17 +106,16 @@
 </script>
 
 <div class="scope-toggle">
-  <div class="scope-header">
-    <ModeToggle {mode} compact={false} onchange={onmodechange} />
-  </div>
-
-  {#if mode === 'location'}
+  <div class="scope-section">
+    <span class="scope-label">Ort</span>
     <LocationAutocomplete
       value={loc?.city || ''}
       onselect={handleLocationSelect}
       placeholder="z.B. Berlin"
     />
-  {:else}
+  </div>
+  <div class="scope-section">
+    <span class="scope-label">Thema</span>
     <div class="scope-input topic-input-container">
       <div class="topic-field">
         {#each topicChips as chip, i}
@@ -161,19 +155,28 @@
         </div>
       {/if}
     </div>
-  {/if}
+  </div>
 </div>
 
 <style>
   .scope-toggle {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
-  .scope-header {
+  .scope-section {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .scope-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   .topic-input-container {

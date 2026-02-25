@@ -124,9 +124,10 @@ export const unitsApi = {
     return api.get<import('./types').InformationUnit[]>(`units?${searchParams}`);
   },
   locations: () => api.get<import('./types').Location[]>('units/locations'),
-  search: (query: string, params?: { location_city?: string; min_similarity?: number }) => {
+  search: (query: string, params?: { location_city?: string; topic?: string; min_similarity?: number }) => {
     const searchParams = new URLSearchParams({ q: query });
     if (params?.location_city) searchParams.set('location_city', params.location_city);
+    if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.min_similarity) searchParams.set('min_similarity', String(params.min_similarity));
     return api.get<import('./types').InformationUnit[]>(`units/search?${searchParams}`);
   },

@@ -7,7 +7,6 @@
   import type { Scout } from '../lib/types';
 
   // Filter state
-  let filterMode = $state<'location' | 'topic'>('location');
   let selectedLocation = $state<string | null>(null);
   let selectedTopic = $state<string | null>(null);
   let selectedScout = $state<string | null>(null);
@@ -66,15 +65,12 @@
         ]
   );
 
-  // Filtered scouts (by location/topic)
+  // Filtered scouts (by location AND topic)
   let filteredScouts = $derived(
     $scouts.scouts.filter((scout: Scout) => {
-      if (filterMode === 'location') {
-        return !selectedLocation || scout.location?.city === selectedLocation;
-      }
-      if (!selectedTopic) return true;
-      const scoutTopics = scout.topic?.split(',').map(t => t.trim()) || [];
-      return scoutTopics.includes(selectedTopic);
+      const locationMatch = !selectedLocation || scout.location?.city === selectedLocation;
+      const topicMatch = !selectedTopic || (scout.topic?.split(',').map(t => t.trim()) || []).includes(selectedTopic);
+      return locationMatch && topicMatch;
     })
   );
 
@@ -95,21 +91,12 @@
       : filteredScouts
   );
 
-  function handleModeChange(mode: 'location' | 'topic') {
-    filterMode = mode;
-    selectedLocation = null;
-    selectedTopic = null;
-    selectedScout = null;
-  }
-
   function toggleExpand(id: string) {
     expandedScoutId = expandedScoutId === id ? null : id;
   }
 </script>
 
 <PanelFilterBar
-  {filterMode}
-  onModeChange={handleModeChange}
   {locationOptions}
   {topicOptions}
   {selectedLocation}

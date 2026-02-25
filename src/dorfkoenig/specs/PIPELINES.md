@@ -25,7 +25,7 @@ The execute-scout pipeline is the core of coJournalist-Lite. It performs web scr
 │  5. STORE EXECUTION ◄────────────────────────┘               │
 │         │                                                    │
 │         ▼                                                    │
-│  6. EXTRACT UNITS (if location provided)                     │
+│  6. EXTRACT UNITS (if location or topic provided)            │
 │         │                                                    │
 │         ▼                                                    │
 │  7. SEND NOTIFICATION (if not duplicate)                     │
@@ -358,7 +358,7 @@ const { error } = await supabase
 
 ## Step 6: Extract Units
 
-Extract atomic information units if location is provided.
+Extract atomic information units if location or topic is provided.
 
 ### Implementation
 
@@ -377,9 +377,10 @@ export async function extractUnits(
   content: string,
   sourceUrl: string,
   sourceTitle: string,
-  location: object | null
+  location: object | null,
+  topic: string | null
 ): Promise<InformationUnit[]> {
-  if (!location) return [];
+  if (!location && !topic) return [];
 
   const systemPrompt = `Du bist ein Faktenfinder. Extrahiere atomare Informationseinheiten aus dem Text.
 
@@ -687,7 +688,7 @@ export async function testScout(scoutId: string): Promise<PreviewResult> {
       key_findings: analysis.keyFindings,
     },
     would_notify: analysis.matches && !!scout.notification_email,
-    would_extract_units: !!scout.location,
+    would_extract_units: !!(scout.location || scout.topic),
   };
 }
 ```
@@ -731,7 +732,7 @@ If a non-critical step fails, continue with the pipeline:
 ```typescript
 // Unit extraction failure shouldn't fail the entire execution
 let unitsCount = 0;
-if (extractUnits && scout.location) {
+if (extractUnits && (scout.location || scout.topic)) {
   try {
     const units = await extractUnits(scrapeResult.content, ...);
     unitsCount = await storeUnits(units, ...);
