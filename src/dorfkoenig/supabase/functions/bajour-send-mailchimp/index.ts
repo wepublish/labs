@@ -5,7 +5,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import mailchimp from 'npm:@mailchimp/mailchimp_marketing@3.0.80';
-import * as cheerio from 'npm:cheerio@1.0.0';
+import { TEMPLATE_HTML } from './template.ts';
 
 const MAILCHIMP_API_KEY = Deno.env.get('MAILCHIMP_API_KEY')!;
 const MAILCHIMP_SERVER = Deno.env.get('MAILCHIMP_SERVER')!;
@@ -66,50 +66,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Load the template campaign's HTML content
-    const templateContent = await mailchimp.campaigns.getContent(templateCampaign.id);
-    const templateHtml = templateContent.html;
+    // 4. Use embedded template HTML (getContent returns degraded 7k HTML, see docs/MAILCHIMP.md)
+    const templateHtml = TEMPLATE_HTML;
 
-    if (!templateHtml) {
-      return errorResponse('Template-HTML nicht gefunden', 500, 'TEMPLATE_HTML_MISSING');
-    }
-
-    // 5. Build a map of village_id → draft body (use most recent per village)
-    const villageDrafts = new Map<string, string>();
+    // 5. Build a map of village_id → draft (use most recent per village)
+    const villageDrafts = new Map<string, { village_name: string; body: string }>();
     for (const draft of drafts) {
       if (!villageDrafts.has(draft.village_id)) {
-        villageDrafts.set(draft.village_id, draft.body);
+        villageDrafts.set(draft.village_id, {
+          village_name: draft.village_name,
+          body: draft.body,
+        });
       }
     }
 
-    // 6. Replace text:{key} placeholders with draft content using cheerio
-    const $ = cheerio.load(templateHtml);
-    let replacedCount = 0;
+    // 6. Build combined village HTML from all drafts
+    const villageContentParts: string[] = [];
+    for (const [, { village_name, body }] of villageDrafts) {
+      const bodyHtml = body.replace(/\n/g, '<br>');
+      villageContentParts.push(`<strong>${village_name}</strong><br>${bodyHtml}`);
+    }
+    const combinedContent = villageContentParts.join('<br><br>');
 
-    $('p').each(function () {
-      const el = $(this);
-      const text = el.text().trim();
-      const match = text.match(/^text:(\w+)$/);
-      if (match) {
-        const villageId = match[1];
-        const content = villageDrafts.get(villageId);
-        if (content) {
-          // Replace placeholder with draft content (convert newlines to <br>)
-          el.html(content.replace(/\n/g, '<br>'));
-          replacedCount++;
-        } else {
-          el.text('Heute leider keine News für dieses Dorf :(');
-        }
+    // 7. Replace text:{key} placeholders with combined village content via regex
+    // First placeholder gets all village content, remaining placeholders are cleared.
+    // This decouples the function from which specific placeholder IDs exist in the template.
+    let isFirstPlaceholder = true;
+    const modifiedHtml = templateHtml.replace(/text:\w+/g, () => {
+      if (isFirstPlaceholder) {
+        isFirstPlaceholder = false;
+        return combinedContent;
       }
+      return '';
     });
 
-    const modifiedHtml = $.html();
+    const replacedCount = villageDrafts.size;
 
-    // 7. Build today's campaign title
+    // 8. Build today's campaign title
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const campaignTitle = `${TEMPLATE_CAMPAIGN_NAME} - ${today}`;
 
-    // 8. Delete existing same-day campaign if it exists
+    // 9. Delete existing same-day campaign if it exists
     const existingCampaigns = await mailchimp.campaigns.list({
       count: 100,
       sort_field: 'create_time',
@@ -127,7 +124,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 9. Create new campaign copying settings from template
+    // 10. Create new campaign copying settings from template
     const newCampaign = await mailchimp.campaigns.create({
       type: 'regular',
       recipients: {
@@ -141,7 +138,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    // 10. Set the modified HTML as campaign content
+    // 11. Set the modified HTML as campaign content
     await mailchimp.campaigns.setContent(newCampaign.id, {
       html: modifiedHtml,
     });

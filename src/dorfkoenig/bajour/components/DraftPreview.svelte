@@ -1,45 +1,30 @@
 <script lang="ts">
   import type { BajourDraftGenerated } from '../types';
+  import { processInlineMarkdown } from '../utils';
 
   interface Props {
     draft: BajourDraftGenerated;
   }
 
   let { draft }: Props = $props();
-
-  /**
-   * Escape HTML entities to prevent XSS, then process **bold** markers
-   * into <strong> tags for safe rendering via {@html}.
-   */
-  function processText(text: string): string {
-    // First escape all HTML
-    const escaped = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-    // Then process **bold** markers
-    return escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  }
 </script>
 
 <div class="draft-preview">
   <h2 class="draft-title">{draft.title}</h2>
 
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via processText -->
-  <p class="draft-greeting">{@html processText(draft.greeting)}</p>
+  <p class="draft-greeting">{@html processInlineMarkdown(draft.greeting)}</p>
 
   {#each draft.sections as section}
     <div class="draft-section">
       <h3 class="section-heading">{section.heading}</h3>
       <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via processText -->
-      <p class="section-body">{@html processText(section.body)}</p>
+      <p class="section-body">{@html processInlineMarkdown(section.body)}</p>
     </div>
   {/each}
 
   <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via processText -->
-  <p class="draft-outlook">{@html processText(draft.outlook)}</p>
+  <p class="draft-outlook">{@html processInlineMarkdown(draft.outlook)}</p>
 
   <p class="draft-signoff">{draft.sign_off}</p>
 </div>
@@ -102,5 +87,10 @@
 
   .draft-preview :global(strong) {
     font-weight: 600;
+  }
+
+  .draft-preview :global(.source-ref) {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted, #6b7280);
   }
 </style>

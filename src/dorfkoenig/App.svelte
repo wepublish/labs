@@ -7,6 +7,7 @@
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
+  import DraftPanel from './bajour/components/DraftPanel.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -45,6 +46,8 @@
       <History />
     {:else if route === 'feed'}
       <Feed />
+    {:else if route === 'entwurf' && import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
+      <DraftPanel />
     {:else}
       <Manage />
     {/if}

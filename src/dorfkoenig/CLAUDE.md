@@ -40,7 +40,8 @@ src/dorfkoenig/
 │   ├── store.ts           # Bajour drafts store
 │   ├── types.ts           # Village, Correspondent, BajourDraft, VerificationStatus
 │   ├── utils.ts           # Utility functions
-│   ├── villages.json      # Village configuration data
+│   ├── villages.json      # Village configuration data (10 villages)
+│   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
 │   ├── components/
 │   │   ├── DraftModal.svelte        # 6-step modal (list → village → units → generate → preview → confirm)
 │   │   ├── DraftList.svelte         # List of existing drafts
@@ -221,6 +222,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 | `specs/DEPLOYMENT.md` | CI/CD, GitHub Pages, Supabase deployment |
 | `docs/SETUP.md` | Step-by-step setup guide |
 | `docs/MANUAL_SETUP.md` | Manual setup via Dashboard (no CLI) |
+| `docs/MAILCHIMP.md` | Mailchimp integration: template, edge function flow, known limitations |
 | `supabase/CLAUDE.md` | Backend-specific agent guide |
 
 ## Testing

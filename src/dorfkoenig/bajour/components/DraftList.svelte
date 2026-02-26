@@ -8,7 +8,7 @@
   interface Props {
     drafts: BajourDraft[];
     onselect: (draft: BajourDraft) => void;
-    oncreate: () => void;
+    oncreate?: () => void;
   }
 
   let { drafts, onselect, oncreate }: Props = $props();
@@ -39,12 +39,14 @@
 </script>
 
 <div class="draft-list">
-  <div class="draft-list-header">
-    <Button onclick={oncreate}>
-      <Plus size={16} />
-      Neuer Entwurf
-    </Button>
-  </div>
+  {#if oncreate}
+    <div class="draft-list-header">
+      <Button onclick={oncreate}>
+        <Plus size={16} />
+        Neuer Entwurf
+      </Button>
+    </div>
+  {/if}
 
   {#if drafts.length === 0}
     <div class="empty-state">

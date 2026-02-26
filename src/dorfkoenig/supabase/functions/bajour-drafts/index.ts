@@ -126,8 +126,18 @@ async function updateDraft(
   if (body.custom_system_prompt !== undefined) {
     updates.custom_system_prompt = body.custom_system_prompt?.trim() || null;
   }
-  // verification_status, verification_responses, verification_sent_at,
-  // verification_resolved_at, verification_timeout_at, whatsapp_message_ids
+  // Allow manual verification status override
+  if (body.verification_status !== undefined) {
+    const allowed = ['ausstehend', 'bestätigt', 'abgelehnt'];
+    if (allowed.includes(body.verification_status)) {
+      updates.verification_status = body.verification_status;
+      if (body.verification_status !== 'ausstehend') {
+        updates.verification_resolved_at = new Date().toISOString();
+      }
+    }
+  }
+  // verification_responses, verification_sent_at,
+  // verification_timeout_at, whatsapp_message_ids
   // are NOT user-editable — only writable by service role (webhook + send-verification)
 
   if (Object.keys(updates).length === 0) {

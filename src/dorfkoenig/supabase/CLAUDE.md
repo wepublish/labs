@@ -16,7 +16,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `bajour-generate-draft` | Generate newsletter draft from selected units via LLM | x-user-id header | Frontend API calls |
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
 | `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
-| `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign from the "Dorfkönig-Basis" template | x-user-id header | Frontend API calls |
+| `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
 
 ## Shared Modules (`functions/_shared/`)
 

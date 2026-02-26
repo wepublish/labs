@@ -46,7 +46,7 @@ export function initAuth(urlToken?: string | null, inIframe: boolean = false) {
     sharedAuth.mockAuth({
       sub: existingUserId,
       email: `${existingUserId}@test.local`,
-      name: `Test Benutzer (${existingUserId})`,
+      name: 'Test Benutzer',
       roles: ['user'],
     });
     return;
@@ -75,7 +75,7 @@ export function login(userId: string) {
   sharedAuth.mockAuth({
     sub: trimmedId,
     email: `${trimmedId}@test.local`,
-    name: `Test Benutzer (${trimmedId})`,
+    name: 'Test Benutzer',
     roles: ['user'],
   });
 }

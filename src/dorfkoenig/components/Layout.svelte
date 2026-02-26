@@ -1,10 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { auth, logout } from '../stores/auth';
-  import { showScoutModal, showUploadModal, showDraftModal } from '../stores/ui';
+  import { showScoutModal, showUploadModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
-  import DraftModal from '../bajour/components/DraftModal.svelte';
   import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
 
   interface Props {
@@ -33,9 +32,6 @@
     showUploadModal.set(true);
   }
 
-  function handleDraft() {
-    showDraftModal.set(true);
-  }
 </script>
 
 <div class="layout">
@@ -69,6 +65,13 @@
         <span>Feed</span>
       </a>
 
+      {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
+        <a href="#/entwurf" class:active={currentHash === '#/entwurf'}>
+          <FileEdit size={16} />
+          <span>Entwurf</span>
+        </a>
+      {/if}
+
       <button class="new-scout-btn" onclick={handleNewScout}>
         <Plus size={15} strokeWidth={2.5} />
         <span>Neuer Scout</span>
@@ -78,13 +81,6 @@
         <Upload size={15} strokeWidth={2.5} />
         <span>Hochladen</span>
       </button>
-
-      {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-        <button class="draft-btn" onclick={handleDraft}>
-          <FileEdit size={15} strokeWidth={2.5} />
-          <span>Entwurf</span>
-        </button>
-      {/if}
     </div>
 
     <div class="nav-user">
@@ -101,10 +97,6 @@
 
   <ScoutModal open={$showScoutModal} onclose={() => showScoutModal.set(false)} />
   <UploadModal open={$showUploadModal} onclose={() => showUploadModal.set(false)} />
-
-  {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-    <DraftModal open={$showDraftModal} onclose={() => showDraftModal.set(false)} />
-  {/if}
 </div>
 
 <style>
@@ -242,28 +234,6 @@
     background: rgba(234, 114, 110, 0.08);
   }
 
-  /* Draft button (Bajour) — outline variant like upload */
-  .draft-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.875rem;
-    margin-left: 0.25rem;
-    border: 1.5px solid var(--color-primary);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-primary);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-
-  .draft-btn:hover {
-    background: rgba(234, 114, 110, 0.08);
-  }
-
   /* User area */
   .nav-user {
     display: flex;
@@ -322,8 +292,7 @@
     }
 
     .new-scout-btn span,
-    .upload-btn span,
-    .draft-btn span {
+    .upload-btn span {
       display: none;
     }
 
@@ -333,11 +302,6 @@
     }
 
     .upload-btn {
-      margin-left: 0.125rem;
-      padding: 0.375rem;
-    }
-
-    .draft-btn {
       margin-left: 0.125rem;
       padding: 0.375rem;
     }

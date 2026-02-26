@@ -17,7 +17,7 @@ export const bajourApi = {
   updateDraft: (draftId: string, data: { verification_status?: VerificationStatus }) =>
     api.patch<BajourDraft>(`bajour-drafts/${draftId}`, data),
 
-  selectUnits: (data: { village_id: string; scout_id: string }) =>
+  selectUnits: (data: { village_id: string; scout_id: string; recency_days?: number; selection_prompt?: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
   generateDraft: (data: {
     village_id: string;
