@@ -36,6 +36,13 @@
     inputValue = value;
   });
 
+  // Clean up debounce timer on component destroy
+  $effect(() => {
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  });
+
   function handleInput(e: Event) {
     const query = (e.target as HTMLInputElement).value;
     inputValue = query;

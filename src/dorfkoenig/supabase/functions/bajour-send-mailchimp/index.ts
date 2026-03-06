@@ -11,6 +11,17 @@ const MAILCHIMP_API_KEY = Deno.env.get('MAILCHIMP_API_KEY')!;
 const MAILCHIMP_SERVER = Deno.env.get('MAILCHIMP_SERVER')!;
 const TEMPLATE_CAMPAIGN_NAME = 'Dorfkönig-Basis';
 
+/**
+ * Escape HTML special characters to prevent XSS in newsletter content.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -80,11 +91,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Build combined village HTML from all drafts
+    // 6. Build combined village HTML from all drafts (escape to prevent XSS)
     const villageContentParts: string[] = [];
     for (const [, { village_name, body }] of villageDrafts) {
-      const bodyHtml = body.replace(/\n/g, '<br>');
-      villageContentParts.push(`<strong>${village_name}</strong><br>${bodyHtml}`);
+      const bodyHtml = escapeHtml(body).replace(/\n/g, '<br>');
+      villageContentParts.push(`<strong>${escapeHtml(village_name)}</strong><br>${bodyHtml}`);
     }
     const combinedContent = villageContentParts.join('<br><br>');
 

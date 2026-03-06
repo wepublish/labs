@@ -50,6 +50,14 @@
   // Auto-close timer
   let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Clean up auto-close timer and object URLs on component destroy
+  $effect(() => {
+    return () => {
+      if (autoCloseTimer) clearTimeout(autoCloseTimer);
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  });
+
   function resetState(): void {
     activeTab = 'text';
     location = null;
