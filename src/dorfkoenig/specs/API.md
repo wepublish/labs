@@ -74,11 +74,14 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
         "state": "Berlin",
         "country": "Germany"
       },
+      "topic": "Stadtentwicklung, Verkehr",
       "frequency": "daily",
       "is_active": true,
       "last_run_at": "2024-01-15T10:30:00Z",
       "consecutive_failures": 0,
       "notification_email": "user@example.com",
+      "provider": "firecrawl",
+      "content_hash": null,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-15T10:30:00Z",
       "last_execution_status": "completed",
@@ -124,7 +127,7 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 - `criteria`: Required, 0-1000 characters (empty allowed for monitor-all mode)
 - `location`: Optional, JSONB object (at least one of `location` or `topic` is required)
 - `topic`: Optional, comma-separated string (at least one of `location` or `topic` is required)
-- `frequency`: Required, one of: `daily`, `weekly`, `monthly`
+- `frequency`: Required, one of: `daily`, `weekly`, `biweekly`, `monthly`
 - `notification_email`: Optional, valid email format
 
 **Response:** `201 Created`
@@ -234,7 +237,43 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
       ]
     },
     "would_notify": true,
-    "would_extract_units": true
+    "would_extract_units": true,
+    "provider": "firecrawl",
+    "content_hash": null
+  }
+}
+```
+
+> **Note:** The test endpoint runs a double-probe to detect whether Firecrawl persists changeTracking baselines for the URL. The result is stored as `provider` (`firecrawl` or `firecrawl_plain`) and `content_hash` (SHA-256 for hash-based change detection) on the scout.
+
+---
+
+## Manual Upload API
+
+### POST /manual-upload
+
+Upload text, photos, or PDFs as information units.
+
+**Request (text):**
+```http
+POST /functions/v1/manual-upload
+Content-Type: application/json
+x-user-id: 493c6d51531c7444365b0ec094bc2d67
+
+{
+  "type": "text",
+  "content": "Der Gemeinderat hat den Neubau genehmigt.",
+  "location": { "city": "Riehen" },
+  "topic": "Stadtentwicklung"
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "data": {
+    "units_created": 1,
+    "unit_ids": ["uuid"]
   }
 }
 ```
@@ -328,6 +367,10 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
         "state": "Berlin",
         "country": "Germany"
       },
+      "topic": "Verkehr",
+      "source_type": "scout",
+      "file_path": null,
+      "event_date": "2024-01-14",
       "created_at": "2024-01-15T10:30:00Z",
       "used_in_article": false
     }

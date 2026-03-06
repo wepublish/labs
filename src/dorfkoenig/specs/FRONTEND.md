@@ -1,4 +1,4 @@
-# coJournalist-Lite Frontend Specification
+# Dorfkoenig Frontend Specification
 
 ## Overview
 
@@ -18,7 +18,7 @@ Svelte 5 SPA using Labs monorepo patterns. German-only UI deployed to GitHub Pag
 ## File Structure
 
 ```
-src/cojournalist-lite/
+src/dorfkoenig/
 ├── index.html              # Entry point
 ├── main.ts                 # App initialization
 ├── App.svelte              # Root component with router
@@ -34,10 +34,11 @@ src/cojournalist-lite/
 │   ├── auth.ts             # Auth store (extends shared)
 │   ├── scouts.ts           # Scout management
 │   ├── units.ts            # Information units
-│   └── executions.ts       # Execution history
+│   ├── executions.ts       # Execution history
+│   └── ui.ts               # UI state (modals)
 │
 ├── components/
-│   ├── Layout.svelte       # Main layout wrapper
+│   ├── Layout.svelte       # Main layout wrapper (nav + modals)
 │   ├── LoginForm.svelte    # Mock user selector
 │   ├── scouts/
 │   │   ├── ScoutList.svelte
@@ -46,19 +47,61 @@ src/cojournalist-lite/
 │   ├── executions/
 │   │   ├── ExecutionList.svelte
 │   │   └── ExecutionCard.svelte
-│   └── compose/
-│       ├── ComposePanel.svelte
-│       ├── UnitList.svelte
-│       ├── SearchBar.svelte
-│       ├── LocationFilter.svelte
-│       └── DraftPreview.svelte
+│   ├── compose/
+│   │   ├── ComposePanel.svelte
+│   │   ├── UnitList.svelte
+│   │   ├── SearchBar.svelte
+│   │   ├── LocationFilter.svelte
+│   │   ├── DraftPreview.svelte
+│   │   ├── DraftContent.svelte
+│   │   ├── DraftPromptEditor.svelte
+│   │   ├── DraftSlideOver.svelte
+│   │   └── SelectionBar.svelte
+│   └── ui/
+│       ├── ModeToggle.svelte
+│       ├── ProgressIndicator.svelte
+│       ├── FilterSelect.svelte
+│       ├── ScopeToggle.svelte
+│       ├── PanelFilterBar.svelte
+│       ├── ScoutModal.svelte
+│       ├── ScoutWizardStep1.svelte
+│       ├── ScoutWizardStep2.svelte
+│       ├── ScoutTestResult.svelte
+│       ├── UploadModal.svelte
+│       ├── UploadTextTab.svelte
+│       ├── UploadPhotoTab.svelte
+│       ├── UploadPdfTab.svelte
+│       └── LocationAutocomplete.svelte
+│
+├── bajour/                     # Bajour village newsletter feature (feature-flagged)
+│   ├── api.ts                  # Bajour API client
+│   ├── store.ts                # Bajour drafts store
+│   ├── types.ts                # Village, Correspondent, BajourDraft types
+│   ├── utils.ts                # Utility functions
+│   ├── villages.json           # Village configuration data
+│   ├── components/
+│   │   ├── DraftPanel.svelte        # 3-step wizard + sidebar
+│   │   ├── DraftList.svelte
+│   │   ├── DraftPreview.svelte
+│   │   ├── DraftsSidebar.svelte
+│   │   ├── VillageSelect.svelte
+│   │   ├── StepVillageSelect.svelte
+│   │   ├── StepGenerate.svelte
+│   │   ├── StepPreviewSend.svelte
+│   │   ├── StepIndicator.svelte
+│   │   ├── SuccessBanner.svelte
+│   │   └── VerificationBadge.svelte
+│   └── __tests__/
+│       ├── api.test.ts
+│       ├── store.test.ts
+│       └── utils.test.ts
 │
 └── routes/
     ├── Login.svelte
-    ├── Dashboard.svelte
+    ├── Manage.svelte           # Scout list + filters (was Dashboard)
     ├── ScoutDetail.svelte
     ├── History.svelte
-    └── Compose.svelte
+    └── Feed.svelte             # Unit search + article drafting (was Compose)
 ```
 
 ---
@@ -73,7 +116,7 @@ src/cojournalist-lite/
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>coJournalist-Lite | Labs</title>
+  <title>Dorfkoenig | Labs</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body>
@@ -117,13 +160,14 @@ Hash-based routing for GitHub Pages compatibility.
 ```svelte
 <script lang="ts">
   import { auth } from './stores/auth';
+  import { Loading } from '@shared/components';
   import Layout from './components/Layout.svelte';
   import Login from './routes/Login.svelte';
-  import Dashboard from './routes/Dashboard.svelte';
+  import Manage from './routes/Manage.svelte';
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
-  import Compose from './routes/Compose.svelte';
-  import { Loading } from '@shared/components';
+  import Feed from './routes/Feed.svelte';
+  import DraftPanel from './bajour/components/DraftPanel.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -137,30 +181,48 @@ Hash-based routing for GitHub Pages compatibility.
   });
 
   // Route parsing
-  let route = $derived(hash.slice(2).split('/')[0] || 'dashboard');
+  let route = $derived(hash.slice(2).split('/')[0] || 'manage');
   let routeParams = $derived(hash.slice(2).split('/').slice(1));
 </script>
 
 {#if $auth.loading}
-  <Loading label="Authentifizierung..." />
+  <div class="loading-container">
+    <Loading label="Authentifizierung..." />
+  </div>
+{:else if $auth.error}
+  <div class="auth-error">
+    <p>{$auth.error}</p>
+  </div>
 {:else if !$auth.user}
   <Login />
 {:else}
   <Layout>
-    {#if route === 'dashboard' || route === ''}
-      <Dashboard />
-    {:else if route === 'scout'}
+    {#if route === 'manage' || route === ''}
+      <Manage />
+    {:else if route === 'scout' && routeParams[0]}
       <ScoutDetail scoutId={routeParams[0]} />
     {:else if route === 'history'}
       <History />
-    {:else if route === 'compose'}
-      <Compose />
+    {:else if route === 'feed'}
+      <Feed />
+    {:else if route === 'entwurf' && import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
+      <DraftPanel />
     {:else}
-      <Dashboard />
+      <Manage />
     {/if}
   </Layout>
 {/if}
 ```
+
+### Route Summary
+
+| Hash | Component | Description |
+|------|-----------|-------------|
+| `#/manage` or `#/` | `Manage` | Scout list + filters |
+| `#/scout/{id}` | `ScoutDetail` | Scout edit + execution history |
+| `#/history` | `History` | All executions |
+| `#/feed` | `Feed` | Unit search + article drafting (ComposePanel) |
+| `#/entwurf` | `DraftPanel` | Bajour village newsletter wizard (feature-flagged: `VITE_FEATURE_BAJOUR=true`) |
 
 ### Navigation Helper
 
@@ -454,98 +516,57 @@ export const executions = createExecutionsStore();
 
 ### Layout.svelte
 
+The layout includes a sticky navbar with:
+- **Brand**: DorfKönig logo (SVG crown + village) with text
+- **Center nav**: Verwalten (`#/manage`), Feed (`#/feed`), Entwurf (`#/entwurf`, feature-flagged), + "Neuer Scout" CTA button, + "Hochladen" upload button
+- **User area**: Display name + logout icon
+- **Modals**: `ScoutModal` and `UploadModal` rendered at layout level
+
 ```svelte
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { auth, logout } from '../stores/auth';
+  import { showScoutModal, showUploadModal } from '../stores/ui';
+  import ScoutModal from './ui/ScoutModal.svelte';
+  import UploadModal from './ui/UploadModal.svelte';
+  import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
   }
 
   let { children }: Props = $props();
+  // ... nav active state tracking via hash
 </script>
 
 <div class="layout">
   <nav class="navbar">
     <div class="nav-brand">
-      <a href="#/">coJournalist-Lite</a>
+      <a href="#/">
+        <!-- SVG brand symbol -->
+        <span class="brand-text">Dorf<span class="brand-accent">König</span></span>
+      </a>
     </div>
-    <div class="nav-links">
-      <a href="#/dashboard">Dashboard</a>
-      <a href="#/history">Verlauf</a>
-      <a href="#/compose">Komponieren</a>
+    <div class="nav-center">
+      <a href="#/manage">Verwalten</a>
+      <a href="#/feed">Feed</a>
+      {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
+        <a href="#/entwurf">Entwurf</a>
+      {/if}
+      <button class="new-scout-btn" onclick={handleNewScout}>Neuer Scout</button>
+      <button class="upload-btn" onclick={handleUpload}>Hochladen</button>
     </div>
     <div class="nav-user">
-      <span>{$auth.user?.name}</span>
-      <button class="btn-logout" onclick={logout}>Abmelden</button>
+      <span>{displayName}</span>
+      <button class="btn-logout" onclick={logout}>
+        <LogOut size={15} />
+      </button>
     </div>
   </nav>
-
-  <main class="main-content">
-    {@render children()}
-  </main>
+  <main class="main-content">{@render children()}</main>
+  <ScoutModal ... />
+  <UploadModal ... />
 </div>
-
-<style>
-  .layout {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .navbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .nav-brand a {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-decoration: none;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: var(--spacing-lg);
-  }
-
-  .nav-links a {
-    color: var(--color-text);
-    text-decoration: none;
-  }
-
-  .nav-links a:hover {
-    color: var(--color-primary);
-  }
-
-  .nav-user {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-  }
-
-  .btn-logout {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .main-content {
-    flex: 1;
-    padding: var(--spacing-lg);
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-  }
-</style>
 ```
 
 ### LoginForm.svelte
@@ -582,7 +603,7 @@ export const executions = createExecutionsStore();
 <div class="login-container">
   <Card shadow="lg">
     {#snippet header()}
-      <h1>coJournalist-Lite</h1>
+      <h1>Dorfkoenig</h1>
       <p class="subtitle">Anmelden zum Fortfahren</p>
     {/snippet}
 
@@ -756,7 +777,8 @@ export const executions = createExecutionsStore();
       {/if}
       <span class="frequency">
         {scout.frequency === 'daily' ? 'Täglich' :
-         scout.frequency === 'weekly' ? 'Wöchentlich' : 'Monatlich'}
+         scout.frequency === 'weekly' ? 'Wöchentlich' :
+         scout.frequency === 'biweekly' ? 'Alle 2 Wochen' : 'Monatlich'}
       </span>
     </div>
 
@@ -1019,97 +1041,13 @@ export const executions = createExecutionsStore();
 
 ## Routes
 
-### Dashboard.svelte
+### Manage.svelte (was Dashboard.svelte)
 
-```svelte
-<script lang="ts">
-  import { scouts } from '../stores/scouts';
-  import { executions } from '../stores/executions';
-  import ScoutList from '../components/scouts/ScoutList.svelte';
-  import ScoutForm from '../components/scouts/ScoutForm.svelte';
-  import ExecutionList from '../components/executions/ExecutionList.svelte';
-  import { Button, Card, Loading } from '@shared/components';
+The main scout management view. Displays the scout list with filter/scope controls. Scout creation is handled via `ScoutModal` triggered from the Layout navbar.
 
-  let showForm = $state(false);
+### Feed.svelte (was Compose.svelte)
 
-  $effect(() => {
-    scouts.load();
-    executions.load();
-  });
-</script>
-
-<div class="dashboard">
-  <header>
-    <h1>Dashboard</h1>
-    <Button onclick={() => showForm = true}>
-      Neuer Scout
-    </Button>
-  </header>
-
-  {#if showForm}
-    <Card shadow="md">
-      <ScoutForm
-        onsubmit={() => showForm = false}
-        oncancel={() => showForm = false}
-      />
-    </Card>
-  {/if}
-
-  <section class="scouts-section">
-    <h2>Meine Scouts</h2>
-    {#if $scouts.loading}
-      <Loading label="Scouts laden..." />
-    {:else if $scouts.error}
-      <p class="error">{$scouts.error}</p>
-    {:else if $scouts.scouts.length === 0}
-      <p>Noch keine Scouts erstellt.</p>
-    {:else}
-      <ScoutList scouts={$scouts.scouts} />
-    {/if}
-  </section>
-
-  <section class="executions-section">
-    <h2>Letzte Ausführungen</h2>
-    {#if $executions.loading}
-      <Loading label="Laden..." />
-    {:else}
-      <ExecutionList
-        executions={$executions.executions.slice(0, 5)}
-        compact
-      />
-      {#if $executions.executions.length > 5}
-        <a href="#/history">Alle anzeigen</a>
-      {/if}
-    {/if}
-  </section>
-</div>
-
-<style>
-  .dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xl);
-  }
-
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  h1 {
-    margin: 0;
-  }
-
-  h2 {
-    margin: 0 0 var(--spacing-md);
-  }
-
-  .error {
-    color: var(--color-danger);
-  }
-</style>
-```
+The information unit browsing and article drafting view. Renders `ComposePanel` with location/topic filters, semantic search, and draft generation.
 
 ---
 
@@ -1211,13 +1149,21 @@ export interface Scout {
   url: string;
   criteria: string;
   location: Location | null;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  topic?: string | null;
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
   notification_email: string | null;
+  provider?: string | null;        // 'firecrawl' | 'firecrawl_plain'
+  content_hash?: string | null;    // SHA-256 for hash-based change detection
   created_at: string;
   updated_at: string;
+  // Last execution data (joined from scout_executions)
+  last_execution_status?: 'running' | 'completed' | 'failed' | null;
+  last_criteria_matched?: boolean | null;
+  last_change_status?: 'changed' | 'same' | 'error' | 'first_run' | null;
+  last_summary_text?: string | null;
 }
 
 export interface Location {
@@ -1233,7 +1179,7 @@ export interface Execution {
   id: string;
   scout_id: string;
   scout_name?: string;
-  user_id: string;
+  scout?: { name: string; url: string };
   status: 'running' | 'completed' | 'failed';
   started_at: string;
   completed_at: string | null;
@@ -1244,8 +1190,10 @@ export interface Execution {
   notification_sent: boolean;
   notification_error: string | null;
   units_extracted: number;
+  scrape_duration_ms?: number | null;
   summary_text: string | null;
   error_message: string | null;
+  units?: InformationUnit[];
 }
 
 export interface InformationUnit {
@@ -1257,21 +1205,72 @@ export interface InformationUnit {
   source_domain: string;
   source_title: string | null;
   location: Location | null;
+  topic?: string | null;
+  scout_id?: string;
+  source_type?: 'scout' | 'manual_text' | 'manual_photo' | 'manual_pdf';
+  file_path?: string | null;
+  file_url?: string | null;
   created_at: string;
   used_in_article: boolean;
+  event_date?: string | null;
   similarity?: number;
+}
+
+export interface TestResult {
+  scrape_result: {
+    success: boolean;
+    title?: string;
+    content_preview?: string;
+    word_count?: number;
+    error?: string;
+  };
+  criteria_analysis: {
+    matches: boolean;
+    summary: string;
+    key_findings: string[];
+  } | null;
+  would_notify: boolean;
+  would_extract_units: boolean;
+  provider?: string | null;
+  content_hash?: string | null;
 }
 
 export interface Draft {
   title: string;
   headline: string;
-  sections: { heading: string; content: string }[];
+  sections: DraftSection[];
   gaps: string[];
-  sources: { title: string; url: string; domain: string }[];
+  sources: DraftSource[];
   word_count: number;
   units_used: number;
 }
 ```
+
+---
+
+## Bajour Feature (Feature-Flagged)
+
+Enabled via `VITE_FEATURE_BAJOUR=true`. Adds the `#/entwurf` route for village newsletter draft creation.
+
+### Architecture
+
+Self-contained in `bajour/` subdirectory with its own API client, store, types, utilities, components, and tests.
+
+### Workflow (3-Step Wizard)
+
+1. **Village Select** (`StepVillageSelect.svelte`): Pick a village from `villages.json` (10 villages). AI auto-selects relevant information units via `bajour-select-units` endpoint.
+2. **Generate** (`StepGenerate.svelte`): Generate newsletter draft via LLM (`bajour-generate-draft`). Optional custom system prompt.
+3. **Preview & Send** (`StepPreviewSend.svelte`): Review draft, send to village correspondents via WhatsApp for verification (`bajour-send-verification`), then aggregate verified drafts into a Mailchimp campaign (`bajour-send-mailchimp`).
+
+### Key Components
+
+- `DraftPanel.svelte`: Root wizard component with `DraftsSidebar`
+- `DraftsSidebar.svelte`: List of existing drafts
+- `VerificationBadge.svelte`: Status badge (ausstehend/bestätigt/abgelehnt)
+
+### Store (`bajour/store.ts`)
+
+`load()`, `create(data)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`. Polls every 30s for pending verifications.
 
 ---
 
