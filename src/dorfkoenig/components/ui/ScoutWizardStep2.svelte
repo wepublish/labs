@@ -56,6 +56,7 @@
       value={name}
       oninput={(e) => onnamechange(e.currentTarget.value)}
       placeholder="z.B. Berlin News Monitor"
+      aria-required="true"
     />
   </div>
 

@@ -2,6 +2,7 @@
   import { fly, fade } from 'svelte/transition';
   import { onDestroy } from 'svelte';
   import { X, AlertCircle, RefreshCw, PenTool, ChevronDown, ChevronUp, Download } from 'lucide-svelte';
+  import { focusTrap } from '../../lib/actions/focus-trap';
   import ProgressIndicator from '../ui/ProgressIndicator.svelte';
   import DraftContent from './DraftContent.svelte';
   import DraftPromptEditor from './DraftPromptEditor.svelte';
@@ -107,7 +108,7 @@
   <div class="backdrop" transition:fade={{ duration: 200 }} onclick={onClose} role="presentation"></div>
 
   <!-- Panel -->
-  <div class="slide-over" transition:fly={{ x: 400, duration: 300 }}>
+  <div class="slide-over" transition:fly={{ x: 400, duration: 300 }} use:focusTrap role="dialog" aria-modal="true" aria-label="Entwurf">
     <!-- Header -->
     <div class="panel-header">
       <h2>Entwurf</h2>
@@ -183,7 +184,7 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--color-backdrop);
     z-index: var(--z-modal);
   }
 
@@ -195,7 +196,7 @@
     width: 65%;
     min-width: 500px;
     max-width: 900px;
-    background: white;
+    background: var(--color-surface);
     z-index: calc(var(--z-modal) + 1);
     display: flex;
     flex-direction: column;
@@ -206,23 +207,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.5rem;
-    background: white;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
   }
 
   .panel-header h2 {
-    font-size: 1rem;
+    font-size: var(--text-lg);
     font-weight: 600;
-    color: var(--color-text, #374151);
+    color: var(--color-text);
     margin: 0;
   }
 
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .action-group {
@@ -236,19 +237,19 @@
     align-items: center;
     height: 1.625rem;
     padding: 0 0.625rem;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     font-weight: 500;
     line-height: 1;
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 5px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .export-btn {
     gap: 0.375rem;
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
     border-color: rgba(234, 114, 110, 0.3);
   }
 
@@ -259,18 +260,18 @@
 
   .regen-toggle-btn {
     gap: 0.25rem;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .regen-toggle-btn:hover {
-    background: var(--color-background, #f3f4f6);
-    color: var(--color-text, #374151);
+    background: var(--color-background);
+    color: var(--color-text);
   }
 
   .regen-toggle-btn.active {
     background: rgba(234, 114, 110, 0.1);
     border-color: rgba(234, 114, 110, 0.3);
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
   }
 
   .close-btn {
@@ -281,15 +282,15 @@
     height: 32px;
     background: transparent;
     border: none;
-    border-radius: 6px;
-    color: var(--color-text-muted, #6b7280);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .close-btn:hover {
-    background: var(--color-background, #f3f4f6);
-    color: var(--color-text, #374151);
+    background: var(--color-background);
+    color: var(--color-text);
   }
 
   .panel-body {
@@ -317,25 +318,25 @@
     box-sizing: border-box;
   }
 
-  .state-centered.error { color: #dc2626; }
-  .state-centered.error h3 { color: #dc2626; margin-top: 0.75rem; font-size: 1rem; font-weight: 600; }
-  .state-centered.error p { margin: 0.25rem 0 1rem 0; font-size: 0.875rem; color: var(--color-text-muted, #6b7280); }
+  .state-centered.error { color: var(--color-danger-dark); }
+  .state-centered.error h3 { color: var(--color-danger-dark); margin-top: 0.75rem; font-size: var(--text-lg); font-weight: 600; }
+  .state-centered.error p { margin: 0.25rem 0 1rem 0; font-size: var(--text-base); color: var(--color-text-muted); }
 
   .retry-btn {
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.8125rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--text-base-sm);
     font-weight: 500;
-    color: #dc2626;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
+    color: var(--color-danger-dark);
+    background: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
   }
 
-  .retry-btn:hover { background: #fee2e2; }
+  .retry-btn:hover { background: var(--color-status-error-bg); }
 
   @media (max-width: 768px) {
     .slide-over {

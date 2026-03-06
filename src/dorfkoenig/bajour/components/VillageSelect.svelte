@@ -37,7 +37,7 @@
   }
 
   .form-group label {
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     color: var(--color-text);
   }
@@ -45,11 +45,11 @@
   .form-group select {
     width: 100%;
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
+    font-size: var(--text-base);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
   }
 
   .form-group select:focus {

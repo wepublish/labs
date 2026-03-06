@@ -26,8 +26,8 @@
     flex-direction: column;
     width: 280px;
     height: 100%;
-    border-left: 1px solid var(--color-border, #e5e7eb);
-    background: var(--color-surface, white);
+    border-left: 1px solid var(--color-border);
+    background: var(--color-surface);
     flex-shrink: 0;
     overflow: hidden;
   }

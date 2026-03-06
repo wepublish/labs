@@ -4,6 +4,9 @@
   import ScoutCard from '../components/scouts/ScoutCard.svelte';
   import PanelFilterBar from '../components/ui/PanelFilterBar.svelte';
   import { Loading } from '@shared/components';
+  import { EmptyState } from '../components/ui/primitives';
+  import { Radar } from 'lucide-svelte';
+  import { showScoutModal } from '../stores/ui';
   import type { Scout } from '../lib/types';
 
   // Filter state
@@ -96,6 +99,8 @@
   }
 </script>
 
+<h1 class="visually-hidden">Scouts verwalten</h1>
+
 <PanelFilterBar
   {locationOptions}
   {topicOptions}
@@ -113,11 +118,19 @@
   {#if $scouts.loading && $scouts.scouts.length === 0}
     <Loading label="Scouts laden..." />
   {:else if $scouts.error}
-    <div class="error-message">{$scouts.error}</div>
+    <div class="error-message" aria-live="polite">{$scouts.error}</div>
   {:else if displayedScouts.length === 0}
-    <div class="empty-state">
-      <p>Keine Scouts gefunden.</p>
-    </div>
+    <EmptyState
+      icon={Radar}
+      title="Noch keine Scouts"
+      description="Erstellen Sie Ihren ersten Scout, um Webseiten zu überwachen."
+    >
+      {#snippet action()}
+        <button class="empty-cta" onclick={() => showScoutModal.set(true)}>
+          Neuer Scout
+        </button>
+      {/snippet}
+    </EmptyState>
   {:else}
     <div class="scouts-grid">
       {#each displayedScouts as scout (scout.id)}
@@ -136,7 +149,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    padding: var(--spacing-md) 1.5rem;
+    padding: var(--spacing-md) var(--spacing-lg);
   }
 
   .scouts-grid {
@@ -145,9 +158,19 @@
     gap: var(--spacing-md);
   }
 
-  .empty-state {
-    text-align: center;
-    padding: var(--spacing-xl);
-    color: var(--color-text-muted);
+  .empty-cta {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary);
+    color: white;
+    font-size: var(--text-base-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-base);
+  }
+
+  .empty-cta:hover {
+    background: var(--color-primary-dark);
   }
 </style>

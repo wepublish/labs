@@ -174,15 +174,15 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
   }
 
   .recency-value {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 600;
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
   }
 
   .recency-slider-row {
@@ -192,9 +192,9 @@
   }
 
   .recency-bound {
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 500;
-    color: var(--color-text-light, #9ca3af);
+    color: var(--color-text-light);
     flex-shrink: 0;
     width: 1.25rem;
     text-align: center;
@@ -208,8 +208,8 @@
     border-radius: 3px;
     background: linear-gradient(
       90deg,
-      var(--color-primary, #ea726e) 0%,
-      var(--color-primary, #ea726e) var(--fill, 33%),
+      var(--color-primary) 0%,
+      var(--color-primary) var(--fill, 33%),
       rgba(234, 114, 110, 0.12) var(--fill, 33%),
       rgba(234, 114, 110, 0.12) 100%
     );
@@ -224,10 +224,10 @@
     height: 18px;
     border-radius: 50%;
     background: white;
-    border: 2px solid var(--color-primary, #ea726e);
+    border: 2px solid var(--color-primary);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
     cursor: grab;
-    transition: box-shadow 0.15s, transform 0.15s;
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
   }
 
   .recency-slider::-webkit-slider-thumb:hover {
@@ -245,14 +245,14 @@
     height: 18px;
     border-radius: 50%;
     background: white;
-    border: 2px solid var(--color-primary, #ea726e);
+    border: 2px solid var(--color-primary);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
     cursor: grab;
   }
 
   .recency-hint {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
     margin: 0;
     font-style: italic;
   }
@@ -271,11 +271,11 @@
     padding: 0;
     border: none;
     background: transparent;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: color 0.15s;
+    transition: color var(--transition-base);
   }
 
   .prompt-toggle:hover {
@@ -291,12 +291,12 @@
   .prompt-editor textarea {
     width: 100%;
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-family: inherit;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
     resize: vertical;
   }
 
@@ -307,8 +307,8 @@
   }
 
   .prompt-hint {
-    font-size: 0.6875rem;
-    color: var(--color-text-light, #9ca3af);
+    font-size: var(--text-xs);
+    color: var(--color-text-light);
     margin: 0;
   }
 

@@ -67,6 +67,7 @@
       oninput={(e) => onurlchange(e.currentTarget.value)}
       placeholder="https://example.com/news"
       disabled={testing}
+      aria-required="true"
     />
   </div>
 
@@ -190,7 +191,7 @@
 
   .form-group label,
   .form-label {
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     color: var(--color-text);
   }
@@ -198,12 +199,12 @@
   .form-group input[type="url"],
   .form-group textarea {
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
+    padding: var(--spacing-sm) 0.75rem;
+    font-size: var(--text-base);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
   }
 
   .form-group input:focus,
@@ -221,11 +222,11 @@
 
   .error-message {
     padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.375rem;
+    font-size: var(--text-base-sm);
+    color: var(--color-status-error-text);
+    background: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-sm);
   }
 
   .criteria-toggle-wrapper {
@@ -246,16 +247,16 @@
     padding: 0;
     border: none;
     background: transparent;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
-    color: #9ca3af;
+    color: var(--color-text-light);
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: color var(--transition-base);
     white-space: nowrap;
   }
 
   .criteria-label.active {
-    color: var(--color-primary, #4f46e5);
+    color: var(--color-primary);
   }
 
   .criteria-label:disabled {
@@ -267,13 +268,13 @@
     position: relative;
     width: 36px;
     height: 20px;
-    background: #e0e7ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 9999px;
+    background: var(--color-primary-light);
+    border: 1px solid rgba(234, 114, 110, 0.3);
+    border-radius: var(--radius-full);
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
-    transition: background 0.2s ease;
+    transition: background var(--transition-base);
   }
 
   .criteria-track:disabled {
@@ -287,8 +288,8 @@
     left: 2px;
     width: 14px;
     height: 14px;
-    background: var(--color-primary, #4f46e5);
-    border-radius: 9999px;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
   }

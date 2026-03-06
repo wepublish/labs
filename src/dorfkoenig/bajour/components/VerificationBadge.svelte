@@ -40,25 +40,25 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.125rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     font-weight: 600;
-    border-radius: 9999px;
+    border-radius: var(--radius-full);
     white-space: nowrap;
     line-height: 1.4;
   }
 
   .badge-pending {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--color-badge-event-bg);
+    color: var(--color-badge-event-text);
   }
 
   .badge-confirmed {
-    background: #d1fae5;
-    color: #065f46;
+    background: var(--color-badge-entity-bg);
+    color: var(--color-badge-entity-text);
   }
 
   .badge-rejected {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--color-status-error-bg);
+    color: var(--color-status-error-text);
   }
 </style>

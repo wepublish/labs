@@ -1,5 +1,6 @@
 <script lang="ts">
   import { X, Upload, FileText, Camera, File as FileIcon } from 'lucide-svelte';
+  import { focusTrap } from '../../lib/actions/focus-trap';
   import { Button } from '@shared/components';
   import { manualUploadApi } from '../../lib/api';
   import { MIN_TEXT_LENGTH, MIN_DESCRIPTION_LENGTH, extractTopics } from '../../lib/constants';
@@ -234,7 +235,7 @@
     onclick={handleBackdrop}
     onkeydown={handleKeydown}
   >
-    <div class="modal-card">
+    <div class="modal-card" use:focusTrap>
 
       <!-- Header -->
       <div class="modal-header">
@@ -386,7 +387,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--color-backdrop);
     backdrop-filter: blur(4px);
   }
 
@@ -394,9 +395,9 @@
     position: relative;
     width: 100%;
     max-width: 32rem;
-    margin: 1rem;
-    background: var(--color-surface, white);
-    border-radius: var(--radius-lg, 1rem);
+    margin: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     max-height: 90vh;
@@ -453,11 +454,11 @@
     width: 2rem;
     height: 2rem;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-light);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-base), color var(--transition-base);
   }
 
   .modal-close:hover {
@@ -477,15 +478,15 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0.5rem 1rem;
+    padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-base);
   }
 
   .tab:hover {
@@ -527,7 +528,7 @@
 
   .form-group label,
   .form-label {
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     color: var(--color-text);
   }
@@ -539,12 +540,12 @@
 
   .form-group input[type="text"] {
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
+    padding: var(--spacing-sm) 0.75rem;
+    font-size: var(--text-base);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
     font-family: inherit;
     resize: vertical;
   }
@@ -557,10 +558,10 @@
 
   .error-message {
     padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.375rem;
+    font-size: var(--text-base-sm);
+    color: var(--color-status-error-text);
+    background: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-sm);
   }
 </style>

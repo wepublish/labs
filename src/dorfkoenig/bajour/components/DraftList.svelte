@@ -85,8 +85,8 @@
   .empty-state {
     text-align: center;
     padding: 2rem 1rem;
-    color: var(--color-text-muted, #6b7280);
-    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
   }
 
   .empty-state p {
@@ -105,11 +105,11 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.75rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: var(--radius-sm, 0.5rem);
-    background: var(--color-background, #f9fafb);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background var(--transition-base), border-color var(--transition-base);
     width: 100%;
     text-align: left;
     font-family: inherit;
@@ -129,14 +129,14 @@
   }
 
   .draft-village {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 500;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
   }
 
   .draft-date {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .draft-row-meta {

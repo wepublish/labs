@@ -139,50 +139,50 @@
 
   .prompt-panel {
     width: 360px;
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
-    margin-bottom: 0.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) 1.25rem;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--spacing-sm);
   }
 
   .prompt-label {
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--color-text-muted, #6b7280);
-    margin-bottom: 0.5rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-sm);
   }
 
   .prompt-textarea {
     width: 100%;
     padding: 0.625rem;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     line-height: 1.5;
     font-family: 'Monaco', 'Menlo', monospace;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 4px;
-    background: var(--color-background, #f9fafb);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
     resize: vertical;
     min-height: 100px;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-sm);
     box-sizing: border-box;
   }
 
   .prompt-textarea:focus {
     outline: none;
-    border-color: var(--color-primary, #ea726e);
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.1);
   }
 
   .prompt-textarea::placeholder {
-    color: #9ca3af;
-    font-size: 0.6875rem;
+    color: var(--color-text-light);
+    font-size: var(--text-xs);
   }
 
   .reset-button {
@@ -190,31 +190,31 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.625rem;
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 500;
-    color: var(--color-text-muted, #6b7280);
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 4px;
+    color: var(--color-text-muted);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .reset-button:hover {
-    background: #fee2e2;
-    border-color: #fca5a5;
-    color: #dc2626;
+    background: var(--color-status-error-bg);
+    border-color: var(--color-danger-light);
+    color: var(--color-danger-dark);
   }
 
   .bar {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.625rem 1rem;
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
+    padding: 0.625rem var(--spacing-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
   }
 
   .selection-count {
@@ -223,9 +223,9 @@
     gap: 0.25rem;
     padding: 0.25rem 0.625rem;
     background: rgba(234, 114, 110, 0.1);
-    color: var(--color-primary, #ea726e);
-    border-radius: 9999px;
-    font-size: 0.75rem;
+    color: var(--color-primary);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
     font-weight: 600;
   }
 
@@ -234,18 +234,18 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.4rem 0.5rem;
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 6px;
-    color: var(--color-text-muted, #6b7280);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .delete-btn:hover {
-    background: #fee2e2;
-    border-color: #fca5a5;
-    color: #dc2626;
+    background: var(--color-status-error-bg);
+    border-color: var(--color-danger-light);
+    color: var(--color-danger-dark);
   }
 
   .settings-btn {
@@ -253,23 +253,23 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.4rem 0.5rem;
-    background: white;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 6px;
-    color: var(--color-text-muted, #6b7280);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .settings-btn:hover {
-    background: var(--color-background, #f3f4f6);
-    color: var(--color-text, #374151);
+    background: var(--color-background);
+    color: var(--color-text);
   }
 
   .settings-btn.active {
     background: rgba(234, 114, 110, 0.1);
     border-color: rgba(234, 114, 110, 0.3);
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
   }
 
   .view-draft-btn {
@@ -277,14 +277,14 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.4rem 0.75rem;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
     background: rgba(234, 114, 110, 0.1);
     border: 1px solid rgba(234, 114, 110, 0.3);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-base);
   }
 
   .view-draft-btn:hover {
@@ -295,13 +295,13 @@
   .generate-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, var(--color-primary, #ea726e) 0%, var(--color-primary-dark, #d45a56) 100%);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.8125rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-base-sm);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;

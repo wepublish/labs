@@ -231,11 +231,11 @@
 
   .error-message {
     padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.375rem;
+    font-size: var(--text-base-sm);
+    color: var(--color-status-error-text);
+    background: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-sm);
   }
 
   .existing-draft-header {
@@ -246,27 +246,27 @@
   }
 
   .existing-draft-title {
-    font-size: 1.125rem;
+    font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0;
   }
 
   .existing-draft-village {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .existing-draft-body {
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     line-height: 1.6;
   }
 
   .existing-draft-body :global(h3) {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0.75rem 0 0.25rem 0;
   }
 
@@ -283,8 +283,8 @@
   }
 
   .existing-draft-body :global(.source-ref) {
-    font-size: 0.6875rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
   }
 
   /* Status override toggle */
@@ -295,16 +295,16 @@
   }
 
   .status-override-hint {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .status-toggle {
     display: flex;
     gap: 0;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     overflow: hidden;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     width: fit-content;
   }
 
@@ -313,21 +313,21 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     border: none;
-    background: var(--color-surface, white);
-    color: var(--color-text-muted, #6b7280);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-base), color var(--transition-base);
   }
 
   .toggle-btn:not(:last-child) {
-    border-right: 1px solid var(--color-border, #e5e7eb);
+    border-right: 1px solid var(--color-border);
   }
 
   .toggle-btn:hover:not(.active):not(:disabled) {
-    background: var(--color-surface-muted, #f3f4f6);
+    background: var(--color-surface-muted);
   }
 
   .toggle-btn:disabled {
@@ -336,13 +336,13 @@
   }
 
   .toggle-confirm.active {
-    background: #d1fae5;
-    color: #065f46;
+    background: var(--color-badge-entity-bg);
+    color: var(--color-badge-entity-text);
   }
 
   .toggle-reject.active {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--color-status-error-bg);
+    color: var(--color-status-error-text);
   }
 
   .step-actions {
@@ -350,7 +350,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding-top: 0.5rem;
-    border-top: 1px solid var(--color-border, #e5e7eb);
+    border-top: 1px solid var(--color-border);
   }
 
   .mailchimp-wrapper {

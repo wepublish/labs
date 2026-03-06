@@ -4,15 +4,16 @@
   interface Props {
     padding?: 'none' | 'sm' | 'md' | 'lg';
     shadow?: 'none' | 'sm' | 'md' | 'lg';
+    interactive?: boolean;
     children: Snippet;
     header?: Snippet;
     footer?: Snippet;
   }
 
-  let { padding = 'md', shadow = 'sm', children, header, footer }: Props = $props();
+  let { padding = 'md', shadow = 'sm', interactive = false, children, header, footer }: Props = $props();
 </script>
 
-<div class="card shadow-{shadow}">
+<div class="card shadow-{shadow}" class:interactive>
   {#if header}
     <div class="card-header padding-{padding}">
       {@render header()}
@@ -33,9 +34,19 @@
 <style>
   .card {
     background-color: var(--color-surface, #ffffff);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-border, #e5e7eb);
     overflow: hidden;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .interactive {
+    cursor: pointer;
+  }
+
+  .interactive:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
   }
 
   /* Shadows */
@@ -44,19 +55,15 @@
   }
 
   .shadow-sm {
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    box-shadow: var(--shadow-sm);
   }
 
   .shadow-md {
-    box-shadow:
-      0 4px 6px -1px rgb(0 0 0 / 0.1),
-      0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-md);
   }
 
   .shadow-lg {
-    box-shadow:
-      0 10px 15px -3px rgb(0 0 0 / 0.1),
-      0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-lg);
   }
 
   /* Padding */

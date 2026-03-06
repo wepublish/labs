@@ -42,7 +42,7 @@
     flex-direction: column;
     width: 180px;
     padding: 1.5rem 1rem 1.5rem 1.25rem;
-    border-right: 1px solid var(--color-border, #e5e7eb);
+    border-right: 1px solid var(--color-border);
     flex-shrink: 0;
   }
 
@@ -65,18 +65,18 @@
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
-    border: 2px solid var(--color-border, #e5e7eb);
-    background: var(--color-surface, white);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
-    transition: all 0.2s ease;
+    transition: all var(--transition-base);
   }
 
   .step-number {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-text-light, #9ca3af);
+    color: var(--color-text-light);
   }
 
   .step-text {
@@ -88,19 +88,19 @@
   }
 
   .step-label {
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
-    color: var(--color-text-light, #9ca3af);
+    color: var(--color-text-light);
     line-height: 1.3;
-    transition: color 0.2s ease;
+    transition: color var(--transition-base);
   }
 
   .step-subtitle {
-    font-size: 0.6875rem;
-    color: var(--color-text-light, #9ca3af);
+    font-size: var(--text-xs);
+    color: var(--color-text-light);
     line-height: 1.3;
     opacity: 0.7;
-    transition: color 0.2s ease, opacity 0.2s ease;
+    transition: color var(--transition-base), opacity var(--transition-base);
   }
 
   /* Connector line */
@@ -110,47 +110,47 @@
     top: 2rem;
     bottom: 0;
     width: 2px;
-    background: var(--color-border, #e5e7eb);
-    transition: background 0.2s ease;
+    background: var(--color-border);
+    transition: background var(--transition-base);
   }
 
   .step-connector.completed {
-    background: var(--color-primary, #ea726e);
+    background: var(--color-primary);
   }
 
   /* Active state */
   .active .step-circle {
-    border-color: var(--color-primary, #ea726e);
+    border-color: var(--color-primary);
     background: rgba(234, 114, 110, 0.1);
     box-shadow: 0 0 0 4px rgba(234, 114, 110, 0.08);
   }
 
   .active .step-number {
-    color: var(--color-primary, #ea726e);
+    color: var(--color-primary);
   }
 
   .active .step-label {
-    color: var(--color-text, #111827);
+    color: var(--color-text);
   }
 
   .active .step-subtitle {
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
     opacity: 1;
   }
 
   /* Completed state */
   .completed .step-circle {
-    border-color: var(--color-primary, #ea726e);
-    background: var(--color-primary, #ea726e);
+    border-color: var(--color-primary);
+    background: var(--color-primary);
     color: white;
   }
 
   .completed .step-label {
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .completed .step-subtitle {
-    color: var(--color-text-light, #9ca3af);
+    color: var(--color-text-light);
   }
 
   /* Mobile: horizontal layout */
@@ -159,7 +159,7 @@
       flex-direction: row;
       width: 100%;
       border-right: none;
-      border-bottom: 1px solid var(--color-border, #e5e7eb);
+      border-bottom: 1px solid var(--color-border);
       padding: 1rem;
       gap: 0.5rem;
       overflow-x: auto;

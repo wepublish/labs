@@ -1,5 +1,6 @@
 <script lang="ts">
   import { X, Globe } from 'lucide-svelte';
+  import { focusTrap } from '../../lib/actions/focus-trap';
   import { scouts } from '../../stores/scouts';
   import { extractTopics } from '../../lib/constants';
   import ScoutWizardStep1 from './ScoutWizardStep1.svelte';
@@ -225,7 +226,7 @@
     onclick={handleBackdrop}
     onkeydown={handleKeydown}
   >
-    <div class="modal-card">
+    <div class="modal-card" use:focusTrap>
 
       <!-- Header -->
       <div class="modal-header">
@@ -312,7 +313,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--color-backdrop);
     backdrop-filter: blur(4px);
   }
 
@@ -320,9 +321,9 @@
     position: relative;
     width: 100%;
     max-width: 32rem;
-    margin: 1rem;
-    background: var(--color-surface, white);
-    border-radius: var(--radius-lg, 1rem);
+    margin: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     max-height: 90vh;
@@ -368,7 +369,7 @@
 
   .modal-subtitle {
     margin: 0;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
 
@@ -379,11 +380,11 @@
     width: 2rem;
     height: 2rem;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-light);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-base), color var(--transition-base);
   }
 
   .modal-close:hover {
@@ -415,12 +416,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
     border: 2px solid var(--color-border);
     color: var(--color-text-muted);
-    background: white;
-    transition: all 0.2s;
+    background: var(--color-surface);
+    transition: all var(--transition-base);
   }
 
   .step.active .step-circle {
@@ -436,7 +437,7 @@
   }
 
   .step-label {
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 500;
     color: var(--color-text-muted);
   }
@@ -449,7 +450,7 @@
     background: var(--color-border);
     margin: 0 0.5rem;
     margin-bottom: 1.25rem;
-    transition: background 0.3s;
+    transition: background var(--transition-slow);
   }
 
   .step-line.filled { background: var(--color-primary); }

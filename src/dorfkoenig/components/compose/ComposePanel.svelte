@@ -218,7 +218,7 @@
 
 <div class="panel-content">
   {#if $units.error}
-    <div class="error-message">{$units.error}</div>
+    <div class="error-message" aria-live="polite">{$units.error}</div>
   {/if}
 
   {#if $units.loading}
@@ -261,11 +261,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    padding: var(--spacing-md) 1.5rem;
+    padding: var(--spacing-md) var(--spacing-lg);
   }
 
   .count-label {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
 </style>

@@ -4,6 +4,8 @@
   import { scouts } from '../stores/scouts';
   import ExecutionList from '../components/executions/ExecutionList.svelte';
   import { Button, Loading } from '@shared/components';
+  import { EmptyState } from '../components/ui/primitives';
+  import { History as HistoryIcon } from 'lucide-svelte';
 
   let selectedScoutId = $state<string | undefined>(undefined);
 
@@ -42,11 +44,13 @@
     {#if $executions.loading && $executions.executions.length === 0}
       <Loading label="Ausführungen laden..." />
     {:else if $executions.error}
-      <div class="error-message">{$executions.error}</div>
+      <div class="error-message" aria-live="polite">{$executions.error}</div>
     {:else if $executions.executions.length === 0}
-      <div class="empty-state">
-        <p>Noch keine Ausführungen.</p>
-      </div>
+      <EmptyState
+        icon={HistoryIcon}
+        title="Noch keine Ausführungen"
+        description="Sobald ein Scout ausgeführt wird, erscheint der Verlauf hier."
+      />
     {:else}
       <ExecutionList executions={$executions.executions} />
 
@@ -82,7 +86,7 @@
   }
 
   .filter-bar label {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     color: var(--color-text-muted);
   }
 
@@ -90,7 +94,7 @@
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     min-width: 200px;
   }
 

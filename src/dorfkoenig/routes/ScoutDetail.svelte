@@ -4,6 +4,8 @@
   import ScoutForm from '../components/scouts/ScoutForm.svelte';
   import ExecutionList from '../components/executions/ExecutionList.svelte';
   import { Button, Card, Loading } from '@shared/components';
+  import { EmptyState } from '../components/ui/primitives';
+  import { History } from 'lucide-svelte';
   import type { Scout } from '../lib/types';
 
   interface Props {
@@ -87,9 +89,11 @@
         {#if $executions.loading}
           <Loading label="Laden..." />
         {:else if $executions.executions.length === 0}
-          <div class="empty-state">
-            <p>Noch keine Ausführungen für diesen Scout.</p>
-          </div>
+          <EmptyState
+            icon={History}
+            title="Noch keine Ausführungen"
+            description="Sobald dieser Scout ausgeführt wird, erscheint der Verlauf hier."
+          />
         {:else}
           <ExecutionList executions={$executions.executions} />
           {#if $executions.hasMore}

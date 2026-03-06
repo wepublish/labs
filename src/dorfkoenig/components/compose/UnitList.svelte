@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Check, Inbox } from 'lucide-svelte';
+  import { Badge, EmptyState } from '../ui/primitives';
   import { UNIT_TYPE_LABELS, formatRelativeTime } from '../../lib/constants';
   import type { InformationUnit } from '../../lib/types';
 
@@ -10,7 +12,6 @@
 
   let { units, selected, ontoggle }: Props = $props();
 
-  // Track which statements are truncated
   let truncatedIds = $state(new Set<string>());
   let statementRefs = new Map<string, HTMLElement>();
 
@@ -26,7 +27,6 @@
   }
 
   function checkTruncation(id: string, node: HTMLElement) {
-    // Use requestAnimationFrame so layout has settled
     requestAnimationFrame(() => {
       const next = new Set(truncatedIds);
       if (node.scrollHeight > node.clientHeight) {
@@ -48,9 +48,11 @@
 </script>
 
 {#if units.length === 0}
-  <div class="empty-state">
-    <p>Keine Informationseinheiten gefunden.</p>
-  </div>
+  <EmptyState
+    icon={Inbox}
+    title="Keine Einheiten"
+    description="Es wurden keine Informationseinheiten gefunden."
+  />
 {:else}
   <div class="units-list">
     {#each units as unit (unit.id)}
@@ -61,16 +63,19 @@
         class:selected={isSelected}
         onclick={() => ontoggle(unit.id)}
       >
+        {#if isSelected}
+          <span class="check-mark"><Check size={10} strokeWidth={3} /></span>
+        {/if}
+
         <div class="unit-badges">
-          <span class="unit-type {unit.unit_type}">
+          <Badge variant={unit.unit_type}>
             {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
-          </span>
+          </Badge>
           {#if unit.source_type?.startsWith('manual_')}
-            <span class="source-badge manual">Manuell</span>
+            <Badge variant="manual">Manuell</Badge>
           {/if}
         </div>
 
-        <!-- Statement with 4-line clamp -->
         <p
           class="unit-statement"
           class:truncated={truncatedIds.has(unit.id)}
@@ -79,14 +84,13 @@
           {unit.statement}
         </p>
 
-        <!-- Entity chips -->
         {#if unit.entities && unit.entities.length > 0}
           <div class="unit-entities">
             {#each unit.entities.slice(0, 3) as entity}
-              <span class="entity-chip">{entity}</span>
+              <Badge variant="neutral" size="sm">{entity}</Badge>
             {/each}
             {#if unit.entities.length > 3}
-              <span class="entity-chip overflow">+{unit.entities.length - 3} mehr</span>
+              <span class="entity-overflow">+{unit.entities.length - 3} mehr</span>
             {/if}
           </div>
         {/if}
@@ -117,3 +121,137 @@
     {/each}
   </div>
 {/if}
+
+<style>
+  .units-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.625rem;
+  }
+
+  .unit-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    gap: var(--spacing-sm);
+    background: var(--color-surface);
+    text-align: left;
+    position: relative;
+    transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .unit-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(234, 114, 110, 0.08);
+  }
+
+  .unit-card:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .unit-card.selected {
+    border-color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.06);
+  }
+
+  .check-mark {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .unit-badges {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .unit-statement {
+    font-size: var(--text-md);
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .unit-statement.truncated::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1.5em;
+    background: linear-gradient(transparent, var(--color-surface));
+    pointer-events: none;
+  }
+
+  .unit-card.selected .unit-statement.truncated::after {
+    background: linear-gradient(transparent, rgba(254, 249, 249, 1));
+  }
+
+  .unit-entities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .entity-overflow {
+    font-size: var(--text-2xs);
+    color: var(--color-text-light);
+    padding-left: 0.25rem;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-text-light);
+  }
+
+  .footer-sep {
+    color: var(--color-text-light);
+    opacity: 0.5;
+  }
+
+  .source-link {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .source-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  .score-pill {
+    margin-left: auto;
+    padding: 0 0.375rem;
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-full);
+    font-weight: 500;
+    font-size: var(--text-2xs);
+  }
+
+</style>

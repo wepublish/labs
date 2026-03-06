@@ -44,7 +44,7 @@
     padding: 1rem 1.25rem;
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.12) 100%);
     border: 1px solid rgba(16, 185, 129, 0.25);
-    border-radius: var(--radius-lg, 0.75rem);
+    border-radius: var(--radius-lg);
   }
 
   .banner-icon {
@@ -52,7 +52,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #059669;
+    color: var(--color-success-dark);
     padding-top: 0.0625rem;
   }
 
@@ -65,14 +65,14 @@
   }
 
   .banner-title {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 600;
-    color: #065f46;
+    color: var(--color-badge-entity-text);
   }
 
   .banner-message {
-    font-size: 0.8125rem;
-    color: #047857;
+    font-size: var(--text-base-sm);
+    color: var(--color-success-dark);
     line-height: 1.5;
   }
 
@@ -83,12 +83,12 @@
     width: 1.5rem;
     height: 1.5rem;
     border: none;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     background: transparent;
-    color: #059669;
+    color: var(--color-success-dark);
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.15s;
+    transition: background var(--transition-base);
   }
 
   .banner-dismiss:hover {
