@@ -1,4 +1,8 @@
-// Bajour Drafts Edge Function — CRUD for bajour_drafts table
+/**
+ * @module bajour-drafts
+ * CRUD for Bajour village newsletter drafts (bajour_drafts table).
+ * GET: list all drafts. POST: create draft. PATCH: update (e.g. verification_status).
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

@@ -1,4 +1,9 @@
-// Units Edge Function - Information units for Compose panel
+/**
+ * @module units
+ * Information units for the Compose panel.
+ * GET: list/filter units by location, topic, unused-only. GET ?search=: semantic search via pgvector.
+ * PUT: mark units as used (sets used_in_article, extends TTL).
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

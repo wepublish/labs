@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Dismissible success banner for verification-sent and Mailchimp-campaign-created events.
   import { CheckCircle, Mail, X } from 'lucide-svelte';
   import { fly } from 'svelte/transition';
 

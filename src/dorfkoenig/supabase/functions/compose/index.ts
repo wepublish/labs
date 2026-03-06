@@ -1,5 +1,9 @@
-// Compose Edge Function - Article draft generation from information units
-// 3-layer German SMART BREVITY prompt + Firecrawl source enrichment
+/**
+ * @module compose
+ * Article draft generation from selected information units.
+ * POST: generates a structured draft using a 3-layer German SMART BREVITY prompt
+ * with optional Firecrawl source enrichment and custom system prompt.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

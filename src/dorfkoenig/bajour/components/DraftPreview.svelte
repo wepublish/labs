@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Rendered preview of a generated Bajour newsletter draft with inline markdown.
   import type { BajourDraftGenerated } from '../types';
   import { processInlineMarkdown } from '../utils';
 

@@ -1,5 +1,8 @@
-// Bajour Send Verification Edge Function
-// Sends a draft to village correspondents via WhatsApp Business API for verification
+/**
+ * @module bajour-send-verification
+ * Sends a draft to village correspondents via WhatsApp Business API for verification.
+ * POST: sends quick-reply messages (bestaetigt/abgelehnt) and sets timeout window.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

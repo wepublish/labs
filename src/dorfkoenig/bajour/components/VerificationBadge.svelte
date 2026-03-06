@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Status badge for draft verification: ausstehend (pending), bestaetigt, abgelehnt.
   import { Clock, CheckCircle, XCircle } from 'lucide-svelte';
   import type { VerificationStatus } from '../types';
 

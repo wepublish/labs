@@ -1,4 +1,5 @@
 <script lang="ts">
+  // List of existing Bajour drafts with verification status badges.
   import { Plus } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import VerificationBadge from './VerificationBadge.svelte';

@@ -1,5 +1,8 @@
-// Bajour Generate Draft Edge Function
-// Generates a newsletter draft from selected units using a 3-layer prompt system
+/**
+ * @module bajour-generate-draft
+ * Generates a village newsletter draft from selected units.
+ * POST: uses a 3-layer prompt system (guidelines + village context + custom prompt).
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

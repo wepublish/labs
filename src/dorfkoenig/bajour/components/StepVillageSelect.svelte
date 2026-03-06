@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Step 1: village picker with optional advanced settings (selection/generation prompts, recency).
   import { ChevronDown, ChevronUp } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';

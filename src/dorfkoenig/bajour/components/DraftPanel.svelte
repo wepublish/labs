@@ -1,4 +1,7 @@
 <script lang="ts">
+  // Bajour newsletter wizard: 3-step flow (village select -> generate -> preview/send)
+  // with a sidebar listing existing drafts and their verification statuses.
+
   import { onDestroy } from 'svelte';
   import { fly } from 'svelte/transition';
   import { FileText } from 'lucide-svelte';

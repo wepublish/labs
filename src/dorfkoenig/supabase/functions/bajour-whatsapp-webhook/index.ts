@@ -1,5 +1,9 @@
-// Bajour WhatsApp Webhook Edge Function
-// Empfaengt Verifizierungsantworten von Dorfkorrespondenten via WhatsApp Business API
+/**
+ * @module bajour-whatsapp-webhook
+ * Receives WhatsApp quick-reply callbacks from village correspondents.
+ * POST: processes bestaetigt/abgelehnt responses and updates draft verification status.
+ * GET: Meta webhook verification (hub.challenge handshake).
+ */
 
 import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';

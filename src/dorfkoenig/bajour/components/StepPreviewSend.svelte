@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Step 3: preview generated draft, save/send to WhatsApp verification, and send to Mailchimp.
   import { RefreshCw, Send, Mail, Loader2 } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { bajourDrafts } from '../store';

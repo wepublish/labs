@@ -1,4 +1,9 @@
-// Execute Scout Edge Function - 9-step pipeline for scout execution
+/**
+ * @module execute-scout
+ * 9-step execution pipeline: scrape -> change detection -> criteria analysis ->
+ * dedup -> store -> extract units -> notify -> update scout -> finalize.
+ * POST: triggered by pg_cron dispatch or manual run. Auth: service role or x-user-id.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';

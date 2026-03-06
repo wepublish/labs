@@ -1,6 +1,9 @@
-// Bajour Send to Mailchimp Edge Function
-// Aggregates all verified (bestätigt) drafts and creates a Mailchimp campaign
-// from the "Dorfkönig-Basis" template.
+/**
+ * @module bajour-send-mailchimp
+ * Aggregates all verified (bestaetigt) drafts into a Mailchimp campaign.
+ * POST: clones the "Dorfkoenig-Basis" template, replaces text:\w+ placeholders
+ * with combined village content via regex, and creates the campaign.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

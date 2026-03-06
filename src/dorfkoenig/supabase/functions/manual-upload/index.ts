@@ -1,5 +1,10 @@
-// Manual Upload Edge Function
-// Allows journalists to manually upload text, photos, and PDFs as information units
+/**
+ * @module manual-upload
+ * Manual upload of text, photos, and PDFs as information units.
+ * POST content_type=text: extract units from raw text via LLM.
+ * POST content_type=photo|pdf: generate presigned upload URL.
+ * POST content_type=photo_confirm|pdf_confirm: confirm upload and extract units.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

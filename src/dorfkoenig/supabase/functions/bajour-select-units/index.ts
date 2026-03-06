@@ -1,5 +1,8 @@
-// Bajour Select Units Edge Function
-// Selects relevant information units for a village newsletter using LLM with recency bias
+/**
+ * @module bajour-select-units
+ * AI-powered selection of relevant information units for a village newsletter.
+ * POST: uses LLM with recency bias to pick the most relevant units for a given village.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

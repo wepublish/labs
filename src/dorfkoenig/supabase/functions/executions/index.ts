@@ -1,4 +1,9 @@
-// Executions Edge Function - Scout execution history
+/**
+ * @module executions
+ * Scout execution history (read-only).
+ * GET: list executions with pagination (default 20), optional scout_id filter.
+ * GET /:id: get single execution detail.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';

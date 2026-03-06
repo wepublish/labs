@@ -1,4 +1,10 @@
-// Scouts Edge Function - CRUD operations for web scouts
+/**
+ * @module scouts
+ * CRUD for web scout configurations.
+ * GET: list all (enriched with latest execution) or get by ID.
+ * POST: create scout. POST ?action=run: trigger execution. POST ?action=test: double-probe test.
+ * PUT: update scout. DELETE: remove (cascades to executions/units).
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId, type Scout } from '../_shared/supabase-client.ts';

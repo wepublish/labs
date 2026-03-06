@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Horizontal step indicator showing current/completed/upcoming steps.
   import { Check } from 'lucide-svelte';
 
   interface Step {
