@@ -76,6 +76,9 @@ export interface Scout {
   last_run_at: string | null;
   consecutive_failures: number;
   notification_email: string | null;
+  topic: string | null;
+  provider: string | null;
+  content_hash: string | null;
   created_at: string;
   updated_at: string;
 }

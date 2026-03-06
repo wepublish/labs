@@ -47,7 +47,9 @@
   let dayOfWeek = $state('monday');
   let timeHour = $state('08');
   let timeMinute = $state('00');
-  let extractBaseline = $state(false);
+  // Provider detection state
+  let detectedProvider = $state<string | null>(null);
+  let contentHash = $state<string | null>(null);
 
   // Submit state
   let submitting = $state(false);
@@ -73,7 +75,8 @@
     dayOfWeek = 'monday';
     timeHour = '08';
     timeMinute = '00';
-    extractBaseline = false;
+    detectedProvider = null;
+    contentHash = null;
     submitting = false;
     submitError = '';
     step1Error = '';
@@ -165,6 +168,8 @@
       const result = await scouts.test(draftScoutId);
       testProgress = 100;
       testResult = result;
+      detectedProvider = result.provider ?? null;
+      contentHash = result.content_hash ?? null;
 
       // Pre-fill name from page title if available
       if (result.scrape_result.title && !name) {
@@ -195,15 +200,19 @@
     submitting = true;
 
     try {
-      // Update scout with final details
+      // Update scout with final details + provider detection results
       await scouts.update(draftScoutId, {
         name: name.trim(),
         frequency: frequency as 'daily' | 'weekly' | 'biweekly' | 'monthly',
         is_active: true,
+        provider: detectedProvider,
+        content_hash: contentHash,
       });
 
-      // Run first execution async (don't block)
-      scouts.run(draftScoutId, { extract_units: extractBaseline }).catch(console.warn);
+      // Silent first run: establishes production changeTracking baseline for
+      // firecrawl scouts (probe used a different tag). For firecrawl_plain scouts
+      // this is a no-op (content_hash already stored, hash comparison sees 'same').
+      scouts.run(draftScoutId, { skip_notification: true }).catch(console.warn);
 
       // Clear draft ID so cleanup doesn't delete it
       draftScoutId = null;
@@ -469,33 +478,6 @@
             </div>
           </div>
 
-          <!-- Extract baseline toggle -->
-          <div class="form-group">
-            <div class="criteria-toggle-wrapper">
-              <div class="criteria-toggle">
-                <button
-                  type="button"
-                  class="criteria-track"
-                  class:specific={extractBaseline}
-                  onclick={() => { extractBaseline = !extractBaseline; }}
-                  aria-label="Baseline-Import umschalten"
-                >
-                  <span class="criteria-thumb"></span>
-                </button>
-                <button
-                  type="button"
-                  class="criteria-label"
-                  class:active={extractBaseline}
-                  onclick={() => { extractBaseline = !extractBaseline; }}
-                >
-                  Aktuelle Seiteninhalte importieren
-                </button>
-              </div>
-            </div>
-            <p class="hint-text">
-              Wenn aktiviert, werden vorhandene Inhalte der Seite beim ersten Lauf als Informationseinheiten gespeichert.
-            </p>
-          </div>
         </div>
 
         <div class="modal-footer">
@@ -795,13 +777,6 @@
 
   .criteria-track.specific .criteria-thumb {
     transform: translateX(16px);
-  }
-
-  .hint-text {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
-    margin: 0;
-    line-height: 1.4;
   }
 
   /* Test results */

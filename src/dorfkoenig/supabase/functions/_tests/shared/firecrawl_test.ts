@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.220.0/assert/mod.ts';
-import { getDomain } from '../../_shared/firecrawl.ts';
+import { getDomain, computeContentHash } from '../../_shared/firecrawl.ts';
 
 // --- getDomain ---
 
@@ -41,4 +41,42 @@ Deno.test('getDomain handles URL with query parameters', () => {
 
 Deno.test('getDomain handles URL with fragment', () => {
   assertEquals(getDomain('https://www.example.com/page#section'), 'example.com');
+});
+
+// --- computeContentHash ---
+
+Deno.test('computeContentHash returns consistent 64-char hex string', async () => {
+  const hash = await computeContentHash('Hello World');
+  assertEquals(hash.length, 64);
+  assertEquals(/^[0-9a-f]{64}$/.test(hash), true);
+
+  // Same input → same output
+  const hash2 = await computeContentHash('Hello World');
+  assertEquals(hash, hash2);
+});
+
+Deno.test('computeContentHash produces different hashes for different content', async () => {
+  const hash1 = await computeContentHash('Content A');
+  const hash2 = await computeContentHash('Content B');
+  assertEquals(hash1 !== hash2, true);
+});
+
+Deno.test('computeContentHash handles empty string', async () => {
+  const hash = await computeContentHash('');
+  assertEquals(hash.length, 64);
+  assertEquals(/^[0-9a-f]{64}$/.test(hash), true);
+});
+
+Deno.test('computeContentHash normalizes whitespace', async () => {
+  const hash1 = await computeContentHash('Hello   World');
+  const hash2 = await computeContentHash('Hello World');
+  const hash3 = await computeContentHash('  Hello  World  ');
+  assertEquals(hash1, hash2);
+  assertEquals(hash2, hash3);
+});
+
+Deno.test('computeContentHash normalizes newlines and tabs', async () => {
+  const hash1 = await computeContentHash('Line1\n\nLine2\t\tEnd');
+  const hash2 = await computeContentHash('Line1 Line2 End');
+  assertEquals(hash1, hash2);
 });

@@ -54,6 +54,8 @@ function makeTestResult(overrides: Partial<TestResult> = {}): TestResult {
     criteria_analysis: null,
     would_notify: false,
     would_extract_units: true,
+    provider: 'firecrawl',
+    content_hash: 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd',
     ...overrides,
   };
 }
@@ -187,12 +189,14 @@ describe('scout wizard flow', () => {
       expect(result.criteria_analysis!.key_findings).toHaveLength(1);
     });
 
-    it('test returns failed scrape result', async () => {
+    it('test returns failed scrape result with null provider and content_hash', async () => {
       const testResult = makeTestResult({
         scrape_result: { success: false, error: 'Seite nicht erreichbar' },
         criteria_analysis: null,
         would_notify: false,
         would_extract_units: false,
+        provider: null,
+        content_hash: null,
       });
       vi.mocked(scoutsApi.test).mockResolvedValue(testResult);
 
@@ -200,6 +204,8 @@ describe('scout wizard flow', () => {
 
       expect(result.scrape_result.success).toBe(false);
       expect(result.scrape_result.error).toBe('Seite nicht erreichbar');
+      expect(result.provider).toBeNull();
+      expect(result.content_hash).toBeNull();
     });
   });
 
@@ -239,6 +245,23 @@ describe('scout wizard flow', () => {
       });
     });
 
+    it('passes provider and content_hash to update', async () => {
+      const activated = makeScout({ id: 'draft-1', is_active: true });
+      vi.mocked(scoutsApi.update).mockResolvedValue(activated);
+
+      await scouts.update('draft-1', {
+        name: 'Test Scout',
+        is_active: true,
+        provider: 'firecrawl',
+        content_hash: 'abc123',
+      });
+
+      expect(scoutsApi.update).toHaveBeenCalledWith('draft-1', expect.objectContaining({
+        provider: 'firecrawl',
+        content_hash: 'abc123',
+      }));
+    });
+
     it('supports biweekly frequency', async () => {
       const updated = makeScout({ id: 'draft-1', frequency: 'biweekly', is_active: true });
       vi.mocked(scoutsApi.update).mockResolvedValue(updated);
@@ -248,24 +271,14 @@ describe('scout wizard flow', () => {
       expect(result.frequency).toBe('biweekly');
     });
 
-    it('triggers first run after activation', async () => {
+    it('triggers silent first run with skip_notification after activation', async () => {
       const runResult = { execution_id: 'exec-1', status: 'running', message: 'Started' };
       vi.mocked(scoutsApi.run).mockResolvedValue(runResult);
 
-      const result = await scouts.run('draft-1', { extract_units: false });
+      const result = await scouts.run('draft-1', { skip_notification: true });
 
       expect(result.execution_id).toBe('exec-1');
-      expect(scoutsApi.run).toHaveBeenCalledWith('draft-1', { extract_units: false });
-    });
-
-    it('triggers first run with extract_units enabled (baseline import)', async () => {
-      const runResult = { execution_id: 'exec-2', status: 'running', message: 'Started' };
-      vi.mocked(scoutsApi.run).mockResolvedValue(runResult);
-
-      const result = await scouts.run('draft-1', { extract_units: true });
-
-      expect(result).toEqual(runResult);
-      expect(scoutsApi.run).toHaveBeenCalledWith('draft-1', { extract_units: true });
+      expect(scoutsApi.run).toHaveBeenCalledWith('draft-1', { skip_notification: true });
     });
   });
 
@@ -330,7 +343,7 @@ describe('scout wizard flow', () => {
       const tested = await scouts.test('wizard-scout');
       expect(tested.scrape_result.success).toBe(true);
 
-      // Step 2a: Configure and activate
+      // Step 2a: Configure and activate with provider/content_hash
       const activated = makeScout({
         id: 'wizard-scout',
         name: 'Zürich Bauprojekte',
@@ -343,17 +356,23 @@ describe('scout wizard flow', () => {
         name: 'Zürich Bauprojekte',
         frequency: 'weekly',
         is_active: true,
+        provider: tested.provider,
+        content_hash: tested.content_hash,
       });
       expect(updated.is_active).toBe(true);
+      expect(scoutsApi.update).toHaveBeenCalledWith('wizard-scout', expect.objectContaining({
+        provider: 'firecrawl',
+        content_hash: expect.any(String),
+      }));
 
-      // Step 2b: Trigger first run
+      // Step 2b: Trigger silent first run
       vi.mocked(scoutsApi.run).mockResolvedValue({
         execution_id: 'exec-first',
         status: 'running',
         message: 'Started',
       });
 
-      const run = await scouts.run('wizard-scout', { extract_units: true });
+      const run = await scouts.run('wizard-scout', { skip_notification: true });
       expect(run.execution_id).toBe('exec-first');
 
       // Verify store state: scout is in the list and active

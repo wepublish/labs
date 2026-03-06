@@ -240,6 +240,23 @@ async function updateScout(
   if (body.is_active !== undefined) updates.is_active = body.is_active;
   if (body.topic !== undefined) updates.topic = body.topic?.trim() || null;
 
+  // Provider detection fields
+  if (body.provider !== undefined) {
+    if (body.provider !== null && body.provider !== 'firecrawl' && body.provider !== 'firecrawl_plain') {
+      return errorResponse('Ungültiger Provider-Wert', 400, 'VALIDATION_ERROR');
+    }
+    updates.provider = body.provider;
+  }
+  if (body.content_hash !== undefined) {
+    updates.content_hash = body.content_hash;
+  }
+
+  // Reset provider/content_hash when URL changes (re-test required)
+  if (body.url !== undefined) {
+    updates.provider = null;
+    updates.content_hash = null;
+  }
+
   const { data, error } = await supabase
     .from('scouts')
     .update(updates)
@@ -390,12 +407,13 @@ async function testScout(
   const { firecrawl } = await import('../_shared/firecrawl.ts');
   const { openrouter } = await import('../_shared/openrouter.ts');
 
-  // Scrape without change tracking (preview mode)
-  const scrapeResult = await firecrawl.scrape({
-    url: scout.url,
-    formats: ['markdown'],
-    timeout: 30000,
-  });
+  // Probe tag uses scoutId (each draft gets a fresh UUID, so re-testing
+  // always gets a clean tag with no stale previousScrapeAt)
+  const probeTag = `${userId}#${scoutId}`;
+
+  // Double-probe: detects provider AND returns first call's scrape as preview
+  // (2 Firecrawl calls instead of 3)
+  const { provider, scrapeResult } = await firecrawl.doubleProbe(scout.url, probeTag);
 
   if (!scrapeResult.success) {
     return jsonResponse({
@@ -407,9 +425,14 @@ async function testScout(
         criteria_analysis: null,
         would_notify: false,
         would_extract_units: false,
+        provider: null,
+        content_hash: null,
       },
     });
   }
+
+  // Compute content hash
+  const contentHash = await firecrawl.computeContentHash(scrapeResult.markdown || '');
 
   // Analyze criteria
   const analysisSystemPrompt = `Du bist ein Nachrichtenanalyst.
@@ -464,6 +487,8 @@ Analysiere den Inhalt und prüfe, ob er den Kriterien entspricht.`;
       },
       would_notify: analysis.matches && !!scout.notification_email,
       would_extract_units: !!(scout.location || scout.topic),
+      provider,
+      content_hash: contentHash,
     },
   });
 }

@@ -108,11 +108,11 @@ Scheduling:
 
 | Type | Key Fields |
 |------|-----------|
-| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
+| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, provider?, content_hash?, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
 | `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted |
 | `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, topic, source_url, used_in_article |
 | `Draft` | title, headline, sections[], gaps[], sources[], word_count |
-| `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units |
+| `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units, provider?, content_hash? |
 
 ## Store APIs
 
