@@ -1,4 +1,34 @@
-// coJournalist-Lite constants
+// Dorfkoenig constants
+
+// Default writing guidelines shown as placeholder in prompt editors
+export const DEFAULT_PROMPT = `SCHREIBRICHTLINIEN:
+- Beginne JEDEN Abschnitt mit der wichtigsten Tatsache
+- Fette **wichtige Zahlen, Namen, Daten**
+- Sätze: KURZ und PRÄGNANT. Max 15-20 Wörter.
+- Zitiere Quellen inline [quelle.ch]
+- Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen`;
+
+// Bajour draft polling interval (ms)
+export const POLL_INTERVAL_MS = 30_000;
+
+// Custom prompt persistence TTL (7 days in ms)
+export const CUSTOM_PROMPT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Minimum text length for manual upload (characters)
+export const MIN_TEXT_LENGTH = 20;
+
+// Minimum description length for file upload (characters)
+export const MIN_DESCRIPTION_LENGTH = 10;
+
+// Extract unique, sorted topic strings from a list of scouts
+export function extractTopics(scouts: { topic?: string | null }[]): string[] {
+  return [...new Set(
+    scouts
+      .filter(s => s.topic)
+      .flatMap(s => s.topic!.split(',').map(t => t.trim()))
+      .filter(Boolean)
+  )].sort();
+}
 
 // Frequency options for scouts
 export const FREQUENCY_OPTIONS = [

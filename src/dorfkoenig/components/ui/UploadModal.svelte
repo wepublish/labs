@@ -2,6 +2,7 @@
   import { X, Upload, FileText, Camera, File as FileIcon } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { manualUploadApi } from '../../lib/api';
+  import { MIN_TEXT_LENGTH, MIN_DESCRIPTION_LENGTH, extractTopics } from '../../lib/constants';
   import { scouts } from '../../stores/scouts';
   import ScopeToggle from './ScopeToggle.svelte';
   import ProgressIndicator from './ProgressIndicator.svelte';
@@ -15,14 +16,7 @@
   let { open, onclose }: Props = $props();
 
   // Derive existing topics from scouts for autocomplete
-  let existingTopics = $derived(
-    [...new Set(
-      $scouts.scouts
-        .filter(s => s.topic)
-        .flatMap(s => s.topic!.split(',').map(t => t.trim()))
-        .filter(Boolean)
-    )].sort()
-  );
+  let existingTopics = $derived(extractTopics($scouts.scouts));
 
   // Tab state
   type Tab = 'text' | 'photo' | 'pdf';
@@ -121,9 +115,9 @@
     if (!hasScope) return false;
 
     if (activeTab === 'text') {
-      return text.trim().length >= 20;
+      return text.trim().length >= MIN_TEXT_LENGTH;
     } else {
-      return file !== null && description.trim().length >= 10;
+      return file !== null && description.trim().length >= MIN_DESCRIPTION_LENGTH;
     }
   });
 
@@ -136,8 +130,8 @@
     }
 
     if (activeTab === 'text') {
-      if (text.trim().length < 20) {
-        validationError = 'Text muss mindestens 20 Zeichen lang sein';
+      if (text.trim().length < MIN_TEXT_LENGTH) {
+        validationError = `Text muss mindestens ${MIN_TEXT_LENGTH} Zeichen lang sein`;
         return false;
       }
     } else {
@@ -145,8 +139,8 @@
         validationError = 'Datei ist erforderlich';
         return false;
       }
-      if (description.trim().length < 10) {
-        validationError = 'Beschreibung muss mindestens 10 Zeichen lang sein';
+      if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
+        validationError = `Beschreibung muss mindestens ${MIN_DESCRIPTION_LENGTH} Zeichen lang sein`;
         return false;
       }
     }

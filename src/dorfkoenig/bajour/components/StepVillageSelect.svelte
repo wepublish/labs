@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ChevronDown, ChevronUp } from 'lucide-svelte';
   import { Button } from '@shared/components';
+  import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
   import VillageSelect from './VillageSelect.svelte';
   import type { Village } from '../types';
 
@@ -23,7 +24,7 @@
   // localStorage helpers for prompts (7-day TTL)
   const SELECTION_PROMPT_KEY = 'dk_bajour_selection_prompt';
   const GENERATION_PROMPT_KEY = 'dk_bajour_generation_prompt';
-  const PROMPT_TTL = 7 * 24 * 60 * 60 * 1000;
+  const PROMPT_TTL = CUSTOM_PROMPT_TTL_MS;
 
   function loadSavedPrompt(key: string): string {
     try {

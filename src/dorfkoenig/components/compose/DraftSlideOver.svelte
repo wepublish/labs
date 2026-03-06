@@ -4,6 +4,7 @@
   import { X, AlertCircle, RefreshCw, PenTool, RotateCcw, ChevronDown, ChevronUp, Download } from 'lucide-svelte';
   import ProgressIndicator from '../ui/ProgressIndicator.svelte';
   import type { Draft } from '../../lib/types';
+  import { DEFAULT_PROMPT } from '../../lib/constants';
 
   interface Props {
     open: boolean;
@@ -86,13 +87,6 @@
   onDestroy(() => {
     stopProgressInterval();
   });
-
-  const DEFAULT_PROMPT = `SCHREIBRICHTLINIEN:
-- Beginne JEDEN Abschnitt mit der wichtigsten Tatsache
-- Fette **wichtige Zahlen, Namen, Daten**
-- Sätze: KURZ und PRÄGNANT. Max 15-20 Wörter.
-- Zitiere Quellen inline [quelle.ch]
-- Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen`;
 
   function saveAndRegenerate() {
     const prompt = regenPrompt.trim() || null;

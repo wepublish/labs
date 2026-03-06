@@ -12,6 +12,7 @@
     Eye,
     Trash2,
   } from 'lucide-svelte';
+  import { DEFAULT_PROMPT } from '../../lib/constants';
 
   interface Props {
     selectedCount: number;
@@ -36,13 +37,6 @@
     onPromptChange,
     onDelete,
   }: Props = $props();
-
-  const DEFAULT_PROMPT = `SCHREIBRICHTLINIEN:
-- Beginne JEDEN Abschnitt mit der wichtigsten Tatsache
-- Fette **wichtige Zahlen, Namen, Daten**
-- Sätze: KURZ und PRÄGNANT. Max 15-20 Wörter.
-- Zitiere Quellen inline [quelle.ch]
-- Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen`;
 
   let showPromptEditor = $state(false);
   let editedPrompt = $state(customPrompt || '');
@@ -319,12 +313,4 @@
     cursor: not-allowed;
   }
 
-  :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
 </style>

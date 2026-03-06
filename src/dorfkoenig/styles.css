@@ -1,4 +1,14 @@
-/* coJournalist-Lite App Styles */
+/* Dorfkoenig App Styles */
+
+/* Shared spin animation (used by loading spinners across components) */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 /* Scout form */
 .scout-form {

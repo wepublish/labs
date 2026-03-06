@@ -2,7 +2,7 @@
   import { X, Globe } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { scouts } from '../../stores/scouts';
-  import { FREQUENCY_OPTIONS_EXTENDED, DAY_OF_WEEK_OPTIONS } from '../../lib/constants';
+  import { FREQUENCY_OPTIONS_EXTENDED, DAY_OF_WEEK_OPTIONS, extractTopics } from '../../lib/constants';
   import ScopeToggle from './ScopeToggle.svelte';
   import ProgressIndicator from './ProgressIndicator.svelte';
   import type { Location, TestResult } from '../../lib/types';
@@ -15,14 +15,7 @@
   let { open, onclose }: Props = $props();
 
   // Derive existing topics from all scouts for autocomplete suggestions
-  let existingTopics = $derived(
-    [...new Set(
-      $scouts.scouts
-        .filter(s => s.topic)
-        .flatMap(s => s.topic!.split(',').map(t => t.trim()))
-        .filter(Boolean)
-    )].sort()
-  );
+  let existingTopics = $derived(extractTopics($scouts.scouts));
 
   // Step tracking
   let step = $state<1 | 2>(1);

@@ -3,6 +3,7 @@
   import { units } from '../../stores/units';
   import { scouts } from '../../stores/scouts';
   import { composeApi } from '../../lib/api';
+  import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import SelectionBar from './SelectionBar.svelte';
@@ -35,7 +36,7 @@
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < 7 * 24 * 60 * 60 * 1000) {
+        if (parsed.timestamp && Date.now() - parsed.timestamp < CUSTOM_PROMPT_TTL_MS) {
           customPrompt = parsed.value;
         } else {
           localStorage.removeItem('dk_custom_draft_prompt');
