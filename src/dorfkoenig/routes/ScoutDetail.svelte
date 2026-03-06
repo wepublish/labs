@@ -16,15 +16,16 @@
   let loading = $state(true);
   let deleting = $state(false);
 
-  // Load scout and executions on mount or when scoutId changes
+  // Load scout and executions when scoutId changes
   $effect(() => {
-    loadScout();
-    executions.load(scoutId);
+    const id = scoutId;
+    loadScout(id);
+    executions.load(id);
   });
 
-  async function loadScout() {
+  async function loadScout(id: string) {
     loading = true;
-    scout = await scouts.get(scoutId);
+    scout = await scouts.get(id);
     loading = false;
   }
 
@@ -35,7 +36,7 @@
     deleting = true;
     try {
       await scouts.delete(scoutId);
-      location.hash = '#/dashboard';
+      location.hash = '#/manage';
     } catch (error) {
       console.error('Delete failed:', error);
       deleting = false;
@@ -43,11 +44,11 @@
   }
 
   function handleFormSubmit() {
-    loadScout();
+    loadScout(scoutId);
   }
 
   function handleBack() {
-    location.hash = '#/dashboard';
+    location.hash = '#/manage';
   }
 </script>
 

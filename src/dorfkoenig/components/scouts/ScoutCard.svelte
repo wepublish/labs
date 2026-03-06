@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Trash2 } from 'lucide-svelte';
   import { scouts } from '../../stores/scouts';
-  import { formatDate, FREQUENCY_OPTIONS, FREQUENCY_OPTIONS_EXTENDED } from '../../lib/constants';
+  import { formatDate, FREQUENCY_OPTIONS_EXTENDED } from '../../lib/constants';
   import type { Scout } from '../../lib/types';
 
   interface Props {
@@ -53,9 +53,7 @@
   }
 
   function getFrequencyLabel(value: string): string {
-    return FREQUENCY_OPTIONS_EXTENDED.find((f) => f.value === value)?.label
-      || FREQUENCY_OPTIONS.find((f) => f.value === value)?.label
-      || value;
+    return FREQUENCY_OPTIONS_EXTENDED.find((f) => f.value === value)?.label || value;
   }
 
   // Parse topic string into chips

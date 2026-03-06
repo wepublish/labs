@@ -39,7 +39,12 @@
   }: Props = $props();
 
   let showPromptEditor = $state(false);
-  let editedPrompt = $state(customPrompt || '');
+  let editedPrompt = $state('');
+
+  // Keep editedPrompt in sync when parent updates customPrompt
+  $effect(() => {
+    editedPrompt = customPrompt || '';
+  });
 
   function savePrompt() {
     onPromptChange(editedPrompt.trim() || null);

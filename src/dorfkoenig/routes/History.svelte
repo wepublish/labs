@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { executions } from '../stores/executions';
   import { scouts } from '../stores/scouts';
   import ExecutionList from '../components/executions/ExecutionList.svelte';
@@ -7,9 +8,9 @@
   let selectedScoutId = $state<string | undefined>(undefined);
 
   // Load data on mount
-  $effect(() => {
+  onMount(() => {
     scouts.load();
-    executions.load(selectedScoutId);
+    executions.load();
   });
 
   function handleScoutFilter(scoutId: string | undefined) {

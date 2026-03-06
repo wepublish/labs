@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { Button } from '@shared/components';
   import { scouts } from '../../stores/scouts';
-  import { FREQUENCY_OPTIONS, extractTopics } from '../../lib/constants';
+  import { FREQUENCY_OPTIONS_EXTENDED, extractTopics } from '../../lib/constants';
   import ScopeToggle from '../ui/ScopeToggle.svelte';
   import type { Scout, ScoutUpdateInput, Location } from '../../lib/types';
 
@@ -139,7 +139,7 @@
     <div class="form-group">
       <label for="frequency">Häufigkeit</label>
       <select id="frequency" bind:value={frequency}>
-        {#each FREQUENCY_OPTIONS as opt}
+        {#each FREQUENCY_OPTIONS_EXTENDED as opt}
           <option value={opt.value}>{opt.label}</option>
         {/each}
       </select>
