@@ -6,6 +6,9 @@
   import { scouts } from '../../stores/scouts';
   import ScopeToggle from './ScopeToggle.svelte';
   import ProgressIndicator from './ProgressIndicator.svelte';
+  import UploadTextTab from './UploadTextTab.svelte';
+  import UploadPhotoTab from './UploadPhotoTab.svelte';
+  import UploadPdfTab from './UploadPdfTab.svelte';
   import type { Location } from '../../lib/types';
 
   interface Props {
@@ -15,7 +18,6 @@
 
   let { open, onclose }: Props = $props();
 
-  // Derive existing topics from scouts for autocomplete
   let existingTopics = $derived(extractTopics($scouts.scouts));
 
   // Tab state
@@ -48,7 +50,7 @@
   // Auto-close timer
   let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function resetState() {
+  function resetState(): void {
     activeTab = 'text';
     location = null;
     topic = '';
@@ -71,25 +73,24 @@
     }
   }
 
-  function handleClose() {
+  function handleClose(): void {
     resetState();
     onclose();
   }
 
-  function handleBackdrop(e: MouseEvent) {
+  function handleBackdrop(e: MouseEvent): void {
     if (e.target === e.currentTarget) handleClose();
   }
 
-  function handleKeydown(e: KeyboardEvent) {
+  function handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'Escape') handleClose();
   }
 
-  function handleFileSelect(e: Event) {
+  function handleFileSelect(e: Event): void {
     const input = e.target as HTMLInputElement;
     const selected = input.files?.[0];
     if (!selected) return;
 
-    // Revoke previous preview URL
     if (filePreviewUrl) {
       URL.revokeObjectURL(filePreviewUrl);
       filePreviewUrl = null;
@@ -97,19 +98,19 @@
 
     file = selected;
 
-    // Generate preview for images
     if (selected.type.startsWith('image/')) {
       filePreviewUrl = URL.createObjectURL(selected);
     }
   }
 
-  function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  function handleFileRemove(): void {
+    file = null;
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+      filePreviewUrl = null;
+    }
   }
 
-  // Validation
   let isValid = $derived.by(() => {
     const hasScope = location !== null || topic.trim() !== '';
     if (!hasScope) return false;
@@ -148,7 +149,7 @@
     return true;
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(): Promise<void> {
     if (!validate()) return;
 
     uploadState = 'uploading';
@@ -167,7 +168,6 @@
         uploadProgress = 100;
         unitsCreated = result.units_created;
       } else {
-        // Step A: Get presigned upload URL
         uploadProgress = 20;
         const contentType = activeTab as 'photo' | 'pdf';
         const presigned = await manualUploadApi.requestUploadUrl({
@@ -177,14 +177,12 @@
           mime_type: file!.type,
         });
 
-        // Step B: Upload file directly to storage
         uploadProgress = 50;
         const uploadResponse = await manualUploadApi.uploadFile(presigned.upload_url, file!);
         if (!uploadResponse.ok) {
           throw new Error('Datei-Upload fehlgeschlagen');
         }
 
-        // Step C: Confirm upload
         uploadProgress = 80;
         const confirmType = contentType === 'photo' ? 'photo_confirm' : 'pdf_confirm';
         const result = await manualUploadApi.confirmUpload({
@@ -201,7 +199,6 @@
 
       uploadState = 'success';
 
-      // Auto-close after 2 seconds
       autoCloseTimer = setTimeout(() => {
         handleClose();
       }, 2000);
@@ -212,7 +209,7 @@
     }
   }
 
-  function handleRetry() {
+  function handleRetry(): void {
     uploadState = 'idle';
     uploadProgress = 0;
     uploadError = '';
@@ -310,94 +307,25 @@
             <div class="error-message">{validationError}</div>
           {/if}
 
-          <!-- Text tab -->
           {#if activeTab === 'text'}
-            <div class="form-group">
-              <label for="upload-text">Text</label>
-              <textarea
-                id="upload-text"
-                bind:value={text}
-                placeholder="Text eingeben oder einfügen..."
-                rows="5"
-              ></textarea>
-              <p class="hint-text">KI extrahiert automatisch Fakten aus dem Text</p>
-            </div>
-
-          <!-- Photo tab -->
+            <UploadTextTab {text} ontextchange={(v) => { text = v; }} />
           {:else if activeTab === 'photo'}
-            <div class="form-group">
-              <label for="upload-photo">Foto</label>
-              {#if file && filePreviewUrl}
-                <div class="file-preview">
-                  <img src={filePreviewUrl} alt="Vorschau" class="image-preview" />
-                  <button class="file-remove" onclick={() => { file = null; if (filePreviewUrl) { URL.revokeObjectURL(filePreviewUrl); filePreviewUrl = null; } }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              {:else}
-                <label class="file-drop" for="upload-photo-input">
-                  <Camera size={24} />
-                  <span>Foto auswählen</span>
-                  <span class="file-drop-hint">JPEG, PNG, WebP — max 50 MB</span>
-                </label>
-                <input
-                  id="upload-photo-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onchange={handleFileSelect}
-                  class="file-input-hidden"
-                />
-              {/if}
-            </div>
-            <div class="form-group">
-              <label for="upload-photo-desc">Beschreibung</label>
-              <textarea
-                id="upload-photo-desc"
-                bind:value={description}
-                placeholder="Was zeigt dieses Foto?"
-                rows="3"
-              ></textarea>
-            </div>
-
-          <!-- PDF tab -->
+            <UploadPhotoTab
+              {file}
+              {filePreviewUrl}
+              {description}
+              onfileselect={handleFileSelect}
+              onfileremove={handleFileRemove}
+              ondescriptionchange={(v) => { description = v; }}
+            />
           {:else if activeTab === 'pdf'}
-            <div class="form-group">
-              <label for="upload-pdf">PDF-Dokument</label>
-              {#if file}
-                <div class="file-info">
-                  <FileIcon size={20} />
-                  <div class="file-details">
-                    <span class="file-name">{file.name}</span>
-                    <span class="file-size">{formatFileSize(file.size)}</span>
-                  </div>
-                  <button class="file-remove" onclick={() => { file = null; }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              {:else}
-                <label class="file-drop" for="upload-pdf-input">
-                  <FileIcon size={24} />
-                  <span>PDF auswählen</span>
-                  <span class="file-drop-hint">max 50 MB</span>
-                </label>
-                <input
-                  id="upload-pdf-input"
-                  type="file"
-                  accept="application/pdf"
-                  onchange={handleFileSelect}
-                  class="file-input-hidden"
-                />
-              {/if}
-            </div>
-            <div class="form-group">
-              <label for="upload-pdf-desc">Beschreibung</label>
-              <textarea
-                id="upload-pdf-desc"
-                bind:value={description}
-                placeholder="Worum geht es in diesem Dokument?"
-                rows="3"
-              ></textarea>
-            </div>
+            <UploadPdfTab
+              {file}
+              {description}
+              onfileselect={handleFileSelect}
+              onfileremove={() => { file = null; }}
+              ondescriptionchange={(v) => { description = v; }}
+            />
           {/if}
 
           <!-- Scope toggle (shared across tabs) -->
@@ -443,7 +371,6 @@
 {/if}
 
 <style>
-  /* Reuses modal patterns from ScoutModal */
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -602,8 +529,7 @@
     color: var(--color-text-muted);
   }
 
-  .form-group input[type="text"],
-  .form-group textarea {
+  .form-group input[type="text"] {
     width: 100%;
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
@@ -615,18 +541,10 @@
     resize: vertical;
   }
 
-  .form-group input:focus,
-  .form-group textarea:focus {
+  .form-group input:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
-  }
-
-  .hint-text {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
-    margin: 0;
-    line-height: 1.4;
   }
 
   .error-message {
@@ -636,125 +554,5 @@
     background: #fef2f2;
     border: 1px solid #fecaca;
     border-radius: 0.375rem;
-  }
-
-  /* File input */
-  .file-input-hidden {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    overflow: hidden;
-  }
-
-  .file-drop {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1.5rem;
-    border: 2px dashed var(--color-border, #e5e7eb);
-    border-radius: 0.5rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    text-align: center;
-  }
-
-  .file-drop:hover {
-    border-color: var(--color-primary);
-    background: rgba(234, 114, 110, 0.04);
-  }
-
-  .file-drop span {
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .file-drop-hint {
-    font-size: 0.75rem !important;
-    font-weight: 400 !important;
-    color: var(--color-text-light);
-  }
-
-  /* File preview / info */
-  .file-preview {
-    position: relative;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-  }
-
-  .image-preview {
-    display: block;
-    width: 100%;
-    max-height: 200px;
-    object-fit: cover;
-  }
-
-  .file-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text-muted);
-  }
-
-  .file-details {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
-  }
-
-  .file-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .file-size {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-  }
-
-  .file-remove {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .file-info .file-remove {
-    position: static;
-    background: var(--color-surface-muted, #e5e7eb);
-    color: var(--color-text-muted);
-  }
-
-  .file-remove:hover {
-    background: rgba(0, 0, 0, 0.7);
-  }
-
-  .file-info .file-remove:hover {
-    background: var(--color-danger, #ef4444);
-    color: white;
   }
 </style>
