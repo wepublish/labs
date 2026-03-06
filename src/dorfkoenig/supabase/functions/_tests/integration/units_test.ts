@@ -90,7 +90,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'units: get locations (BUG DIAGNOSTIC: routing)',
+  name: 'units: get locations',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -128,7 +128,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'units: search units via semantic search (BUG DIAGNOSTIC: routing + API key)',
+  name: 'units: search units via semantic search',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -167,7 +167,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'units: search without query param returns 400 (BUG DIAGNOSTIC: routing)',
+  name: 'units: search without query param returns 400',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -194,7 +194,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'units: mark-used with empty array returns 400 (BUG DIAGNOSTIC: routing)',
+  name: 'units: mark-used with empty array returns 400',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {

@@ -244,7 +244,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'scouts: get scout by ID (BUG DIAGNOSTIC: routing may not parse scoutId)',
+  name: 'scouts: get scout by ID',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -296,7 +296,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'scouts: update scout with partial body (BUG DIAGNOSTIC: routing)',
+  name: 'scouts: update scout with partial body',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -335,7 +335,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'scouts: delete scout returns 204 (BUG DIAGNOSTIC: routing)',
+  name: 'scouts: delete scout returns 204',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -385,7 +385,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'scouts: get non-existent scout returns 404 (BUG DIAGNOSTIC: routing)',
+  name: 'scouts: get non-existent scout returns 404',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -430,7 +430,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'scouts: user isolation - user B cannot see user A scout (BUG DIAGNOSTIC: routing)',
+  name: 'scouts: user isolation - user B cannot see user A scout',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {

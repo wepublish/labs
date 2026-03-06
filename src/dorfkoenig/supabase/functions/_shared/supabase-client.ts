@@ -43,12 +43,6 @@ export function getUserId(req: Request): string | null {
     return userId;
   }
 
-  // TODO: Add JWT verification for production
-  // const authHeader = req.headers.get('Authorization');
-  // if (authHeader?.startsWith('Bearer ey')) {
-  //   // Verify JWT and extract sub claim
-  // }
-
   return null;
 }
 
