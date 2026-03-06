@@ -39,6 +39,24 @@
     currentExistingDraft?.verification_status === 'bestätigt'
   );
 
+  // Parse API error into a user-friendly message
+  function friendlyError(err: unknown): string {
+    const msg = (err as Error).message || String(err);
+    if (msg.includes('TEMPLATE_NOT_APPROVED') || msg.includes('Nachrichtenvorlage')) {
+      return 'Die WhatsApp-Vorlage wurde noch nicht von Meta genehmigt. Der Entwurf wurde gespeichert — versuchen Sie es später erneut.';
+    }
+    if (msg.includes('PHONE_NOT_REGISTERED') || msg.includes('nicht registriert')) {
+      return 'Die WhatsApp-Nummer ist nicht registriert. Bitte den Administrator kontaktieren.';
+    }
+    if (msg.includes('REENGAGEMENT_REQUIRED')) {
+      return 'Der Empfänger muss zuerst eine Nachricht an die Absendernummer senden, bevor Nachrichten zugestellt werden können.';
+    }
+    if (msg.includes('Korrespondenten')) {
+      return msg;
+    }
+    return `Fehler beim Senden: ${msg}`;
+  }
+
   // Send draft to Dorfkonige
   async function handleSend() {
     if (!village || !generatedDraft) return;
@@ -64,14 +82,22 @@
         custom_system_prompt: generationPrompt.trim() || null,
       });
 
-      await bajourDrafts.sendVerification(draft.id);
+      try {
+        await bajourDrafts.sendVerification(draft.id);
+      } catch (verifyErr) {
+        // Draft was saved but verification failed — show the draft and a friendly error
+        currentExistingDraft = draft;
+        error = friendlyError(verifyErr);
+        return;
+      }
+
       if (selectedUnitIds.length > 0) {
         await unitsApi.markUsed(selectedUnitIds);
       }
       currentExistingDraft = draft;
       successBanner = { variant: 'sent' };
     } catch (err) {
-      error = (err as Error).message;
+      error = friendlyError(err);
     } finally {
       loading = false;
     }
