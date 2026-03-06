@@ -22,6 +22,8 @@ export interface Scout {
   last_run_at: string | null;
   consecutive_failures: number;
   notification_email: string | null;
+  provider?: string | null;
+  content_hash?: string | null;
   created_at: string;
   updated_at: string;
   // Last execution data (joined from scout_executions)
@@ -51,6 +53,8 @@ export interface ScoutUpdateInput {
   frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
   is_active?: boolean;
+  provider?: string | null;
+  content_hash?: string | null;
 }
 
 export interface Execution {
@@ -144,6 +148,8 @@ export interface TestResult {
   } | null;
   would_notify: boolean;
   would_extract_units: boolean;
+  provider?: string | null;
+  content_hash?: string | null;
 }
 
 export interface RunResult {

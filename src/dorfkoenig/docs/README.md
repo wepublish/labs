@@ -1,8 +1,8 @@
-# coJournalist-Lite Documentation
+# Dorfkoenig Documentation
 
 ## Overview
 
-coJournalist-Lite is a simplified web scout monitoring system that tracks URLs for content changes, extracts atomic information units, and enables AI-powered article draft generation. It's deployed as a static Svelte 5 SPA on GitHub Pages with Supabase as the backend.
+Dorfkoenig is a web scout monitoring system for journalists that tracks URLs for content changes, extracts atomic information units, and enables AI-powered article draft generation. It includes a feature-flagged Bajour village newsletter workflow with WhatsApp verification and Mailchimp integration. Deployed as a static Svelte 5 SPA on GitHub Pages with Supabase as the backend.
 
 ## Quick Links
 
@@ -32,10 +32,19 @@ coJournalist-Lite is a simplified web scout monitoring system that tracks URLs f
 - Categorized as: fact, event, entity_update
 - Location-based organization
 
-### Compose Panel
-- Filter units by location
+### Compose Panel (Feed)
+- Filter units by location and/or topic
 - Semantic search across units
 - AI-powered article draft generation
+
+### Manual Upload
+- Upload text, photos, and PDFs as information units
+- Extracted via LLM, stored with embeddings
+
+### Bajour Village Newsletter (Feature-Flagged)
+- 3-step wizard: village select, generate draft, preview/send
+- WhatsApp verification with village correspondents
+- Mailchimp campaign creation from verified drafts
 
 ## Tech Stack
 
@@ -55,7 +64,7 @@ coJournalist-Lite is a simplified web scout monitoring system that tracks URLs f
 ## Project Structure
 
 ```
-cojournalist-lite/
+dorfkoenig/
 ├── docs/                    # Documentation
 ├── specs/                   # Technical specifications
 ├── lib/                     # Shared utilities
@@ -67,19 +76,28 @@ cojournalist-lite/
 │   ├── auth.ts             # Authentication
 │   ├── scouts.ts           # Scout management
 │   ├── units.ts            # Information units
-│   └── executions.ts       # Execution history
+│   ├── executions.ts       # Execution history
+│   └── ui.ts               # UI state (modals)
 ├── components/              # UI components
 │   ├── Layout.svelte
 │   ├── LoginForm.svelte
 │   ├── scouts/
 │   ├── executions/
-│   └── compose/
+│   ├── compose/
+│   └── ui/                 # ScoutModal, UploadModal, LocationAutocomplete, etc.
+├── bajour/                  # Bajour village newsletter feature (feature-flagged)
+│   ├── api.ts
+│   ├── store.ts
+│   ├── types.ts
+│   ├── utils.ts
+│   ├── components/
+│   └── __tests__/
 ├── routes/                  # Page components
 │   ├── Login.svelte
-│   ├── Dashboard.svelte
+│   ├── Manage.svelte       # (was Dashboard)
 │   ├── ScoutDetail.svelte
 │   ├── History.svelte
-│   └── Compose.svelte
+│   └── Feed.svelte         # (was Compose)
 ├── supabase/                # Supabase configuration
 │   ├── config.toml
 │   ├── migrations/
@@ -109,6 +127,8 @@ Set in Settings > Edge Functions > Secrets:
 | `OPENROUTER_API_KEY` | OpenRouter API key for LLM |
 | `FIRECRAWL_API_KEY` | Firecrawl API key for scraping |
 | `RESEND_API_KEY` | Resend API key for email |
+| `MAILCHIMP_API_KEY` | Mailchimp API key for Bajour newsletter campaigns |
+| `MAILCHIMP_SERVER` | Mailchimp data center (e.g., `us21`) |
 
 ### Vault Secrets (for pg_cron)
 
@@ -139,17 +159,17 @@ npm install
 # Start dev server
 npm run dev
 
-# Visit https://localhost:3200/cojournalist-lite/
+# Visit https://localhost:3200/dorfkoenig/
 ```
 
 ### Supabase Local Development
 
 ```bash
 # Start local Supabase
-supabase start --workdir ./src/cojournalist-lite/supabase
+supabase start --workdir ./src/dorfkoenig/supabase
 
 # Serve Edge Functions locally
-supabase functions serve --workdir ./src/cojournalist-lite/supabase
+supabase functions serve --workdir ./src/dorfkoenig/supabase
 ```
 
 ## Deployment
@@ -157,13 +177,13 @@ supabase functions serve --workdir ./src/cojournalist-lite/supabase
 ### 1. Push Database Schema
 
 ```bash
-supabase db push --workdir ./src/cojournalist-lite/supabase
+supabase db push --workdir ./src/dorfkoenig/supabase
 ```
 
 ### 2. Deploy Edge Functions
 
 ```bash
-supabase functions deploy --workdir ./src/cojournalist-lite/supabase
+supabase functions deploy --workdir ./src/dorfkoenig/supabase
 ```
 
 ### 3. Configure pg_cron Jobs
@@ -188,7 +208,7 @@ npm run build:production
 | `/scouts/:id` | PUT | Update scout |
 | `/scouts/:id` | DELETE | Delete scout |
 | `/scouts/:id/run` | POST | Run scout manually |
-| `/scouts/:id/test` | POST | Test scout (preview) |
+| `/scouts/:id/test` | POST | Test scout (preview + provider detection) |
 | `/execute-scout` | POST | Execute scout pipeline |
 | `/units` | GET | List information units |
 | `/units/locations` | GET | Get available locations |
@@ -197,15 +217,22 @@ npm run build:production
 | `/compose/generate` | POST | Generate article draft |
 | `/executions` | GET | List executions |
 | `/executions/:id` | GET | Get execution details |
+| `/manual-upload` | POST | Upload text/photo/PDF as units |
+| `/bajour-drafts` | GET/POST/PATCH | Bajour draft CRUD |
+| `/bajour-select-units` | POST | AI-select units for village |
+| `/bajour-generate-draft` | POST | Generate newsletter draft |
+| `/bajour-send-verification` | POST | Send draft to correspondents via WhatsApp |
+| `/bajour-whatsapp-webhook` | POST | WhatsApp callback webhook |
+| `/bajour-send-mailchimp` | POST | Aggregate verified drafts into Mailchimp campaign |
 
 ## Scout Execution Pipeline
 
-1. **Scrape** - Fetch URL with Firecrawl changeTracking
-2. **Check Changes** - Early exit if unchanged
+1. **Scrape** - Fetch URL with Firecrawl (provider-aware: changeTracking or plain)
+2. **Check Changes** - Provider-aware: changeTracking status or hash comparison. Early exit if unchanged
 3. **Analyze Criteria** - LLM evaluates against user criteria
 4. **Check Duplicates** - pgvector cosine similarity (0.85)
 5. **Store Execution** - Save record with embedding
-6. **Extract Units** - Extract atomic facts if location provided
+6. **Extract Units** - Extract atomic facts if location or topic provided
 7. **Send Notification** - Email via Resend if not duplicate
 8. **Update Scout** - Reset failure count, update last_run
 9. **Return Results** - Execution summary
@@ -214,8 +241,9 @@ npm run build:production
 
 ### scouts
 - Scout configurations for URL monitoring
-- Frequency: daily, weekly, monthly
-- Location-based organization
+- Frequency: daily, weekly, biweekly, monthly
+- Location and/or topic-based organization
+- Provider detection: `firecrawl` or `firecrawl_plain`
 
 ### scout_executions
 - Execution history with embeddings
@@ -223,9 +251,15 @@ npm run build:production
 - Status tracking: running, completed, failed
 
 ### information_units
-- Atomic facts extracted from content
+- Atomic facts extracted from content (or manually uploaded)
 - Types: fact, event, entity_update
+- Source types: scout, manual_text, manual_photo, manual_pdf
 - Semantic search via embedding
+
+### bajour_drafts
+- Village newsletter drafts with WhatsApp verification workflow
+- Verification status: ausstehend, bestätigt, abgelehnt
+- 2-hour timeout auto-resolves to bestätigt
 
 ## Scheduled Jobs
 
@@ -236,11 +270,12 @@ npm run build:production
 
 ## Security
 
-- Row Level Security (RLS) on all tables
+- Row Level Security (RLS) on all tables (including bajour_drafts)
 - User isolation via user_id
 - API keys protected in Vault/Secrets
 - CORS configured for frontend access
-- Mock auth for development (JWT-ready)
+- URL token auth for CMS iframe embedding, mock auth for development
+- Edge Functions: `verify_jwt = false`, auth via `x-user-id` header
 
 ## Troubleshooting
 

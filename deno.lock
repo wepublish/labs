@@ -81,6 +81,7 @@
         "npm:glob@11",
         "npm:globals@15",
         "npm:jose@^5.9.0",
+        "npm:lucide-svelte@0.574",
         "npm:prettier-plugin-svelte@^3.3.0",
         "npm:prettier@^3.4.0",
         "npm:svelte-check@4",

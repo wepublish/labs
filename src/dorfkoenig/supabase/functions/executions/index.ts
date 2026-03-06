@@ -1,7 +1,13 @@
-// Executions Edge Function - Scout execution history
+/**
+ * @module executions
+ * Scout execution history (read-only).
+ * GET: list executions with pagination (default 20), optional scout_id filter.
+ * GET /:id: get single execution detail.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../_shared/constants.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -44,7 +50,7 @@ async function listExecutions(
 ) {
   const scoutId = url.searchParams.get('scout_id');
   const status = url.searchParams.get('status');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE);
   const offset = parseInt(url.searchParams.get('offset') || '0');
 
   // Build query with scout join for name

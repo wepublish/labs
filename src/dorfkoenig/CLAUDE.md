@@ -24,10 +24,10 @@ src/dorfkoenig/
 │   ├── units.ts           # Units list/search/markUsed
 │   └── executions.ts      # Execution history + pagination
 ├── routes/
-│   ├── Dashboard.svelte   # Scout list + create
+│   ├── Manage.svelte      # Scout list + filters
 │   ├── ScoutDetail.svelte # Scout edit + execution history
 │   ├── History.svelte     # All executions
-│   ├── Compose.svelte     # Unit search + article drafting
+│   ├── Feed.svelte        # Unit search + article drafting (ComposePanel)
 │   └── Login.svelte       # Mock auth login
 ├── components/
 │   ├── Layout.svelte      # Shell (nav + content)
@@ -43,7 +43,7 @@ src/dorfkoenig/
 │   ├── villages.json      # Village configuration data (10 villages)
 │   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
 │   ├── components/
-│   │   ├── DraftModal.svelte        # 6-step modal (list → village → units → generate → preview → confirm)
+│   │   ├── DraftPanel.svelte        # 3-step wizard (village → generate → preview/send) + sidebar
 │   │   ├── DraftList.svelte         # List of existing drafts
 │   │   ├── DraftPreview.svelte      # Generated draft preview
 │   │   ├── VillageSelect.svelte     # Village picker
@@ -108,11 +108,11 @@ Scheduling:
 
 | Type | Key Fields |
 |------|-----------|
-| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
+| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, provider?, content_hash?, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
 | `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted |
 | `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, topic, source_url, used_in_article |
 | `Draft` | title, headline, sections[], gaps[], sources[], word_count |
-| `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units |
+| `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units, provider?, content_hash? |
 
 ## Store APIs
 
@@ -157,10 +157,11 @@ Hash-based routing (required for GitHub Pages + iframe embedding):
 
 | Hash | Component | Params |
 |------|-----------|--------|
-| `#/dashboard` or `#/` | Dashboard | - |
+| `#/manage` or `#/` | Manage | - |
 | `#/scout/{id}` | ScoutDetail | `scoutId` |
 | `#/history` | History | - |
-| `#/compose` | Compose | - |
+| `#/feed` | Feed (ComposePanel) | - |
+| `#/entwurf` | DraftPanel (Bajour, feature-flagged) | - |
 
 Auth gate: shows `Loading` while checking, error message if `$auth.error`, `Login` if no user, `Layout > Route` if authenticated.
 

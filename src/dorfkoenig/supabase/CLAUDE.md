@@ -26,13 +26,13 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `supabase-client.ts` | `createAnonClient()`, `createServiceClient()`, `getUserId(req)`, `requireUserId(req)`, DB types | - |
 | `openrouter.ts` | `chat()` (LLM), `generateEmbedding()`, `generateEmbeddings()`, `cosineSimilarity()` | OpenRouter API |
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
-| `firecrawl.ts` | `scrape()` with change tracking, `getDomain()` | Firecrawl v2 API |
+| `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()` | Resend API |
 
 ## 9-Step Execution Pipeline (`execute-scout/index.ts`)
 
-1. **Scrape** -- Firecrawl scrape with `changeTracking: { mode: 'git-diff', tag: 'scout-{scoutId}' }`
-2. **Check changes** -- `determineChangeStatus()`: first_run / changed / same. Early exit if `same`.
+1. **Scrape** -- Provider-aware: `firecrawl` scouts use changeTracking tag `scout-{scoutId}`, `firecrawl_plain` scouts scrape without changeTracking.
+2. **Check changes** -- Provider-aware: `firecrawl` uses changeTracking `changeStatus`, `firecrawl_plain` uses hash comparison (`content_hash`). Early exit if `same`.
 3. **Analyze criteria** -- OpenRouter GPT-4o-mini: does content match scout's criteria? Returns `{ matches, summary, keyFindings }`. German prompts.
 4. **Check duplicates** -- Generate embedding for summary, call `check_duplicate_execution()` DB function (threshold: 0.85, lookback: 30 days).
 5. **Store execution** -- Update `scout_executions` row with results.
@@ -48,7 +48,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 ### Tables
 
 **`scouts`** -- Web scout configurations
-- PK: `id` (UUID), `user_id` (TEXT), `name`, `url`, `criteria`, `location` (JSONB), `frequency` (daily/weekly/monthly), `is_active`, `last_run_at`, `consecutive_failures`, `notification_email`
+- PK: `id` (UUID), `user_id` (TEXT), `name`, `url`, `criteria`, `location` (JSONB), `frequency` (daily/weekly/monthly), `is_active`, `last_run_at`, `consecutive_failures`, `notification_email`, `provider` (TEXT, nullable: `firecrawl` | `firecrawl_plain`), `content_hash` (TEXT, nullable: SHA-256 for hash-based change detection)
 
 **`scout_executions`** -- Execution history with dedup embeddings
 - PK: `id` (UUID), FK: `scout_id` → scouts (CASCADE), `user_id`, `status` (running/completed/failed), `change_status`, `criteria_matched`, `summary_text`, `summary_embedding` vector(1536), `is_duplicate`, `duplicate_similarity`, `notification_sent`, `units_extracted`, `scrape_duration_ms`
@@ -84,6 +84,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 1. **`verify_jwt = false`** -- All Edge Functions. Auth is via `x-user-id` header (mock auth) or service role key. See `config.toml`.
 2. **Service client for pipeline** -- `execute-scout` uses `createServiceClient()` (bypasses RLS) because it's triggered by pg_cron with service role key.
 3. **Firecrawl tag format** -- `scout-{scoutId}`. Firecrawl tracks content per tag. Do not change format or existing baselines break.
+10. **Provider detection (double-probe)** -- `testScout()` runs `doubleProbe()` which makes 2 sequential Firecrawl calls to detect if a URL's changeTracking baselines persist. Result: `firecrawl` (baselines persist, use changeTracking) or `firecrawl_plain` (baselines dropped, use hash comparison). Stored on the scout as `provider` + `content_hash`. Legacy scouts with `provider=null` default to `firecrawl` behavior.
 4. **Embedding dimensions** -- 1536 (OpenAI `text-embedding-3-small` via OpenRouter). Schema enforces `vector(1536)`.
 5. **pg_cron stagger** -- `dispatch_due_scouts()` calls `pg_sleep(10)` between dispatches to respect Firecrawl rate limits.
 6. **CASCADE deletes** -- Deleting a scout cascades to executions and units.
@@ -93,28 +94,21 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 
 ## CLI Commands
 
-All Supabase CLI commands require `--workdir` flag from repo root:
+All Supabase CLI commands require `--workdir` flag from repo root. The `--workdir` points to the directory that **contains** the `supabase/` subdirectory (i.e. `./src/dorfkoenig`, NOT `./src/dorfkoenig/supabase`):
 
 ```bash
 # Link project
-supabase link --project-ref <ref> --workdir ./src/dorfkoenig/supabase
+supabase link --project-ref <ref> --workdir ./src/dorfkoenig
 
 # Push schema
-supabase db push --workdir ./src/dorfkoenig/supabase
+supabase db push --workdir ./src/dorfkoenig
 
 # Deploy all functions
-supabase functions deploy --workdir ./src/dorfkoenig/supabase
+supabase functions deploy --workdir ./src/dorfkoenig
 
-# Deploy single function
-supabase functions deploy scouts --workdir ./src/dorfkoenig/supabase
-
-# View function logs
-supabase functions logs execute-scout --workdir ./src/dorfkoenig/supabase
+# Deploy single function (--no-verify-jwt matches config.toml)
+supabase functions deploy scouts --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig
 ```
-
-## MCP Deployment (No CLI)
-
-Supabase CLI is not installed locally. Use the MCP `deploy_edge_function` tool to deploy Edge Functions. Import paths must use `./_shared/` (not `../_shared/`) when deploying via MCP, because the deploy tool places the entrypoint in a `source/` subdirectory. Include all shared module files with names like `_shared/cors.ts` so they become siblings to the entrypoint.
 
 ## Adding a New Edge Function
 
@@ -125,4 +119,4 @@ Supabase CLI is not installed locally. Use the MCP `deploy_edge_function` tool t
 5. Use `createServiceClient()` only for internal/scheduled functions
 6. Add `[functions.{name}]` section to `config.toml` with `verify_jwt = false`
 7. Return responses via `jsonResponse()` / `errorResponse()`
-8. Deploy: `supabase functions deploy {name} --workdir ./src/dorfkoenig/supabase`
+8. Deploy: `supabase functions deploy {name} --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig`

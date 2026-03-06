@@ -134,7 +134,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'executions: get execution detail by ID (BUG DIAGNOSTIC: routing)',
+  name: 'executions: get execution detail by ID',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {
@@ -188,7 +188,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'executions: non-existent execution returns 404 (BUG DIAGNOSTIC: routing)',
+  name: 'executions: non-existent execution returns 404',
   sanitizeOps: false,
   sanitizeResources: false,
   async fn() {

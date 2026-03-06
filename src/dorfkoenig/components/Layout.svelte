@@ -117,8 +117,8 @@
     border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
-    z-index: 100;
-    gap: 1rem;
+    z-index: var(--z-sticky);
+    gap: var(--spacing-md);
   }
 
   /* Brand */
@@ -136,7 +136,7 @@
 
   .brand-text {
     font-family: var(--font-display);
-    font-size: 1.125rem;
+    font-size: var(--text-xl);
     font-weight: 600;
     color: var(--color-text);
     letter-spacing: -0.01em;
@@ -160,11 +160,11 @@
     color: var(--color-text-muted);
     text-decoration: none;
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     padding: 0.375rem 0.75rem;
     border-radius: var(--radius-sm);
     background: transparent;
-    transition: color 0.15s, background 0.15s;
+    transition: color var(--transition-base), background var(--transition-base);
   }
 
   .nav-center a:hover {
@@ -200,10 +200,10 @@
     border-radius: var(--radius-sm);
     background: var(--color-primary);
     color: white;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-base);
     white-space: nowrap;
   }
 
@@ -223,10 +223,10 @@
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-primary);
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-base);
     white-space: nowrap;
   }
 
@@ -243,7 +243,7 @@
   }
 
   .user-name {
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     color: var(--color-text-muted);
     font-weight: 500;
   }
@@ -259,7 +259,7 @@
     background: transparent;
     color: var(--color-text-light);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-base);
   }
 
   .btn-logout:hover {

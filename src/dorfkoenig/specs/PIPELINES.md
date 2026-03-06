@@ -1,8 +1,8 @@
-# coJournalist-Lite Pipeline Specification
+# Dorfkoenig Pipeline Specification
 
 ## Overview
 
-The execute-scout pipeline is the core of coJournalist-Lite. It performs web scraping, change detection, criteria analysis, deduplication, information extraction, and notification delivery.
+The execute-scout pipeline is the core of Dorfkoenig. It performs web scraping, change detection, criteria analysis, deduplication, information extraction, and notification delivery.
 
 ## Execute Scout Pipeline (9 Steps)
 
@@ -43,7 +43,15 @@ The execute-scout pipeline is the core of coJournalist-Lite. It performs web scr
 
 ## Step 1: Scrape
 
-Fetch URL content using Firecrawl with change tracking.
+Fetch URL content using Firecrawl. Provider-aware: `firecrawl` scouts use changeTracking with tag `scout-{scoutId}`, `firecrawl_plain` scouts scrape without changeTracking and rely on hash-based change detection.
+
+### Provider Detection (Double-Probe)
+
+On first test (`POST /scouts/:id/test`), the pipeline runs a **double-probe**: two sequential Firecrawl calls with the same changeTracking tag. If the second call reports `previousScrapeAt`, baselines are persisted and the scout gets `provider: 'firecrawl'`. Otherwise, baselines are dropped and the scout gets `provider: 'firecrawl_plain'` with a SHA-256 `content_hash` for hash-based change detection.
+
+### Hash-Based Change Detection
+
+For `firecrawl_plain` scouts, content changes are detected by comparing SHA-256 hashes of whitespace-normalized markdown. The `computeContentHash()` function normalizes runs of whitespace to single space and trims before hashing, preventing false "changed" detections from Firecrawl's non-deterministic trailing whitespace.
 
 ### Implementation
 
@@ -547,14 +555,14 @@ export async function sendNotification(
     <a href="${sourceUrl}" class="cta">Quelle ansehen</a>
   </div>
   <div class="footer">
-    <p>Diese E-Mail wurde automatisch von coJournalist-Lite gesendet.</p>
+    <p>Diese E-Mail wurde automatisch von Dorfkoenig gesendet.</p>
   </div>
 </body>
 </html>`;
 
   try {
     await resend.emails.send({
-      from: 'coJournalist <noreply@resend.dev>',
+      from: 'Dorfkoenig <noreply@resend.dev>',
       to: email,
       subject: `Scout-Alarm: ${scoutName}${locationLabel}`,
       html,

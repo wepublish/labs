@@ -13,6 +13,7 @@ vi.mock('../api', () => ({
 
 const { bajourApi } = await import('../api');
 const { bajourDrafts } = await import('../store');
+const { POLL_INTERVAL_MS } = await import('../../lib/constants');
 
 import type { BajourDraft } from '../types';
 
@@ -120,10 +121,10 @@ describe('bajourDrafts store', () => {
       vi.mocked(bajourApi.listDrafts).mockResolvedValue([pendingDraft]);
       bajourDrafts.startPolling();
 
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
       expect(bajourApi.listDrafts).toHaveBeenCalledTimes(1);
 
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
       expect(bajourApi.listDrafts).toHaveBeenCalledTimes(2);
     });
 
@@ -136,11 +137,11 @@ describe('bajourDrafts store', () => {
       vi.mocked(bajourApi.listDrafts).mockResolvedValue([resolvedDraft]);
       bajourDrafts.startPolling();
 
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
       // Should have called once, then stopped
       expect(bajourApi.listDrafts).toHaveBeenCalledTimes(0);
 
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
       // Should NOT have called again
       expect(bajourApi.listDrafts).toHaveBeenCalledTimes(0);
     });
@@ -155,7 +156,7 @@ describe('bajourDrafts store', () => {
       bajourDrafts.stopPolling();
 
       vi.mocked(bajourApi.listDrafts).mockResolvedValue([pendingDraft]);
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
       expect(bajourApi.listDrafts).not.toHaveBeenCalled();
     });
   });

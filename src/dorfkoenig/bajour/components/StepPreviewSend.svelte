@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Step 3: preview generated draft, save/send to WhatsApp verification, and send to Mailchimp.
   import { RefreshCw, Send, Mail, Loader2 } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { bajourDrafts } from '../store';
@@ -38,6 +39,24 @@
     currentExistingDraft?.verification_status === 'bestätigt'
   );
 
+  // Parse API error into a user-friendly message
+  function friendlyError(err: unknown): string {
+    const msg = (err as Error).message || String(err);
+    if (msg.includes('TEMPLATE_NOT_APPROVED') || msg.includes('Nachrichtenvorlage')) {
+      return 'Die WhatsApp-Vorlage wurde noch nicht von Meta genehmigt. Der Entwurf wurde gespeichert — versuchen Sie es später erneut.';
+    }
+    if (msg.includes('PHONE_NOT_REGISTERED') || msg.includes('nicht registriert')) {
+      return 'Die WhatsApp-Nummer ist nicht registriert. Bitte den Administrator kontaktieren.';
+    }
+    if (msg.includes('REENGAGEMENT_REQUIRED')) {
+      return 'Der Empfänger muss zuerst eine Nachricht an die Absendernummer senden, bevor Nachrichten zugestellt werden können.';
+    }
+    if (msg.includes('Korrespondenten')) {
+      return msg;
+    }
+    return `Fehler beim Senden: ${msg}`;
+  }
+
   // Send draft to Dorfkonige
   async function handleSend() {
     if (!village || !generatedDraft) return;
@@ -63,14 +82,22 @@
         custom_system_prompt: generationPrompt.trim() || null,
       });
 
-      await bajourDrafts.sendVerification(draft.id);
+      try {
+        await bajourDrafts.sendVerification(draft.id);
+      } catch (verifyErr) {
+        // Draft was saved but verification failed — show the draft and a friendly error
+        currentExistingDraft = draft;
+        error = friendlyError(verifyErr);
+        return;
+      }
+
       if (selectedUnitIds.length > 0) {
         await unitsApi.markUsed(selectedUnitIds);
       }
       currentExistingDraft = draft;
       successBanner = { variant: 'sent' };
     } catch (err) {
-      error = (err as Error).message;
+      error = friendlyError(err);
     } finally {
       loading = false;
     }
@@ -204,11 +231,11 @@
 
   .error-message {
     padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.375rem;
+    font-size: var(--text-base-sm);
+    color: var(--color-status-error-text);
+    background: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-sm);
   }
 
   .existing-draft-header {
@@ -219,27 +246,27 @@
   }
 
   .existing-draft-title {
-    font-size: 1.125rem;
+    font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0;
   }
 
   .existing-draft-village {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .existing-draft-body {
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     line-height: 1.6;
   }
 
   .existing-draft-body :global(h3) {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0.75rem 0 0.25rem 0;
   }
 
@@ -256,8 +283,8 @@
   }
 
   .existing-draft-body :global(.source-ref) {
-    font-size: 0.6875rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
   }
 
   /* Status override toggle */
@@ -268,16 +295,16 @@
   }
 
   .status-override-hint {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .status-toggle {
     display: flex;
     gap: 0;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     overflow: hidden;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     width: fit-content;
   }
 
@@ -286,21 +313,21 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 500;
     border: none;
-    background: var(--color-surface, white);
-    color: var(--color-text-muted, #6b7280);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-base), color var(--transition-base);
   }
 
   .toggle-btn:not(:last-child) {
-    border-right: 1px solid var(--color-border, #e5e7eb);
+    border-right: 1px solid var(--color-border);
   }
 
   .toggle-btn:hover:not(.active):not(:disabled) {
-    background: var(--color-surface-muted, #f3f4f6);
+    background: var(--color-surface-muted);
   }
 
   .toggle-btn:disabled {
@@ -309,22 +336,13 @@
   }
 
   .toggle-confirm.active {
-    background: #d1fae5;
-    color: #065f46;
+    background: var(--color-badge-entity-bg);
+    color: var(--color-badge-entity-text);
   }
 
   .toggle-reject.active {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-
-  .step-preview-send :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    background: var(--color-status-error-bg);
+    color: var(--color-status-error-text);
   }
 
   .step-actions {
@@ -332,7 +350,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding-top: 0.5rem;
-    border-top: 1px solid var(--color-border, #e5e7eb);
+    border-top: 1px solid var(--color-border);
   }
 
   .mailchimp-wrapper {

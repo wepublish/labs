@@ -2,6 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import { bajourApi } from './api';
+import { POLL_INTERVAL_MS } from '../lib/constants';
 import type { BajourDraft, VerificationStatus } from './types';
 
 interface BajourDraftsState {
@@ -94,7 +95,7 @@ function createBajourDraftsStore() {
           return;
         }
         await this.load();
-      }, 30000);
+      }, POLL_INTERVAL_MS);
     },
 
     /**

@@ -89,7 +89,7 @@
     padding: 1.5rem;
     background: linear-gradient(135deg, rgba(234, 114, 110, 0.03) 0%, rgba(212, 90, 86, 0.06) 100%);
     border: 1px solid rgba(234, 114, 110, 0.15);
-    border-radius: var(--radius-lg, 1rem);
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -114,14 +114,14 @@
   }
 
   .extraction-progress__message {
-    font-family: var(--font-body, 'DM Sans', sans-serif);
-    font-size: 0.9375rem;
+    font-family: var(--font-body);
+    font-size: var(--text-md);
     font-weight: 500;
     color: var(--color-text, #1c1917);
   }
 
   .extraction-progress__percentage {
-    font-family: var(--font-display, 'Crimson Pro', serif);
+    font-family: var(--font-display);
     font-size: 1.5rem;
     font-weight: 600;
     background: linear-gradient(135deg, var(--color-primary-dark, #d45a56), var(--color-primary, #ea726e));
@@ -135,7 +135,7 @@
     width: 100%;
     height: 0.5rem;
     background: rgba(234, 114, 110, 0.08);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     overflow: hidden;
     margin-bottom: 1rem;
   }
@@ -146,7 +146,7 @@
     left: 0;
     height: 100%;
     background: linear-gradient(90deg, var(--color-primary, #ea726e), var(--color-primary-dark, #d45a56));
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
@@ -156,7 +156,7 @@
     left: 0;
     height: 100%;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     animation: shimmerProgress 2s infinite;
     transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -169,9 +169,9 @@
   .extraction-progress__hint {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    color: var(--color-text-muted, #57534e);
+    gap: var(--spacing-sm);
+    font-size: var(--text-base-sm);
+    color: var(--color-text-muted);
     font-style: italic;
     margin: 0;
   }
@@ -203,7 +203,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #059669;
+    color: var(--color-success-dark);
   }
 
   .extraction-progress__success-text {
@@ -213,15 +213,15 @@
   }
 
   .extraction-progress__success-title {
-    font-family: var(--font-body, 'DM Sans', sans-serif);
-    font-size: 0.9375rem;
+    font-family: var(--font-body);
+    font-size: var(--text-md);
     font-weight: 600;
-    color: #065f46;
+    color: var(--color-badge-entity-text);
   }
 
   .extraction-progress__success-details {
-    font-size: 0.8125rem;
-    color: #047857;
+    font-size: var(--text-base-sm);
+    color: var(--color-success-dark);
   }
 
   /* Error state */
@@ -251,7 +251,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #dc2626;
+    color: var(--color-danger-dark);
   }
 
   .extraction-progress__error-text {
@@ -261,14 +261,14 @@
   }
 
   .extraction-progress__error-title {
-    font-size: 0.9375rem;
+    font-size: var(--text-md);
     font-weight: 600;
-    color: #991b1b;
+    color: var(--color-status-error-text);
   }
 
   .extraction-progress__error-details {
-    font-size: 0.8125rem;
-    color: #b91c1c;
+    font-size: var(--text-base-sm);
+    color: var(--color-status-error-text);
   }
 
   .extraction-progress__track--error {

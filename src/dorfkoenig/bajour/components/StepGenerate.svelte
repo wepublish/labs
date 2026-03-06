@@ -1,4 +1,6 @@
 <script lang="ts">
+  // Step 2: selects relevant units for a village via LLM, then generates the newsletter draft.
+  // Maps each village to a fixed scout ID for unit selection.
   import { Button } from '@shared/components';
   import { bajourApi } from '../api';
   import ProgressIndicator from '../../components/ui/ProgressIndicator.svelte';

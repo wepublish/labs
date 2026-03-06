@@ -1,4 +1,7 @@
 <script lang="ts">
+  // Bajour newsletter wizard: 3-step flow (village select -> generate -> preview/send)
+  // with a sidebar listing existing drafts and their verification statuses.
+
   import { onDestroy } from 'svelte';
   import { fly } from 'svelte/transition';
   import { FileText } from 'lucide-svelte';
@@ -171,7 +174,7 @@
     grid-template-columns: auto 1fr auto;
     height: 100%;
     overflow: hidden;
-    background: var(--color-background, #f9fafb);
+    background: var(--color-background);
   }
 
   /* Top-right toggle button */
@@ -184,26 +187,26 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.4rem 0.75rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: var(--radius-sm, 0.375rem);
-    background: var(--color-surface, white);
-    color: var(--color-text-muted, #6b7280);
-    font-size: 0.8125rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: var(--text-base-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-base);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
   .drafts-toggle:hover {
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     border-color: rgba(234, 114, 110, 0.4);
     background: rgba(234, 114, 110, 0.04);
   }
 
   .drafts-toggle.active {
-    color: var(--color-primary-dark, #d45a56);
-    border-color: var(--color-primary, #ea726e);
+    color: var(--color-primary-dark);
+    border-color: var(--color-primary);
     background: rgba(234, 114, 110, 0.08);
   }
 
@@ -214,10 +217,10 @@
     min-width: 1.25rem;
     height: 1.25rem;
     padding: 0 0.3rem;
-    border-radius: 9999px;
-    background: var(--color-primary, #ea726e);
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
     color: white;
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 600;
     line-height: 1;
   }

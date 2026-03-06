@@ -1,6 +1,9 @@
-// Bajour Send to Mailchimp Edge Function
-// Aggregates all verified (bestätigt) drafts and creates a Mailchimp campaign
-// from the "Dorfkönig-Basis" template.
+/**
+ * @module bajour-send-mailchimp
+ * Aggregates all verified (bestaetigt) drafts into a Mailchimp campaign.
+ * POST: clones the "Dorfkoenig-Basis" template, replaces text:\w+ placeholders
+ * with combined village content via regex, and creates the campaign.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
@@ -10,6 +13,17 @@ import { TEMPLATE_HTML } from './template.ts';
 const MAILCHIMP_API_KEY = Deno.env.get('MAILCHIMP_API_KEY')!;
 const MAILCHIMP_SERVER = Deno.env.get('MAILCHIMP_SERVER')!;
 const TEMPLATE_CAMPAIGN_NAME = 'Dorfkönig-Basis';
+
+/**
+ * Escape HTML special characters to prevent XSS in newsletter content.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -80,11 +94,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Build combined village HTML from all drafts
+    // 6. Build combined village HTML from all drafts (escape to prevent XSS)
     const villageContentParts: string[] = [];
     for (const [, { village_name, body }] of villageDrafts) {
-      const bodyHtml = body.replace(/\n/g, '<br>');
-      villageContentParts.push(`<strong>${village_name}</strong><br>${bodyHtml}`);
+      const bodyHtml = escapeHtml(body).replace(/\n/g, '<br>');
+      villageContentParts.push(`<strong>${escapeHtml(village_name)}</strong><br>${bodyHtml}`);
     }
     const combinedContent = villageContentParts.join('<br><br>');
 
@@ -117,7 +131,7 @@ Deno.serve(async (req) => {
       if (c.settings?.title === campaignTitle && c.id !== templateCampaign.id) {
         try {
           await mailchimp.campaigns.remove(c.id);
-          console.log(`Deleted existing campaign: ${c.id}`);
+          // Campaign deleted
         } catch (delErr) {
           console.warn(`Could not delete campaign ${c.id}:`, delErr);
         }
@@ -142,8 +156,6 @@ Deno.serve(async (req) => {
     await mailchimp.campaigns.setContent(newCampaign.id, {
       html: modifiedHtml,
     });
-
-    console.log(`Created Mailchimp campaign ${newCampaign.id} with ${replacedCount} villages`);
 
     return jsonResponse({
       data: {

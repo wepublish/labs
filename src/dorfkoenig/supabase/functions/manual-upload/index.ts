@@ -1,10 +1,16 @@
-// Manual Upload Edge Function
-// Allows journalists to manually upload text, photos, and PDFs as information units
+/**
+ * @module manual-upload
+ * Manual upload of text, photos, and PDFs as information units.
+ * POST content_type=text: extract units from raw text via LLM.
+ * POST content_type=photo|pdf: generate presigned upload URL.
+ * POST content_type=photo_confirm|pdf_confirm: confirm upload and extract units.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
+import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -192,7 +198,7 @@ AUSGABEFORMAT (JSON):
     let isDuplicate = false;
 
     for (const seen of seenEmbeddings) {
-      if (embeddings.similarity(embedding, seen) >= 0.75) {
+      if (embeddings.similarity(embedding, seen) >= UNIT_DEDUP_THRESHOLD) {
         isDuplicate = true;
         break;
       }

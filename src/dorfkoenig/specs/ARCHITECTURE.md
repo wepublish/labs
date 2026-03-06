@@ -1,8 +1,8 @@
-# coJournalist-Lite Architecture
+# Dorfkoenig Architecture
 
 ## Overview
 
-coJournalist-Lite is a simplified web scout monitoring system deployed as a static Svelte 5 SPA on GitHub Pages with Supabase as the backend. It monitors URLs for content changes, extracts atomic information units, and enables AI-powered article draft generation.
+Dorfkoenig is a web scout monitoring system for journalists, deployed as a static Svelte 5 SPA on GitHub Pages with Supabase as the backend. It monitors URLs for content changes, extracts atomic information units, and enables AI-powered article draft generation. Includes a feature-flagged Bajour village newsletter workflow with WhatsApp verification and Mailchimp integration.
 
 ## System Architecture
 
@@ -26,11 +26,13 @@ coJournalist-Lite is a simplified web scout monitoring system deployed as a stat
 │  │  - units (list + semantic search)                       ││
 │  │  - compose (draft generation)                           ││
 │  │  - executions (history)                                 ││
+│  │  - manual-upload (text/photo/PDF)                       ││
+│  │  - bajour-* (drafts, generate, verify, mailchimp)      ││
 │  └─────────────────────────────────────────────────────────┘│
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │              PostgreSQL + pgvector                       ││
 │  │  - scouts, scout_executions                             ││
-│  │  - information_units                                    ││
+│  │  - information_units, bajour_drafts                     ││
 │  └─────────────────────────────────────────────────────────┘│
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │              pg_cron + pg_net                            ││
@@ -39,12 +41,12 @@ coJournalist-Lite is a simplified web scout monitoring system deployed as a stat
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
                           │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-    ┌──────────┐   ┌──────────┐   ┌──────────┐
-    │ Firecrawl│   │OpenRouter│   │  Resend  │
-    │  (scrape)│   │  (AI)    │   │ (email)  │
-    └──────────┘   └──────────┘   └──────────┘
+          ┌───────────┬───────┼───────┬───────────┐
+          ▼           ▼       ▼       ▼           ▼
+    ┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌──────────┐
+    │ Firecrawl││OpenRouter││  Resend  ││ WhatsApp ││Mailchimp │
+    │  (scrape)││  (AI)    ││ (email)  ││ (verify) ││(campaign)│
+    └──────────┘└──────────┘└──────────┘└──────────┘└──────────┘
 ```
 
 ## Tech Stack
@@ -62,7 +64,9 @@ coJournalist-Lite is a simplified web scout monitoring system deployed as a stat
 | Scraping | Firecrawl v2 API | Web content with change tracking |
 | Email | Resend | Transactional notifications |
 | Geocoding | MapTiler | Location autocomplete |
-| Auth | Labs mock user pattern | Configurable dev users |
+| Auth | Labs mock user pattern | URL token + mock dev users |
+| WhatsApp | Meta WhatsApp Business API | Bajour draft verification |
+| Newsletter | Mailchimp | Bajour campaign creation |
 
 ## Data Flow
 
@@ -138,7 +142,8 @@ coJournalist-Lite is a simplified web scout monitoring system deployed as a stat
 ### Firecrawl (Scraping)
 
 - **Endpoint**: `https://api.firecrawl.dev/v2/scrape`
-- **Features used**: `changeTracking` with per-scout tags
+- **Features used**: `changeTracking` with per-scout tags (provider-aware)
+- **Double-probe**: Two sequential scrapes to detect if baselines persist. Result: `firecrawl` (use changeTracking) or `firecrawl_plain` (use SHA-256 hash comparison)
 - **Rate limit**: 6 requests/minute
 - **Stagger**: 10s between scout dispatches
 
@@ -159,6 +164,42 @@ coJournalist-Lite is a simplified web scout monitoring system deployed as a stat
 - **Purpose**: Location autocomplete in scout form
 - **Endpoint**: `https://api.maptiler.com/geocoding/`
 - **Returns**: JSONB with city, state, country, coordinates
+
+### WhatsApp Business API (Bajour Verification)
+
+- **Purpose**: Send draft previews to village correspondents for verification
+- **Flow**: Edge Function sends template message via Meta API, webhook receives quick-reply callbacks (bestätigt/abgelehnt)
+- **Timeout**: 2-hour auto-resolve to `bestätigt` via `resolve_bajour_timeouts()` DB function
+
+### Mailchimp (Bajour Newsletter)
+
+- **Purpose**: Aggregate verified village drafts into a campaign
+- **Template campaign**: "Dorfkönig-Basis" — contains `text:{villageId}` placeholders
+- **Flow**: Replaces placeholders with village content, creates dated campaign, does NOT auto-send
+- **Config**: List "WePublish" (ID: `851436c80e`), server: `us21`
+
+## Bajour Workflow
+
+Feature-flagged (`VITE_FEATURE_BAJOUR=true`). Village newsletter draft creation for Bajour.
+
+```
+1. Select village (from villages.json, 10 villages)
+       │
+       ▼
+2. AI selects relevant units (bajour-select-units)
+       │
+       ▼
+3. Generate newsletter draft via LLM (bajour-generate-draft)
+       │
+       ▼
+4. Send to correspondents via WhatsApp (bajour-send-verification)
+       │
+       ▼
+5. Correspondents reply bestätigt/abgelehnt (bajour-whatsapp-webhook)
+       │ (2-hour timeout auto-resolves to bestätigt)
+       ▼
+6. Aggregate all verified drafts into Mailchimp campaign (bajour-send-mailchimp)
+```
 
 ## Security Model
 
@@ -181,9 +222,9 @@ USING (user_id = auth.uid());
 
 ### Authentication
 
-- **MVP**: Mock user pattern (user_id in localStorage)
-- **Future**: JWT from wepublish CMS (same user_id format)
-- **No change required**: Frontend code works for both modes
+- **Production**: URL token via `?token=` parameter (CMS iframe embedding)
+- **Development**: Mock user login page (user_id in localStorage)
+- **Edge Functions**: `x-user-id` header, `verify_jwt = false` on all functions
 
 ## Scalability Considerations
 

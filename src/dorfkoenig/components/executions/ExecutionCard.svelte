@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Badge } from '../ui/primitives';
   import { formatRelativeTime } from '../../lib/constants';
   import type { Execution } from '../../lib/types';
 
@@ -24,31 +25,39 @@
 
     <div class="execution-badges">
       {#if execution.status === 'failed'}
-        <span class="execution-badge failed">Fehlgeschlagen</span>
+        <Badge variant="error">Fehlgeschlagen</Badge>
       {:else if execution.change_status === 'same'}
-        <span class="execution-badge not-matched">Unverändert</span>
+        <Badge variant="neutral">Unverandert</Badge>
       {:else if execution.criteria_matched}
-        <span class="execution-badge matched">Kriterien erfüllt</span>
+        <Badge variant="matched">Kriterien erfullt</Badge>
       {:else}
-        <span class="execution-badge not-matched">Keine Treffer</span>
+        <Badge variant="neutral">Keine Treffer</Badge>
       {/if}
 
       {#if execution.is_duplicate}
-        <span class="execution-badge duplicate">Duplikat</span>
+        <Badge variant="duplicate">Duplikat</Badge>
       {/if}
 
       {#if execution.notification_sent}
-        <span class="execution-badge notified">Benachrichtigt</span>
+        <Badge variant="notified">Benachrichtigt</Badge>
       {/if}
 
       {#if execution.units_extracted > 0}
-        <span class="execution-badge">{execution.units_extracted} Einheiten</span>
+        <Badge variant="neutral">{execution.units_extracted} Einheiten</Badge>
       {/if}
     </div>
   </div>
 </div>
 
 <style>
+  .execution-card {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
   .execution-card.compact {
     padding: var(--spacing-sm);
   }
@@ -57,8 +66,44 @@
     display: none;
   }
 
-  .failed {
-    background: rgba(239, 68, 68, 0.1) !important;
-    color: var(--color-danger) !important;
+  .execution-status {
+    width: 8px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+
+  .execution-status.completed { background: var(--color-success); }
+  .execution-status.running { background: var(--color-warning); }
+  .execution-status.failed { background: var(--color-danger); }
+
+  .execution-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .execution-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .execution-scout-name { font-weight: 500; }
+
+  .execution-time {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .execution-summary {
+    font-size: var(--text-base);
+    color: var(--color-text);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .execution-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
   }
 </style>

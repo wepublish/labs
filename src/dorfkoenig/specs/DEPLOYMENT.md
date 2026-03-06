@@ -1,8 +1,8 @@
-# coJournalist-Lite Deployment Guide
+# Dorfkoenig Deployment Guide
 
 ## Overview
 
-coJournalist-Lite is deployed as:
+Dorfkoenig is deployed as:
 - **Frontend**: Static SPA on GitHub Pages
 - **Backend**: Supabase (Edge Functions + PostgreSQL)
 
@@ -33,7 +33,7 @@ supabase --version
 ### 1.1 Create Project
 
 1. Go to [supabase.com](https://supabase.com)
-2. Create new project: `cojournalist-lite`
+2. Create new project: `dorfkoenig`
 3. Select region close to target users (e.g., `eu-central-1`)
 4. Save the project URL and keys
 
@@ -76,7 +76,7 @@ SELECT vault.create_secret(
 
 ```bash
 # Set workdir for Supabase CLI
-export SUPABASE_WORKDIR=./src/cojournalist-lite/supabase
+export SUPABASE_WORKDIR=./src/dorfkoenig
 
 # Link to remote project
 supabase link --project-ref YOUR_PROJECT_ID
@@ -100,19 +100,28 @@ In Supabase Dashboard > Settings > Edge Functions > Secrets:
 | `OPENROUTER_API_KEY` | `sk-or-...` |
 | `FIRECRAWL_API_KEY` | `fc-...` |
 | `RESEND_API_KEY` | `re_...` |
+| `MAILCHIMP_API_KEY` | `xxx-us21` |
+| `MAILCHIMP_SERVER` | `us21` |
 
 ### 2.2 Deploy Functions
 
 ```bash
 # Deploy all functions
-supabase functions deploy --workdir ./src/cojournalist-lite/supabase
+supabase functions deploy --workdir ./src/dorfkoenig
 
 # Or deploy individually
-supabase functions deploy scouts --workdir ./src/cojournalist-lite/supabase
-supabase functions deploy execute-scout --workdir ./src/cojournalist-lite/supabase
-supabase functions deploy units --workdir ./src/cojournalist-lite/supabase
-supabase functions deploy compose --workdir ./src/cojournalist-lite/supabase
-supabase functions deploy executions --workdir ./src/cojournalist-lite/supabase
+supabase functions deploy scouts --workdir ./src/dorfkoenig
+supabase functions deploy execute-scout --workdir ./src/dorfkoenig
+supabase functions deploy units --workdir ./src/dorfkoenig
+supabase functions deploy compose --workdir ./src/dorfkoenig
+supabase functions deploy executions --workdir ./src/dorfkoenig
+supabase functions deploy manual-upload --workdir ./src/dorfkoenig
+supabase functions deploy bajour-drafts --workdir ./src/dorfkoenig
+supabase functions deploy bajour-select-units --workdir ./src/dorfkoenig
+supabase functions deploy bajour-generate-draft --workdir ./src/dorfkoenig
+supabase functions deploy bajour-send-verification --workdir ./src/dorfkoenig
+supabase functions deploy bajour-whatsapp-webhook --workdir ./src/dorfkoenig
+supabase functions deploy bajour-send-mailchimp --workdir ./src/dorfkoenig
 ```
 
 ### 2.3 Configure Function Settings
@@ -126,6 +135,13 @@ In Supabase Dashboard > Edge Functions:
 | `units` | No | 30s |
 | `compose` | No | 60s |
 | `executions` | No | 30s |
+| `manual-upload` | No | 60s |
+| `bajour-drafts` | No | 30s |
+| `bajour-select-units` | No | 30s |
+| `bajour-generate-draft` | No | 60s |
+| `bajour-send-verification` | No | 30s |
+| `bajour-whatsapp-webhook` | No | 30s |
+| `bajour-send-mailchimp` | No | 60s |
 
 **Note:** JWT verification is disabled because we use `x-user-id` header for auth.
 
@@ -200,7 +216,7 @@ cd /Users/tom/code/labs
 # Build for production
 npm run build:production
 
-# Output is in dist/cojournalist-lite/
+# Output is in dist/dorfkoenig/
 ```
 
 ### 4.3 GitHub Pages Deployment
@@ -267,11 +283,11 @@ Create `public/404.html` for GitHub Pages SPA routing:
     <script>
       // Redirect to index with route as query param
       const path = window.location.pathname;
-      const route = path.replace('/labs/cojournalist-lite', '');
+      const route = path.replace('/labs/dorfkoenig', '');
       if (route && route !== '/') {
-        window.location.href = '/labs/cojournalist-lite/?route=' + encodeURIComponent(route);
+        window.location.href = '/labs/dorfkoenig/?route=' + encodeURIComponent(route);
       } else {
-        window.location.href = '/labs/cojournalist-lite/';
+        window.location.href = '/labs/dorfkoenig/';
       }
     </script>
   </head>
@@ -313,7 +329,7 @@ SELECT * FROM cron.job;
 
 ### 5.3 Frontend Check
 
-1. Navigate to `https://YOUR_ORG.github.io/labs/cojournalist-lite/`
+1. Navigate to `https://YOUR_ORG.github.io/labs/dorfkoenig/`
 2. Login with mock user
 3. Create test scout
 4. Run test execution

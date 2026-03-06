@@ -4,6 +4,8 @@
   import ScoutForm from '../components/scouts/ScoutForm.svelte';
   import ExecutionList from '../components/executions/ExecutionList.svelte';
   import { Button, Card, Loading } from '@shared/components';
+  import { EmptyState } from '../components/ui/primitives';
+  import { History } from 'lucide-svelte';
   import type { Scout } from '../lib/types';
 
   interface Props {
@@ -16,15 +18,16 @@
   let loading = $state(true);
   let deleting = $state(false);
 
-  // Load scout and executions on mount or when scoutId changes
+  // Load scout and executions when scoutId changes
   $effect(() => {
-    loadScout();
-    executions.load(scoutId);
+    const id = scoutId;
+    loadScout(id);
+    executions.load(id);
   });
 
-  async function loadScout() {
+  async function loadScout(id: string) {
     loading = true;
-    scout = await scouts.get(scoutId);
+    scout = await scouts.get(id);
     loading = false;
   }
 
@@ -35,7 +38,7 @@
     deleting = true;
     try {
       await scouts.delete(scoutId);
-      location.hash = '#/dashboard';
+      location.hash = '#/manage';
     } catch (error) {
       console.error('Delete failed:', error);
       deleting = false;
@@ -43,11 +46,11 @@
   }
 
   function handleFormSubmit() {
-    loadScout();
+    loadScout(scoutId);
   }
 
   function handleBack() {
-    location.hash = '#/dashboard';
+    location.hash = '#/manage';
   }
 </script>
 
@@ -86,9 +89,11 @@
         {#if $executions.loading}
           <Loading label="Laden..." />
         {:else if $executions.executions.length === 0}
-          <div class="empty-state">
-            <p>Noch keine Ausführungen für diesen Scout.</p>
-          </div>
+          <EmptyState
+            icon={History}
+            title="Noch keine Ausführungen"
+            description="Sobald dieser Scout ausgeführt wird, erscheint der Verlauf hier."
+          />
         {:else}
           <ExecutionList executions={$executions.executions} />
           {#if $executions.hasMore}

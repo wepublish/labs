@@ -55,12 +55,21 @@ CREATE TABLE scouts (
     -- Email notification
     notification_email TEXT,
 
+    -- Provider detection (set by double-probe on first test)
+    provider TEXT,
+    -- Values: 'firecrawl' (baseline persisted, use changeTracking) |
+    --         'firecrawl_plain' (baseline dropped, use hash comparison)
+
+    -- Content hash for hash-based change detection (firecrawl_plain provider)
+    content_hash TEXT,
+    -- SHA-256 of normalized markdown content
+
     -- Timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Constraints
-    CONSTRAINT valid_frequency CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+    CONSTRAINT valid_frequency CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly')),
     CONSTRAINT valid_url CHECK (url ~ '^https?://'),
     CONSTRAINT scouts_criteria_length CHECK (char_length(criteria) <= 1000)
 );
@@ -150,8 +159,8 @@ Atomic facts extracted from scout results for the Compose panel.
 CREATE TABLE information_units (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id TEXT NOT NULL,
-    scout_id UUID NOT NULL REFERENCES scouts(id) ON DELETE CASCADE,
-    execution_id UUID NOT NULL REFERENCES scout_executions(id) ON DELETE CASCADE,
+    scout_id UUID REFERENCES scouts(id) ON DELETE CASCADE,       -- nullable for manual uploads
+    execution_id UUID REFERENCES scout_executions(id) ON DELETE CASCADE,  -- nullable for manual uploads
 
     -- Content
     statement TEXT NOT NULL,
@@ -169,11 +178,21 @@ CREATE TABLE information_units (
     source_domain TEXT NOT NULL,
     source_title TEXT,
 
+    -- Source type discriminator
+    source_type TEXT NOT NULL DEFAULT 'scout',
+    -- Values: 'scout' | 'manual_text' | 'manual_photo' | 'manual_pdf'
+
+    -- File storage reference (for manual photo/PDF uploads)
+    file_path TEXT,
+
     -- Location (inherited from scout)
     location JSONB,
 
     -- Topic (inherited from scout, comma-separated)
     topic TEXT,
+
+    -- Event date (extracted by LLM)
+    event_date DATE,
 
     -- Embedding for semantic search
     embedding vector(1536) NOT NULL,
@@ -187,7 +206,10 @@ CREATE TABLE information_units (
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 days'),
 
     -- Constraints
-    CONSTRAINT valid_unit_type CHECK (unit_type IN ('fact', 'event', 'entity_update'))
+    CONSTRAINT valid_unit_type CHECK (unit_type IN ('fact', 'event', 'entity_update')),
+    CONSTRAINT valid_source_type CHECK (source_type IN ('scout', 'manual_text', 'manual_photo', 'manual_pdf')),
+    CONSTRAINT valid_source_url CHECK (source_url ~ '^(https?://|manual://)'),
+    CONSTRAINT file_path_length CHECK (file_path IS NULL OR char_length(file_path) <= 500)
 );
 
 -- Indexes
@@ -325,6 +347,8 @@ RETURNS TABLE (
     source_title TEXT,
     location JSONB,
     topic TEXT,
+    source_type TEXT,
+    file_path TEXT,
     created_at TIMESTAMPTZ,
     similarity REAL
 ) AS $$
@@ -340,6 +364,8 @@ BEGIN
         u.source_title,
         u.location,
         u.topic,
+        u.source_type,
+        u.file_path,
         u.created_at,
         (1 - (u.embedding <=> p_query_embedding))::REAL AS similarity
     FROM information_units u
@@ -378,6 +404,7 @@ BEGIN
     threshold_hours := CASE p_frequency
         WHEN 'daily' THEN 24
         WHEN 'weekly' THEN 168
+        WHEN 'biweekly' THEN 336
         WHEN 'monthly' THEN 720
         ELSE 24
     END;
@@ -552,6 +579,100 @@ Required secrets in Supabase Vault:
 -- Create secrets (run in SQL Editor with service role)
 SELECT vault.create_secret('project_url', 'https://xxxx.supabase.co');
 SELECT vault.create_secret('service_role_key', 'eyJ...');
+```
+
+## Bajour Tables
+
+### bajour_drafts
+
+Bajour-specific: AI-generated village newsletter drafts with WhatsApp verification workflow. Client-specific table, not part of core schema.
+
+```sql
+CREATE TABLE bajour_drafts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    village_id TEXT NOT NULL,
+    village_name TEXT NOT NULL,
+
+    -- Draft content
+    title TEXT,
+    body TEXT NOT NULL,
+    selected_unit_ids UUID[] NOT NULL DEFAULT '{}',
+    custom_system_prompt TEXT,
+
+    -- Verification workflow
+    verification_status TEXT NOT NULL DEFAULT 'ausstehend'
+      CHECK (verification_status IN ('ausstehend', 'bestätigt', 'abgelehnt')),
+    verification_responses JSONB NOT NULL DEFAULT '[]',
+    verification_sent_at TIMESTAMPTZ,
+    verification_resolved_at TIMESTAMPTZ,
+    verification_timeout_at TIMESTAMPTZ,
+
+    -- WhatsApp tracking
+    whatsapp_message_ids JSONB NOT NULL DEFAULT '[]',
+
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE bajour_drafts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own drafts"
+  ON bajour_drafts FOR ALL
+  USING (
+    user_id = COALESCE(
+      current_setting('request.jwt.claims', true)::json->>'sub',
+      current_setting('request.headers', true)::json->>'x-user-id'
+    )
+    OR current_setting('role', true) = 'service_role'
+  );
+
+-- Indexes
+CREATE INDEX idx_bajour_drafts_user_id ON bajour_drafts(user_id);
+CREATE INDEX idx_bajour_drafts_village_id ON bajour_drafts(village_id);
+```
+
+### resolve_bajour_timeouts
+
+Auto-resolves draft verifications that exceed the 2-hour timeout. Defaults to `bestätigt`.
+
+```sql
+CREATE OR REPLACE FUNCTION resolve_bajour_timeouts()
+RETURNS INTEGER AS $$
+DECLARE
+  resolved_count INTEGER;
+BEGIN
+  UPDATE bajour_drafts
+  SET verification_status = 'bestätigt',
+      verification_resolved_at = now()
+  WHERE verification_status = 'ausstehend'
+    AND verification_timeout_at IS NOT NULL
+    AND verification_timeout_at < now()
+    AND verification_resolved_at IS NULL;
+  GET DIAGNOSTICS resolved_count = ROW_COUNT;
+  RETURN resolved_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Only callable by service_role
+REVOKE EXECUTE ON FUNCTION resolve_bajour_timeouts FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION resolve_bajour_timeouts TO service_role;
+```
+
+## Additional Tables
+
+### upload_rate_limits
+
+Rate limiting table for manual uploads (text, photo, PDF).
+
+```sql
+CREATE TABLE upload_rate_limits (
+    user_id TEXT NOT NULL,
+    upload_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rate_limits_user ON upload_rate_limits(user_id, upload_type, created_at DESC);
 ```
 
 ## Sample Data

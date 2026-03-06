@@ -68,6 +68,24 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Sanitize a URL for safe use in href attributes.
+ * Only allows http/https protocols to prevent javascript: and data: injection.
+ * Also escapes HTML entities to prevent attribute breakout.
+ */
+function sanitizeUrl(url: string): string {
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '#';
+    }
+  } catch {
+    return '#';
+  }
+  return escapeHtml(trimmed);
+}
+
+/**
  * Build scout alert email HTML
  */
 export function buildScoutAlertEmail(params: {
@@ -202,7 +220,7 @@ export function buildScoutAlertEmail(params: {
       `
           : ''
       }
-      <a href="${sourceUrl}" class="cta">Quelle ansehen</a>
+      <a href="${sanitizeUrl(sourceUrl)}" class="cta">Quelle ansehen</a>
     </div>
     <div class="footer">
       <p>Diese E-Mail wurde automatisch von Dorfkönig gesendet.</p>

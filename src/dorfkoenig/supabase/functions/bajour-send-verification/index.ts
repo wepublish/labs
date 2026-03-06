@@ -1,5 +1,8 @@
-// Bajour Send Verification Edge Function
-// Sends a draft to village correspondents via WhatsApp Business API for verification
+/**
+ * @module bajour-send-verification
+ * Sends a draft to village correspondents via WhatsApp Business API for verification.
+ * POST: sends quick-reply messages (bestaetigt/abgelehnt) and sets timeout window.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
@@ -83,19 +86,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Send WhatsApp messages to each correspondent
+    // Send WhatsApp messages to each correspondent.
+    // Template is sent first to ensure atomicity: if the template is not
+    // approved or fails, no text message is sent either. This prevents
+    // correspondents from receiving draft text without verification buttons.
     const allMessageIds: string[] = [];
 
     for (const correspondent of correspondents) {
-      // Message 1: Full draft text
-      const textResult = await sendWhatsAppMessage({
-        to: correspondent.phone,
-        type: 'text',
-        text: { body: draft.body },
-      });
-      allMessageIds.push(textResult.message_id);
-
-      // Message 2: Template with verification buttons
+      // Message 1: Template with verification buttons (sent first — fails
+      // early if template not approved, before any text is delivered)
       const templateResult = await sendWhatsAppMessage({
         to: correspondent.phone,
         type: 'template',
@@ -111,6 +110,14 @@ Deno.serve(async (req) => {
         },
       });
       allMessageIds.push(templateResult.message_id);
+
+      // Message 2: Full draft text (only sent if template succeeded)
+      const textResult = await sendWhatsAppMessage({
+        to: correspondent.phone,
+        type: 'text',
+        text: { body: draft.body },
+      });
+      allMessageIds.push(textResult.message_id);
     }
 
     // Update the draft with verification metadata
@@ -141,6 +148,30 @@ Deno.serve(async (req) => {
     if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
+
+    // Translate known WhatsApp API errors to user-friendly German messages
+    if (message.includes('132001') || message.includes('does not exist in the translation')) {
+      return errorResponse(
+        'Die WhatsApp-Nachrichtenvorlage wurde noch nicht genehmigt. Bitte warten Sie auf die Freigabe durch Meta.',
+        400,
+        'TEMPLATE_NOT_APPROVED'
+      );
+    }
+    if (message.includes('133010') || message.includes('Account not registered')) {
+      return errorResponse(
+        'Die WhatsApp-Telefonnummer ist nicht registriert. Bitte kontaktieren Sie den Administrator.',
+        400,
+        'PHONE_NOT_REGISTERED'
+      );
+    }
+    if (message.includes('131047') || message.includes('Re-engagement message')) {
+      return errorResponse(
+        'Die Nachricht konnte nicht zugestellt werden. Der Empfänger muss zuerst eine Nachricht an diese Nummer senden.',
+        400,
+        'REENGAGEMENT_REQUIRED'
+      );
+    }
+
     return errorResponse(message, 500);
   }
 });

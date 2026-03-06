@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Rendered preview of a generated Bajour newsletter draft with inline markdown.
   import type { BajourDraftGenerated } from '../types';
   import { processInlineMarkdown } from '../utils';
 
@@ -37,16 +38,16 @@
   }
 
   .draft-title {
-    font-size: 1.125rem;
+    font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0;
     line-height: 1.3;
   }
 
   .draft-greeting {
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     line-height: 1.6;
     margin: 0;
   }
@@ -58,30 +59,30 @@
   }
 
   .section-heading {
-    font-size: 0.875rem;
+    font-size: var(--text-base);
     font-weight: 600;
-    color: var(--color-text, #111827);
+    color: var(--color-text);
     margin: 0;
   }
 
   .section-body {
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     line-height: 1.6;
     margin: 0;
   }
 
   .draft-outlook {
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     line-height: 1.6;
     margin: 0;
     font-style: italic;
   }
 
   .draft-signoff {
-    font-size: 0.8125rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-base-sm);
+    color: var(--color-text-muted);
     margin: 0;
   }
 
@@ -90,7 +91,7 @@
   }
 
   .draft-preview :global(.source-ref) {
-    font-size: 0.6875rem;
-    color: var(--color-text-muted, #6b7280);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
   }
 </style>

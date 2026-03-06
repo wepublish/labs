@@ -1,4 +1,9 @@
-// Execute Scout Edge Function - 9-step pipeline for scout execution
+/**
+ * @module execute-scout
+ * 9-step execution pipeline: scrape -> change detection -> criteria analysis ->
+ * dedup -> store -> extract units -> notify -> update scout -> finalize.
+ * POST: triggered by pg_cron dispatch or manual run. Auth: service role or x-user-id.
+ */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
@@ -6,6 +11,7 @@ import { firecrawl } from '../_shared/firecrawl.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { resend } from '../_shared/resend.ts';
+import { DEDUP_THRESHOLD, UNIT_DEDUP_THRESHOLD, DEDUP_LOOKBACK_DAYS } from '../_shared/constants.ts';
 
 interface ExecuteRequest {
   scoutId: string;
@@ -75,18 +81,21 @@ Deno.serve(async (req) => {
       executionId = newExec.id;
     }
 
-    console.log(`[${executionId}] Starting execution for scout: ${scout.name}`);
+    console.log(`[${executionId}] Starting execution for scout: ${scout.name} (provider: ${scout.provider || 'default'})`);
 
     // =========================================================================
-    // STEP 1: SCRAPE
+    // STEP 1: SCRAPE (provider-aware)
     // =========================================================================
-    console.log(`[${executionId}] Step 1: Scraping URL`);
+
+    // firecrawl_plain: scrape without changeTracking, use hash comparison
+    // firecrawl or null (legacy): scrape with changeTracking
+    const useChangeTracking = scout.provider !== 'firecrawl_plain';
 
     const scrapeResult = await firecrawl.scrape({
       url: scout.url,
       formats: ['markdown'],
       timeout: 60000,
-      changeTrackingTag: `scout-${scoutId}`,
+      changeTrackingTag: useChangeTracking ? `scout-${scoutId}` : undefined,
     });
 
     const scrapeDurationMs = Date.now() - startTime;
@@ -104,25 +113,71 @@ Deno.serve(async (req) => {
     }
 
     // =========================================================================
-    // STEP 2: CHECK CHANGES
+    // STEP 2: CHECK CHANGES (provider-aware)
     // =========================================================================
-    console.log(`[${executionId}] Step 2: Checking for changes (Firecrawl changeStatus: ${scrapeResult.changeStatus})`);
-
-    // Map Firecrawl changeStatus to DB values
     let changeStatus: string;
-    if (scrapeResult.changeStatus === 'new') {
-      changeStatus = 'first_run';
-    } else if (scrapeResult.changeStatus === 'same') {
-      changeStatus = 'same';
+    let newHash: string | null = null;
+
+    if (scout.provider === 'firecrawl_plain') {
+      // Hash-based change detection
+      newHash = await firecrawl.computeContentHash(scrapeResult.markdown || '');
+      if (!scout.content_hash) {
+        // First run for firecrawl_plain — store hash and exit
+        changeStatus = 'first_run';
+
+        await supabase
+          .from('scout_executions')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            change_status: 'first_run',
+            summary_text: 'Baseline gespeichert',
+            scrape_duration_ms: scrapeDurationMs,
+          })
+          .eq('id', executionId);
+
+        await supabase
+          .from('scouts')
+          .update({
+            last_run_at: new Date().toISOString(),
+            consecutive_failures: 0,
+            content_hash: newHash,
+          })
+          .eq('id', scoutId);
+
+        const durationMs = Date.now() - startTime;
+        return jsonResponse({
+          data: {
+            execution_id: executionId,
+            status: 'completed',
+            change_status: 'first_run',
+            criteria_matched: false,
+            is_duplicate: false,
+            notification_sent: false,
+            units_extracted: 0,
+            duration_ms: durationMs,
+            summary: 'Baseline gespeichert',
+          },
+        });
+      } else if (newHash === scout.content_hash) {
+        changeStatus = 'same';
+      } else {
+        changeStatus = 'changed';
+      }
     } else {
-      // 'changed', 'removed', or null (API didn't return it) → treat as changed
-      changeStatus = 'changed';
+      // Firecrawl changeTracking-based detection (default/legacy)
+      if (scrapeResult.changeStatus === 'new') {
+        changeStatus = 'first_run';
+      } else if (scrapeResult.changeStatus === 'same') {
+        changeStatus = 'same';
+      } else {
+        // 'changed', 'removed', or null (API didn't return it) → treat as changed
+        changeStatus = 'changed';
+      }
     }
 
     // Early exit if content hasn't changed
     if (changeStatus === 'same') {
-      console.log(`[${executionId}] No changes detected, early exit`);
-
       await supabase
         .from('scout_executions')
         .update({
@@ -143,8 +198,6 @@ Deno.serve(async (req) => {
         .eq('id', scoutId);
 
       const durationMs = Date.now() - startTime;
-      console.log(`[${executionId}] Execution completed (no changes) in ${durationMs}ms`);
-
       return jsonResponse({
         data: {
           execution_id: executionId,
@@ -163,7 +216,6 @@ Deno.serve(async (req) => {
     // =========================================================================
     // STEP 3: ANALYZE CRITERIA
     // =========================================================================
-    console.log(`[${executionId}] Step 3: Analyzing criteria`);
 
     // Fetch recent findings for context
     const { data: recentExecutions } = await supabase
@@ -183,12 +235,9 @@ Deno.serve(async (req) => {
       recentFindings
     );
 
-    console.log(`[${executionId}] Criteria matched: ${analysis.matches}`);
-
     // =========================================================================
     // STEP 4: CHECK DUPLICATES
     // =========================================================================
-    console.log(`[${executionId}] Step 4: Checking for duplicates`);
 
     let isDuplicate = false;
     let duplicateSimilarity: number | null = null;
@@ -200,8 +249,8 @@ Deno.serve(async (req) => {
       const { data: dedupResult } = await supabase.rpc('check_duplicate_execution', {
         p_scout_id: scoutId,
         p_embedding: summaryEmbedding,
-        p_threshold: 0.85,
-        p_lookback_days: 30,
+        p_threshold: DEDUP_THRESHOLD,
+        p_lookback_days: DEDUP_LOOKBACK_DAYS,
       });
 
       if (dedupResult && dedupResult.length > 0) {
@@ -209,13 +258,11 @@ Deno.serve(async (req) => {
         duplicateSimilarity = dedupResult[0].max_similarity;
       }
 
-      console.log(`[${executionId}] Is duplicate: ${isDuplicate} (similarity: ${duplicateSimilarity})`);
     }
 
     // =========================================================================
     // STEP 5: STORE EXECUTION
     // =========================================================================
-    console.log(`[${executionId}] Step 5: Storing execution record`);
 
     await supabase
       .from('scout_executions')
@@ -236,8 +283,6 @@ Deno.serve(async (req) => {
     let unitsExtracted = 0;
 
     if (extractUnits && analysis.matches && (scout.location || scout.topic)) {
-      console.log(`[${executionId}] Step 6: Extracting information units`);
-
       try {
         unitsExtracted = await extractInformationUnits(
           supabase,
@@ -245,13 +290,10 @@ Deno.serve(async (req) => {
           scout,
           executionId!
         );
-        console.log(`[${executionId}] Extracted ${unitsExtracted} units`);
       } catch (error) {
         console.error(`[${executionId}] Unit extraction failed:`, error);
         // Continue without units
       }
-    } else {
-      console.log(`[${executionId}] Step 6: Skipping unit extraction`);
     }
 
     // =========================================================================
@@ -266,8 +308,6 @@ Deno.serve(async (req) => {
       !skipNotification &&
       scout.notification_email
     ) {
-      console.log(`[${executionId}] Step 7: Sending notification`);
-
       const emailHtml = resend.buildScoutAlertEmail({
         scoutName: scout.name,
         summary: analysis.summary,
@@ -285,28 +325,30 @@ Deno.serve(async (req) => {
       notificationSent = emailResult.success;
       notificationError = emailResult.error || null;
 
-      console.log(`[${executionId}] Notification sent: ${notificationSent}`);
-    } else {
-      console.log(`[${executionId}] Step 7: Skipping notification`);
     }
 
     // =========================================================================
     // STEP 8: UPDATE SCOUT
     // =========================================================================
-    console.log(`[${executionId}] Step 8: Updating scout`);
+
+    const scoutUpdate: Record<string, unknown> = {
+      last_run_at: new Date().toISOString(),
+      consecutive_failures: 0,
+    };
+
+    // Deferred hash update: only write new hash after pipeline succeeds
+    if (newHash) {
+      scoutUpdate.content_hash = newHash;
+    }
 
     await supabase
       .from('scouts')
-      .update({
-        last_run_at: new Date().toISOString(),
-        consecutive_failures: 0,
-      })
+      .update(scoutUpdate)
       .eq('id', scoutId);
 
     // =========================================================================
     // STEP 9: FINALIZE AND RETURN
     // =========================================================================
-    console.log(`[${executionId}] Step 9: Finalizing execution`);
 
     await supabase
       .from('scout_executions')
@@ -480,7 +522,7 @@ AUSGABEFORMAT (JSON):
 
     for (const seen of seenEmbeddings) {
       const similarity = embeddings.similarity(embedding, seen);
-      if (similarity >= 0.75) {
+      if (similarity >= UNIT_DEDUP_THRESHOLD) {
         isDuplicate = true;
         break;
       }

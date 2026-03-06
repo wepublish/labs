@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { Button } from '@shared/components';
   import { scouts } from '../../stores/scouts';
-  import { FREQUENCY_OPTIONS } from '../../lib/constants';
+  import { FREQUENCY_OPTIONS_EXTENDED, extractTopics } from '../../lib/constants';
   import ScopeToggle from '../ui/ScopeToggle.svelte';
   import type { Scout, ScoutUpdateInput, Location } from '../../lib/types';
 
@@ -27,14 +27,7 @@
   let topic = $state(init.topic || '');
 
   // Derive existing topics from all scouts for autocomplete suggestions
-  let existingTopics = $derived(
-    [...new Set(
-      $scouts.scouts
-        .filter(s => s.topic)
-        .flatMap(s => s.topic!.split(',').map(t => t.trim()))
-        .filter(Boolean)
-    )].sort()
-  );
+  let existingTopics = $derived(extractTopics($scouts.scouts));
 
   let saving = $state(false);
   let error = $state('');
@@ -146,7 +139,7 @@
     <div class="form-group">
       <label for="frequency">Häufigkeit</label>
       <select id="frequency" bind:value={frequency}>
-        {#each FREQUENCY_OPTIONS as opt}
+        {#each FREQUENCY_OPTIONS_EXTENDED as opt}
           <option value={opt.value}>{opt.label}</option>
         {/each}
       </select>

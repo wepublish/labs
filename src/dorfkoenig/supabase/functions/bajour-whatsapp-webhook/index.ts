@@ -1,5 +1,9 @@
-// Bajour WhatsApp Webhook Edge Function
-// Empfaengt Verifizierungsantworten von Dorfkorrespondenten via WhatsApp Business API
+/**
+ * @module bajour-whatsapp-webhook
+ * Receives WhatsApp quick-reply callbacks from village correspondents.
+ * POST: processes bestaetigt/abgelehnt responses and updates draft verification status.
+ * GET: Meta webhook verification (hub.challenge handshake).
+ */
 
 import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
@@ -113,7 +117,6 @@ function handleWebhookVerification(req: Request): Response {
   const challenge = url.searchParams.get('hub.challenge');
 
   if (mode === 'subscribe' && token === WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
-    console.log('Webhook-Verifizierung erfolgreich');
     return new Response(challenge || '', {
       status: 200,
       headers: { 'Content-Type': 'text/plain' },
@@ -155,7 +158,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   // Nur interaktive Button-Antworten verarbeiten
   const buttonReply = message.interactive?.button_reply;
   if (!buttonReply) {
-    console.log('Nachricht ignoriert (kein Button-Reply):', message.type);
     return jsonResponse({ status: 'ignored' });
   }
 
@@ -218,7 +220,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   );
 
   if (alreadyResponded) {
-    console.log('Korrespondent hat bereits geantwortet:', correspondent.name);
     return jsonResponse({ status: 'already_responded' });
   }
 
@@ -257,11 +258,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
     console.error('Fehler beim Aktualisieren des Entwurfs:', updateError);
     return jsonResponse({ status: 'update_error' });
   }
-
-  console.log(
-    `Antwort von ${correspondent.name}: ${responseTitle} ` +
-      `(Entwurf ${matchingDraft.id}, Status: ${newStatus})`
-  );
 
   // Timeout-Aufloesung als Huckepack-Operation ausfuehren
   try {

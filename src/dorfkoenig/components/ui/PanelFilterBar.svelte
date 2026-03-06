@@ -140,10 +140,10 @@
   .panel-filter-bar {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
-    background: var(--color-surface, white);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
   }
 
   .filter-row {
@@ -164,9 +164,9 @@
   .loading-inline {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    color: var(--color-text-muted, #6b7280);
+    gap: var(--spacing-sm);
+    font-size: var(--text-base-sm);
+    color: var(--color-text-muted);
   }
 
   .search-input-wrapper {
@@ -175,37 +175,37 @@
     gap: 0.375rem;
     flex: 1;
     padding: 0.375rem 0.625rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text-muted, #6b7280);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text-muted);
   }
 
   .search-input-wrapper input {
     flex: 1;
     border: none;
     background: transparent;
-    font-size: 0.8125rem;
-    color: var(--color-text, #111827);
+    font-size: var(--text-base-sm);
+    color: var(--color-text);
     outline: none;
   }
 
   .search-input-wrapper input::placeholder {
-    color: var(--color-text-muted, #9ca3af);
+    color: var(--color-text-light);
   }
 
   .search-clear {
     background: none;
     border: none;
-    font-size: 1rem;
-    color: var(--color-text-muted, #9ca3af);
+    font-size: var(--text-lg);
+    color: var(--color-text-light);
     cursor: pointer;
     padding: 0 0.25rem;
     line-height: 1;
   }
 
   .search-clear:hover {
-    color: var(--color-text, #374151);
+    color: var(--color-text);
   }
 
   .toolbar-row {
@@ -214,12 +214,4 @@
     gap: 0.75rem;
   }
 
-  :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Collapsible sidebar showing existing Bajour drafts alongside the wizard.
   import DraftList from './DraftList.svelte';
   import type { BajourDraft } from '../types';
 
@@ -25,8 +26,8 @@
     flex-direction: column;
     width: 280px;
     height: 100%;
-    border-left: 1px solid var(--color-border, #e5e7eb);
-    background: var(--color-surface, white);
+    border-left: 1px solid var(--color-border);
+    background: var(--color-surface);
     flex-shrink: 0;
     overflow: hidden;
   }

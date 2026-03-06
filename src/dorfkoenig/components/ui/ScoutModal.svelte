@@ -1,10 +1,10 @@
 <script lang="ts">
   import { X, Globe } from 'lucide-svelte';
-  import { Button } from '@shared/components';
+  import { focusTrap } from '../../lib/actions/focus-trap';
   import { scouts } from '../../stores/scouts';
-  import { FREQUENCY_OPTIONS_EXTENDED, DAY_OF_WEEK_OPTIONS } from '../../lib/constants';
-  import ScopeToggle from './ScopeToggle.svelte';
-  import ProgressIndicator from './ProgressIndicator.svelte';
+  import { extractTopics } from '../../lib/constants';
+  import ScoutWizardStep1 from './ScoutWizardStep1.svelte';
+  import ScoutWizardStep2 from './ScoutWizardStep2.svelte';
   import type { Location, TestResult } from '../../lib/types';
 
   interface Props {
@@ -14,15 +14,7 @@
 
   let { open, onclose }: Props = $props();
 
-  // Derive existing topics from all scouts for autocomplete suggestions
-  let existingTopics = $derived(
-    [...new Set(
-      $scouts.scouts
-        .filter(s => s.topic)
-        .flatMap(s => s.topic!.split(',').map(t => t.trim()))
-        .filter(Boolean)
-    )].sort()
-  );
+  let existingTopics = $derived(extractTopics($scouts.scouts));
 
   // Step tracking
   let step = $state<1 | 2>(1);
@@ -47,7 +39,8 @@
   let dayOfWeek = $state('monday');
   let timeHour = $state('08');
   let timeMinute = $state('00');
-  let extractBaseline = $state(false);
+  let detectedProvider = $state<string | null>(null);
+  let contentHash = $state<string | null>(null);
 
   // Submit state
   let submitting = $state(false);
@@ -56,7 +49,13 @@
   // Validation
   let step1Error = $state('');
 
-  function resetState() {
+  let step1Valid = $derived(
+    url.trim() !== '' &&
+    (criteriaMode === 'any' || criteria.trim() !== '') &&
+    (location !== null || topic.trim() !== '')
+  );
+
+  function resetState(): void {
     step = 1;
     url = '';
     criteriaMode = 'any';
@@ -73,13 +72,14 @@
     dayOfWeek = 'monday';
     timeHour = '08';
     timeMinute = '00';
-    extractBaseline = false;
+    detectedProvider = null;
+    contentHash = null;
     submitting = false;
     submitError = '';
     step1Error = '';
   }
 
-  function handleClose() {
+  function handleClose(): void {
     if (draftScoutId && step === 1) {
       scouts.delete(draftScoutId).catch(console.warn);
     }
@@ -87,15 +87,14 @@
     onclose();
   }
 
-  function handleBackdrop(e: MouseEvent) {
+  function handleBackdrop(e: MouseEvent): void {
     if (e.target === e.currentTarget) handleClose();
   }
 
-  function handleKeydown(e: KeyboardEvent) {
+  function handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'Escape') handleClose();
   }
 
-  // Simulated progress animation
   function simulateProgress(): () => void {
     testProgress = 0;
     const steps = [
@@ -114,12 +113,11 @@
     return () => timers.forEach(clearTimeout);
   }
 
-  async function handleTest() {
+  async function handleTest(): Promise<void> {
     step1Error = '';
     testError = '';
     testResult = null;
 
-    // Validate URL
     if (!url.trim()) {
       step1Error = 'URL ist erforderlich';
       return;
@@ -140,33 +138,28 @@
     const stopProgress = simulateProgress();
 
     try {
-      // If we already have a draft, delete it first
       if (draftScoutId) {
         await scouts.delete(draftScoutId).catch(console.warn);
         draftScoutId = null;
       }
 
-      // Create draft scout (inactive)
-      const effectiveLocation = location;
-      const effectiveTopic = topic.trim() || null;
-
       const scout = await scouts.create({
         name: new URL(url).hostname,
         url: url.trim(),
         criteria: criteriaMode === 'any' ? '' : criteria.trim(),
-        location: effectiveLocation,
-        topic: effectiveTopic,
+        location,
+        topic: topic.trim() || null,
         frequency: 'daily',
         is_active: false,
       });
       draftScoutId = scout.id;
 
-      // Run test
       const result = await scouts.test(draftScoutId);
       testProgress = 100;
       testResult = result;
+      detectedProvider = result.provider ?? null;
+      contentHash = result.content_hash ?? null;
 
-      // Pre-fill name from page title if available
       if (result.scrape_result.title && !name) {
         name = result.scrape_result.title.slice(0, 60);
       }
@@ -179,7 +172,7 @@
     }
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(): Promise<void> {
     submitError = '';
 
     if (!name.trim()) {
@@ -195,20 +188,18 @@
     submitting = true;
 
     try {
-      // Update scout with final details
       await scouts.update(draftScoutId, {
         name: name.trim(),
         frequency: frequency as 'daily' | 'weekly' | 'biweekly' | 'monthly',
         is_active: true,
+        provider: detectedProvider,
+        content_hash: contentHash,
       });
 
-      // Run first execution async (don't block)
-      scouts.run(draftScoutId, { extract_units: extractBaseline }).catch(console.warn);
+      scouts.run(draftScoutId, { skip_notification: true }).catch(console.warn);
 
-      // Clear draft ID so cleanup doesn't delete it
       draftScoutId = null;
 
-      // Reload scouts list and close
       await scouts.load();
       resetState();
       onclose();
@@ -219,24 +210,10 @@
     }
   }
 
-  function handleBack() {
+  function handleBack(): void {
     step = 1;
     submitError = '';
   }
-
-  // Step 1 validity: URL + scope (location or topic) must be filled
-  let step1Valid = $derived(
-    url.trim() !== '' &&
-    (criteriaMode === 'any' || criteria.trim() !== '') &&
-    (location !== null || topic.trim() !== '')
-  );
-
-  // Show day-of-week picker for weekly/biweekly
-  let showDayPicker = $derived(frequency === 'weekly' || frequency === 'biweekly');
-
-  // Generate hour options
-  const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-  const minuteOptions = ['00', '15', '30', '45'];
 </script>
 
 {#if open}
@@ -249,7 +226,7 @@
     onclick={handleBackdrop}
     onkeydown={handleKeydown}
   >
-    <div class="modal-card">
+    <div class="modal-card" use:focusTrap>
 
       <!-- Header -->
       <div class="modal-header">
@@ -282,226 +259,46 @@
         </div>
       </div>
 
-      <!-- Step 1: Test Website -->
       {#if step === 1}
-        <div class="modal-body">
-          {#if step1Error}
-            <div class="error-message">{step1Error}</div>
-          {/if}
-
-          <!-- URL input -->
-          <div class="form-group">
-            <label for="scout-url">URL</label>
-            <input
-              id="scout-url"
-              type="url"
-              bind:value={url}
-              placeholder="https://example.com/news"
-              disabled={testing}
-            />
-          </div>
-
-          <!-- Criteria mode toggle -->
-          <div class="form-group" role="group" aria-label="Benachrichtigung bei">
-            <span class="form-label">Benachrichtigung bei</span>
-            <div class="criteria-toggle-wrapper">
-              <div class="criteria-toggle">
-                <button
-                  type="button"
-                  class="criteria-label"
-                  class:active={criteriaMode === 'any'}
-                  onclick={() => { criteriaMode = 'any'; }}
-                  disabled={testing}
-                >
-                  Jede Änderung
-                </button>
-                <button
-                  type="button"
-                  class="criteria-track"
-                  class:specific={criteriaMode === 'specific'}
-                  onclick={() => { criteriaMode = criteriaMode === 'any' ? 'specific' : 'any'; }}
-                  aria-label="Kriterienmodus umschalten"
-                  disabled={testing}
-                >
-                  <span class="criteria-thumb"></span>
-                </button>
-                <button
-                  type="button"
-                  class="criteria-label"
-                  class:active={criteriaMode === 'specific'}
-                  onclick={() => { criteriaMode = 'specific'; }}
-                  disabled={testing}
-                >
-                  Bestimmte Kriterien
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {#if criteriaMode === 'specific'}
-            <div class="form-group">
-              <label for="scout-criteria">Kriterien</label>
-              <textarea
-                id="scout-criteria"
-                bind:value={criteria}
-                placeholder="Welche Informationen sollen gefunden werden?"
-                rows="3"
-                disabled={testing}
-              ></textarea>
-            </div>
-          {/if}
-
-          <!-- Scope toggle -->
-          <div class="form-group" role="group" aria-label="Ort und/oder Thema">
-            <span class="form-label">Ort und/oder Thema</span>
-            <ScopeToggle
-              {location}
-              {topic}
-              {existingTopics}
-              onlocationchange={(loc) => { location = loc; testResult = null; }}
-              ontopicchange={(t) => { topic = t; testResult = null; }}
-            />
-          </div>
-
-          <!-- Test results -->
-          {#if testing}
-            <ProgressIndicator
-              state="loading"
-              progress={testProgress}
-              message="Website wird geprüft..."
-              hintText="Seite wird geladen und analysiert"
-            />
-          {:else if testError}
-            <ProgressIndicator
-              state="error"
-              progress={100}
-              errorTitle="Fehler beim Testen"
-              errorMessage={testError}
-            />
-          {:else if testResult}
-            <div class="test-results">
-              <ProgressIndicator
-                state={testResult.scrape_result.success ? 'success' : 'error'}
-                progress={100}
-                successMessage="Website erreichbar"
-                successDetails="{testResult.scrape_result.word_count} Wörter gefunden"
-                errorTitle="Fehler beim Scrapen"
-                errorMessage={testResult.scrape_result.error}
-              />
-              {#if testResult.criteria_analysis}
-                <div class="criteria-result">
-                  <span class="criteria-badge" class:match={testResult.criteria_analysis.matches}>
-                    {testResult.criteria_analysis.matches ? 'Kriterien erfüllt' : 'Keine Übereinstimmung'}
-                  </span>
-                  <p class="criteria-summary">{testResult.criteria_analysis.summary}</p>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-
-        <div class="modal-footer">
-          <Button variant="ghost" onclick={handleClose}>Abbrechen</Button>
-          {#if !testResult}
-            <Button onclick={handleTest} loading={testing} disabled={!step1Valid}>Website testen</Button>
-          {:else if testResult.scrape_result.success}
-            <Button onclick={() => { step = 2; }}>Weiter</Button>
-          {:else}
-            <Button onclick={handleTest} disabled={!step1Valid}>Erneut testen</Button>
-          {/if}
-        </div>
-
-      <!-- Step 2: Configure -->
+        <ScoutWizardStep1
+          {url}
+          {criteriaMode}
+          {criteria}
+          {location}
+          {topic}
+          {existingTopics}
+          {testing}
+          {testProgress}
+          {testResult}
+          {testError}
+          {step1Error}
+          {step1Valid}
+          onurlchange={(v) => { url = v; }}
+          oncriteriamodechange={(m) => { criteriaMode = m; }}
+          oncriteriachange={(v) => { criteria = v; }}
+          onlocationchange={(loc) => { location = loc; testResult = null; }}
+          ontopicchange={(t) => { topic = t; testResult = null; }}
+          ontest={handleTest}
+          onnext={() => { step = 2; }}
+          onclose={handleClose}
+        />
       {:else}
-        <div class="modal-body">
-          {#if submitError}
-            <div class="error-message">{submitError}</div>
-          {/if}
-
-          <!-- Name -->
-          <div class="form-group">
-            <label for="scout-name">Name</label>
-            <input
-              id="scout-name"
-              type="text"
-              bind:value={name}
-              placeholder="z.B. Berlin News Monitor"
-            />
-          </div>
-
-          <!-- Frequency -->
-          <div class="form-group">
-            <label for="scout-frequency">Häufigkeit</label>
-            <select id="scout-frequency" bind:value={frequency}>
-              {#each FREQUENCY_OPTIONS_EXTENDED as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <!-- Day of week (conditional) -->
-          {#if showDayPicker}
-            <div class="form-group">
-              <label for="scout-day">Wochentag</label>
-              <select id="scout-day" bind:value={dayOfWeek}>
-                {#each DAY_OF_WEEK_OPTIONS as opt}
-                  <option value={opt.value}>{opt.label}</option>
-                {/each}
-              </select>
-            </div>
-          {/if}
-
-          <!-- Time -->
-          <div class="form-group">
-            <span class="form-label">Uhrzeit</span>
-            <div class="time-selects">
-              <select bind:value={timeHour} aria-label="Stunde">
-                {#each hourOptions as h}
-                  <option value={h}>{h}</option>
-                {/each}
-              </select>
-              <span class="time-separator">:</span>
-              <select bind:value={timeMinute} aria-label="Minute">
-                {#each minuteOptions as m}
-                  <option value={m}>{m}</option>
-                {/each}
-              </select>
-            </div>
-          </div>
-
-          <!-- Extract baseline toggle -->
-          <div class="form-group">
-            <div class="criteria-toggle-wrapper">
-              <div class="criteria-toggle">
-                <button
-                  type="button"
-                  class="criteria-track"
-                  class:specific={extractBaseline}
-                  onclick={() => { extractBaseline = !extractBaseline; }}
-                  aria-label="Baseline-Import umschalten"
-                >
-                  <span class="criteria-thumb"></span>
-                </button>
-                <button
-                  type="button"
-                  class="criteria-label"
-                  class:active={extractBaseline}
-                  onclick={() => { extractBaseline = !extractBaseline; }}
-                >
-                  Aktuelle Seiteninhalte importieren
-                </button>
-              </div>
-            </div>
-            <p class="hint-text">
-              Wenn aktiviert, werden vorhandene Inhalte der Seite beim ersten Lauf als Informationseinheiten gespeichert.
-            </p>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <Button variant="ghost" onclick={handleBack}>Zurück</Button>
-          <Button onclick={handleSubmit} loading={submitting}>Scout erstellen</Button>
-        </div>
+        <ScoutWizardStep2
+          {name}
+          {frequency}
+          {dayOfWeek}
+          {timeHour}
+          {timeMinute}
+          {submitting}
+          {submitError}
+          onnamechange={(v) => { name = v; }}
+          onfrequencychange={(v) => { frequency = v; }}
+          ondayofweekchange={(v) => { dayOfWeek = v; }}
+          ontimehourchange={(v) => { timeHour = v; }}
+          ontimeminutechange={(v) => { timeMinute = v; }}
+          onback={handleBack}
+          onsubmit={handleSubmit}
+        />
       {/if}
 
     </div>
@@ -516,7 +313,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--color-backdrop);
     backdrop-filter: blur(4px);
   }
 
@@ -524,9 +321,9 @@
     position: relative;
     width: 100%;
     max-width: 32rem;
-    margin: 1rem;
-    background: var(--color-surface, white);
-    border-radius: var(--radius-lg, 1rem);
+    margin: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     max-height: 90vh;
@@ -572,7 +369,7 @@
 
   .modal-subtitle {
     margin: 0;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
 
@@ -583,11 +380,11 @@
     width: 2rem;
     height: 2rem;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-light);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-base), color var(--transition-base);
   }
 
   .modal-close:hover {
@@ -619,12 +416,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8125rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
     border: 2px solid var(--color-border);
     color: var(--color-text-muted);
-    background: white;
-    transition: all 0.2s;
+    background: var(--color-surface);
+    transition: all var(--transition-base);
   }
 
   .step.active .step-circle {
@@ -640,7 +437,7 @@
   }
 
   .step-label {
-    font-size: 0.6875rem;
+    font-size: var(--text-xs);
     font-weight: 500;
     color: var(--color-text-muted);
   }
@@ -653,223 +450,8 @@
     background: var(--color-border);
     margin: 0 0.5rem;
     margin-bottom: 1.25rem;
-    transition: background 0.3s;
+    transition: background var(--transition-slow);
   }
 
   .step-line.filled { background: var(--color-primary); }
-
-  /* Body */
-  .modal-body {
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  /* Footer */
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-    border-radius: 0 0 var(--radius-lg, 1rem) var(--radius-lg, 1rem);
-  }
-
-  /* Form elements */
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .form-group label,
-  .form-label {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  .form-group input[type="text"],
-  .form-group input[type="url"],
-  .form-group textarea,
-  .form-group select {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
-  }
-
-  .form-group input:focus,
-  .form-group textarea:focus,
-  .form-group select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
-  }
-
-  .form-group input:disabled,
-  .form-group textarea:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .error-message {
-    padding: 0.625rem 0.75rem;
-    font-size: 0.8125rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 0.375rem;
-  }
-
-  /* Criteria toggle */
-  .criteria-toggle-wrapper {
-    display: flex;
-    justify-content: flex-start;
-  }
-
-  .criteria-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .criteria-label {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0;
-    border: none;
-    background: transparent;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #9ca3af;
-    cursor: pointer;
-    transition: color 0.2s ease;
-    white-space: nowrap;
-  }
-
-  .criteria-label.active {
-    color: var(--color-primary, #4f46e5);
-  }
-
-  .criteria-label:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .criteria-track {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    background: #e0e7ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 9999px;
-    cursor: pointer;
-    padding: 0;
-    flex-shrink: 0;
-    transition: background 0.2s ease;
-  }
-
-  .criteria-track:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .criteria-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 14px;
-    height: 14px;
-    background: var(--color-primary, #4f46e5);
-    border-radius: 9999px;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  }
-
-  .criteria-track.specific .criteria-thumb {
-    transform: translateX(16px);
-  }
-
-  .hint-text {
-    font-size: 0.75rem;
-    color: var(--color-text-muted, #6b7280);
-    margin: 0;
-    line-height: 1.4;
-  }
-
-  /* Test results */
-  .test-results {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .criteria-result {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    padding: 0.75rem;
-    background: var(--color-background, #f9fafb);
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-border);
-  }
-
-  .criteria-badge {
-    display: inline-flex;
-    align-self: flex-start;
-    padding: 0.25rem 0.625rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 9999px;
-    background: #fef2f2;
-    color: #b91c1c;
-  }
-
-  .criteria-badge.match {
-    background: #ecfdf5;
-    color: #065f46;
-  }
-
-  .criteria-summary {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-    line-height: 1.5;
-  }
-
-  /* Time selects */
-  .time-selects {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-  }
-
-  .time-selects select {
-    width: auto;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--color-border, #e5e7eb);
-    border-radius: 0.375rem;
-    background: var(--color-background, #f9fafb);
-    color: var(--color-text, #111827);
-  }
-
-  .time-selects select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
-  }
-
-  .time-separator {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-text-muted);
-  }
 </style>
