@@ -3,6 +3,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { embeddings } from '../_shared/embeddings.ts';
+import { DEFAULT_UNITS_PAGE_SIZE, DEFAULT_SEARCH_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_PAGE_SIZE, SEARCH_MIN_SIMILARITY } from '../_shared/constants.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -63,7 +64,7 @@ async function listUnits(
   const topic = url.searchParams.get('topic');
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const scoutId = url.searchParams.get('scout_id');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_UNITS_PAGE_SIZE)), MAX_PAGE_SIZE);
   const offset = parseInt(url.searchParams.get('offset') || '0');
 
   let query = supabase
@@ -178,8 +179,8 @@ async function searchUnits(
   const locationCity = url.searchParams.get('location_city') || null;
   const topic = url.searchParams.get('topic') || null;
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
-  const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || '0.3');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+  const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || String(SEARCH_MIN_SIMILARITY));
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_SEARCH_PAGE_SIZE)), MAX_SEARCH_PAGE_SIZE);
 
   // Generate query embedding
   const queryEmbedding = await embeddings.generate(query);

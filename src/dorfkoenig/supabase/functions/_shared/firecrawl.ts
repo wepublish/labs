@@ -1,5 +1,7 @@
 // Firecrawl API client for web scraping
 
+import { DOUBLE_PROBE_TIMEOUT_MS } from './constants.ts';
+
 const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY')!;
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2';
 
@@ -171,7 +173,7 @@ export async function computeContentHash(content: string): Promise<string> {
 export async function doubleProbe(
   url: string,
   tag: string,
-  timeout = 30000
+  timeout = DOUBLE_PROBE_TIMEOUT_MS
 ): Promise<{
   provider: 'firecrawl' | 'firecrawl_plain';
   scrapeResult: Awaited<ReturnType<typeof scrape>>;

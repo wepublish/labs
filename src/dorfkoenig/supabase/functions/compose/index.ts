@@ -5,6 +5,8 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { scrape } from '../_shared/firecrawl.ts';
+import { COMPOSE_GUIDELINES } from '../_shared/prompts.ts';
+import { MAX_UNITS_PER_COMPOSE, MAX_SOURCE_CONTENT_CHARS } from '../_shared/constants.ts';
 
 interface GenerateRequest {
   unit_ids: string[];
@@ -85,18 +87,7 @@ KRITISCH - UMGANG MIT MEHREREN THEMEN (UNVERÄNDERLICH):
 - Verwende NIEMALS Übergangssätze wie "Inzwischen" oder "In verwandten Nachrichten" für unzusammenhängende Themen
 - Jeder Abschnitt sollte für sich stehen`;
 
-const LAYER_2_DEFAULT_GUIDELINES = `SCHREIBRICHTLINIEN:
-- Beginne JEDEN Abschnitt mit der wichtigsten Tatsache — kein Vorgeplänkel
-- Erster Satz jedes Abschnitts = die Nachricht. Kontext kommt danach.
-- Fette **wichtige Zahlen, Namen, Daten und Daten** mit Markdown
-- Sätze: KURZ und PRÄGNANT. Maximal 15-20 Wörter pro Satz.
-- Absätze: Maximal 2-3 Sätze. Eine Idee pro Absatz.
-- Beginne Aufzählungszeichen IMMER mit Emojis: 📊 (Daten) 📅 (Termine) 👤 (Personen) 🏢 (Organisationen) ⚠️ (Bedenken) ✅ (Fortschritt) 📍 (Orte)
-- Beispiel: '📊 **42%** Anstieg der Wohnkosten [srf.ch]'
-- Zitiere Quellen inline im Format [quelle.ch]
-- Fakten aus mehreren Quellen sind glaubwürdiger — erwähne wenn verfügbar
-- Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen, welche Daten verifizieren
-- Priorisiere: Zahlen > Daten > Zitate > allgemeine Aussagen`;
+const LAYER_2_DEFAULT_GUIDELINES = COMPOSE_GUIDELINES;
 
 const LAYER_3_OUTPUT_FORMAT = `ÜBERSCHRIFT: Ein Satz, der den nachrichtenwürdigsten Aspekt erfasst. Beginne mit der Auswirkung, nicht mit der Zuordnung.
 ABSCHNITTE: Jede Abschnittsüberschrift sollte 2-4 Wörter lang sein. Inhalt beginnt mit der Nachricht, dann Kontext.
@@ -167,7 +158,7 @@ async function generateDraft(
   if (!Array.isArray(unit_ids) || unit_ids.length === 0) {
     return errorResponse('unit_ids Array erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (unit_ids.length > 20) {
+  if (unit_ids.length > MAX_UNITS_PER_COMPOSE) {
     return errorResponse('Maximal 20 Einheiten erlaubt', 400, 'VALIDATION_ERROR');
   }
 
@@ -267,7 +258,7 @@ ${LAYER_3_OUTPUT_FORMAT}`;
       const domain = new URL(url).hostname.replace(/^www\./, '');
       parts.push(`[Quelle: ${domain}]\n${content}`);
     }
-    sourceSection = `\n\nQUELLENINHALT (für zusätzlichen Kontext — verwende um Lücken in den Einheiten zu füllen):\n${parts.join('\n\n---\n\n').slice(0, 30000)}`;
+    sourceSection = `\n\nQUELLENINHALT (für zusätzlichen Kontext — verwende um Lücken in den Einheiten zu füllen):\n${parts.join('\n\n---\n\n').slice(0, MAX_SOURCE_CONTENT_CHARS)}`;
   }
 
   // Entity context

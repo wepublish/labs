@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       if (c.settings?.title === campaignTitle && c.id !== templateCampaign.id) {
         try {
           await mailchimp.campaigns.remove(c.id);
-          console.log(`Deleted existing campaign: ${c.id}`);
+          // Campaign deleted
         } catch (delErr) {
           console.warn(`Could not delete campaign ${c.id}:`, delErr);
         }
@@ -142,8 +142,6 @@ Deno.serve(async (req) => {
     await mailchimp.campaigns.setContent(newCampaign.id, {
       html: modifiedHtml,
     });
-
-    console.log(`Created Mailchimp campaign ${newCampaign.id} with ${replacedCount} villages`);
 
     return jsonResponse({
       data: {

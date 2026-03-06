@@ -4,6 +4,8 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
+import { BAJOUR_NEWSLETTER_GUIDELINES } from '../_shared/prompts.ts';
+import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 
 interface GenerateDraftRequest {
   village_id: string;
@@ -20,16 +22,7 @@ Du schreibst AUSSCHLIEßLICH basierend auf den bereitgestellten Informationseinh
 ERFINDE KEINE Informationen. Wenn etwas unklar ist, kennzeichne es als "nicht bestätigt".`;
 }
 
-const LAYER_2_DEFAULT_GUIDELINES = `SCHREIBRICHTLINIEN:
-- Newsletter-Format: Kurz, prägnant, informativ
-- Beginne mit der wichtigsten Nachricht der Woche
-- Fette **wichtige Namen, Zahlen, Daten**
-- Sätze: Max 15-20 Wörter, aktive Sprache
-- Zitiere Quellen inline [quelle.ch]
-- Absätze: 2-3 Sätze pro Nachricht
-- Gesamtlänge: 800-1200 Wörter
-- Tonalität: Nahbar, lokal, vertrauenswürdig
-- Schliesse mit einem Ausblick auf kommende Ereignisse`;
+const LAYER_2_DEFAULT_GUIDELINES = BAJOUR_NEWSLETTER_GUIDELINES;
 
 const LAYER_3_OUTPUT_FORMAT = `Schreibe den gesamten Newsletter auf Deutsch.
 
@@ -87,7 +80,7 @@ Deno.serve(async (req) => {
     if (!Array.isArray(unit_ids) || unit_ids.length === 0) {
       return errorResponse('unit_ids Array erforderlich', 400, 'VALIDATION_ERROR');
     }
-    if (unit_ids.length > 20) {
+    if (unit_ids.length > MAX_UNITS_PER_COMPOSE) {
       return errorResponse('Maximal 20 Einheiten erlaubt', 400, 'VALIDATION_ERROR');
     }
 

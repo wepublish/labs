@@ -113,7 +113,6 @@ function handleWebhookVerification(req: Request): Response {
   const challenge = url.searchParams.get('hub.challenge');
 
   if (mode === 'subscribe' && token === WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
-    console.log('Webhook-Verifizierung erfolgreich');
     return new Response(challenge || '', {
       status: 200,
       headers: { 'Content-Type': 'text/plain' },
@@ -155,7 +154,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   // Nur interaktive Button-Antworten verarbeiten
   const buttonReply = message.interactive?.button_reply;
   if (!buttonReply) {
-    console.log('Nachricht ignoriert (kein Button-Reply):', message.type);
     return jsonResponse({ status: 'ignored' });
   }
 
@@ -218,7 +216,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   );
 
   if (alreadyResponded) {
-    console.log('Korrespondent hat bereits geantwortet:', correspondent.name);
     return jsonResponse({ status: 'already_responded' });
   }
 
@@ -257,11 +254,6 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
     console.error('Fehler beim Aktualisieren des Entwurfs:', updateError);
     return jsonResponse({ status: 'update_error' });
   }
-
-  console.log(
-    `Antwort von ${correspondent.name}: ${responseTitle} ` +
-      `(Entwurf ${matchingDraft.id}, Status: ${newStatus})`
-  );
 
   // Timeout-Aufloesung als Huckepack-Operation ausfuehren
   try {
