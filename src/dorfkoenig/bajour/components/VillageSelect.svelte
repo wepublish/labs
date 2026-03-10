@@ -1,7 +1,7 @@
 <script lang="ts">
   // Dropdown selector for the 10 configured Bajour villages.
   import type { Village } from '../types';
-  import villagesData from '../villages.json';
+  import villagesData from '../../lib/gemeinden.json';
 
   interface Props {
     selectedVillageId: string | null;

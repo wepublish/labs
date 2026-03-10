@@ -115,6 +115,7 @@
 
   /* Loading state */
   .spinner {
+    position: absolute;
     width: 1em;
     height: 1em;
     border: 2px solid currentColor;
@@ -125,7 +126,6 @@
 
   .hidden {
     visibility: hidden;
-    position: absolute;
   }
 
   .loading {

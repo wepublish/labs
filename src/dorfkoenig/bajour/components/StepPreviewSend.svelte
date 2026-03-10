@@ -1,8 +1,9 @@
 <script lang="ts">
   // Step 3: preview generated draft, save/send to WhatsApp verification, and send to Mailchimp.
-  import { RefreshCw, Send, Mail, Loader2 } from 'lucide-svelte';
+  import { Send, Mail, Trash2, Loader2 } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { bajourDrafts } from '../store';
+  import { bajourApi } from '../api';
   import { unitsApi } from '../../lib/api';
   import DraftPreview from './DraftPreview.svelte';
   import VerificationBadge from './VerificationBadge.svelte';
@@ -25,19 +26,53 @@
   let error = $state('');
   let statusLoading = $state(false);
   let mailchimpLoading = $state(false);
+  let deleteLoading = $state(false);
   let successBanner = $state<{ variant: 'sent' | 'mailchimp'; villageCount?: number } | null>(null);
 
   // Track existingDraft internally so we can update it after status override
   let currentExistingDraft = $state<BajourDraft | null>(null);
 
-  // Keep in sync with prop changes
+  // Keep in sync with prop changes and auto-poll pending drafts
   $effect(() => {
     currentExistingDraft = existingDraft;
+    if (existingDraft?.verification_status === 'ausstehend' && existingDraft.verification_sent_at) {
+      startStatusPoll(existingDraft.id);
+    }
   });
 
   let hasVerifiedDraft = $derived(
     currentExistingDraft?.verification_status === 'bestätigt'
   );
+
+  // Poll for verification status updates after sending to WhatsApp
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  function startStatusPoll(draftId: string) {
+    stopStatusPoll();
+    pollTimer = setInterval(async () => {
+      try {
+        const drafts = await bajourApi.listDrafts();
+        const updated = drafts.find((d) => d.id === draftId);
+        if (!updated) return;
+        currentExistingDraft = updated;
+        if (updated.verification_status !== 'ausstehend') {
+          stopStatusPoll();
+        }
+      } catch { /* ignore poll errors */ }
+    }, 10_000);
+  }
+
+  function stopStatusPoll() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  // Clean up on unmount
+  $effect(() => {
+    return () => stopStatusPoll();
+  });
 
   // Parse API error into a user-friendly message
   function friendlyError(err: unknown): string {
@@ -96,6 +131,7 @@
       }
       currentExistingDraft = draft;
       successBanner = { variant: 'sent' };
+      startStatusPoll(draft.id);
     } catch (err) {
       error = friendlyError(err);
     } finally {
@@ -115,6 +151,37 @@
       error = (err as Error).message;
     } finally {
       statusLoading = false;
+    }
+  }
+
+  // Send existing draft to WhatsApp
+  async function handleSendExisting() {
+    if (!currentExistingDraft || loading) return;
+    loading = true;
+    error = '';
+    try {
+      await bajourDrafts.sendVerification(currentExistingDraft.id);
+      successBanner = { variant: 'sent' };
+      startStatusPoll(currentExistingDraft.id);
+    } catch (err) {
+      error = friendlyError(err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  // Delete draft
+  async function handleDelete() {
+    if (!currentExistingDraft || deleteLoading) return;
+    deleteLoading = true;
+    error = '';
+    try {
+      await bajourDrafts.delete(currentExistingDraft.id);
+      onregenerate();
+    } catch (err) {
+      error = (err as Error).message;
+    } finally {
+      deleteLoading = false;
     }
   }
 
@@ -198,15 +265,24 @@
     <DraftPreview draft={generatedDraft} />
   {/if}
 
-  {#if !successBanner}
-    <div class="step-actions">
-      <Button variant="ghost" onclick={onregenerate} disabled={loading}>
-        <RefreshCw size={14} />
-        {currentExistingDraft ? 'Neuer Entwurf' : 'Neu generieren'}
+  <div class="step-actions">
+    {#if currentExistingDraft}
+      <Button variant="ghost" onclick={handleDelete} loading={deleteLoading} disabled={loading}>
+        <Trash2 size={14} />
+        Löschen
       </Button>
+    {/if}
 
+    <div class="step-actions-right">
       {#if generatedDraft && !currentExistingDraft}
         <Button onclick={handleSend} loading={loading} disabled={!generatedDraft}>
+          <Send size={14} />
+          An Dorfkönige senden
+        </Button>
+      {/if}
+
+      {#if currentExistingDraft}
+        <Button onclick={handleSendExisting} loading={loading} disabled={!!currentExistingDraft.verification_sent_at}>
           <Send size={14} />
           An Dorfkönige senden
         </Button>
@@ -219,7 +295,7 @@
         </Button>
       </span>
     </div>
-  {/if}
+  </div>
 </div>
 
 <style>
@@ -347,10 +423,17 @@
 
   .step-actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 0.75rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--color-border);
+  }
+
+  .step-actions-right {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
   }
 
   .mailchimp-wrapper {

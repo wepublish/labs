@@ -34,6 +34,12 @@ Deno.serve(async (req) => {
         }
         return await updateDraft(supabase, userId, draftId, req);
 
+      case 'DELETE':
+        if (!draftId) {
+          return errorResponse('Draft-ID erforderlich', 400);
+        }
+        return await deleteDraft(supabase, userId, draftId);
+
       default:
         return errorResponse('Methode nicht erlaubt', 405);
     }
@@ -145,6 +151,7 @@ async function updateDraft(
   // are NOT user-editable — only writable by service role (webhook + send-verification)
 
   if (Object.keys(updates).length === 0) {
+
     return errorResponse('Keine Änderungen angegeben', 400, 'VALIDATION_ERROR');
   }
 
@@ -165,4 +172,24 @@ async function updateDraft(
   }
 
   return jsonResponse({ data });
+}
+
+// Delete a draft (only own drafts)
+async function deleteDraft(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  draftId: string
+) {
+  const { error } = await supabase
+    .from('bajour_drafts')
+    .delete()
+    .eq('id', draftId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Delete draft error:', error);
+    return errorResponse('Fehler beim Löschen des Entwurfs', 500);
+  }
+
+  return jsonResponse({ data: { deleted: true } });
 }

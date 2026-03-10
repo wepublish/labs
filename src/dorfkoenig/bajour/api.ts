@@ -21,6 +21,9 @@ export const bajourApi = {
   updateDraft: (draftId: string, data: { verification_status?: VerificationStatus }) =>
     api.patch<BajourDraft>(`bajour-drafts/${draftId}`, data),
 
+  /** Delete a draft. */
+  deleteDraft: (draftId: string) => api.delete(`bajour-drafts/${draftId}`),
+
   /** LLM-powered selection of relevant units for a village newsletter. */
   selectUnits: (data: { village_id: string; scout_id: string; recency_days?: number; selection_prompt?: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),

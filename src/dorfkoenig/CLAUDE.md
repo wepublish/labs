@@ -17,6 +17,7 @@ src/dorfkoenig/
 │   ├── api.ts             # API client (Edge Function calls)
 │   ├── types.ts           # TypeScript interfaces
 │   ├── constants.ts       # App constants
+│   ├── gemeinden.json     # Gemeinde list (10 Basel-area municipalities, shared across app)
 │   └── supabase.ts        # Supabase client init
 ├── stores/
 │   ├── auth.ts            # Auth (extends @shared/stores/auth)
@@ -40,14 +41,17 @@ src/dorfkoenig/
 │   ├── store.ts           # Bajour drafts store
 │   ├── types.ts           # Village, Correspondent, BajourDraft, VerificationStatus
 │   ├── utils.ts           # Utility functions
-│   ├── villages.json      # Village configuration data (10 villages)
 │   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
 │   ├── components/
 │   │   ├── DraftPanel.svelte        # 3-step wizard (village → generate → preview/send) + sidebar
 │   │   ├── DraftList.svelte         # List of existing drafts
 │   │   ├── DraftPreview.svelte      # Generated draft preview
-│   │   ├── VillageSelect.svelte     # Village picker
-│   │   └── VerificationBadge.svelte # Status badge (ausstehend/bestätigt/abgelehnt)
+│   │   ├── StepVillageSelect.svelte # Step 1: village picker
+│   │   ├── StepGenerate.svelte      # Step 2: AI unit selection + draft generation
+│   │   ├── StepPreviewSend.svelte   # Step 3: preview, WhatsApp send, Mailchimp send
+│   │   ├── VillageSelect.svelte     # Village dropdown (uses lib/gemeinden.json)
+│   │   ├── VerificationBadge.svelte # Status badge (ausstehend/bestätigt/abgelehnt)
+│   │   └── SuccessBanner.svelte     # Post-action success message
 │   └── __tests__/
 │       ├── api.test.ts    # Bajour API client tests
 │       ├── store.test.ts  # Bajour store tests
@@ -70,11 +74,9 @@ src/dorfkoenig/
 │   ├── PIPELINES.md
 │   ├── FRONTEND.md
 │   ├── AUTH.md
-│   └── DEPLOYMENT.md
-└── docs/
-    ├── README.md
-    ├── SETUP.md
-    └── MANUAL_SETUP.md
+│   ├── DEPLOYMENT.md
+│   ├── MAILCHIMP.md
+│   └── WHATSAPP.md
 ```
 
 ## Monorepo Integration
@@ -128,8 +130,8 @@ Derived: `scoutsCount`
 Pagination: page size 20, `hasMore` flag.
 
 ### `bajourDrafts` (`bajour/store.ts`)
-`load()`, `create(data)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
-Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts.
+`load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
+Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `StepPreviewSend` also polls every 10s after sending verification for live status updates.
 
 ### `auth` (`stores/auth.ts`)
 Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`
@@ -198,6 +200,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 ### Frontend (`.env.local`)
 - `VITE_SUPABASE_URL` -- Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` -- Supabase anon key
+- `VITE_FEATURE_BAJOUR` -- Set to `true` to enable Bajour village newsletter feature (`#/entwurf` route)
 
 ### Edge Function Secrets (Dashboard > Settings > Edge Functions)
 - `OPENROUTER_API_KEY` -- LLM via OpenRouter (model: `openai/gpt-4o-mini`)
@@ -205,6 +208,11 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 - `RESEND_API_KEY` -- Email notifications
 - `MAILCHIMP_API_KEY` -- Mailchimp API key for Bajour newsletter campaigns (server: `us21`)
 - `MAILCHIMP_SERVER` -- Mailchimp data center (`us21`)
+- `WHATSAPP_PHONE_NUMBER_ID` -- WhatsApp Business phone number ID
+- `WHATSAPP_API_TOKEN` -- WhatsApp system user token
+- `WHATSAPP_APP_SECRET` -- HMAC-SHA256 webhook signature verification
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` -- Webhook handshake token
+- `BAJOUR_CORRESPONDENTS` -- JSON mapping village IDs → correspondent arrays
 
 ### Vault Secrets (SQL `vault.create_secret`)
 - `project_url` -- Supabase project URL (for pg_cron → pg_net calls)
@@ -221,9 +229,8 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 | `specs/FRONTEND.md` | Components, stores, routing, UI patterns |
 | `specs/AUTH.md` | Auth v1 (URL token + iframe), mock auth (local dev), CTO questions for v2 |
 | `specs/DEPLOYMENT.md` | CI/CD, GitHub Pages, Supabase deployment |
-| `docs/SETUP.md` | Step-by-step setup guide |
-| `docs/MANUAL_SETUP.md` | Manual setup via Dashboard (no CLI) |
-| `docs/MAILCHIMP.md` | Mailchimp integration: template, edge function flow, known limitations |
+| `specs/MAILCHIMP.md` | Mailchimp integration: template, edge function flow, known limitations |
+| `specs/WHATSAPP.md` | WhatsApp Business API: template, webhook, verification pipeline |
 | `supabase/CLAUDE.md` | Backend-specific agent guide |
 
 ## Testing

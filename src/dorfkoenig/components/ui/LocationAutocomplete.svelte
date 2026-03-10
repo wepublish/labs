@@ -1,5 +1,14 @@
 <script lang="ts">
   import { MapPin } from 'lucide-svelte';
+  import gemeindenData from '../../lib/gemeinden.json';
+
+  interface Gemeinde {
+    id: string;
+    name: string;
+    canton: string;
+    latitude: number;
+    longitude: number;
+  }
 
   interface LocationResult {
     city: string;
@@ -14,83 +23,47 @@
     placeholder?: string;
   }
 
-  let { value, onselect, placeholder = 'z.B. Berlin' }: Props = $props();
+  let { value, onselect, placeholder = 'z.B. Riehen' }: Props = $props();
 
-  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
-
-  interface MapTilerFeature {
-    place_name: string;
-    text: string;
-    center: [number, number];
-    context?: Array<{ id: string; text: string }>;
-    properties?: Record<string, unknown>;
-  }
+  const gemeinden = gemeindenData as Gemeinde[];
 
   let inputValue = $state('');
-  let results = $state<MapTilerFeature[]>([]);
+  let results = $state<Gemeinde[]>([]);
   let showDropdown = $state(false);
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Sync external value changes
   $effect(() => {
     inputValue = value;
   });
 
-  // Clean up debounce timer on component destroy
-  $effect(() => {
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  });
-
   function handleInput(e: Event) {
     const query = (e.target as HTMLInputElement).value;
     inputValue = query;
 
-    if (debounceTimer) clearTimeout(debounceTimer);
-
-    if (!query.trim() || query.trim().length < 2) {
+    if (!query.trim()) {
       results = [];
       showDropdown = false;
       return;
     }
 
-    debounceTimer = setTimeout(() => fetchResults(query.trim()), 300);
+    const lower = query.trim().toLowerCase();
+    results = gemeinden.filter(
+      (g) => g.name.toLowerCase().startsWith(lower)
+    );
+    showDropdown = results.length > 0;
   }
 
-  async function fetchResults(query: string) {
-    if (!MAPTILER_KEY) return;
-
-    try {
-      const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${MAPTILER_KEY}&types=municipality,place&language=de&limit=5`;
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const data = await res.json();
-      results = data.features || [];
-      showDropdown = results.length > 0;
-    } catch {
-      results = [];
-      showDropdown = false;
-    }
-  }
-
-  function getCountry(feature: MapTilerFeature): string {
-    const ctx = feature.context;
-    if (!ctx) return '';
-    const country = ctx.find((c) => c.id.startsWith('country'));
-    return country?.text || '';
-  }
-
-  function handleSelect(feature: MapTilerFeature) {
-    const city = feature.text;
-    const country = getCountry(feature);
-    const [longitude, latitude] = feature.center;
-
-    inputValue = city;
+  function handleSelect(g: Gemeinde) {
+    inputValue = g.name;
     showDropdown = false;
     results = [];
 
-    onselect({ city, country, latitude, longitude });
+    onselect({
+      city: g.name,
+      country: 'Schweiz',
+      latitude: g.latitude,
+      longitude: g.longitude,
+    });
   }
 
   function handleBlur() {
@@ -120,16 +93,14 @@
   </div>
   {#if showDropdown && results.length > 0}
     <div class="location-dropdown">
-      {#each results as feature}
+      {#each results as g}
         <button
           type="button"
           class="location-result"
-          onmousedown={() => handleSelect(feature)}
+          onmousedown={() => handleSelect(g)}
         >
-          <span class="result-city">{feature.text}</span>
-          {#if getCountry(feature)}
-            <span class="result-country">{getCountry(feature)}</span>
-          {/if}
+          <span class="result-city">{g.name}</span>
+          <span class="result-canton">{g.canton}</span>
         </button>
       {/each}
     </div>
@@ -206,7 +177,7 @@
     font-weight: 500;
   }
 
-  .result-country {
+  .result-canton {
     color: var(--color-text-muted, #9ca3af);
     font-size: 0.75rem;
   }

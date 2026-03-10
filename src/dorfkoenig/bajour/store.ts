@@ -55,6 +55,17 @@ function createBajourDraftsStore() {
     },
 
     /**
+     * Delete a draft
+     */
+    async delete(draftId: string) {
+      await bajourApi.deleteDraft(draftId);
+      update((s) => ({
+        ...s,
+        drafts: s.drafts.filter((d) => d.id !== draftId),
+      }));
+    },
+
+    /**
      * Send verification for a draft
      */
     async sendVerification(draftId: string): Promise<{ sent_count: number }> {

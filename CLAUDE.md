@@ -11,7 +11,7 @@ Multi-app monorepo hosting Svelte 5 + TypeScript applications deployed to GitHub
 | `vite.config.ts` | Build config, path aliases, app discovery |
 | `tsconfig.json` | TypeScript config with path mappings |
 | `package.json` | Scripts and dependencies |
-| `SPEC.md` | Full specification (security, patterns, API) |
+| `README.md` | Full specification (security, patterns, API) |
 | `.env.example` | Required environment variables |
 
 ## Repository Structure

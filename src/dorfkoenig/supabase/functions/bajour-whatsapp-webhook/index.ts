@@ -155,14 +155,23 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
     return jsonResponse({ status: 'no_message' });
   }
 
-  // Nur interaktive Button-Antworten verarbeiten
-  const buttonReply = message.interactive?.button_reply;
-  if (!buttonReply) {
+  // Button-Antworten verarbeiten:
+  // - Template quick-reply: message.type === 'button', message.button.text
+  // - Interactive message: message.type === 'interactive', message.interactive.button_reply.title
+  let responseText: string | null = null;
+
+  if (message.type === 'button' && message.button?.text) {
+    responseText = message.button.text;
+  } else if (message.interactive?.button_reply?.title) {
+    responseText = message.interactive.button_reply.title;
+  }
+
+  if (!responseText) {
     return jsonResponse({ status: 'ignored' });
   }
 
   const fromPhone = message.from; // z.B. "41783124547" (ohne +)
-  const responseTitle = (buttonReply.title as string).toLowerCase(); // case-insensitive
+  const responseTitle = responseText.toLowerCase(); // case-insensitive
 
   // Antwort validieren
   if (responseTitle !== 'bestätigt' && responseTitle !== 'abgelehnt') {

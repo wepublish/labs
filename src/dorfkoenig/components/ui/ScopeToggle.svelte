@@ -111,7 +111,7 @@
     <LocationAutocomplete
       value={loc?.city || ''}
       onselect={handleLocationSelect}
-      placeholder="z.B. Berlin"
+      placeholder="z.B. Riehen"
     />
   </div>
   <div class="scope-section">
