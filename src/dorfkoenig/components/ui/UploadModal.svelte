@@ -1,10 +1,10 @@
 <script lang="ts">
   import { X, Upload, FileText, Camera, File as FileIcon } from 'lucide-svelte';
   import { focusTrap } from '../../lib/actions/focus-trap';
-  import { Button } from '@shared/components';
   import { manualUploadApi } from '../../lib/api';
   import { MIN_TEXT_LENGTH, MIN_DESCRIPTION_LENGTH, extractTopics } from '../../lib/constants';
   import { scouts } from '../../stores/scouts';
+  import { Button } from '@shared/components';
   import ScopeToggle from './ScopeToggle.svelte';
   import ProgressIndicator from './ProgressIndicator.svelte';
   import UploadTextTab from './UploadTextTab.svelte';
@@ -121,8 +121,7 @@
   }
 
   let isValid = $derived.by(() => {
-    const hasScope = location !== null || topic.trim() !== '';
-    if (!hasScope) return false;
+    if (location === null) return false;
 
     if (activeTab === 'text') {
       return text.trim().length >= MIN_TEXT_LENGTH;
@@ -134,8 +133,8 @@
   function validate(): boolean {
     validationError = '';
 
-    if (!location && !topic.trim()) {
-      validationError = 'Ort oder Thema ist erforderlich';
+    if (!location) {
+      validationError = 'Ort ist erforderlich';
       return false;
     }
 
@@ -338,8 +337,8 @@
           {/if}
 
           <!-- Scope toggle (shared across tabs) -->
-          <div class="form-group" role="group" aria-label="Ort und/oder Thema">
-            <span class="form-label">Ort und/oder Thema</span>
+          <div class="form-group" role="group" aria-label="Ort und Thema">
+            <span class="form-label">Ort und Thema <span class="optional">(Thema optional)</span></span>
             <ScopeToggle
               {location}
               {topic}
@@ -512,7 +511,7 @@
   .modal-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 0.75rem;
+    gap: 0.5rem;
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--color-border);
     background: var(--color-surface);

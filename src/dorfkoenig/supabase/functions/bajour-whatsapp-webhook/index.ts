@@ -67,7 +67,7 @@ function resolveVerificationStatus(
 ): 'ausstehend' | 'bestätigt' | 'abgelehnt' {
   const confirms = responses.filter((r) => r.response === 'bestätigt').length;
   const rejects = responses.filter((r) => r.response === 'abgelehnt').length;
-  const majority = Math.floor(totalCorrespondents / 2) + 1;
+  const majority = Math.ceil(totalCorrespondents / 2);
 
   if (rejects >= majority) return 'abgelehnt';
   if (confirms >= majority) return 'bestätigt';

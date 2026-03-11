@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     Sparkles,
     Loader2,
     Trash2,
-    ChevronDown,
+    Upload,
     FileText,
   } from 'lucide-svelte';
   import { units } from '../../stores/units';
@@ -13,6 +13,7 @@
   import { bajourApi } from '../../bajour/api';
   import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
   import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
+  import { showUploadModal } from '../../stores/ui';
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import AISelectDropdown from './AISelectDropdown.svelte';
@@ -48,12 +49,14 @@
   let searchQuery = $state('');
   let isSearching = $state(false);
 
-  // Load on mount
+  // Load on mount + start background draft polling
   onMount(() => {
     units.loadLocations();
     units.load();
     scouts.load();
-    bajourDrafts.load();
+    bajourDrafts.load().then(() => {
+      bajourDrafts.startPolling();
+    });
     const stored = localStorage.getItem('dk_custom_draft_prompt');
     if (stored) {
       try {
@@ -65,6 +68,10 @@
         }
       } catch { /* ignore invalid data */ }
     }
+  });
+
+  onDestroy(() => {
+    bajourDrafts.stopPolling();
   });
 
   // Mark initial load done when loading transitions to false
@@ -214,13 +221,12 @@
     }
   }
 
-  async function handleAISelectRun(recencyDays: number | null, selectionPrompt: string) {
+  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
     showAISelectDropdown = false;
 
-    // Derive village from selected location
-    const village = selectedLocation ? getVillageByName(selectedLocation) : null;
+    const village = getVillageByName(villageName);
     if (!village) {
-      error = 'Bitte wähle zuerst einen Ort aus.';
+      error = 'Ort nicht gefunden.';
       return;
     }
 
@@ -230,11 +236,9 @@
       return;
     }
 
-    // Freeze village context for this draft
     draftVillageName = village.name;
     draftVillageId = village.id;
 
-    // Open slide-over immediately
     aiPhase = 'selecting';
     generating = true;
     error = '';
@@ -242,7 +246,6 @@
     draft = null;
 
     try {
-      // Phase 1: AI selection
       const selectResult = await bajourApi.selectUnits({
         village_id: village.id,
         scout_id: scoutId,
@@ -259,7 +262,6 @@
       }
       unitsUsedForDraft = selectedIds;
 
-      // Phase 2: Generate draft
       aiPhase = 'generating';
       const result = await composeApi.generate({
         unit_ids: selectedIds,
@@ -310,104 +312,117 @@
   );
 </script>
 
-<PanelFilterBar
-  {locationOptions}
-  {topicOptions}
-  selectedLocation={selectedLocation}
-  selectedTopic={selectedTopic}
-  onLocationChange={handleLocationChange}
-  onTopicChange={handleTopicChange}
-  scoutOptions={scoutNameOptions}
-  selectedScout={selectedScoutId}
-  onScoutChange={(v) => { selectedScoutId = v; }}
-  loading={$units.loading}
-  showSearch={true}
-  {searchQuery}
-  searchPlaceholder="Informationen filtern..."
-  onSearch={handleSearch}
-  {isSearching}
->
-  {#snippet toolbar()}
-    {#if generating}
-      <span class="toolbar-status">
-        <Loader2 size={14} class="spin" />
-        KI wählt aus...
-      </span>
-    {:else if selectedUnitIds.size > 0}
-      <span class="selection-count">{selectedUnitIds.size} ausgewählt</span>
-      <button class="toolbar-btn delete-btn" onclick={handleDeleteSelected} type="button" title="Auswahl löschen">
-        <Trash2 size={14} />
-      </button>
-      <button class="toolbar-link" onclick={clearSelection} type="button">
-        Auswahl aufheben
-      </button>
-      <button
-        class="toolbar-btn generate-btn"
-        onclick={generateDraft}
-        disabled={generating}
-      >
-        <Sparkles size={14} />
-        <span>Entwurf erstellen</span>
-      </button>
-    {:else if filteredUnits.length > 0}
-      <span class="count-label">{filteredUnits.length} verfügbar</span>
-      <button class="toolbar-link" onclick={selectAll} type="button">
-        Alle auswählen
-      </button>
-      <div class="ai-select-wrapper">
-        <button
-          class="toolbar-btn ai-select-btn"
-          class:active={showAISelectDropdown}
-          disabled={!selectedLocation}
-          title={!selectedLocation ? 'Bitte zuerst einen Ort auswählen' : ''}
-          onclick={() => { if (!selectedLocation) return; showAISelectDropdown = !showAISelectDropdown; }}
-          type="button"
-        >
-          <Sparkles size={14} />
-          <span>AI Select</span>
-          <ChevronDown size={12} />
+<div class="feed-panel">
+  <!-- ═══ TOP BAR: Data concerns (sticky) ═══ -->
+  <div class="top-bar">
+    <PanelFilterBar
+      {locationOptions}
+      {topicOptions}
+      selectedLocation={selectedLocation}
+      selectedTopic={selectedTopic}
+      onLocationChange={handleLocationChange}
+      onTopicChange={handleTopicChange}
+      scoutOptions={scoutNameOptions}
+      selectedScout={selectedScoutId}
+      onScoutChange={(v) => { selectedScoutId = v; }}
+      loading={$units.loading}
+      showSearch={true}
+      {searchQuery}
+      searchPlaceholder="Informationen filtern..."
+      onSearch={handleSearch}
+      {isSearching}
+    />
+
+    <!-- Data status row -->
+    <div class="data-status-row">
+      {#if generating}
+        <span class="status-text">
+          <Loader2 size={14} class="spin" />
+          KI wählt aus...
+        </span>
+      {:else if selectedUnitIds.size > 0}
+        <span class="selection-pill">{selectedUnitIds.size} ausgewählt</span>
+        <button class="text-link" onclick={clearSelection} type="button">Aufheben</button>
+        <button class="icon-btn icon-btn-danger" onclick={handleDeleteSelected} type="button" title="Auswahl löschen">
+          <Trash2 size={14} />
         </button>
-        {#if showAISelectDropdown}
-          <AISelectDropdown
-            loading={generating}
-            onrun={handleAISelectRun}
-            onclose={() => { showAISelectDropdown = false; }}
-          />
+      {:else}
+        <span class="count-label">{filteredUnits.length} Einheiten</span>
+        {#if filteredUnits.length > 0}
+          <button class="text-link" onclick={selectAll} type="button">Alle auswählen</button>
         {/if}
-      </div>
+      {/if}
+
+      <button class="upload-btn" onclick={() => showUploadModal.set(true)} type="button" style="margin-left: auto;">
+        <Upload size={14} />
+        <span>Hochladen</span>
+      </button>
+    </div>
+  </div>
+
+  {#if error && !showDraftSlideOver}
+    <div class="error-banner" aria-live="polite">
+      {error}
+      <button class="error-dismiss" onclick={() => { error = ''; }} type="button">&times;</button>
+    </div>
+  {/if}
+
+  <!-- ═══ SCROLLABLE CONTENT ═══ -->
+  <div class="panel-content">
+    {#if $units.error}
+      <div class="error-message" aria-live="polite">{$units.error}</div>
     {/if}
-    <button class="toolbar-btn drafts-btn" onclick={() => { openDraftList = true; showDraftSlideOver = true; }} type="button">
-      <FileText size={14} />
+
+    {#if $units.loading && !initialLoadDone}
+      <Loading label="Laden..." />
+    {:else}
+      <UnitList
+        units={filteredUnits}
+        selected={selectedUnitIds}
+        ontoggle={toggleUnit}
+        dimmed={($units.loading && initialLoadDone) || generating}
+      />
+    {/if}
+  </div>
+
+  <!-- ═══ FLOATING BAR: Draft actions (bottom-right) ═══ -->
+  <div class="floating-bar">
+    <div class="ai-select-wrapper">
+      <button
+        class="fab-btn ai-select-btn"
+        class:active={showAISelectDropdown}
+        disabled={generating}
+        onclick={() => {
+          if (selectedUnitIds.size > 0) {
+            generateDraft();
+          } else {
+            showAISelectDropdown = !showAISelectDropdown;
+          }
+        }}
+        type="button"
+      >
+        <Sparkles size={16} />
+        <span>{selectedUnitIds.size > 0 ? 'Entwurf erstellen' : 'KI-Entwurf'}</span>
+      </button>
+      {#if showAISelectDropdown}
+        <AISelectDropdown
+          loading={generating}
+          {villages}
+          prefilledLocation={selectedLocation}
+          onrun={handleAISelectRun}
+          onclose={() => { showAISelectDropdown = false; }}
+        />
+      {/if}
+    </div>
+
+    <button class="fab-btn drafts-btn" onclick={() => { openDraftList = true; showDraftSlideOver = true; }} type="button">
+      <FileText size={16} />
       <span>Entwürfe</span>
       {#if $bajourDrafts.drafts.length > 0}
         <span class="drafts-count-badge">{$bajourDrafts.drafts.length}</span>
       {/if}
     </button>
-  {/snippet}
-</PanelFilterBar>
-
-{#if error && !showDraftSlideOver}
-  <div class="error-banner" aria-live="polite">
-    {error}
-    <button class="error-dismiss" onclick={() => { error = ''; }} type="button">&times;</button>
   </div>
-{/if}
-
-<div class="panel-content">
-  {#if $units.error}
-    <div class="error-message" aria-live="polite">{$units.error}</div>
-  {/if}
-
-  {#if $units.loading && !initialLoadDone}
-    <Loading label="Laden..." />
-  {:else}
-    <UnitList
-      units={filteredUnits}
-      selected={selectedUnitIds}
-      ontoggle={toggleUnit}
-      dimmed={($units.loading && initialLoadDone) || generating}
-    />
-  {/if}
 </div>
 
 <DraftSlideOver
@@ -428,40 +443,53 @@
 />
 
 <style>
-  .panel-content {
+  .feed-panel {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md) var(--spacing-lg);
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── TOP BAR: sticky data concerns ── */
+  .top-bar {
+    flex-shrink: 0;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .data-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.375rem var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--text-sm);
   }
 
   .count-label {
-    font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
 
-  .toolbar-status {
+  .status-text {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    font-size: var(--text-sm);
     color: var(--color-primary);
     font-weight: 500;
   }
 
-  .selection-count {
+  .selection-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
+    padding: 0.0625rem 0.5rem;
     background: rgba(234, 114, 110, 0.1);
     color: var(--color-primary);
     border-radius: var(--radius-full);
-    font-size: var(--text-sm);
     font-weight: 600;
   }
 
-  .toolbar-link {
+  .text-link {
     background: none;
     border: none;
     font-size: var(--text-sm);
@@ -472,79 +500,132 @@
     text-underline-offset: 2px;
   }
 
-  .toolbar-link:hover {
+  .text-link:hover {
     color: var(--color-text);
   }
 
-  .toolbar-btn {
+  .icon-btn {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.375rem 0.5rem;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-light);
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .icon-btn:hover {
+    background: var(--color-background);
+    color: var(--color-text);
+  }
+
+  .icon-btn-danger:hover {
+    background: var(--color-status-error-bg);
+    border-color: var(--color-danger-light);
+    color: var(--color-danger-dark);
+  }
+
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem 0.25rem 0.5rem;
     font-size: var(--text-sm);
     font-weight: 500;
+    font-family: var(--font-body);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-text-muted);
     cursor: pointer;
     transition: all var(--transition-base);
+    white-space: nowrap;
   }
 
-  .toolbar-btn:hover {
+  .upload-btn:hover {
     background: var(--color-background);
     color: var(--color-text);
+    border-color: var(--color-primary);
   }
 
-  .delete-btn:hover {
-    background: var(--color-status-error-bg);
-    border-color: var(--color-danger-light);
-    color: var(--color-danger-dark);
+  /* ── SCROLLABLE CONTENT ── */
+  .panel-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--spacing-md) var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
   }
 
-  .generate-btn {
-    gap: 0.375rem;
-    color: white;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-    border: none;
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(234, 114, 110, 0.3);
-  }
-
-  .generate-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 114, 110, 0.35);
-  }
-
-  .generate-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  /* ── FLOATING BAR: bottom-right draft actions ── */
+  .floating-bar {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+    z-index: var(--z-dropdown);
   }
 
   .ai-select-wrapper {
     position: relative;
   }
 
-  .ai-select-btn {
-    gap: 0.375rem;
-    color: var(--color-primary);
-    border-color: rgba(234, 114, 110, 0.3);
+  .fab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.125rem 0.5rem 0.875rem;
+    font-size: var(--text-base);
+    font-weight: 600;
+    font-family: var(--font-body);
+    border: none;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    white-space: nowrap;
   }
 
-  .ai-select-btn:hover:not(:disabled),
+  .ai-select-btn {
+    background: var(--color-primary);
+    color: white;
+  }
+
+  .ai-select-btn:hover {
+    background: var(--color-primary-dark);
+    box-shadow: 0 2px 10px rgba(234, 114, 110, 0.35);
+    transform: translateY(-0.5px);
+  }
+
   .ai-select-btn.active {
-    background: rgba(234, 114, 110, 0.08);
-    border-color: rgba(234, 114, 110, 0.4);
+    background: var(--color-primary-dark);
   }
 
   .ai-select-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
   .drafts-btn {
-    gap: 0.375rem;
-    margin-left: auto;
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+  }
+
+  .drafts-btn:hover {
+    background: var(--color-border);
+    color: var(--color-text);
   }
 
   .drafts-count-badge {
@@ -562,6 +643,7 @@
     border-radius: 999px;
   }
 
+  /* ── ERROR ── */
   .error-banner {
     display: flex;
     align-items: center;
@@ -571,6 +653,7 @@
     color: var(--color-danger-dark);
     font-size: var(--text-sm);
     border-bottom: 1px solid var(--color-danger-border);
+    flex-shrink: 0;
   }
 
   .error-dismiss {

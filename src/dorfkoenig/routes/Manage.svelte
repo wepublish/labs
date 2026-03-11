@@ -156,6 +156,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--spacing-md);
+    align-items: start;
   }
 
   .empty-cta {

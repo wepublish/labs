@@ -2,7 +2,6 @@
   import { untrack } from 'svelte';
   import { Search, Loader2 } from 'lucide-svelte';
   import FilterSelect from './FilterSelect.svelte';
-  import type { Snippet } from 'svelte';
 
   interface Option {
     value: string;
@@ -26,7 +25,6 @@
     searchPlaceholder?: string;
     onSearch?: (query: string) => void;
     isSearching?: boolean;
-    toolbar?: Snippet;
   }
 
   let {
@@ -45,18 +43,15 @@
     searchPlaceholder = 'Suchen...',
     onSearch,
     isSearching = false,
-    toolbar,
   }: Props = $props();
 
   let searchInput = $state(untrack(() => searchQuery));
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Sync searchInput when prop changes externally (e.g. mode change clears it)
   $effect(() => {
     searchInput = searchQuery;
   });
 
-  // Cleanup debounce timeout on unmount
   $effect(() => {
     return () => {
       if (searchTimeout) clearTimeout(searchTimeout);
@@ -126,13 +121,6 @@
           {/if}
         </div>
       {/if}
-
-      {#if toolbar}
-        <div class="filter-divider toolbar-divider"></div>
-        <div class="toolbar-inline">
-          {@render toolbar()}
-        </div>
-      {/if}
     {/if}
   </div>
 </div>
@@ -142,7 +130,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
     background: var(--color-surface);
   }
@@ -208,16 +196,4 @@
   .search-clear:hover {
     color: var(--color-text);
   }
-
-  .toolbar-divider {
-    margin-left: auto;
-  }
-
-  .toolbar-inline {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0;
-  }
-
 </style>

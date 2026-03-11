@@ -1,6 +1,6 @@
 <script lang="ts">
   // Step 3: preview generated draft, save/send to WhatsApp verification, and send to Mailchimp.
-  import { Send, Mail, Trash2, Loader2 } from 'lucide-svelte';
+  import { Send, Mail, Trash2 } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import { bajourDrafts } from '../store';
   import { bajourApi } from '../api';
@@ -8,6 +8,7 @@
   import DraftPreview from './DraftPreview.svelte';
   import VerificationBadge from './VerificationBadge.svelte';
   import SuccessBanner from './SuccessBanner.svelte';
+  import VerificationToggle from '../../components/compose/VerificationToggle.svelte';
   import type { Village, BajourDraft, BajourDraftGenerated, VerificationStatus } from '../types';
   import { renderMarkdownBody } from '../utils';
 
@@ -232,30 +233,11 @@
 
     <div class="status-override">
       <span class="status-override-hint">Status manuell überschreiben</span>
-      <div class="status-toggle">
-        <button
-          class="toggle-btn toggle-confirm"
-          class:active={currentExistingDraft.verification_status === 'bestätigt'}
-          disabled={statusLoading}
-          onclick={() => handleStatusOverride('bestätigt')}
-        >
-          {#if statusLoading && currentExistingDraft.verification_status !== 'bestätigt'}
-            <Loader2 size={12} class="spin" />
-          {/if}
-          Bestätigt
-        </button>
-        <button
-          class="toggle-btn toggle-reject"
-          class:active={currentExistingDraft.verification_status === 'abgelehnt'}
-          disabled={statusLoading}
-          onclick={() => handleStatusOverride('abgelehnt')}
-        >
-          {#if statusLoading && currentExistingDraft.verification_status !== 'abgelehnt'}
-            <Loader2 size={12} class="spin" />
-          {/if}
-          Abgelehnt
-        </button>
-      </div>
+      <VerificationToggle
+        status={currentExistingDraft.verification_status}
+        loading={statusLoading}
+        onchange={handleStatusOverride}
+      />
     </div>
 
     <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via renderMarkdownBody -->
@@ -373,52 +355,6 @@
   .status-override-hint {
     font-size: var(--text-sm);
     color: var(--color-text-muted);
-  }
-
-  .status-toggle {
-    display: flex;
-    gap: 0;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    width: fit-content;
-  }
-
-  .toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.375rem 0.75rem;
-    font-size: var(--text-base-sm);
-    font-weight: 500;
-    border: none;
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: background var(--transition-base), color var(--transition-base);
-  }
-
-  .toggle-btn:not(:last-child) {
-    border-right: 1px solid var(--color-border);
-  }
-
-  .toggle-btn:hover:not(.active):not(:disabled) {
-    background: var(--color-surface-muted);
-  }
-
-  .toggle-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .toggle-confirm.active {
-    background: var(--color-badge-entity-bg);
-    color: var(--color-badge-entity-text);
-  }
-
-  .toggle-reject.active {
-    background: var(--color-status-error-bg);
-    color: var(--color-status-error-text);
   }
 
   .step-actions {

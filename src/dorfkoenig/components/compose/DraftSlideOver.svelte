@@ -1,11 +1,14 @@
 <script lang="ts">
   import { fly, fade } from 'svelte/transition';
   import { onDestroy } from 'svelte';
-  import { AlertCircle, RefreshCw, PenTool, ChevronDown, ChevronUp, Download, Send, Mail, Trash2, Loader2, FileText } from 'lucide-svelte';
   import { focusTrap } from '../../lib/actions/focus-trap';
-  import ProgressIndicator from '../ui/ProgressIndicator.svelte';
   import DraftContent from './DraftContent.svelte';
-  import DraftPromptEditor from './DraftPromptEditor.svelte';
+  import DraftGenerating from './DraftGenerating.svelte';
+  import DraftError from './DraftError.svelte';
+  import DraftActions from './DraftActions.svelte';
+  import DraftListPanel from './DraftListPanel.svelte';
+  import VerificationBadge from '../../bajour/components/VerificationBadge.svelte';
+  import LocationAutocomplete from '../ui/LocationAutocomplete.svelte';
   import DraftList from '../../bajour/components/DraftList.svelte';
   import { bajourDrafts } from '../../bajour/store';
   import { bajourApi } from '../../bajour/api';
@@ -46,7 +49,8 @@
     onRegenerate,
   }: Props = $props();
 
-  // Serialize a Draft's body sections into markdown for saving
+  // --- Helpers ---
+
   function draftToMarkdown(d: Draft): string {
     const parts: string[] = [];
     if (d.headline) parts.push(d.headline);
@@ -56,7 +60,6 @@
     return parts.join('\n\n');
   }
 
-  // Convert savedDraft markdown body into a Draft shape for DraftContent
   function parseSavedDraftBody(sd: BajourDraft): Draft {
     const lines = sd.body.split('\n');
     let headline = '';
@@ -64,7 +67,7 @@
     let currentHeading = '';
     let currentLines: string[] = [];
 
-    function flushAccumulated() {
+    function flush() {
       if (!currentHeading && currentLines.length > 0 && sections.length === 0) {
         headline = currentLines.join(' ').trim();
       } else if (currentHeading || currentLines.length > 0) {
@@ -76,14 +79,14 @@
       const trimmed = line.trim();
       const headingMatch = trimmed.match(/^##\s+(.+)$/);
       if (headingMatch) {
-        flushAccumulated();
+        flush();
         currentHeading = headingMatch[1];
         currentLines = [];
       } else if (trimmed) {
         currentLines.push(trimmed);
       }
     }
-    flushAccumulated();
+    flush();
 
     return {
       title: sd.title || '',
@@ -96,77 +99,41 @@
     };
   }
 
-  // Action state
+  // --- State ---
+
   let savedDraft = $state<BajourDraft | null>(null);
   let sendLoading = $state(false);
   let deleteLoading = $state(false);
   let mailchimpLoading = $state(false);
+  let statusLoading = $state(false);
   let actionError = $state('');
   let actionSuccess = $state<string | null>(null);
-  let statusLoading = $state(false);
-
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   let showDraftList = $state(false);
   let showRegenPrompt = $state(false);
   let regenPrompt = $state('');
-  let generateProgress = $state(0);
-  let generateProgressState = $state<'loading' | 'success' | 'error'>('loading');
+  let locationFilter = $state('');
 
-  let progressInterval: ReturnType<typeof setInterval> | null = null;
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  function startProgressSimulation(): void {
-    stopProgressInterval();
-    generateProgress = 0;
-    generateProgressState = 'loading';
-    progressInterval = setInterval(() => {
-      if (generateProgress < 30) {
-        generateProgress += Math.random() * 8 + 2;
-      } else if (generateProgress < 60) {
-        generateProgress += Math.random() * 4 + 1;
-      } else if (generateProgress < 85) {
-        generateProgress += Math.random() * 2 + 0.5;
-      } else if (generateProgress < 90) {
-        generateProgress += Math.random() * 0.5;
-      }
-      generateProgress = Math.min(generateProgress, 90);
-    }, 500);
-  }
+  // Derived: whether we have draft content to show actions for
+  let hasContent = $derived(!!(draft || savedDraft));
+  let canSave = $derived(!!(villageId && villageName));
 
-  function stopProgressSimulation(success: boolean): void {
-    stopProgressInterval();
-    if (success) {
-      generateProgress = 100;
-      generateProgressState = 'success';
-    } else {
-      generateProgressState = 'error';
-    }
-  }
+  // Zero state: no draft content and not generating/erroring
+  let isZeroState = $derived(!savedDraft && !draft && !isGenerating && !generationError);
 
-  function stopProgressInterval(): void {
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
-  }
+  // Drafts filtered by location
+  let filteredDrafts = $derived(
+    locationFilter
+      ? $bajourDrafts.drafts.filter((d) =>
+          d.village_name.toLowerCase().startsWith(locationFilter.toLowerCase())
+        )
+      : $bajourDrafts.drafts
+  );
 
-  let wasGenerating = false;
+  // --- Polling ---
 
-  $effect(() => {
-    if (isGenerating && !wasGenerating) {
-      startProgressSimulation();
-    } else if (!isGenerating && wasGenerating) {
-      stopProgressSimulation(!generationError);
-    }
-    wasGenerating = isGenerating;
-  });
-
-  onDestroy(() => {
-    stopProgressInterval();
-    stopStatusPoll();
-  });
-
-  // Poll for verification status updates (every 10s)
   function startStatusPoll(draftId: string): void {
     stopStatusPoll();
     pollTimer = setInterval(async () => {
@@ -189,13 +156,60 @@
     }
   }
 
-  // Manual verification status override (auto-saves draft if needed)
+  onDestroy(stopStatusPoll);
+
+  // --- Effects ---
+
+  // Load drafts and reset list visibility when panel opens
+  $effect(() => {
+    if (open) {
+      bajourDrafts.load();
+      showDraftList = initialShowDraftList;
+    }
+  });
+
+  // Reset all state when panel closes
+  $effect(() => {
+    if (!open) {
+      savedDraft = null;
+      showDraftList = false;
+      showRegenPrompt = false;
+      regenPrompt = '';
+      locationFilter = '';
+      sendLoading = false;
+      deleteLoading = false;
+      mailchimpLoading = false;
+      statusLoading = false;
+      actionError = '';
+      actionSuccess = null;
+      stopStatusPoll();
+    }
+  });
+
+  // Auto-poll when savedDraft is ausstehend
+  $effect(() => {
+    if (savedDraft?.verification_status === 'ausstehend' && savedDraft.verification_sent_at) {
+      startStatusPoll(savedDraft.id);
+    }
+    return () => stopStatusPoll();
+  });
+
+  // Sync savedDraft with store updates (from background polling)
+  $effect(() => {
+    if (!savedDraft) return;
+    const storeDraft = $bajourDrafts.drafts.find((d) => d.id === savedDraft!.id);
+    if (storeDraft && storeDraft.verification_status !== savedDraft.verification_status) {
+      savedDraft = storeDraft;
+    }
+  });
+
+  // --- Action handlers ---
+
   async function handleStatusOverride(status: VerificationStatus): Promise<void> {
     if (statusLoading) return;
     statusLoading = true;
     actionError = '';
     try {
-      // Save draft first if not yet saved
       if (!savedDraft) {
         if (!draft || !villageId || !villageName) return;
         savedDraft = await bajourDrafts.create({
@@ -216,49 +230,6 @@
     }
   }
 
-  function saveAndRegenerate(): void {
-    const prompt = regenPrompt.trim() || null;
-    onRegenerate(prompt);
-  }
-
-  function handleKeydown(e: KeyboardEvent): void {
-    if (e.key === 'Escape' && open) {
-      onClose();
-    }
-  }
-
-  // Load drafts when slide-over opens
-  $effect(() => {
-    if (open) {
-      bajourDrafts.load();
-      showDraftList = initialShowDraftList;
-    }
-  });
-
-  // Reset action state when slide-over closes
-  $effect(() => {
-    if (!open) {
-      savedDraft = null;
-      showDraftList = false;
-      sendLoading = false;
-      deleteLoading = false;
-      mailchimpLoading = false;
-      statusLoading = false;
-      actionError = '';
-      actionSuccess = null;
-      stopStatusPoll();
-    }
-  });
-
-  // Auto-poll when savedDraft is ausstehend with verification sent
-  $effect(() => {
-    if (savedDraft?.verification_status === 'ausstehend' && savedDraft.verification_sent_at) {
-      startStatusPoll(savedDraft.id);
-    }
-    return () => stopStatusPoll();
-  });
-
-  // Save draft + send to Dorfkönige
   async function handleSaveSend(): Promise<void> {
     if (!draft || !villageId || !villageName) return;
     sendLoading = true;
@@ -278,7 +249,6 @@
       try {
         await bajourDrafts.sendVerification(created.id);
       } catch (verifyErr) {
-        // Draft saved but verification failed
         savedDraft = created;
         actionError = `Entwurf gespeichert, aber Verifizierung fehlgeschlagen: ${(verifyErr as Error).message}`;
         return;
@@ -287,6 +257,7 @@
       savedDraft = created;
       actionSuccess = 'Entwurf gespeichert und an Dorfkönige gesendet.';
       startStatusPoll(created.id);
+      bajourDrafts.startPolling();
     } catch (err) {
       actionError = (err as Error).message;
     } finally {
@@ -294,7 +265,24 @@
     }
   }
 
-  // Delete saved draft
+  async function handleResendVerification(): Promise<void> {
+    if (!savedDraft) return;
+    sendLoading = true;
+    actionError = '';
+    actionSuccess = null;
+
+    try {
+      await bajourDrafts.sendVerification(savedDraft.id);
+      actionSuccess = 'Verifizierung erneut gesendet.';
+      startStatusPoll(savedDraft.id);
+      bajourDrafts.startPolling();
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      sendLoading = false;
+    }
+  }
+
   async function handleDelete(): Promise<void> {
     if (!savedDraft) return;
     deleteLoading = true;
@@ -312,26 +300,7 @@
     }
   }
 
-  // Re-send verification on existing draft
-  async function handleResendVerification(): Promise<void> {
-    if (!savedDraft) return;
-    sendLoading = true;
-    actionError = '';
-    actionSuccess = null;
-
-    try {
-      await bajourDrafts.sendVerification(savedDraft.id);
-      actionSuccess = 'Verifizierung erneut gesendet.';
-      startStatusPoll(savedDraft.id);
-    } catch (err) {
-      actionError = (err as Error).message;
-    } finally {
-      sendLoading = false;
-    }
-  }
-
-  // Export draft as markdown to clipboard
-  async function handleExport(): Promise<void> {
+  function handleExport(): void {
     if (!savedDraft && !draft) return;
     actionError = '';
     actionSuccess = null;
@@ -340,15 +309,18 @@
       ? savedDraft.body
       : (draft!.title ? `# ${draft!.title}\n\n` : '') + draftToMarkdown(draft!);
 
-    try {
-      await navigator.clipboard.writeText(text);
-      actionSuccess = 'In Zwischenablage kopiert.';
-    } catch {
-      actionError = 'Kopieren fehlgeschlagen.';
-    }
+    const title = savedDraft?.title || draft?.title || 'entwurf';
+    const filename = `${title.replace(/[^a-zA-Z0-9äöüÄÖÜß\- ]/g, '').replace(/\s+/g, '-').toLowerCase()}.md`;
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    actionSuccess = 'Markdown heruntergeladen.';
   }
 
-  // Send to Mailchimp
   async function handleSendToMailchimp(): Promise<void> {
     mailchimpLoading = true;
     actionError = '';
@@ -363,6 +335,17 @@
       mailchimpLoading = false;
     }
   }
+
+  function handleRegenerate(): void {
+    const prompt = regenPrompt.trim() || null;
+    onRegenerate(prompt);
+  }
+
+  function handleKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Escape' && open) {
+      onClose();
+    }
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -373,206 +356,94 @@
 
   <!-- Panel -->
   <div class="slide-over" transition:fly={{ x: 400, duration: 300 }} use:focusTrap role="dialog" aria-modal="true" aria-label="Entwurf">
-    <!-- Header: drafts toggle + actions -->
-    <div class="panel-header">
-      <button
-        class="draft-list-toggle"
-        class:active={showDraftList}
-        onclick={() => showDraftList = !showDraftList}
-        type="button"
-      >
-        <FileText size={16} />
-        Entwürfe
-        {#if $bajourDrafts.drafts.length > 0}
-          <span class="draft-count-badge">{$bajourDrafts.drafts.length}</span>
+    {#if isZeroState}
+      <!-- ═══ ZERO STATE: full-panel draft list with filter ═══ -->
+      <div class="zero-state-header">
+        <LocationAutocomplete
+          value={locationFilter}
+          onselect={(loc) => { locationFilter = loc.city; }}
+          placeholder="Entwürfe filtern..."
+        />
+        {#if locationFilter}
+          <button class="clear-filter" onclick={() => { locationFilter = ''; }} type="button">
+            Alle anzeigen
+          </button>
         {/if}
-        {#if showDraftList}
-          <ChevronUp size={14} />
-        {:else}
-          <ChevronDown size={14} />
-        {/if}
-      </button>
-    </div>
-
-    <!-- Draft list (collapsible below header) -->
-    {#if showDraftList}
-      <div class="draft-list-section">
+      </div>
+      <div class="zero-state-body">
         <DraftList
-          drafts={$bajourDrafts.drafts}
-          onselect={(selectedDraft) => {
-            savedDraft = selectedDraft;
-            showDraftList = false;
-          }}
+          drafts={filteredDrafts}
+          onselect={(selectedDraft) => { savedDraft = selectedDraft; showDraftList = false; actionError = ''; actionSuccess = null; }}
         />
       </div>
-    {/if}
+    {:else}
+      <!-- ═══ DRAFT STATE: toggle overlay + content ═══ -->
+      <DraftListPanel
+        drafts={$bajourDrafts.drafts}
+        show={showDraftList}
+        ontoggle={() => showDraftList = !showDraftList}
+        onselect={(selectedDraft) => {
+          savedDraft = selectedDraft;
+          showDraftList = false;
+          actionError = '';
+          actionSuccess = null;
+        }}
+      />
 
-    <!-- Actions bar -->
-    {#if (draft || savedDraft) && !isGenerating && !generationError}
-      <div class="draft-actions">
-        {#if actionError}
-          <div class="action-banner action-banner-error">{actionError}</div>
-        {/if}
-        {#if actionSuccess}
-          <div class="action-banner action-banner-success">{actionSuccess}</div>
-        {/if}
-
-        <div class="draft-actions-bar">
-          <div class="draft-actions-left">
-            <div class="status-toggle">
-              <button
-                class="toggle-btn toggle-confirm"
-                class:active={savedDraft?.verification_status === 'bestätigt'}
-                disabled={statusLoading || (!savedDraft && (!villageId || !villageName))}
-                onclick={() => handleStatusOverride('bestätigt')}
-                type="button"
-              >
-                {#if statusLoading && savedDraft?.verification_status !== 'bestätigt'}
-                  <Loader2 size={12} class="spin" />
-                {/if}
-                Bestätigt
-              </button>
-              <button
-                class="toggle-btn toggle-reject"
-                class:active={savedDraft?.verification_status === 'abgelehnt'}
-                disabled={statusLoading || (!savedDraft && (!villageId || !villageName))}
-                onclick={() => handleStatusOverride('abgelehnt')}
-                type="button"
-              >
-                {#if statusLoading && savedDraft?.verification_status !== 'abgelehnt'}
-                  <Loader2 size={12} class="spin" />
-                {/if}
-                Abgelehnt
-              </button>
+      <!-- Body: content-first layout -->
+      <div class="panel-body">
+        {#if isGenerating}
+          <DraftGenerating
+            {isGenerating}
+            {generationError}
+            {progressMessage}
+            {selectedCount}
+          />
+        {:else if generationError}
+          <DraftError error={generationError} onretry={onRetry} />
+        {:else if savedDraft}
+          <div class="meta-line">
+            <span class="village-pill">{savedDraft.village_name}</span>
+            <VerificationBadge status={savedDraft.verification_status} />
+          </div>
+          <DraftContent draft={parseSavedDraftBody(savedDraft)} />
+        {:else if draft}
+          {#if villageName}
+            <div class="meta-line">
+              <span class="village-pill">{villageName}</span>
             </div>
-            {#if draft}
-              <button
-                class="action-btn regen-btn"
-                class:active={showRegenPrompt}
-                onclick={() => showRegenPrompt = !showRegenPrompt}
-                type="button"
-              >
-                <PenTool size={14} />
-                Neu generieren
-              </button>
-            {/if}
-            {#if savedDraft}
-              <button
-                class="action-btn delete-btn"
-                onclick={handleDelete}
-                disabled={deleteLoading}
-                type="button"
-              >
-                {#if deleteLoading}
-                  <Loader2 size={14} class="spin" />
-                {:else}
-                  <Trash2 size={14} />
-                {/if}
-                Löschen
-              </button>
-            {/if}
-          </div>
-
-          <div class="draft-actions-right">
-            {#if !savedDraft}
-              <button
-                class="action-btn send-btn"
-                onclick={handleSaveSend}
-                disabled={sendLoading || !villageId || !villageName}
-                title={!villageId || !villageName ? 'Bitte zuerst einen Ort auswählen' : ''}
-                type="button"
-              >
-                {#if sendLoading}
-                  <Loader2 size={14} class="spin" />
-                {:else}
-                  <Send size={14} />
-                {/if}
-                An Dorfkönige senden
-              </button>
-            {:else}
-              <button
-                class="action-btn send-btn"
-                onclick={handleResendVerification}
-                disabled={sendLoading || !!savedDraft.verification_sent_at}
-                type="button"
-              >
-                {#if sendLoading}
-                  <Loader2 size={14} class="spin" />
-                {:else}
-                  <Send size={14} />
-                {/if}
-                An Dorfkönige senden
-              </button>
-            {/if}
-
-            <button
-              class="action-btn export-btn"
-              onclick={handleExport}
-              type="button"
-            >
-              <Download size={14} />
-              Export
-            </button>
-
-            <button
-              class="action-btn mailchimp-btn"
-              onclick={handleSendToMailchimp}
-              disabled={mailchimpLoading || savedDraft?.verification_status !== 'bestätigt'}
-              title={savedDraft?.verification_status !== 'bestätigt' ? 'Mindestens ein bestätigter Entwurf nötig' : ''}
-              type="button"
-            >
-              {#if mailchimpLoading}
-                <Loader2 size={14} class="spin" />
-              {:else}
-                <Mail size={14} />
-              {/if}
-              An Mailchimp senden
-            </button>
-          </div>
-        </div>
+          {/if}
+          <DraftContent {draft} />
+        {/if}
       </div>
 
-      {#if showRegenPrompt && draft && !isGenerating}
-        <div class="regen-drawer">
-          <DraftPromptEditor
-            {regenPrompt}
-            onpromptchange={(v) => { regenPrompt = v; }}
-            onreset={() => { regenPrompt = ''; }}
-            onregenerate={saveAndRegenerate}
-          />
-        </div>
+      <!-- Sticky action footer -->
+      {#if hasContent && !isGenerating && !generationError}
+        <DraftActions
+          {savedDraft}
+          hasUnsavedDraft={!!draft}
+          {canSave}
+          {sendLoading}
+          {deleteLoading}
+          {mailchimpLoading}
+          {statusLoading}
+          {actionError}
+          {actionSuccess}
+          {showRegenPrompt}
+          {regenPrompt}
+          onsavesend={handleSaveSend}
+          onresendverification={handleResendVerification}
+          ondelete={handleDelete}
+          onexport={handleExport}
+          onsendmailchimp={handleSendToMailchimp}
+          onstatusoverride={handleStatusOverride}
+          ontogglregen={() => showRegenPrompt = !showRegenPrompt}
+          onregenpromptchange={(v) => { regenPrompt = v; }}
+          onregenreset={() => { regenPrompt = ''; }}
+          onregenerate={handleRegenerate}
+        />
       {/if}
     {/if}
-
-    <!-- Body -->
-    <div class="panel-body">
-      {#if isGenerating}
-        <div class="progress-container">
-          <ProgressIndicator
-            progress={Math.round(generateProgress)}
-            message={progressMessage}
-            state={generateProgressState}
-            hintText={selectedCount !== 1
-              ? `${selectedCount} Quellen werden analysiert...`
-              : '1 Quelle wird analysiert...'}
-          />
-        </div>
-      {:else if generationError}
-        <div class="state-centered error">
-          <AlertCircle size={24} />
-          <h3>Erstellung fehlgeschlagen</h3>
-          <p>{generationError}</p>
-          <button class="retry-btn" onclick={onRetry}>
-            <RefreshCw size={14} />
-            Erneut versuchen
-          </button>
-        </div>
-      {:else if savedDraft}
-        <DraftContent draft={parseSavedDraftBody(savedDraft)} />
-      {:else if draft}
-        <DraftContent {draft} />
-      {/if}
-    </div>
   </div>
 {/if}
 
@@ -599,282 +470,66 @@
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   }
 
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: var(--color-surface);
+  /* ── ZERO STATE ── */
+  .zero-state-header {
     flex-shrink: 0;
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  /* Draft list toggle */
-  .draft-list-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0;
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text);
+  .clear-filter {
+    align-self: flex-start;
     background: none;
     border: none;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: color var(--transition-base);
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
-  .draft-list-toggle:hover,
-  .draft-list-toggle.active {
-    color: var(--color-primary);
+  .clear-filter:hover {
+    color: var(--color-text);
   }
 
+  .zero-state-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
+  }
+
+  /* ── DRAFT STATE ── */
   .panel-body {
     flex: 1;
     overflow-y: auto;
   }
 
-  .state-centered {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
-    text-align: center;
-    padding: 1.5rem;
-  }
-
-  .progress-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 300px;
-    padding: 2rem 2.5rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .state-centered.error { color: var(--color-danger-dark); }
-  .state-centered.error h3 { color: var(--color-danger-dark); margin-top: 0.75rem; font-size: var(--text-lg); font-weight: 600; }
-  .state-centered.error p { margin: 0.25rem 0 1rem 0; font-size: var(--text-base); color: var(--color-text-muted); }
-
-  .retry-btn {
+  .meta-line {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--text-base-sm);
-    font-weight: 500;
-    color: var(--color-danger-dark);
-    background: var(--color-danger-surface);
-    border: 1px solid var(--color-danger-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
+    gap: 0.5rem;
+    padding: var(--spacing-md) 2.5rem 0;
   }
 
-  .retry-btn:hover { background: var(--color-status-error-bg); }
-
-  /* Actions bar */
-  .draft-actions {
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    background: var(--color-surface);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-
-  .action-banner {
-    padding: 0.375rem 0.625rem;
-    font-size: var(--text-sm);
-    border-radius: var(--radius-sm);
-  }
-
-  .action-banner-error {
-    background: var(--color-danger-surface);
-    color: var(--color-danger-dark);
-    border: 1px solid var(--color-danger-border);
-  }
-
-  .action-banner-success {
-    background: var(--color-badge-entity-bg);
-    color: var(--color-badge-entity-text);
-    border: 1px solid var(--color-badge-entity-bg);
-  }
-
-  .draft-actions-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-sm);
-  }
-
-  .draft-actions-left {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-  }
-
-  .draft-actions-right {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-  }
-
-  .action-btn {
+  .village-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-base);
-    white-space: nowrap;
-  }
-
-  .action-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .regen-btn {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-  }
-
-  .regen-btn:hover,
-  .regen-btn.active {
-    background: rgba(234, 114, 110, 0.08);
-    border-color: rgba(234, 114, 110, 0.3);
-    color: var(--color-primary);
-  }
-
-  .regen-drawer {
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-background);
-  }
-
-  .export-btn,
-  .delete-btn,
-  .mailchimp-btn {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-  }
-
-  .export-btn:hover:not(:disabled),
-  .mailchimp-btn:hover:not(:disabled) {
-    background: var(--color-background);
+    padding: 0.1875rem 0.75rem;
+    font-size: var(--text-base-sm);
+    font-weight: 600;
     color: var(--color-text);
-  }
-
-  .delete-btn:hover:not(:disabled) {
-    background: var(--color-status-error-bg);
-    border-color: var(--color-danger-light);
-    color: var(--color-danger-dark);
-  }
-
-  .send-btn {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-    border: none;
-    color: white;
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(234, 114, 110, 0.3);
-  }
-
-  .send-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 114, 110, 0.35);
-  }
-
-  .draft-count-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.125rem;
-    height: 1.125rem;
-    padding: 0 0.25rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    line-height: 1;
-    color: white;
-    background: var(--color-primary);
-    border-radius: 999px;
-  }
-
-  /* Draft list section */
-  .draft-list-section {
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--spacing-md) var(--spacing-lg);
-    max-height: 300px;
-    overflow-y: auto;
-    background: var(--color-background);
-  }
-
-  .status-toggle {
-    display: flex;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    width: fit-content;
-  }
-
-  .toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.375rem 0.75rem;
-    font-size: var(--text-base-sm);
-    font-weight: 500;
-    border: none;
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: background var(--transition-base), color var(--transition-base);
-  }
-
-  .toggle-btn:not(:last-child) {
-    border-right: 1px solid var(--color-border);
-  }
-
-  .toggle-btn:hover:not(.active):not(:disabled) {
     background: var(--color-surface-muted);
-  }
-
-  .toggle-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .toggle-confirm.active {
-    background: var(--color-badge-entity-bg);
-    color: var(--color-badge-entity-text);
-  }
-
-  .toggle-reject.active {
-    background: var(--color-status-error-bg);
-    color: var(--color-status-error-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
   }
 
   @media (max-width: 768px) {
     .slide-over {
       width: 100%;
       min-width: unset;
-    }
-
-    .draft-actions-bar {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .draft-actions-left,
-    .draft-actions-right {
-      justify-content: center;
     }
   }
 </style>

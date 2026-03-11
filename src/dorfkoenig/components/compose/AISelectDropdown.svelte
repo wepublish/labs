@@ -1,14 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Loader2, Sparkles } from 'lucide-svelte';
+  import { Loader2, Sparkles, MapPin, ArrowRight } from 'lucide-svelte';
+  import type { Village } from '../../bajour/types';
 
   interface Props {
     loading: boolean;
-    onrun: (recencyDays: number | null, selectionPrompt: string) => void;
+    villages: Village[];
+    prefilledLocation: string | null;
+    onrun: (villageName: string, recencyDays: number | null, selectionPrompt: string) => void;
     onclose: () => void;
   }
 
-  let { loading, onrun, onclose }: Props = $props();
+  let { loading, villages, prefilledLocation, onrun, onclose }: Props = $props();
+
+  // Steps: 'location' | 'options'
+  let step = $state<'location' | 'options'>(prefilledLocation ? 'options' : 'location');
+  let selectedVillage = $state<string | null>(prefilledLocation);
 
   let useRecencyFilter = $state(true);
   let recencyDays = $state(3);
@@ -19,8 +26,26 @@
     recencyDays === 1 ? '1 Tag' : `${recencyDays} Tage`
   );
 
+  // If prefilled changes while open, update
+  $effect(() => {
+    if (prefilledLocation) {
+      selectedVillage = prefilledLocation;
+      step = 'options';
+    }
+  });
+
+  function handleSelectVillage(name: string) {
+    selectedVillage = name;
+    step = 'options';
+  }
+
+  function handleBack() {
+    step = 'location';
+  }
+
   function handleRun() {
-    onrun(useRecencyFilter ? recencyDays : null, selectionPrompt);
+    if (!selectedVillage) return;
+    onrun(selectedVillage, useRecencyFilter ? recencyDays : null, selectionPrompt);
   }
 
   function handleReset() {
@@ -42,88 +67,183 @@
 </script>
 
 <div class="ai-select-dropdown" bind:this={dropdownEl}>
-  <!-- Recency toggle + slider -->
-  <div class="recency-section">
-    <div class="recency-header">
-      <label class="recency-toggle-label">
-        <input
-          type="checkbox"
-          class="recency-checkbox"
-          bind:checked={useRecencyFilter}
-        />
-        <span class="recency-toggle-track">
-          <span class="recency-toggle-thumb"></span>
-        </span>
-        Zeitraum
-      </label>
-      <span class="recency-value">{useRecencyFilter ? recencyLabel : 'Alle'}</span>
+  {#if step === 'location'}
+    <!-- Step 1: Choose location -->
+    <div class="step-header">
+      <MapPin size={14} />
+      <span>Ort auswählen</span>
     </div>
-    {#if useRecencyFilter}
-      <div class="recency-slider-row">
-        <span class="recency-bound">1T</span>
-        <input
-          id="ai-recency-slider"
-          type="range"
-          min="1"
-          max="7"
-          step="1"
-          bind:value={recencyDays}
-          class="recency-slider"
-        />
-        <span class="recency-bound">7T</span>
+    <div class="village-grid">
+      {#each villages as village}
+        <button
+          class="village-btn"
+          class:selected={selectedVillage === village.name}
+          onclick={() => handleSelectVillage(village.name)}
+          type="button"
+        >
+          {village.name}
+        </button>
+      {/each}
+    </div>
+  {:else}
+    <!-- Step 2: Time range + prompt -->
+    <div class="step-header">
+      <button class="back-link" onclick={handleBack} type="button">
+        <MapPin size={12} />
+        <span class="back-village">{selectedVillage}</span>
+      </button>
+      <ArrowRight size={12} />
+      <span>Optionen</span>
+    </div>
+
+    <!-- Recency toggle + slider -->
+    <div class="recency-section">
+      <div class="recency-header">
+        <label class="recency-toggle-label">
+          <input
+            type="checkbox"
+            class="recency-checkbox"
+            bind:checked={useRecencyFilter}
+          />
+          <span class="recency-toggle-track">
+            <span class="recency-toggle-thumb"></span>
+          </span>
+          Zeitraum
+        </label>
+        <span class="recency-value">{useRecencyFilter ? recencyLabel : 'Alle'}</span>
       </div>
-    {/if}
-  </div>
-
-  <!-- Selection prompt -->
-  <div class="prompt-section">
-    <textarea
-      class="prompt-textarea"
-      bind:value={selectionPrompt}
-      placeholder="z.B. Bevorzuge kulturelle Veranstaltungen..."
-      rows="3"
-    ></textarea>
-  </div>
-
-  <!-- Footer -->
-  <div class="dropdown-footer">
-    <button class="reset-link" onclick={handleReset} type="button">
-      Zurücksetzen
-    </button>
-    <button
-      class="run-btn"
-      onclick={handleRun}
-      disabled={loading}
-    >
-      {#if loading}
-        <Loader2 size={14} class="spin" />
-        <span>Läuft...</span>
-      {:else}
-        <Sparkles size={14} />
-        <span>Auswahl starten</span>
+      {#if useRecencyFilter}
+        <div class="recency-slider-row">
+          <span class="recency-bound">1T</span>
+          <input
+            id="ai-recency-slider"
+            type="range"
+            min="1"
+            max="7"
+            step="1"
+            bind:value={recencyDays}
+            class="recency-slider"
+          />
+          <span class="recency-bound">7T</span>
+        </div>
       {/if}
-    </button>
-  </div>
+    </div>
+
+    <!-- Selection prompt -->
+    <div class="prompt-section">
+      <textarea
+        class="prompt-textarea"
+        bind:value={selectionPrompt}
+        placeholder="z.B. Bevorzuge kulturelle Veranstaltungen..."
+        rows="3"
+      ></textarea>
+    </div>
+
+    <!-- Footer -->
+    <div class="dropdown-footer">
+      <button class="reset-link" onclick={handleReset} type="button">
+        Zurücksetzen
+      </button>
+      <button
+        class="run-btn"
+        onclick={handleRun}
+        disabled={loading}
+      >
+        {#if loading}
+          <Loader2 size={14} class="spin" />
+          <span>Läuft...</span>
+        {:else}
+          <Sparkles size={14} />
+          <span>Generieren</span>
+        {/if}
+      </button>
+    </div>
+  {/if}
 </div>
 
 <style>
   .ai-select-dropdown {
     position: absolute;
-    top: 100%;
+    bottom: calc(100% + 0.625rem);
     right: 0;
     width: 380px;
-    margin-top: 0.5rem;
     padding: var(--spacing-md) 1.25rem;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    z-index: var(--z-dropdown);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
+    z-index: calc(var(--z-dropdown) + 1);
     display: flex;
     flex-direction: column;
     gap: 1rem;
   }
 
+  /* Step header */
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-base-sm);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: var(--text-base-sm);
+    font-weight: 600;
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  .back-village {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Village grid */
+  .village-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .village-btn {
+    padding: 0.3125rem 0.75rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .village-btn:hover {
+    border-color: rgba(234, 114, 110, 0.4);
+    color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.04);
+  }
+
+  .village-btn.selected {
+    border-color: var(--color-primary);
+    color: white;
+    background: var(--color-primary);
+  }
+
+  /* Recency section */
   .recency-section {
     display: flex;
     flex-direction: column;
