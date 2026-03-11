@@ -1,44 +1,40 @@
 <script lang="ts">
-  import { FileText, ChevronUp, ChevronDown } from 'lucide-svelte';
-  import DraftList from '../../bajour/components/DraftList.svelte';
+  import { FileText } from 'lucide-svelte';
+  import DraftList from './DraftList.svelte';
   import type { BajourDraft } from '../../bajour/types';
 
   interface Props {
     drafts: BajourDraft[];
+    activeDraftId?: string | null;
     show: boolean;
     ontoggle: () => void;
     onselect: (draft: BajourDraft) => void;
   }
 
-  let { drafts, show, ontoggle, onselect }: Props = $props();
+  let { drafts, activeDraftId = null, show, ontoggle, onselect }: Props = $props();
 </script>
 
-<div class="draft-list-wrapper">
-  <div class="draft-list-header">
+<div class="draft-nav">
+  <div class="draft-nav-header">
     <button
-      class="draft-list-toggle"
+      class="draft-nav-toggle"
       class:active={show}
       onclick={ontoggle}
       type="button"
     >
-      <FileText size={16} />
-      Entwürfe
+      <FileText size={14} />
+      <span class="toggle-label">Entwürfe</span>
       {#if drafts.length > 0}
-        <span class="draft-count-badge">{drafts.length}</span>
-      {/if}
-      {#if show}
-        <ChevronUp size={14} />
-      {:else}
-        <ChevronDown size={14} />
+        <span class="toggle-count">{drafts.length}</span>
       {/if}
     </button>
   </div>
 
   {#if show}
-    <!-- Overlay: floats on top of content below -->
     <div class="draft-list-overlay">
       <DraftList
         {drafts}
+        {activeDraftId}
         {onselect}
       />
     </div>
@@ -46,41 +42,51 @@
 </div>
 
 <style>
-  .draft-list-wrapper {
+  .draft-nav {
     position: relative;
     flex-shrink: 0;
     z-index: 2;
   }
 
-  .draft-list-header {
+  .draft-nav-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: 0.625rem var(--spacing-lg);
     background: var(--color-surface);
-    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .draft-list-toggle {
+  .draft-nav-toggle {
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0;
-    font-size: var(--text-lg);
+    padding: 0.375rem 0.75rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
-    color: var(--color-text);
-    background: none;
-    border: none;
+    color: var(--color-text-muted);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
     cursor: pointer;
-    transition: color var(--transition-base);
+    transition: all var(--transition-base);
   }
 
-  .draft-list-toggle:hover,
-  .draft-list-toggle.active {
+  .draft-nav-toggle:hover {
+    color: var(--color-text);
+    background: var(--color-surface-muted);
+  }
+
+  .draft-nav-toggle.active {
     color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.06);
+    border-color: rgba(234, 114, 110, 0.3);
   }
 
-  .draft-count-badge {
+  .toggle-label {
+    flex-shrink: 0;
+  }
+
+  .toggle-count {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -88,7 +94,7 @@
     height: 1.125rem;
     padding: 0 0.25rem;
     font-size: 0.6875rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1;
     color: white;
     background: var(--color-primary);
@@ -102,7 +108,6 @@
     right: 0;
     max-height: 340px;
     overflow-y: auto;
-    padding: var(--spacing-md) var(--spacing-lg);
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);

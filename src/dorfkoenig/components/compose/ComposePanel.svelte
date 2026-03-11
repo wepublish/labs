@@ -39,6 +39,9 @@
   let showAISelectDropdown = $state(false);
   let aiPhase = $state<'idle' | 'selecting' | 'generating'>('idle');
 
+  // Retry handler — captures the last generation context
+  let retryHandler = $state<(() => void) | null>(null);
+
   // Track initial load to avoid full-page spinner on location change
   let initialLoadDone = $state(false);
 
@@ -193,6 +196,7 @@
 
   async function generateDraft() {
     if (selectedUnitIds.size === 0) return;
+    retryHandler = () => generateDraft();
     const village = selectedLocation ? getVillageByName(selectedLocation) : null;
     draftVillageName = village?.name;
     draftVillageId = village?.id;
@@ -223,6 +227,7 @@
 
   async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
     showAISelectDropdown = false;
+    retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
 
     const village = getVillageByName(villageName);
     if (!village) {
@@ -438,7 +443,7 @@
   unitIds={unitsUsedForDraft}
   initialShowDraftList={openDraftList}
   onClose={() => { showDraftSlideOver = false; openDraftList = false; }}
-  onRetry={generateDraft}
+  onRetry={() => retryHandler?.()}
   onRegenerate={regenerateDraft}
 />
 

@@ -15,7 +15,7 @@ Correspondent taps "Bestätigt" or "Abgelehnt" on WhatsApp
   → Meta webhook POST
     → bajour-whatsapp-webhook Edge Function
       → HMAC-SHA256 signature verification
-      → Find matching pending draft by village + correspondent phone
+      → Find matching pending draft by whatsapp_message_ids (JSONB containment)
       → Append response, resolve status by majority vote
       → Update bajour_drafts: verification_status, responses, resolved_at
 ```
@@ -123,6 +123,13 @@ Receives webhook callbacks from Meta, verifies signature, updates verification s
 - **GET handler:** Webhook verification handshake (returns `hub.challenge`)
 - **POST handler:** HMAC-SHA256 signature check → parse button reply → find matching pending draft → append response → resolve by majority vote → update `bajour_drafts`
 - **Button reply formats:** Handles both template quick-reply (`message.button.text`) and interactive message (`message.interactive.button_reply.title`) formats
+- **Draft matching:** The webhook matches incoming messages to drafts using `whatsapp_message_ids` (JSONB column). See "JSONB containment" note below.
+
+### JSONB containment for draft matching
+
+`bajour_drafts.whatsapp_message_ids` is a **JSONB** column (not TEXT[]) storing an array of WhatsApp message IDs. When the webhook looks up a draft by message ID, it uses supabase-js `.contains()` which maps to PostgREST's `cs.` filter (PostgreSQL `@>` operator).
+
+**Known gotcha:** supabase-js `.contains(col, [val])` generates `cs.{val}` (PG array literal), which **silently returns zero rows** on JSONB columns -- no error, just an empty result set. The fix is `.contains(col, JSON.stringify([val]))` which generates `cs.["val"]` (correct JSON literal for JSONB containment). This was the root cause of webhook callbacks failing to match their draft.
 
 ## 7. Error Handling
 

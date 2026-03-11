@@ -1,7 +1,7 @@
 <script lang="ts">
   // Status badge for draft verification: ausstehend (pending), bestaetigt, abgelehnt.
   import { Clock, CheckCircle, XCircle } from 'lucide-svelte';
-  import type { VerificationStatus } from '../types';
+  import type { VerificationStatus } from '../../bajour/types';
 
   interface Props {
     status: VerificationStatus;
@@ -39,8 +39,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    font-size: var(--text-sm);
+    padding: 0.1875rem 0.75rem;
+    font-size: var(--text-base-sm);
     font-weight: 600;
     border-radius: var(--radius-full);
     white-space: nowrap;

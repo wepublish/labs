@@ -17,25 +17,20 @@ function createScoutsStore() {
     error: null,
   });
 
+  async function load() {
+    update((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const data = await scoutsApi.list();
+      update((s) => ({ ...s, scouts: data, loading: false }));
+    } catch (error) {
+      update((s) => ({ ...s, error: (error as Error).message, loading: false }));
+    }
+  }
+
   return {
     subscribe,
+    load,
 
-    /**
-     * Load all scouts for current user
-     */
-    async load() {
-      update((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const data = await scoutsApi.list();
-        update((s) => ({ ...s, scouts: data, loading: false }));
-      } catch (error) {
-        update((s) => ({ ...s, error: (error as Error).message, loading: false }));
-      }
-    },
-
-    /**
-     * Get a single scout by ID
-     */
     async get(id: string): Promise<Scout | null> {
       try {
         return await scoutsApi.get(id);
@@ -44,18 +39,12 @@ function createScoutsStore() {
       }
     },
 
-    /**
-     * Create a new scout
-     */
     async create(input: ScoutCreateInput): Promise<Scout> {
       const data = await scoutsApi.create(input);
       update((s) => ({ ...s, scouts: [data, ...s.scouts] }));
       return data;
     },
 
-    /**
-     * Update an existing scout
-     */
     async update(id: string, input: ScoutUpdateInput): Promise<Scout> {
       const data = await scoutsApi.update(id, input);
       update((s) => ({
@@ -65,20 +54,21 @@ function createScoutsStore() {
       return data;
     },
 
-    /**
-     * Delete a scout
-     */
     async delete(id: string): Promise<void> {
-      await scoutsApi.delete(id);
+      // Optimistic: remove from local state immediately (synchronous)
       update((s) => ({
         ...s,
         scouts: s.scouts.filter((sc) => sc.id !== id),
       }));
+      try {
+        await scoutsApi.delete(id);
+      } catch (error) {
+        // Revert: re-fetch server state
+        await load();
+        throw error;
+      }
     },
 
-    /**
-     * Run a scout (trigger execution)
-     */
     async run(
       id: string,
       options?: { skip_notification?: boolean; extract_units?: boolean }
@@ -86,16 +76,10 @@ function createScoutsStore() {
       return scoutsApi.run(id, options);
     },
 
-    /**
-     * Test a scout (preview without side effects)
-     */
     async test(id: string): Promise<TestResult> {
       return scoutsApi.test(id);
     },
 
-    /**
-     * Clear error
-     */
     clearError() {
       update((s) => ({ ...s, error: null }));
     },

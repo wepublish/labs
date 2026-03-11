@@ -167,26 +167,55 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   }
 
   const supabase = createServiceClient();
+  const contextMessageId = message.context?.id;
 
-  // Offenen Entwurf finden, der auf Verifizierung wartet und zu einer
-  // Gemeinde gehoert, fuer die dieser Korrespondent zustaendig ist
-  const { data: pendingDrafts, error: fetchError } = await supabase
-    .from('bajour_drafts')
-    .select('*')
-    .eq('verification_status', 'ausstehend')
-    .not('verification_sent_at', 'is', null)
-    .is('verification_resolved_at', null)
-    .order('verification_sent_at', { ascending: false });
+  let matchingDraft: Record<string, unknown> | null = null;
 
-  if (fetchError) {
-    console.error('Fehler beim Laden der Entwuerfe:', fetchError);
-    return jsonResponse({ status: 'db_error' });
+  // Primaer: Entwurf anhand der Template-Message-ID identifizieren
+  // (Meta sendet context.id = wamid des Original-Templates bei Quick-Reply)
+  if (contextMessageId) {
+    const { data, error } = await supabase
+      .from('bajour_drafts')
+      .select('*')
+      .contains('whatsapp_message_ids', JSON.stringify([contextMessageId]))
+      .eq('verification_status', 'ausstehend')
+      .not('verification_sent_at', 'is', null)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Fehler bei Message-ID-Suche:', error);
+    } else {
+      matchingDraft = data;
+    }
+
+    if (matchingDraft) {
+      console.log('Entwurf via Message-ID gefunden:', contextMessageId);
+    }
   }
 
-  // Den passenden Entwurf finden: village_id muss mit dem Korrespondenten uebereinstimmen
-  const matchingDraft = (pendingDrafts || []).find(
-    (draft: Record<string, unknown>) => draft.village_id === correspondent.villageId
-  );
+  // Fallback: Entwurf anhand der Gemeinde des Korrespondenten finden
+  if (!matchingDraft) {
+    if (contextMessageId) {
+      console.warn('Message-ID-Match fehlgeschlagen, Fallback auf Gemeinde:', contextMessageId);
+    }
+
+    const { data: pendingDrafts, error: fetchError } = await supabase
+      .from('bajour_drafts')
+      .select('*')
+      .eq('verification_status', 'ausstehend')
+      .not('verification_sent_at', 'is', null)
+      .is('verification_resolved_at', null)
+      .order('verification_sent_at', { ascending: false });
+
+    if (fetchError) {
+      console.error('Fehler beim Laden der Entwuerfe:', fetchError);
+      return jsonResponse({ status: 'db_error' });
+    }
+
+    matchingDraft = (pendingDrafts || []).find(
+      (draft: Record<string, unknown>) => draft.village_id === correspondent.villageId
+    ) || null;
+  }
 
   if (!matchingDraft) {
     console.error(

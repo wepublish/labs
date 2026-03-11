@@ -3,6 +3,7 @@
   import { Loading } from '@shared/components';
   import { ConfirmStrip } from '../ui/primitives';
   import { scouts } from '../../stores/scouts';
+  import { executionsApi } from '../../lib/api';
   import { formatRelativeTime, FREQUENCY_OPTIONS_EXTENDED } from '../../lib/constants';
   import type { Scout } from '../../lib/types';
 
@@ -10,39 +11,51 @@
     scout: Scout;
     expanded?: boolean;
     ontoggle?: () => void;
+    ondelete?: (id: string) => void;
   }
 
-  let { scout, expanded = false, ontoggle }: Props = $props();
+  let { scout, expanded = false, ontoggle, ondelete }: Props = $props();
 
-  let running = $state(false);
-  let toggling = $state(false);
-  let deleting = $state(false);
+  type ActionType = 'run' | 'toggle' | 'delete';
+  let busy = $state<ActionType | null>(null);
   let confirmingDelete = $state(false);
 
-  async function handleRun(e: Event) {
+  async function executeAction(e: Event, type: ActionType, fn: () => Promise<void>) {
     e.stopPropagation();
-    running = true;
+    busy = type;
     try {
-      await scouts.run(scout.id);
-      await scouts.load();
+      await fn();
     } catch (error) {
-      console.error('Run failed:', error);
+      console.error(`Action '${type}' failed:`, error);
     } finally {
-      running = false;
+      busy = null;
+      if (type === 'delete') confirmingDelete = false;
     }
   }
 
-  async function handleToggleActive(e: Event) {
-    e.stopPropagation();
-    toggling = true;
-    try {
+  function handleRun(e: Event) {
+    executeAction(e, 'run', async () => {
+      const result = await scouts.run(scout.id);
+      const executionId = result.execution_id;
+      let resolved = false;
+      while (!resolved) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+          const exec = await executionsApi.get(executionId);
+          if (exec.status !== 'running') resolved = true;
+        } catch {
+          resolved = true;
+        }
+      }
+      await scouts.load();
+    });
+  }
+
+  function handleToggleActive(e: Event) {
+    executeAction(e, 'toggle', async () => {
       await scouts.update(scout.id, { is_active: !scout.is_active });
       await scouts.load();
-    } catch (error) {
-      console.error('Toggle active failed:', error);
-    } finally {
-      toggling = false;
-    }
+    });
   }
 
   function initiateDelete(e: Event) {
@@ -55,17 +68,13 @@
     confirmingDelete = false;
   }
 
-  async function confirmDeleteAction(e: Event) {
+  function confirmDeleteAction(e: Event) {
     e.stopPropagation();
-    deleting = true;
-    try {
-      await scouts.delete(scout.id);
-    } catch (error) {
-      console.error('Delete failed:', error);
-    } finally {
-      deleting = false;
-      confirmingDelete = false;
-    }
+    confirmingDelete = false;
+    ondelete?.(scout.id);
+    scouts.delete(scout.id).catch((error) => {
+      console.error("Action 'delete' failed:", error);
+    });
   }
 
   function getFrequencyLabel(value: string): string {
@@ -103,7 +112,7 @@
 <div
   class="scout-card strip-{stripColor}"
   class:expanded
-  class:deleting
+  class:deleting={busy === 'delete'}
   class:inactive={!scout.is_active}
   onclick={ontoggle}
   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ontoggle?.(); } }}
@@ -119,36 +128,38 @@
         <span class="scout-location">{scout.location.city}</span>
       {/if}
     </div>
-    <span class="status-pill" class:active={scout.is_active}>
-      {scout.is_active ? 'Aktiv' : 'Pausiert'}
-    </span>
-    <div class="card-actions">
-      {#if confirmingDelete}
-        <ConfirmStrip loading={deleting} onconfirm={confirmDeleteAction} oncancel={cancelDelete} />
-      {:else}
-        {#if running || toggling}
-          <div class="action-slot"><Loading size="sm" label="" /></div>
+    <div class="line1-right">
+      <span class="status-pill" class:active={scout.is_active}>
+        {scout.is_active ? 'Aktiv' : 'Pausiert'}
+      </span>
+      <div class="card-actions">
+        {#if confirmingDelete}
+          <ConfirmStrip loading={busy === 'delete'} onconfirm={confirmDeleteAction} oncancel={cancelDelete} />
         {:else}
-          <button class="action-btn action-run" onclick={handleRun} title="Jetzt ausführen" type="button">
-            <RefreshCw size={13} />
-          </button>
-          <button
-            class="action-btn action-toggle"
-            onclick={handleToggleActive}
-            title={scout.is_active ? 'Scout pausieren' : 'Scout aktivieren'}
-            type="button"
-          >
-            {#if scout.is_active}
-              <Pause size={13} />
-            {:else}
-              <Play size={13} />
-            {/if}
+          {#if busy}
+            <div class="action-slot"><Loading size="sm" label="" /></div>
+          {:else}
+            <button class="action-btn action-run" onclick={handleRun} title="Jetzt ausführen" type="button">
+              <RefreshCw size={13} />
+            </button>
+            <button
+              class="action-btn action-toggle"
+              onclick={handleToggleActive}
+              title={scout.is_active ? 'Scout pausieren' : 'Scout aktivieren'}
+              type="button"
+            >
+              {#if scout.is_active}
+                <Pause size={13} />
+              {:else}
+                <Play size={13} />
+              {/if}
+            </button>
+          {/if}
+          <button class="action-btn action-delete" onclick={initiateDelete} title="Scout löschen" type="button">
+            <Trash2 size={13} />
           </button>
         {/if}
-        <button class="action-btn action-delete" onclick={initiateDelete} title="Scout löschen" type="button">
-          <Trash2 size={13} />
-        </button>
-      {/if}
+      </div>
     </div>
   </div>
 
@@ -280,6 +291,14 @@
     align-items: baseline;
     gap: 0.5rem;
     min-width: 0;
+    flex: 1;
+  }
+
+  .line1-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 1.625rem;
   }
 
   .scout-name {
@@ -320,25 +339,20 @@
 
   .scout-card:hover .status-pill,
   .scout-card:focus-within .status-pill {
-    opacity: 0;
-    width: 0;
-    padding: 0;
-    overflow: hidden;
+    display: none;
   }
 
   /* Hover-only action buttons */
   .card-actions {
-    display: flex;
+    display: none;
     align-items: center;
     gap: 0.25rem;
     flex-shrink: 0;
-    opacity: 0;
-    transition: opacity var(--transition-base);
   }
 
   .scout-card:hover .card-actions,
   .scout-card:focus-within .card-actions {
-    opacity: 1;
+    display: flex;
   }
 
   .action-slot {

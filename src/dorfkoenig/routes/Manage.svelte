@@ -97,6 +97,11 @@
   function toggleExpand(id: string) {
     expandedScoutId = expandedScoutId === id ? null : id;
   }
+
+  function handleScoutDeleted(id: string) {
+    if (expandedScoutId === id) expandedScoutId = null;
+    if (selectedScout === id) selectedScout = null;
+  }
 </script>
 
 <h1 class="visually-hidden">Scouts verwalten</h1>
@@ -138,6 +143,7 @@
           {scout}
           expanded={expandedScoutId === scout.id}
           ontoggle={() => toggleExpand(scout.id)}
+          ondelete={handleScoutDeleted}
         />
       {/each}
     </div>

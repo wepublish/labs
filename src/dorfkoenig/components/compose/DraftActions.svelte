@@ -143,6 +143,19 @@
       {:else if whatsappPending}
         <span class="step-status-icon pending"><Loader2 size={14} class="spin" /></span>
         <span class="step-label">Gesendet — warte auf Antwort</span>
+        <button
+          class="step-btn step-btn-resend"
+          onclick={onresendverification}
+          disabled={sendLoading}
+          type="button"
+        >
+          {#if sendLoading}
+            <Loader2 size={14} class="spin" />
+          {:else}
+            <MessageCircle size={14} />
+          {/if}
+          Erneut senden
+        </button>
       {:else if whatsappSent}
         <button
           class="step-btn step-btn-resend"
@@ -353,6 +366,7 @@
     font-size: var(--text-base-sm);
     font-weight: 500;
     color: var(--color-text-muted);
+    flex: 1;
   }
 
   .send-step.confirmed .step-label {

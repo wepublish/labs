@@ -7,11 +7,11 @@
   import DraftError from './DraftError.svelte';
   import DraftActions from './DraftActions.svelte';
   import DraftListPanel from './DraftListPanel.svelte';
-  import VerificationBadge from '../../bajour/components/VerificationBadge.svelte';
+  import VerificationBadge from './VerificationBadge.svelte';
   import LocationAutocomplete from '../ui/LocationAutocomplete.svelte';
-  import DraftList from '../../bajour/components/DraftList.svelte';
+  import DraftList from './DraftList.svelte';
   import { bajourDrafts } from '../../bajour/store';
-  import { bajourApi } from '../../bajour/api';
+  import { supabase } from '../../lib/supabase';
   import type { Draft } from '../../lib/types';
   import type { BajourDraft, VerificationStatus } from '../../bajour/types';
 
@@ -114,7 +114,7 @@
   let regenPrompt = $state('');
   let locationFilter = $state('');
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // Derived: whether we have draft content to show actions for
   let hasContent = $derived(!!(draft || savedDraft));
@@ -132,31 +132,31 @@
       : $bajourDrafts.drafts
   );
 
-  // --- Polling ---
+  // --- Realtime subscription ---
 
-  function startStatusPoll(draftId: string): void {
-    stopStatusPoll();
-    pollTimer = setInterval(async () => {
-      try {
-        const drafts = await bajourApi.listDrafts();
-        const updated = drafts.find((d) => d.id === draftId);
-        if (!updated) return;
-        savedDraft = updated;
-        if (updated.verification_status !== 'ausstehend') {
-          stopStatusPoll();
-        }
-      } catch { /* ignore poll errors */ }
-    }, 10_000);
+  function subscribeToUpdates(draftId: string): void {
+    unsubscribeFromUpdates();
+    realtimeChannel = supabase
+      .channel(`draft-${draftId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'bajour_drafts',
+        filter: `id=eq.${draftId}`,
+      }, (payload) => {
+        savedDraft = payload.new as BajourDraft;
+      })
+      .subscribe();
   }
 
-  function stopStatusPoll(): void {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
+  function unsubscribeFromUpdates(): void {
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
     }
   }
 
-  onDestroy(stopStatusPoll);
+  onDestroy(unsubscribeFromUpdates);
 
   // --- Effects ---
 
@@ -182,23 +182,15 @@
       statusLoading = false;
       actionError = '';
       actionSuccess = null;
-      stopStatusPoll();
+      unsubscribeFromUpdates();
     }
   });
 
-  // Auto-poll when savedDraft is ausstehend
-  $effect(() => {
-    if (savedDraft?.verification_status === 'ausstehend' && savedDraft.verification_sent_at) {
-      startStatusPoll(savedDraft.id);
-    }
-    return () => stopStatusPoll();
-  });
-
-  // Sync savedDraft with store updates (from background polling)
+  // Sync savedDraft with store updates (from background polling fallback)
   $effect(() => {
     if (!savedDraft) return;
     const storeDraft = $bajourDrafts.drafts.find((d) => d.id === savedDraft!.id);
-    if (storeDraft && storeDraft.verification_status !== savedDraft.verification_status) {
+    if (storeDraft && storeDraft.updated_at !== savedDraft.updated_at) {
       savedDraft = storeDraft;
     }
   });
@@ -256,7 +248,7 @@
 
       savedDraft = created;
       actionSuccess = 'Entwurf gespeichert und an Dorfkönige gesendet.';
-      startStatusPoll(created.id);
+      subscribeToUpdates(created.id);
       bajourDrafts.startPolling();
     } catch (err) {
       actionError = (err as Error).message;
@@ -274,7 +266,7 @@
     try {
       await bajourDrafts.sendVerification(savedDraft.id);
       actionSuccess = 'Verifizierung erneut gesendet.';
-      startStatusPoll(savedDraft.id);
+      subscribeToUpdates(savedDraft.id);
       bajourDrafts.startPolling();
     } catch (err) {
       actionError = (err as Error).message;
@@ -380,6 +372,7 @@
       <!-- ═══ DRAFT STATE: toggle overlay + content ═══ -->
       <DraftListPanel
         drafts={$bajourDrafts.drafts}
+        activeDraftId={savedDraft?.id ?? null}
         show={showDraftList}
         ontoggle={() => showDraftList = !showDraftList}
         onselect={(selectedDraft) => {

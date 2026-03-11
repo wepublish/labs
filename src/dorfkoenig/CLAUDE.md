@@ -35,23 +35,29 @@ src/dorfkoenig/
 │   ├── LoginForm.svelte
 │   ├── scouts/            # ScoutCard, ScoutForm, ScoutList
 │   ├── executions/        # ExecutionCard, ExecutionList
-│   └── compose/           # ComposePanel, DraftPreview, LocationFilter, SearchBar, UnitList
+│   └── compose/           # Draft slide-over, compose panel, unit list, draft list
+│       ├── ComposePanel.svelte     # Feed panel: unit search + AI draft generation
+│       ├── DraftSlideOver.svelte   # Slide-over: draft viewer + actions + list switcher
+│       ├── DraftListPanel.svelte   # Header toggle: Entwürfe button → draft list overlay
+│       ├── DraftList.svelte        # Draft list rows (village pill, title, status badge)
+│       ├── DraftActions.svelte     # Footer: verification toggle, WhatsApp/Mailchimp send
+│       ├── DraftContent.svelte     # Draft body renderer (headline + sections)
+│       ├── DraftGenerating.svelte  # Loading state during AI generation
+│       ├── DraftError.svelte       # Error state with retry
+│       ├── DraftPreview.svelte     # Draft preview formatter
+│       ├── DraftPromptEditor.svelte # Custom prompt editor for regeneration
+│       ├── VerificationBadge.svelte # Status badge (ausstehend/bestätigt/abgelehnt)
+│       ├── VerificationToggle.svelte # Manual status override toggle
+│       ├── AISelectDropdown.svelte  # AI unit selection with village filter
+│       ├── UnitList.svelte          # Information unit cards
+│       ├── SearchBar.svelte         # Semantic search input
+│       └── LocationFilter.svelte    # Location filter dropdown
 ├── bajour/                # Bajour village newsletter feature (feature-flagged)
 │   ├── api.ts             # Bajour API client (drafts, units, generate, verify, mailchimp)
 │   ├── store.ts           # Bajour drafts store
 │   ├── types.ts           # Village, Correspondent, BajourDraft, VerificationStatus
 │   ├── utils.ts           # Utility functions
 │   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
-│   ├── components/
-│   │   ├── DraftPanel.svelte        # Legacy 3-step wizard (dead code, kept for reference)
-│   │   ├── DraftList.svelte         # List of existing drafts
-│   │   ├── DraftPreview.svelte      # Generated draft preview
-│   │   ├── StepVillageSelect.svelte # Step 1: village picker
-│   │   ├── StepGenerate.svelte      # Step 2: AI unit selection + draft generation
-│   │   ├── StepPreviewSend.svelte   # Step 3: preview, WhatsApp send, Mailchimp send
-│   │   ├── VillageSelect.svelte     # Village dropdown (uses lib/gemeinden.json)
-│   │   ├── VerificationBadge.svelte # Status badge (ausstehend/bestätigt/abgelehnt)
-│   │   └── SuccessBanner.svelte     # Post-action success message
 │   └── __tests__/
 │       ├── api.test.ts    # Bajour API client tests
 │       ├── store.test.ts  # Bajour store tests
@@ -131,7 +137,7 @@ Pagination: page size 20, `hasMore` flag.
 
 ### `bajourDrafts` (`bajour/store.ts`)
 `load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
-Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `StepPreviewSend` also polls every 10s after sending verification for live status updates.
+Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `DraftSlideOver` subscribes to Realtime updates for live verification status.
 
 ### `auth` (`stores/auth.ts`)
 Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`

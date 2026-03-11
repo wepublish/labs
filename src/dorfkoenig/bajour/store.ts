@@ -69,7 +69,9 @@ function createBajourDraftsStore() {
      * Send verification for a draft
      */
     async sendVerification(draftId: string): Promise<{ sent_count: number }> {
-      return bajourApi.sendVerification(draftId);
+      const result = await bajourApi.sendVerification(draftId);
+      await this.load();
+      return result;
     },
 
     /**

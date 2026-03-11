@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
     }
 
     if (!units || units.length === 0) {
+      console.warn('No units found', { userId, scout_id, recencyDays });
       return jsonResponse({ data: { selected_unit_ids: [] } });
     }
 
@@ -139,6 +140,15 @@ Deno.serve(async (req) => {
     const selectedIds: string[] = (parsed.selected_unit_ids || []).filter(
       (id: string) => validIds.has(id)
     );
+
+    // Fallback: if LLM returned empty selection but candidates exist, use all candidates
+    if (selectedIds.length === 0 && units.length > 0) {
+      console.warn('LLM returned empty selection, falling back to all candidates', {
+        candidateCount: units.length,
+        scout_id,
+      });
+      return jsonResponse({ data: { selected_unit_ids: units.map((u) => u.id) } });
+    }
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });
   } catch (err) {
