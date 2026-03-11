@@ -80,8 +80,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Use embedded template HTML (getContent returns degraded 7k HTML, see docs/MAILCHIMP.md)
-    const templateHtml = TEMPLATE_HTML;
+    // 4. Use the template's HTML content
+    const campaignId = templateCampaign.id;
+    const templateContent = await mailchimp.campaigns.getContent(campaignId);
+    const templateHtml = templateContent.html || '';
 
     // 5. Build a map of village_id → draft (use most recent per village)
     const villageDrafts = new Map<string, { village_name: string; body: string }>();
