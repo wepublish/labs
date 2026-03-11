@@ -15,7 +15,7 @@ Correspondent taps "Bestätigt" or "Abgelehnt" on WhatsApp
   → Meta webhook POST
     → bajour-whatsapp-webhook Edge Function
       → HMAC-SHA256 signature verification
-      → Find matching pending draft by village + correspondent phone
+      → Find matching pending draft by whatsapp_message_ids (JSONB containment)
       → Append response, resolve status by majority vote
       → Update bajour_drafts: verification_status, responses, resolved_at
 ```
@@ -77,21 +77,31 @@ All secrets are set in **Supabase Dashboard > Settings > Edge Functions > Secret
 | `WHATSAPP_API_TOKEN` | System user token (permanent, never expires) |
 | `WHATSAPP_APP_SECRET` | HMAC-SHA256 signature verification of incoming webhooks |
 | `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | Webhook handshake token (`bajour-webhook-2026`) |
-| `BAJOUR_CORRESPONDENTS` | JSON mapping village IDs → correspondent arrays (see below) |
+| `BAJOUR_CORRESPONDENTS` | **(deprecated)** Legacy JSON fallback — will be removed once DB migration is validated |
 
 ## 5. Correspondents Config
 
-The `BAJOUR_CORRESPONDENTS` secret is a JSON object mapping village slugs to arrays of correspondents:
+Village correspondents are stored in the `bajour_correspondents` database table:
 
-```json
-{
-  "riehen": [{"name": "Dev Tester 1", "phone": "+41783124547"}],
-  "bettingen": [{"name": "Dev Tester 2", "phone": "+41764999298"}]
-}
-
+```sql
+bajour_correspondents (
+  id UUID PRIMARY KEY,
+  village_id TEXT NOT NULL,       -- e.g. 'riehen', 'bettingen'
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,            -- WITHOUT '+' prefix (e.g. '41783124547')
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
 ```
 
-Loaded at runtime by `supabase/functions/_shared/correspondents.ts` from `Deno.env.get('BAJOUR_CORRESPONDENTS')`.
+**Phone format**: Phones are stored **without the `+` prefix** to match Meta's webhook format (e.g. `41783124547`). The `bajour-send-verification` function prepends `+` when calling the WhatsApp Cloud API.
+
+**Migration**: `supabase/migrations/20260311000000_bajour_correspondents.sql`
+
+**Managing correspondents**: Use the Supabase table editor or SQL. Set `is_active = false` to deactivate without deleting. No redeployment needed.
+
+**Fallback**: The shared module falls back to the `BAJOUR_CORRESPONDENTS` env secret if the DB query fails, logging a warning. Remove the env secret and fallback code once the DB-based flow is validated.
 
 ## 6. Edge Functions
 
@@ -113,6 +123,13 @@ Receives webhook callbacks from Meta, verifies signature, updates verification s
 - **GET handler:** Webhook verification handshake (returns `hub.challenge`)
 - **POST handler:** HMAC-SHA256 signature check → parse button reply → find matching pending draft → append response → resolve by majority vote → update `bajour_drafts`
 - **Button reply formats:** Handles both template quick-reply (`message.button.text`) and interactive message (`message.interactive.button_reply.title`) formats
+- **Draft matching:** The webhook matches incoming messages to drafts using `whatsapp_message_ids` (JSONB column). See "JSONB containment" note below.
+
+### JSONB containment for draft matching
+
+`bajour_drafts.whatsapp_message_ids` is a **JSONB** column (not TEXT[]) storing an array of WhatsApp message IDs. When the webhook looks up a draft by message ID, it uses supabase-js `.contains()` which maps to PostgREST's `cs.` filter (PostgreSQL `@>` operator).
+
+**Known gotcha:** supabase-js `.contains(col, [val])` generates `cs.{val}` (PG array literal), which **silently returns zero rows** on JSONB columns -- no error, just an empty result set. The fix is `.contains(col, JSON.stringify([val]))` which generates `cs.["val"]` (correct JSON literal for JSONB containment). This was the root cause of webhook callbacks failing to match their draft.
 
 ## 7. Error Handling
 
@@ -130,7 +147,7 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 
 ### Local dev flow
 
-1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Entwurf, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the template (with buttons) followed by the draft text.
+1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Feed, open the Bajour draft slide-over, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the template (with buttons) followed by the draft text.
 
 2. **Webhook response** — Tap "Bestätigt" or "Abgelehnt" on a dev phone. The draft's `verification_status` should update in the UI within 30 seconds (polling interval). Check Supabase logs for webhook processing.
 
@@ -195,7 +212,8 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 |------|---------|
 | `supabase/functions/bajour-send-verification/index.ts` | Sends template + text to correspondents via WhatsApp |
 | `supabase/functions/bajour-whatsapp-webhook/index.ts` | Receives webhook callbacks, updates verification status |
-| `supabase/functions/_shared/correspondents.ts` | Loads `BAJOUR_CORRESPONDENTS` from env |
+| `supabase/functions/_shared/correspondents.ts` | Async DB queries for correspondents (with env fallback) |
+| `supabase/migrations/20260311000000_bajour_correspondents.sql` | Correspondents table, RLS, indexes, seed data |
 | `supabase/migrations/00000000000005_bajour_drafts.sql` | DB schema with verification columns |
 | `supabase/migrations/00000000000006_bajour_timeout.sql` | Timeout resolution function |
 | `bajour/components/StepPreviewSend.svelte` | Frontend: preview, send, status override, error handling |

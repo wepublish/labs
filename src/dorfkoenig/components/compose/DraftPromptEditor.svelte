@@ -6,7 +6,10 @@
     regenPrompt: string;
     onpromptchange: (prompt: string) => void;
     onreset: () => void;
-    onregenerate: () => void;
+    onregenerate?: () => void;
+    submitLabel?: string;
+    placeholder?: string;
+    compact?: boolean;
   }
 
   let {
@@ -14,26 +17,31 @@
     onpromptchange,
     onreset,
     onregenerate,
+    submitLabel = 'Neu generieren',
+    placeholder = DEFAULT_PROMPT,
+    compact = false,
   }: Props = $props();
 </script>
 
-<div class="regen-drawer">
+<div class="regen-drawer" class:compact>
   <textarea
     class="prompt-textarea"
     value={regenPrompt}
     oninput={(e) => onpromptchange(e.currentTarget.value)}
-    placeholder={DEFAULT_PROMPT}
-    rows="5"
+    placeholder={placeholder}
+    rows={compact ? 3 : 5}
   ></textarea>
   <div class="regen-actions">
     <button class="reset-button" onclick={onreset} type="button">
       <RotateCcw size={12} />
       Zurücksetzen
     </button>
-    <button class="regen-btn" onclick={onregenerate}>
-      <RefreshCw size={14} />
-      Neu generieren
-    </button>
+    {#if onregenerate}
+      <button class="regen-btn" onclick={onregenerate}>
+        <RefreshCw size={14} />
+        {submitLabel}
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -110,5 +118,14 @@
   .regen-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(234, 114, 110, 0.35);
+  }
+
+  .regen-drawer.compact {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .compact .prompt-textarea {
+    min-height: 60px;
+    margin-bottom: var(--spacing-sm);
   }
 </style>

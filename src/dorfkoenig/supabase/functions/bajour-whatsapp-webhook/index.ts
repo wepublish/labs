@@ -12,7 +12,10 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET')!;
 const WHATSAPP_WEBHOOK_VERIFY_TOKEN = Deno.env.get('WHATSAPP_WEBHOOK_VERIFY_TOKEN')!;
 
-import { VILLAGE_CORRESPONDENTS } from '../_shared/correspondents.ts';
+import {
+  findCorrespondentByPhone,
+  getCorrespondentCount,
+} from '../_shared/correspondents.ts';
 
 // --- HMAC-SHA256 Signaturpruefung ---
 
@@ -67,7 +70,7 @@ function resolveVerificationStatus(
 ): 'ausstehend' | 'bestätigt' | 'abgelehnt' {
   const confirms = responses.filter((r) => r.response === 'bestätigt').length;
   const rejects = responses.filter((r) => r.response === 'abgelehnt').length;
-  const majority = Math.floor(totalCorrespondents / 2) + 1;
+  const majority = Math.ceil(totalCorrespondents / 2);
 
   if (rejects >= majority) return 'abgelehnt';
   if (confirms >= majority) return 'bestätigt';
@@ -80,32 +83,9 @@ function resolveVerificationStatus(
   return 'ausstehend';
 }
 
-// --- Telefonnummer normalisieren (+ entfernen fuer Vergleich) ---
-
-function normalizePhone(phone: string): string {
-  return phone.replace(/^\+/, '');
-}
-
 function maskPhone(phone: string): string {
   if (phone.length <= 6) return '***';
   return phone.slice(0, 3) + '***' + phone.slice(-3);
-}
-
-// --- Korrespondenten fuer eine Telefonnummer finden ---
-
-function findCorrespondentByPhone(
-  phone: string
-): { villageId: string; name: string; phone: string } | null {
-  const normalizedIncoming = normalizePhone(phone);
-
-  for (const [villageId, correspondents] of Object.entries(VILLAGE_CORRESPONDENTS)) {
-    for (const c of correspondents) {
-      if (normalizePhone(c.phone) === normalizedIncoming) {
-        return { villageId, name: c.name, phone: c.phone };
-      }
-    }
-  }
-  return null;
 }
 
 // --- GET: Meta Webhook-Verifizierung ---
@@ -180,37 +160,62 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   }
 
   // Korrespondent anhand der Telefonnummer identifizieren
-  const correspondent = findCorrespondentByPhone(fromPhone);
+  const correspondent = await findCorrespondentByPhone(fromPhone);
   if (!correspondent) {
     console.error('Unbekannte Telefonnummer:', maskPhone(fromPhone));
     return jsonResponse({ status: 'unknown_phone' });
   }
 
   const supabase = createServiceClient();
+  const contextMessageId = message.context?.id;
 
-  // Offenen Entwurf finden, der auf Verifizierung wartet und zu einer
-  // Gemeinde gehoert, fuer die dieser Korrespondent zustaendig ist
-  const { data: pendingDrafts, error: fetchError } = await supabase
-    .from('bajour_drafts')
-    .select('*')
-    .eq('verification_status', 'ausstehend')
-    .not('verification_sent_at', 'is', null)
-    .is('verification_resolved_at', null)
-    .order('verification_sent_at', { ascending: false });
+  let matchingDraft: Record<string, unknown> | null = null;
 
-  if (fetchError) {
-    console.error('Fehler beim Laden der Entwuerfe:', fetchError);
-    return jsonResponse({ status: 'db_error' });
+  // Primaer: Entwurf anhand der Template-Message-ID identifizieren
+  // (Meta sendet context.id = wamid des Original-Templates bei Quick-Reply)
+  if (contextMessageId) {
+    const { data, error } = await supabase
+      .from('bajour_drafts')
+      .select('*')
+      .contains('whatsapp_message_ids', JSON.stringify([contextMessageId]))
+      .eq('verification_status', 'ausstehend')
+      .not('verification_sent_at', 'is', null)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Fehler bei Message-ID-Suche:', error);
+    } else {
+      matchingDraft = data;
+    }
+
+    if (matchingDraft) {
+      console.log('Entwurf via Message-ID gefunden:', contextMessageId);
+    }
   }
 
-  // Den passenden Entwurf finden: village_id muss mit dem Korrespondenten uebereinstimmen
-  const matchingDraft = (pendingDrafts || []).find((draft: Record<string, unknown>) => {
-    const villageId = draft.village_id as string;
-    const villageCorrespondents = VILLAGE_CORRESPONDENTS[villageId] || [];
-    return villageCorrespondents.some(
-      (c) => normalizePhone(c.phone) === normalizePhone(fromPhone)
-    );
-  });
+  // Fallback: Entwurf anhand der Gemeinde des Korrespondenten finden
+  if (!matchingDraft) {
+    if (contextMessageId) {
+      console.warn('Message-ID-Match fehlgeschlagen, Fallback auf Gemeinde:', contextMessageId);
+    }
+
+    const { data: pendingDrafts, error: fetchError } = await supabase
+      .from('bajour_drafts')
+      .select('*')
+      .eq('verification_status', 'ausstehend')
+      .not('verification_sent_at', 'is', null)
+      .is('verification_resolved_at', null)
+      .order('verification_sent_at', { ascending: false });
+
+    if (fetchError) {
+      console.error('Fehler beim Laden der Entwuerfe:', fetchError);
+      return jsonResponse({ status: 'db_error' });
+    }
+
+    matchingDraft = (pendingDrafts || []).find(
+      (draft: Record<string, unknown>) => draft.village_id === correspondent.villageId
+    ) || null;
+  }
 
   if (!matchingDraft) {
     console.error(
@@ -224,8 +229,9 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   // Pruefen, ob dieser Korrespondent bereits geantwortet hat
   const existingResponses: VerificationResponse[] =
     (matchingDraft.verification_responses as VerificationResponse[]) || [];
+  const normalizedFrom = fromPhone.replace(/^\+/, '');
   const alreadyResponded = existingResponses.some(
-    (r) => normalizePhone(r.phone) === normalizePhone(fromPhone)
+    (r) => r.phone.replace(/^\+/, '') === normalizedFrom
   );
 
   if (alreadyResponded) {
@@ -243,9 +249,19 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   const updatedResponses = [...existingResponses, newResponse];
 
   // Verifizierungsstatus berechnen
-  const villageCorrespondents =
-    VILLAGE_CORRESPONDENTS[matchingDraft.village_id as string] || [];
-  const newStatus = resolveVerificationStatus(updatedResponses, villageCorrespondents.length);
+  const totalCorrespondents = await getCorrespondentCount(
+    matchingDraft.village_id as string
+  );
+
+  if (totalCorrespondents === 0) {
+    console.error(
+      'Zero correspondents for village:',
+      matchingDraft.village_id
+    );
+    return jsonResponse({ status: 'config_error' });
+  }
+
+  const newStatus = resolveVerificationStatus(updatedResponses, totalCorrespondents);
 
   // Update-Objekt erstellen
   const updateData: Record<string, unknown> = {

@@ -80,7 +80,7 @@ src/dorfkoenig/
 │   ├── utils.ts                # Utility functions
 │   ├── villages.json           # Village configuration data
 │   ├── components/
-│   │   ├── DraftPanel.svelte        # 3-step wizard + sidebar
+│   │   ├── DraftPanel.svelte        # Legacy 3-step wizard (dead code, kept for reference)
 │   │   ├── DraftList.svelte
 │   │   ├── DraftPreview.svelte
 │   │   ├── DraftsSidebar.svelte
@@ -167,7 +167,6 @@ Hash-based routing for GitHub Pages compatibility.
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
-  import DraftPanel from './bajour/components/DraftPanel.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -191,7 +190,10 @@ Hash-based routing for GitHub Pages compatibility.
   </div>
 {:else if $auth.error}
   <div class="auth-error">
-    <p>{$auth.error}</p>
+    <div class="auth-error-content">
+      <h2>Dorfkönig</h2>
+      <p>{$auth.error}</p>
+    </div>
   </div>
 {:else if !$auth.user}
   <Login />
@@ -205,8 +207,6 @@ Hash-based routing for GitHub Pages compatibility.
       <History />
     {:else if route === 'feed'}
       <Feed />
-    {:else if route === 'entwurf' && import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-      <DraftPanel />
     {:else}
       <Manage />
     {/if}
@@ -221,8 +221,7 @@ Hash-based routing for GitHub Pages compatibility.
 | `#/manage` or `#/` | `Manage` | Scout list + filters |
 | `#/scout/{id}` | `ScoutDetail` | Scout edit + execution history |
 | `#/history` | `History` | All executions |
-| `#/feed` | `Feed` | Unit search + article drafting (ComposePanel) |
-| `#/entwurf` | `DraftPanel` | Bajour village newsletter wizard (feature-flagged: `VITE_FEATURE_BAJOUR=true`) |
+| `#/feed` | `Feed` | Unit search + article drafting (ComposePanel + DraftSlideOver) |
 
 ### Navigation Helper
 
@@ -518,7 +517,7 @@ export const executions = createExecutionsStore();
 
 The layout includes a sticky navbar with:
 - **Brand**: DorfKönig logo (SVG crown + village) with text
-- **Center nav**: Verwalten (`#/manage`), Feed (`#/feed`), Entwurf (`#/entwurf`, feature-flagged), + "Neuer Scout" CTA button, + "Hochladen" upload button
+- **Center nav**: Verwalten (`#/manage`), Feed (`#/feed`), + "Neuer Scout" CTA button, + "Hochladen" upload button
 - **User area**: Display name + logout icon
 - **Modals**: `ScoutModal` and `UploadModal` rendered at layout level
 
@@ -529,7 +528,7 @@ The layout includes a sticky navbar with:
   import { showScoutModal, showUploadModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
-  import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
+  import { Radar, Newspaper, Plus, Upload, LogOut } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -550,9 +549,6 @@ The layout includes a sticky navbar with:
     <div class="nav-center">
       <a href="#/manage">Verwalten</a>
       <a href="#/feed">Feed</a>
-      {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-        <a href="#/entwurf">Entwurf</a>
-      {/if}
       <button class="new-scout-btn" onclick={handleNewScout}>Neuer Scout</button>
       <button class="upload-btn" onclick={handleUpload}>Hochladen</button>
     </div>
@@ -1250,7 +1246,7 @@ export interface Draft {
 
 ## Bajour Feature (Feature-Flagged)
 
-Enabled via `VITE_FEATURE_BAJOUR=true`. Adds the `#/entwurf` route for village newsletter draft creation.
+Enabled via `VITE_FEATURE_BAJOUR=true`. Bajour draft functionality is integrated into the Feed panel via `DraftSlideOver` (no separate route).
 
 ### Architecture
 
@@ -1264,7 +1260,8 @@ Self-contained in `bajour/` subdirectory with its own API client, store, types, 
 
 ### Key Components
 
-- `DraftPanel.svelte`: Root wizard component with `DraftsSidebar`
+- `DraftPanel.svelte`: Legacy wizard component (dead code, kept for reference)
+- `DraftSlideOver.svelte` (in `compose/`): Current slide-over panel integrated into Feed
 - `DraftsSidebar.svelte`: List of existing drafts
 - `VerificationBadge.svelte`: Status badge (ausstehend/bestätigt/abgelehnt)
 

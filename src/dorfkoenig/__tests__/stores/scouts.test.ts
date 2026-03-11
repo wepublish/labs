@@ -270,7 +270,7 @@ describe('scouts store', () => {
   });
 
   describe('delete', () => {
-    it('removes scout from list', async () => {
+    it('removes scout from list optimistically', async () => {
       const s1 = makeScout({ id: 'keep' });
       const s2 = makeScout({ id: 'remove' });
       vi.mocked(scoutsApi.list).mockResolvedValue([s1, s2]);
@@ -283,6 +283,22 @@ describe('scouts store', () => {
       const state = get(scouts);
       expect(state.scouts).toHaveLength(1);
       expect(state.scouts[0].id).toBe('keep');
+    });
+
+    it('reverts on API failure by re-fetching', async () => {
+      const s1 = makeScout({ id: 'keep' });
+      const s2 = makeScout({ id: 'fail-delete' });
+      vi.mocked(scoutsApi.list).mockResolvedValue([s1, s2]);
+      await scouts.load();
+
+      vi.mocked(scoutsApi.delete).mockRejectedValue(new Error('Server error'));
+      // Re-fetch returns original list
+      vi.mocked(scoutsApi.list).mockResolvedValue([s1, s2]);
+
+      await expect(scouts.delete('fail-delete')).rejects.toThrow('Server error');
+
+      const state = get(scouts);
+      expect(state.scouts).toHaveLength(2);
     });
   });
 

@@ -11,16 +11,23 @@ import { openrouter } from '../_shared/openrouter.ts';
 interface SelectUnitsRequest {
   village_id: string;
   scout_id: string;
+  recency_days?: number;
+  selection_prompt?: string;
 }
 
-// Fixed system prompt for unit selection (not editable by users)
-function buildSystemPrompt(currentDate: string): string {
-  return `Du bist ein erfahrener Redakteur für einen wöchentlichen lokalen Newsletter.
+// System prompt for unit selection with configurable recency and optional editor instructions
+function buildSystemPrompt(currentDate: string, recencyDays: number | null, selectionPrompt?: string): string {
+  const recencyInstruction = recencyDays !== null
+    ? `1. AKTUALITÄT: Bevorzuge Informationen der letzten ${recencyDays} Tage STARK.
+   Informationen älter als ${recencyDays * 2} Tage nur bei aussergewöhnlicher Bedeutung.`
+    : `1. AKTUALITÄT: Berücksichtige alle verfügbaren Informationen unabhängig vom Alter.
+   Neuere Informationen dürfen leicht bevorzugt werden.`;
+
+  let prompt = `Du bist ein erfahrener Redakteur für einen wöchentlichen lokalen Newsletter.
 Deine Aufgabe: Wähle die relevantesten Informationseinheiten für die nächste Ausgabe.
 
 AUSWAHLKRITERIEN (nach Priorität):
-1. AKTUALITÄT: Bevorzuge Informationen der letzten 7 Tage STARK.
-   Informationen älter als 14 Tage nur bei aussergewöhnlicher Bedeutung.
+${recencyInstruction}
 2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes JETZT?
 3. VIELFALT: Decke verschiedene Themen ab (Politik, Kultur, Infrastruktur, Gesellschaft).
 4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
@@ -32,6 +39,12 @@ AUSGABEFORMAT (JSON):
 {
   "selected_unit_ids": ["uuid-1", "uuid-2", ...]
 }`;
+
+  if (selectionPrompt) {
+    prompt += `\n\nZUSÄTZLICHE ANWEISUNGEN DES REDAKTEURS:\n${selectionPrompt}`;
+  }
+
+  return prompt;
 }
 
 Deno.serve(async (req) => {
@@ -48,7 +61,8 @@ Deno.serve(async (req) => {
     }
 
     const body: SelectUnitsRequest = await req.json();
-    const { village_id, scout_id } = body;
+    const { village_id, scout_id, recency_days, selection_prompt } = body;
+    const recencyDays = recency_days ?? null;
 
     // Validate input
     if (!village_id || typeof village_id !== 'string') {
@@ -59,12 +73,21 @@ Deno.serve(async (req) => {
     }
 
     // Query unused information units for this scout (owned by user), ordered by recency
-    const { data: units, error } = await supabase
+    // When recencyDays is set, filter by created_at; otherwise fetch all unused units
+    let query = supabase
       .from('information_units')
       .select('id, statement, unit_type, event_date, created_at')
       .eq('scout_id', scout_id)
       .eq('user_id', userId)
-      .eq('used_in_article', false)
+      .eq('used_in_article', false);
+
+    if (recencyDays !== null) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - recencyDays);
+      query = query.gte('created_at', cutoffDate.toISOString());
+    }
+
+    const { data: units, error } = await query
       .order('event_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(100);
@@ -75,6 +98,7 @@ Deno.serve(async (req) => {
     }
 
     if (!units || units.length === 0) {
+      console.warn('No units found', { userId, scout_id, recencyDays });
       return jsonResponse({ data: { selected_unit_ids: [] } });
     }
 
@@ -91,7 +115,7 @@ Deno.serve(async (req) => {
     // Call LLM for selection
     const response = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildSystemPrompt(currentDate) },
+        { role: 'system', content: buildSystemPrompt(currentDate, recencyDays, selection_prompt) },
         {
           role: 'user',
           content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`,
@@ -116,6 +140,15 @@ Deno.serve(async (req) => {
     const selectedIds: string[] = (parsed.selected_unit_ids || []).filter(
       (id: string) => validIds.has(id)
     );
+
+    // Fallback: if LLM returned empty selection but candidates exist, use all candidates
+    if (selectedIds.length === 0 && units.length > 0) {
+      console.warn('LLM returned empty selection, falling back to all candidates', {
+        candidateCount: units.length,
+        scout_id,
+      });
+      return jsonResponse({ data: { selected_unit_ids: units.map((u) => u.id) } });
+    }
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });
   } catch (err) {

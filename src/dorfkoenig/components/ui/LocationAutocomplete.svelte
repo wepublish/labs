@@ -36,21 +36,26 @@
     inputValue = value;
   });
 
+  function updateResults(query: string) {
+    if (!query.trim()) {
+      results = gemeinden;
+    } else {
+      const lower = query.trim().toLowerCase();
+      results = gemeinden.filter(
+        (g) => g.name.toLowerCase().startsWith(lower)
+      );
+    }
+    showDropdown = results.length > 0;
+  }
+
   function handleInput(e: Event) {
     const query = (e.target as HTMLInputElement).value;
     inputValue = query;
+    updateResults(query);
+  }
 
-    if (!query.trim()) {
-      results = [];
-      showDropdown = false;
-      return;
-    }
-
-    const lower = query.trim().toLowerCase();
-    results = gemeinden.filter(
-      (g) => g.name.toLowerCase().startsWith(lower)
-    );
-    showDropdown = results.length > 0;
+  function handleFocus() {
+    updateResults(inputValue);
   }
 
   function handleSelect(g: Gemeinde) {
@@ -86,6 +91,7 @@
       type="text"
       value={inputValue}
       oninput={handleInput}
+      onfocus={handleFocus}
       onblur={handleBlur}
       onkeydown={handleKeydown}
       {placeholder}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Check, Inbox } from 'lucide-svelte';
-  import { Badge, EmptyState } from '../ui/primitives';
+  import { EmptyState } from '../ui/primitives';
   import { UNIT_TYPE_LABELS, formatRelativeTime } from '../../lib/constants';
   import type { InformationUnit } from '../../lib/types';
 
@@ -8,9 +8,10 @@
     units: InformationUnit[];
     selected: Set<string>;
     ontoggle: (id: string) => void;
+    dimmed?: boolean;
   }
 
-  let { units, selected, ontoggle }: Props = $props();
+  let { units, selected, ontoggle, dimmed = false }: Props = $props();
 
   let truncatedIds = $state(new Set<string>());
   let statementRefs = new Map<string, HTMLElement>();
@@ -45,6 +46,26 @@
       return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
     }
   }
+
+  // Strip color by unit_type
+  function getStripColor(type: string): string {
+    switch (type) {
+      case 'fact': return '#3b82f6';
+      case 'event': return '#22c55e';
+      case 'entity_update': return '#f59e0b';
+      default: return '#d1d5db';
+    }
+  }
+
+  // Text color matching strip
+  function getTypeColor(type: string): string {
+    switch (type) {
+      case 'fact': return '#2563eb';
+      case 'event': return '#16a34a';
+      case 'entity_update': return '#d97706';
+      default: return 'var(--color-text-muted)';
+    }
+  }
 </script>
 
 {#if units.length === 0}
@@ -54,7 +75,7 @@
     description="Es wurden keine Informationseinheiten gefunden."
   />
 {:else}
-  <div class="units-list">
+  <div class="units-list" class:dimmed>
     {#each units as unit (unit.id)}
       {@const isSelected = selected.has(unit.id)}
       <button
@@ -62,20 +83,18 @@
         class="unit-card"
         class:selected={isSelected}
         onclick={() => ontoggle(unit.id)}
+        style="--strip-color: {getStripColor(unit.unit_type)}"
       >
         {#if isSelected}
           <span class="check-mark"><Check size={10} strokeWidth={3} /></span>
         {/if}
 
-        <div class="unit-badges">
-          <Badge variant={unit.unit_type}>
-            {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
-          </Badge>
-          {#if unit.source_type?.startsWith('manual_')}
-            <Badge variant="manual">Manuell</Badge>
-          {/if}
-        </div>
+        <!-- Type label as colored text -->
+        <span class="unit-type" style="color: {getTypeColor(unit.unit_type)}">
+          {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
+        </span>
 
+        <!-- Statement: hero text -->
         <p
           class="unit-statement"
           class:truncated={truncatedIds.has(unit.id)}
@@ -87,10 +106,10 @@
         {#if unit.entities && unit.entities.length > 0}
           <div class="unit-entities">
             {#each unit.entities.slice(0, 3) as entity}
-              <Badge variant="neutral" size="sm">{entity}</Badge>
+              <span class="entity-pill">{entity}</span>
             {/each}
             {#if unit.entities.length > 3}
-              <span class="entity-overflow">+{unit.entities.length - 3} mehr</span>
+              <span class="entity-overflow">+{unit.entities.length - 3}</span>
             {/if}
           </div>
         {/if}
@@ -123,6 +142,11 @@
 {/if}
 
 <style>
+  .units-list.dimmed {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   .units-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -132,20 +156,33 @@
   .unit-card {
     display: flex;
     flex-direction: column;
-    padding: var(--spacing-md);
+    padding: 0.75rem 0.875rem;
+    padding-left: calc(0.875rem + 3px);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     cursor: pointer;
-    gap: var(--spacing-sm);
+    gap: 0.375rem;
     background: var(--color-surface);
     text-align: left;
     position: relative;
     transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
   }
 
+  /* 3px left-edge strip */
+  .unit-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--strip-color);
+  }
+
   .unit-card:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(234, 114, 110, 0.08);
+    box-shadow: 0 2px 8px rgba(234, 114, 110, 0.06);
   }
 
   .unit-card:focus-visible {
@@ -155,13 +192,13 @@
 
   .unit-card.selected {
     border-color: var(--color-primary);
-    background: rgba(234, 114, 110, 0.06);
+    background: rgba(234, 114, 110, 0.04);
   }
 
   .check-mark {
     position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
+    top: 0.5rem;
+    right: 0.5rem;
     width: 18px;
     height: 18px;
     border-radius: var(--radius-full);
@@ -172,10 +209,12 @@
     justify-content: center;
   }
 
-  .unit-badges {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
+  /* Type label: colored text, no badge box */
+  .unit-type {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .unit-statement {
@@ -204,16 +243,26 @@
     background: linear-gradient(transparent, rgba(254, 249, 249, 1));
   }
 
+  /* Neutral micro entity pills */
   .unit-entities {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
   }
 
+  .entity-pill {
+    font-size: var(--text-2xs);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: var(--color-surface-muted);
+    padding: 0.0625rem 0.375rem;
+    border-radius: var(--radius-full);
+  }
+
   .entity-overflow {
     font-size: var(--text-2xs);
     color: var(--color-text-light);
-    padding-left: 0.25rem;
+    padding-left: 0.125rem;
   }
 
   .card-footer {
@@ -227,8 +276,7 @@
   }
 
   .footer-sep {
-    color: var(--color-text-light);
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
   .source-link {
@@ -253,5 +301,4 @@
     font-weight: 500;
     font-size: var(--text-2xs);
   }
-
 </style>

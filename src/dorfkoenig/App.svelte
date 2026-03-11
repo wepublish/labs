@@ -7,7 +7,6 @@
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
-  import DraftPanel from './bajour/components/DraftPanel.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -32,7 +31,10 @@
   </div>
 {:else if $auth.error}
   <div class="auth-error">
-    <p>{$auth.error}</p>
+    <div class="auth-error-content">
+      <h2>Dorfkönig</h2>
+      <p>{$auth.error}</p>
+    </div>
   </div>
 {:else if !$auth.user}
   <Login />
@@ -46,8 +48,6 @@
       <History />
     {:else if route === 'feed'}
       <Feed />
-    {:else if route === 'entwurf' && import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-      <DraftPanel />
     {:else}
       <Manage />
     {/if}
@@ -55,19 +55,28 @@
 {/if}
 
 <style>
-  .loading-container {
+  .loading-container,
+  .auth-error {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
   }
 
-  .auth-error {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+  .auth-error-content {
+    text-align: center;
+  }
+
+  .auth-error-content h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .auth-error-content p {
     color: var(--color-text-muted);
     font-size: 0.9375rem;
+    margin: 0;
   }
 </style>

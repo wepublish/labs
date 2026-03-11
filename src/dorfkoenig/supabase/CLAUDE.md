@@ -69,7 +69,13 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
-- PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (TEXT[]), `custom_system_prompt`, `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (TEXT[])
+- PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
+
+**`bajour_correspondents`** -- Village correspondents for WhatsApp verification
+- PK: `id` (UUID), `village_id` (TEXT), `name` (TEXT), `phone` (TEXT, without '+' prefix), `is_active` (BOOLEAN), `created_at`, `updated_at`
+- Phone format: no '+' prefix (matches Meta webhook format). WhatsApp send prepends '+'.
+- Unique constraint: (village_id, phone). Phone format check: `^[1-9][0-9]{6,14}$`
+- Managed via Supabase table editor or SQL. No redeployment needed.
 
 ### RLS Policies
 
@@ -78,6 +84,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 - **scout_executions**: user SELECT on own rows, service_role ALL
 - **information_units**: user SELECT + UPDATE on own rows, service_role ALL
 - **bajour_drafts**: user CRUD on own rows, service_role ALL
+- **bajour_correspondents**: service_role ALL, authenticated users SELECT (active only)
 
 ## Critical Architecture Notes
 
@@ -91,6 +98,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 7. **Dedup thresholds** -- Execution: 0.85, Unit within batch: 0.75, Semantic search minimum: 0.3.
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.
 9. **Stuck execution timeout** -- 10 minutes. `cleanup_expired_data()` marks stuck runs as failed.
+11. **JSONB `.contains()` gotcha** -- `bajour_drafts.whatsapp_message_ids` is JSONB (not TEXT[]). supabase-js `.contains(col, [val])` generates the PostgREST filter `cs.{val}` (PG array literal), which **silently returns zero rows** on JSONB columns -- no error, just an empty result set. The fix: `.contains(col, JSON.stringify([val]))` generates `cs.["val"]` (correct JSON literal for JSONB containment via the `@>` operator). This applies to any JSONB array column queried with `.contains()`.
 
 ## CLI Commands
 

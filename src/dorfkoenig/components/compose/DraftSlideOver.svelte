@@ -1,12 +1,19 @@
 <script lang="ts">
   import { fly, fade } from 'svelte/transition';
   import { onDestroy } from 'svelte';
-  import { X, AlertCircle, RefreshCw, PenTool, ChevronDown, ChevronUp, Download } from 'lucide-svelte';
   import { focusTrap } from '../../lib/actions/focus-trap';
-  import ProgressIndicator from '../ui/ProgressIndicator.svelte';
   import DraftContent from './DraftContent.svelte';
-  import DraftPromptEditor from './DraftPromptEditor.svelte';
+  import DraftGenerating from './DraftGenerating.svelte';
+  import DraftError from './DraftError.svelte';
+  import DraftActions from './DraftActions.svelte';
+  import DraftListPanel from './DraftListPanel.svelte';
+  import VerificationBadge from './VerificationBadge.svelte';
+  import LocationAutocomplete from '../ui/LocationAutocomplete.svelte';
+  import DraftList from './DraftList.svelte';
+  import { bajourDrafts } from '../../bajour/store';
+  import { supabase } from '../../lib/supabase';
   import type { Draft } from '../../lib/types';
+  import type { BajourDraft, VerificationStatus } from '../../bajour/types';
 
   interface Props {
     open: boolean;
@@ -15,6 +22,11 @@
     generationError: string | null;
     selectedCount: number;
     customPrompt: string | null;
+    progressMessage?: string;
+    villageName?: string;
+    villageId?: string;
+    unitIds?: string[];
+    initialShowDraftList?: boolean;
     onClose: () => void;
     onRetry: () => void;
     onRegenerate: (customPrompt: string | null) => void;
@@ -27,69 +39,296 @@
     generationError,
     selectedCount,
     customPrompt: _customPrompt,
+    progressMessage = 'Entwurf wird erstellt...',
+    villageName,
+    villageId,
+    unitIds = [],
+    initialShowDraftList = false,
     onClose,
     onRetry,
     onRegenerate,
   }: Props = $props();
 
+  // --- Helpers ---
+
+  function draftToMarkdown(d: Draft): string {
+    const parts: string[] = [];
+    if (d.headline) parts.push(d.headline);
+    for (const section of d.sections) {
+      parts.push(`## ${section.heading}\n${section.content}`);
+    }
+    return parts.join('\n\n');
+  }
+
+  function parseSavedDraftBody(sd: BajourDraft): Draft {
+    const lines = sd.body.split('\n');
+    let headline = '';
+    const sections: { heading: string; content: string }[] = [];
+    let currentHeading = '';
+    let currentLines: string[] = [];
+
+    function flush() {
+      if (!currentHeading && currentLines.length > 0 && sections.length === 0) {
+        headline = currentLines.join(' ').trim();
+      } else if (currentHeading || currentLines.length > 0) {
+        sections.push({ heading: currentHeading, content: currentLines.join(' ').trim() });
+      }
+    }
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const headingMatch = trimmed.match(/^##\s+(.+)$/);
+      if (headingMatch) {
+        flush();
+        currentHeading = headingMatch[1];
+        currentLines = [];
+      } else if (trimmed) {
+        currentLines.push(trimmed);
+      }
+    }
+    flush();
+
+    return {
+      title: sd.title || '',
+      headline,
+      sections,
+      gaps: [],
+      sources: [],
+      word_count: 0,
+      units_used: 0,
+    };
+  }
+
+  // --- State ---
+
+  let savedDraft = $state<BajourDraft | null>(null);
+  let sendLoading = $state(false);
+  let deleteLoading = $state(false);
+  let mailchimpLoading = $state(false);
+  let statusLoading = $state(false);
+  let actionError = $state('');
+  let actionSuccess = $state<string | null>(null);
+
+  let showDraftList = $state(false);
   let showRegenPrompt = $state(false);
   let regenPrompt = $state('');
-  let generateProgress = $state(0);
-  let generateProgressState = $state<'loading' | 'success' | 'error'>('loading');
+  let locationFilter = $state('');
 
-  let progressInterval: ReturnType<typeof setInterval> | null = null;
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
-  function startProgressSimulation(): void {
-    stopProgressInterval();
-    generateProgress = 0;
-    generateProgressState = 'loading';
-    progressInterval = setInterval(() => {
-      if (generateProgress < 30) {
-        generateProgress += Math.random() * 8 + 2;
-      } else if (generateProgress < 60) {
-        generateProgress += Math.random() * 4 + 1;
-      } else if (generateProgress < 85) {
-        generateProgress += Math.random() * 2 + 0.5;
-      } else if (generateProgress < 90) {
-        generateProgress += Math.random() * 0.5;
-      }
-      generateProgress = Math.min(generateProgress, 90);
-    }, 500);
+  // Derived: whether we have draft content to show actions for
+  let hasContent = $derived(!!(draft || savedDraft));
+  let canSave = $derived(!!(villageId && villageName));
+
+  // Zero state: no draft content and not generating/erroring
+  let isZeroState = $derived(!savedDraft && !draft && !isGenerating && !generationError);
+
+  // Drafts filtered by location
+  let filteredDrafts = $derived(
+    locationFilter
+      ? $bajourDrafts.drafts.filter((d) =>
+          d.village_name.toLowerCase().startsWith(locationFilter.toLowerCase())
+        )
+      : $bajourDrafts.drafts
+  );
+
+  // --- Realtime subscription ---
+
+  function subscribeToUpdates(draftId: string): void {
+    unsubscribeFromUpdates();
+    realtimeChannel = supabase
+      .channel(`draft-${draftId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'bajour_drafts',
+        filter: `id=eq.${draftId}`,
+      }, (payload) => {
+        savedDraft = payload.new as BajourDraft;
+      })
+      .subscribe();
   }
 
-  function stopProgressSimulation(success: boolean): void {
-    stopProgressInterval();
-    if (success) {
-      generateProgress = 100;
-      generateProgressState = 'success';
-    } else {
-      generateProgressState = 'error';
+  function unsubscribeFromUpdates(): void {
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
     }
   }
 
-  function stopProgressInterval(): void {
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
-  }
+  onDestroy(unsubscribeFromUpdates);
 
-  let wasGenerating = false;
+  // --- Effects ---
 
+  // Load drafts and reset list visibility when panel opens
   $effect(() => {
-    if (isGenerating && !wasGenerating) {
-      startProgressSimulation();
-    } else if (!isGenerating && wasGenerating) {
-      stopProgressSimulation(!generationError);
+    if (open) {
+      bajourDrafts.load();
+      showDraftList = initialShowDraftList;
     }
-    wasGenerating = isGenerating;
   });
 
-  onDestroy(() => {
-    stopProgressInterval();
+  // Reset all state when panel closes
+  $effect(() => {
+    if (!open) {
+      savedDraft = null;
+      showDraftList = false;
+      showRegenPrompt = false;
+      regenPrompt = '';
+      locationFilter = '';
+      sendLoading = false;
+      deleteLoading = false;
+      mailchimpLoading = false;
+      statusLoading = false;
+      actionError = '';
+      actionSuccess = null;
+      unsubscribeFromUpdates();
+    }
   });
 
-  function saveAndRegenerate(): void {
+  // Sync savedDraft with store updates (from background polling fallback)
+  $effect(() => {
+    if (!savedDraft) return;
+    const storeDraft = $bajourDrafts.drafts.find((d) => d.id === savedDraft!.id);
+    if (storeDraft && storeDraft.updated_at !== savedDraft.updated_at) {
+      savedDraft = storeDraft;
+    }
+  });
+
+  // --- Action handlers ---
+
+  async function handleStatusOverride(status: VerificationStatus): Promise<void> {
+    if (statusLoading) return;
+    statusLoading = true;
+    actionError = '';
+    try {
+      if (!savedDraft) {
+        if (!draft || !villageId || !villageName) return;
+        savedDraft = await bajourDrafts.create({
+          village_id: villageId,
+          village_name: villageName,
+          title: draft.title,
+          body: draftToMarkdown(draft),
+          selected_unit_ids: unitIds,
+          custom_system_prompt: _customPrompt || null,
+        });
+      }
+      const updated = await bajourDrafts.updateVerificationStatus(savedDraft.id, status);
+      savedDraft = updated;
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      statusLoading = false;
+    }
+  }
+
+  async function handleSaveSend(): Promise<void> {
+    if (!draft || !villageId || !villageName) return;
+    sendLoading = true;
+    actionError = '';
+    actionSuccess = null;
+
+    try {
+      const created = await bajourDrafts.create({
+        village_id: villageId,
+        village_name: villageName,
+        title: draft.title,
+        body: draftToMarkdown(draft),
+        selected_unit_ids: unitIds,
+        custom_system_prompt: _customPrompt || null,
+      });
+
+      try {
+        await bajourDrafts.sendVerification(created.id);
+      } catch (verifyErr) {
+        savedDraft = created;
+        actionError = `Entwurf gespeichert, aber Verifizierung fehlgeschlagen: ${(verifyErr as Error).message}`;
+        return;
+      }
+
+      savedDraft = created;
+      actionSuccess = 'Entwurf gespeichert und an Dorfkönige gesendet.';
+      subscribeToUpdates(created.id);
+      bajourDrafts.startPolling();
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      sendLoading = false;
+    }
+  }
+
+  async function handleResendVerification(): Promise<void> {
+    if (!savedDraft) return;
+    sendLoading = true;
+    actionError = '';
+    actionSuccess = null;
+
+    try {
+      await bajourDrafts.sendVerification(savedDraft.id);
+      actionSuccess = 'Verifizierung erneut gesendet.';
+      subscribeToUpdates(savedDraft.id);
+      bajourDrafts.startPolling();
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      sendLoading = false;
+    }
+  }
+
+  async function handleDelete(): Promise<void> {
+    if (!savedDraft) return;
+    deleteLoading = true;
+    actionError = '';
+    actionSuccess = null;
+
+    try {
+      await bajourDrafts.delete(savedDraft.id);
+      savedDraft = null;
+      actionSuccess = 'Entwurf gelöscht.';
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      deleteLoading = false;
+    }
+  }
+
+  function handleExport(): void {
+    if (!savedDraft && !draft) return;
+    actionError = '';
+    actionSuccess = null;
+
+    const text = savedDraft
+      ? savedDraft.body
+      : (draft!.title ? `# ${draft!.title}\n\n` : '') + draftToMarkdown(draft!);
+
+    const title = savedDraft?.title || draft?.title || 'entwurf';
+    const filename = `${title.replace(/[^a-zA-Z0-9äöüÄÖÜß\- ]/g, '').replace(/\s+/g, '-').toLowerCase()}.md`;
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    actionSuccess = 'Markdown heruntergeladen.';
+  }
+
+  async function handleSendToMailchimp(): Promise<void> {
+    mailchimpLoading = true;
+    actionError = '';
+    actionSuccess = null;
+
+    try {
+      const result = await bajourDrafts.sendToMailchimp();
+      actionSuccess = `An Mailchimp gesendet (${result.village_count} Dörfer).`;
+    } catch (err) {
+      actionError = (err as Error).message;
+    } finally {
+      mailchimpLoading = false;
+    }
+  }
+
+  function handleRegenerate(): void {
     const prompt = regenPrompt.trim() || null;
     onRegenerate(prompt);
   }
@@ -109,74 +348,95 @@
 
   <!-- Panel -->
   <div class="slide-over" transition:fly={{ x: 400, duration: 300 }} use:focusTrap role="dialog" aria-modal="true" aria-label="Entwurf">
-    <!-- Header -->
-    <div class="panel-header">
-      <h2>Entwurf</h2>
-      <div class="header-actions">
-        {#if draft && !isGenerating && !generationError}
-          <div class="action-group">
-            <button
-              class="header-action-btn regen-toggle-btn"
-              class:active={showRegenPrompt}
-              onclick={() => showRegenPrompt = !showRegenPrompt}
-              type="button"
-            >
-              <PenTool size={12} />
-              {#if showRegenPrompt}
-                <ChevronUp size={12} />
-              {:else}
-                <ChevronDown size={12} />
-              {/if}
-            </button>
-            <button class="header-action-btn export-btn" disabled>
-              <Download size={12} />
-              Export
-            </button>
-          </div>
-        {/if}
-        <button class="close-btn" onclick={onClose} aria-label="Panel schließen">
-          <X size={20} />
-        </button>
-      </div>
-    </div>
-
-    <!-- Regen drawer (collapsible below header) -->
-    {#if showRegenPrompt && draft}
-      <DraftPromptEditor
-        {regenPrompt}
-        onpromptchange={(v) => { regenPrompt = v; }}
-        onreset={() => { regenPrompt = ''; }}
-        onregenerate={saveAndRegenerate}
-      />
-    {/if}
-
-    <!-- Body -->
-    <div class="panel-body">
-      {#if isGenerating}
-        <div class="progress-container">
-          <ProgressIndicator
-            progress={Math.round(generateProgress)}
-            message="Entwurf wird erstellt..."
-            state={generateProgressState}
-            hintText={selectedCount !== 1
-              ? `${selectedCount} Quellen werden analysiert...`
-              : '1 Quelle wird analysiert...'}
-          />
-        </div>
-      {:else if generationError}
-        <div class="state-centered error">
-          <AlertCircle size={24} />
-          <h3>Erstellung fehlgeschlagen</h3>
-          <p>{generationError}</p>
-          <button class="retry-btn" onclick={onRetry}>
-            <RefreshCw size={14} />
-            Erneut versuchen
+    {#if isZeroState}
+      <!-- ═══ ZERO STATE: full-panel draft list with filter ═══ -->
+      <div class="zero-state-header">
+        <LocationAutocomplete
+          value={locationFilter}
+          onselect={(loc) => { locationFilter = loc.city; }}
+          placeholder="Entwürfe filtern..."
+        />
+        {#if locationFilter}
+          <button class="clear-filter" onclick={() => { locationFilter = ''; }} type="button">
+            Alle anzeigen
           </button>
-        </div>
-      {:else if draft}
-        <DraftContent {draft} />
+        {/if}
+      </div>
+      <div class="zero-state-body">
+        <DraftList
+          drafts={filteredDrafts}
+          onselect={(selectedDraft) => { savedDraft = selectedDraft; showDraftList = false; actionError = ''; actionSuccess = null; }}
+        />
+      </div>
+    {:else}
+      <!-- ═══ DRAFT STATE: toggle overlay + content ═══ -->
+      <DraftListPanel
+        drafts={$bajourDrafts.drafts}
+        activeDraftId={savedDraft?.id ?? null}
+        show={showDraftList}
+        ontoggle={() => showDraftList = !showDraftList}
+        onselect={(selectedDraft) => {
+          savedDraft = selectedDraft;
+          showDraftList = false;
+          actionError = '';
+          actionSuccess = null;
+        }}
+      />
+
+      <!-- Body: content-first layout -->
+      <div class="panel-body">
+        {#if isGenerating}
+          <DraftGenerating
+            {isGenerating}
+            {generationError}
+            {progressMessage}
+            {selectedCount}
+          />
+        {:else if generationError}
+          <DraftError error={generationError} onretry={onRetry} />
+        {:else if savedDraft}
+          <div class="meta-line">
+            <span class="village-pill">{savedDraft.village_name}</span>
+            <VerificationBadge status={savedDraft.verification_status} />
+          </div>
+          <DraftContent draft={parseSavedDraftBody(savedDraft)} />
+        {:else if draft}
+          {#if villageName}
+            <div class="meta-line">
+              <span class="village-pill">{villageName}</span>
+            </div>
+          {/if}
+          <DraftContent {draft} />
+        {/if}
+      </div>
+
+      <!-- Sticky action footer -->
+      {#if hasContent && !isGenerating && !generationError}
+        <DraftActions
+          {savedDraft}
+          hasUnsavedDraft={!!draft}
+          {canSave}
+          {sendLoading}
+          {deleteLoading}
+          {mailchimpLoading}
+          {statusLoading}
+          {actionError}
+          {actionSuccess}
+          {showRegenPrompt}
+          {regenPrompt}
+          onsavesend={handleSaveSend}
+          onresendverification={handleResendVerification}
+          ondelete={handleDelete}
+          onexport={handleExport}
+          onsendmailchimp={handleSendToMailchimp}
+          onstatusoverride={handleStatusOverride}
+          ontogglregen={() => showRegenPrompt = !showRegenPrompt}
+          onregenpromptchange={(v) => { regenPrompt = v; }}
+          onregenreset={() => { regenPrompt = ''; }}
+          onregenerate={handleRegenerate}
+        />
       {/if}
-    </div>
+    {/if}
   </div>
 {/if}
 
@@ -203,140 +463,61 @@
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   }
 
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+  /* ── ZERO STATE ── */
+  .zero-state-header {
     flex-shrink: 0;
-  }
-
-  .panel-header h2 {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text);
-    margin: 0;
-  }
-
-  .header-actions {
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
     display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  .action-group {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-  }
-
-  .header-action-btn {
-    display: flex;
-    align-items: center;
-    height: 1.625rem;
-    padding: 0 0.625rem;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    line-height: 1;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-base);
-  }
-
-  .export-btn {
-    gap: 0.375rem;
-    color: var(--color-primary);
-    border-color: rgba(234, 114, 110, 0.3);
-  }
-
-  .export-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .regen-toggle-btn {
-    gap: 0.25rem;
-    color: var(--color-text-muted);
-  }
-
-  .regen-toggle-btn:hover {
-    background: var(--color-background);
-    color: var(--color-text);
-  }
-
-  .regen-toggle-btn.active {
-    background: rgba(234, 114, 110, 0.1);
-    border-color: rgba(234, 114, 110, 0.3);
-    color: var(--color-primary);
-  }
-
-  .close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: transparent;
+  .clear-filter {
+    align-self: flex-start;
+    background: none;
     border: none;
-    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: all var(--transition-base);
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
-  .close-btn:hover {
-    background: var(--color-background);
+  .clear-filter:hover {
     color: var(--color-text);
   }
 
+  .zero-state-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
+  }
+
+  /* ── DRAFT STATE ── */
   .panel-body {
     flex: 1;
     overflow-y: auto;
   }
 
-  .state-centered {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
-    text-align: center;
-    padding: 1.5rem;
-  }
-
-  .progress-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 300px;
-    padding: 2rem 2.5rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .state-centered.error { color: var(--color-danger-dark); }
-  .state-centered.error h3 { color: var(--color-danger-dark); margin-top: 0.75rem; font-size: var(--text-lg); font-weight: 600; }
-  .state-centered.error p { margin: 0.25rem 0 1rem 0; font-size: var(--text-base); color: var(--color-text-muted); }
-
-  .retry-btn {
+  .meta-line {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: var(--spacing-sm) var(--spacing-md);
+    gap: 0.5rem;
+    padding: var(--spacing-md) 2.5rem 0;
+  }
+
+  .village-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1875rem 0.75rem;
     font-size: var(--text-base-sm);
-    font-weight: 500;
-    color: var(--color-danger-dark);
-    background: var(--color-danger-surface);
-    border: 1px solid var(--color-danger-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
   }
-
-  .retry-btn:hover { background: var(--color-status-error-bg); }
 
   @media (max-width: 768px) {
     .slide-over {

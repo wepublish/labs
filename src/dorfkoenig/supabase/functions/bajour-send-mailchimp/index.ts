@@ -8,7 +8,6 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import mailchimp from 'npm:@mailchimp/mailchimp_marketing@3.0.80';
-import { TEMPLATE_HTML } from './template.ts';
 
 const MAILCHIMP_API_KEY = Deno.env.get('MAILCHIMP_API_KEY')!;
 const MAILCHIMP_SERVER = Deno.env.get('MAILCHIMP_SERVER')!;
@@ -80,8 +79,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Use embedded template HTML (getContent returns degraded 7k HTML, see docs/MAILCHIMP.md)
-    const templateHtml = TEMPLATE_HTML;
+    // 4. Use the template's HTML content
+    const campaignId = templateCampaign.id;
+    const templateContent = await mailchimp.campaigns.getContent(campaignId);
+    const templateHtml = templateContent.html || '';
 
     // 5. Build a map of village_id → draft (use most recent per village)
     const villageDrafts = new Map<string, { village_name: string; body: string }>();
@@ -163,11 +164,12 @@ Deno.serve(async (req) => {
         village_count: replacedCount,
       },
     });
-  } catch (error) {
-    console.error('bajour-send-mailchimp error:', error);
-    if (error.message === 'Authentication required') {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('bajour-send-mailchimp error:', message);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message || 'Interner Fehler', 500);
+    return errorResponse(message || 'Interner Fehler', 500);
   }
 });
