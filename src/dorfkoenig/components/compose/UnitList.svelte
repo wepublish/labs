@@ -8,9 +8,10 @@
     units: InformationUnit[];
     selected: Set<string>;
     ontoggle: (id: string) => void;
+    dimmed?: boolean;
   }
 
-  let { units, selected, ontoggle }: Props = $props();
+  let { units, selected, ontoggle, dimmed = false }: Props = $props();
 
   let truncatedIds = $state(new Set<string>());
   let statementRefs = new Map<string, HTMLElement>();
@@ -54,7 +55,7 @@
     description="Es wurden keine Informationseinheiten gefunden."
   />
 {:else}
-  <div class="units-list">
+  <div class="units-list" class:dimmed>
     {#each units as unit (unit.id)}
       {@const isSelected = selected.has(unit.id)}
       <button
@@ -123,6 +124,11 @@
 {/if}
 
 <style>
+  .units-list.dimmed {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   .units-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

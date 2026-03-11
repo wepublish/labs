@@ -4,7 +4,7 @@
   import { showScoutModal, showUploadModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
-  import { Radar, Newspaper, Plus, Upload, FileEdit, LogOut } from 'lucide-svelte';
+  import { Radar, Newspaper, Plus, Upload, LogOut } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -64,13 +64,6 @@
         <Newspaper size={16} />
         <span>Feed</span>
       </a>
-
-      {#if import.meta.env.VITE_FEATURE_BAJOUR === 'true'}
-        <a href="#/entwurf" class:active={currentHash === '#/entwurf'}>
-          <FileEdit size={16} />
-          <span>Entwurf</span>
-        </a>
-      {/if}
 
       <button class="new-scout-btn" onclick={handleNewScout}>
         <Plus size={15} strokeWidth={2.5} />

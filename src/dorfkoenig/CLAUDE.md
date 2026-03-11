@@ -43,7 +43,7 @@ src/dorfkoenig/
 │   ├── utils.ts           # Utility functions
 │   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
 │   ├── components/
-│   │   ├── DraftPanel.svelte        # 3-step wizard (village → generate → preview/send) + sidebar
+│   │   ├── DraftPanel.svelte        # Legacy 3-step wizard (dead code, kept for reference)
 │   │   ├── DraftList.svelte         # List of existing drafts
 │   │   ├── DraftPreview.svelte      # Generated draft preview
 │   │   ├── StepVillageSelect.svelte # Step 1: village picker
@@ -162,8 +162,7 @@ Hash-based routing (required for GitHub Pages + iframe embedding):
 | `#/manage` or `#/` | Manage | - |
 | `#/scout/{id}` | ScoutDetail | `scoutId` |
 | `#/history` | History | - |
-| `#/feed` | Feed (ComposePanel) | - |
-| `#/entwurf` | DraftPanel (Bajour, feature-flagged) | - |
+| `#/feed` | Feed (ComposePanel + DraftSlideOver) | - |
 
 Auth gate: shows `Loading` while checking, error message if `$auth.error`, `Login` if no user, `Layout > Route` if authenticated.
 
@@ -200,7 +199,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 ### Frontend (`.env.local`)
 - `VITE_SUPABASE_URL` -- Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` -- Supabase anon key
-- `VITE_FEATURE_BAJOUR` -- Set to `true` to enable Bajour village newsletter feature (`#/entwurf` route)
+- `VITE_FEATURE_BAJOUR` -- Set to `true` to enable Bajour village newsletter feature (DraftSlideOver in Feed panel)
 
 ### Edge Function Secrets (Dashboard > Settings > Edge Functions)
 - `OPENROUTER_API_KEY` -- LLM via OpenRouter (model: `openai/gpt-4o-mini`)

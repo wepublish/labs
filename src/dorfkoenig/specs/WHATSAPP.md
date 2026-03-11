@@ -130,7 +130,7 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 
 ### Local dev flow
 
-1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Entwurf, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the template (with buttons) followed by the draft text.
+1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Feed, open the Bajour draft slide-over, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the template (with buttons) followed by the draft text.
 
 2. **Webhook response** — Tap "Bestätigt" or "Abgelehnt" on a dev phone. The draft's `verification_status` should update in the UI within 30 seconds (polling interval). Check Supabase logs for webhook processing.
 

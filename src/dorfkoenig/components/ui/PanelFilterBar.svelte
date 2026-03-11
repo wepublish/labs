@@ -126,14 +126,15 @@
           {/if}
         </div>
       {/if}
+
+      {#if toolbar}
+        <div class="filter-divider toolbar-divider"></div>
+        <div class="toolbar-inline">
+          {@render toolbar()}
+        </div>
+      {/if}
     {/if}
   </div>
-
-  {#if toolbar}
-    <div class="toolbar-row">
-      {@render toolbar()}
-    </div>
-  {/if}
 </div>
 
 <style>
@@ -208,10 +209,15 @@
     color: var(--color-text);
   }
 
-  .toolbar-row {
+  .toolbar-divider {
+    margin-left: auto;
+  }
+
+  .toolbar-inline {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-shrink: 0;
   }
 
 </style>

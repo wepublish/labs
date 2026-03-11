@@ -58,8 +58,8 @@ export function initAuth(urlToken?: string | null, inIframe: boolean = false) {
     return;
   }
 
-  // Priority 4: Not in iframe = show login page (local dev)
-  sharedAuth.setLoading(false);
+  // Priority 4: No token, no session = not authenticated
+  sharedAuth.setError('Nicht authentifiziert. Bitte mit gültigem Token zugreifen.');
 }
 
 /**
