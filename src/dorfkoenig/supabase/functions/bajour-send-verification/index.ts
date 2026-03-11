@@ -6,7 +6,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
-import { VILLAGE_CORRESPONDENTS } from '../_shared/correspondents.ts';
+import { getCorrespondentsForVillage } from '../_shared/correspondents.ts';
 
 // WhatsApp Business API credentials
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!;
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     // Look up correspondents for the draft's village
-    const correspondents = VILLAGE_CORRESPONDENTS[draft.village_id] || [];
+    const correspondents = await getCorrespondentsForVillage(draft.village_id);
 
     if (correspondents.length === 0) {
       return errorResponse(
@@ -95,8 +95,10 @@ Deno.serve(async (req) => {
     for (const correspondent of correspondents) {
       // Message 1: Template with verification buttons (sent first — fails
       // early if template not approved, before any text is delivered)
+      const phoneWithPlus = '+' + correspondent.phone;
+
       const templateResult = await sendWhatsAppMessage({
-        to: correspondent.phone,
+        to: phoneWithPlus,
         type: 'template',
         template: {
           name: 'bajour_draft_verification',
@@ -113,7 +115,7 @@ Deno.serve(async (req) => {
 
       // Message 2: Full draft text (only sent if template succeeded)
       const textResult = await sendWhatsAppMessage({
-        to: correspondent.phone,
+        to: phoneWithPlus,
         type: 'text',
         text: { body: draft.body },
       });

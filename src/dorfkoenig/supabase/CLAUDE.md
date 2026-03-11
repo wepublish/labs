@@ -71,6 +71,12 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
 - PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (TEXT[]), `custom_system_prompt`, `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (TEXT[])
 
+**`bajour_correspondents`** -- Village correspondents for WhatsApp verification
+- PK: `id` (UUID), `village_id` (TEXT), `name` (TEXT), `phone` (TEXT, without '+' prefix), `is_active` (BOOLEAN), `created_at`, `updated_at`
+- Phone format: no '+' prefix (matches Meta webhook format). WhatsApp send prepends '+'.
+- Unique constraint: (village_id, phone). Phone format check: `^[1-9][0-9]{6,14}$`
+- Managed via Supabase table editor or SQL. No redeployment needed.
+
 ### RLS Policies
 
 All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`:
@@ -78,6 +84,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 - **scout_executions**: user SELECT on own rows, service_role ALL
 - **information_units**: user SELECT + UPDATE on own rows, service_role ALL
 - **bajour_drafts**: user CRUD on own rows, service_role ALL
+- **bajour_correspondents**: service_role ALL, authenticated users SELECT (active only)
 
 ## Critical Architecture Notes
 
