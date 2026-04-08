@@ -116,19 +116,4 @@ describe('bajourApi', () => {
     );
   });
 
-  it('sendToMailchimp() calls POST /bajour-send-mailchimp', async () => {
-    const result = { campaign_id: 'camp-1', village_count: 3 };
-    mockFetch.mockResolvedValue(createMockResponse({ data: result }));
-
-    const response = await bajourApi.sendToMailchimp();
-
-    expect(response).toEqual(result);
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://test.supabase.co/functions/v1/bajour-send-mailchimp',
-      expect.objectContaining({
-        method: 'POST',
-        body: '{}',
-      })
-    );
-  });
 });

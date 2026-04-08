@@ -216,10 +216,85 @@ export async function doubleProbe(
   return { provider: 'firecrawl_plain', scrapeResult: call1 };
 }
 
+/**
+ * Discover all URLs on a site using Firecrawl Map API (v1).
+ * Fast URL discovery without scraping page content.
+ */
+export async function mapSite(url: string, limit = 200): Promise<string[]> {
+  try {
+    const response = await fetch('https://api.firecrawl.dev/v1/map', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+      },
+      body: JSON.stringify({ url, limit, includeSubdomains: true }),
+    });
+
+    if (!response.ok) {
+      console.error(`mapSite: Map API failed for ${url}: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.links || [];
+  } catch (error) {
+    console.error(`mapSite: failed for ${url}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Scrape a URL and return raw HTML (for link extraction).
+ * Uses Firecrawl v2/scrape with formats: ['rawHtml'].
+ */
+export async function scrapeRawHtml(
+  url: string,
+  timeout = 60000,
+): Promise<{ success: boolean; html: string | null; error: string | null }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(`${FIRECRAWL_BASE_URL}/scrape`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+      },
+      body: JSON.stringify({ url, formats: ['rawHtml'] }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response.text();
+      return { success: false, html: null, error: `Firecrawl API error: ${response.status} - ${error}` };
+    }
+
+    const data: ScrapeResponse = await response.json();
+    if (!data.success || !data.data) {
+      return { success: false, html: null, error: data.error || 'Unknown scraping error' };
+    }
+
+    return {
+      success: true,
+      html: (data.data as Record<string, unknown>).rawHtml as string || null,
+      error: null,
+    };
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    return { success: false, html: null, error: err.message };
+  }
+}
+
 // Export as module
 export const firecrawl = {
   scrape,
   getDomain,
   computeContentHash,
   doubleProbe,
+  mapSite,
+  scrapeRawHtml,
 };

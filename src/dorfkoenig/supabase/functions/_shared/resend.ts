@@ -230,8 +230,60 @@ export function buildScoutAlertEmail(params: {
 </html>`;
 }
 
+/**
+ * Build civic promise digest email HTML (German, accountability-framed).
+ */
+export function buildCivicPromiseDigestEmail(params: {
+  scoutName: string;
+  promises: { promise_text: string; due_date: string | null; source_url: string | null }[];
+}): string {
+  const { scoutName, promises } = params;
+
+  const promiseRows = promises.map((p) => {
+    const dueLabel = p.due_date ? `<strong>Frist:</strong> ${escapeHtml(p.due_date)}` : '';
+    const sourceLink = p.source_url
+      ? `<a href="${sanitizeUrl(p.source_url)}" style="color: #ea726e; text-decoration: none; font-size: 13px;">Quelldokument</a>`
+      : '';
+    return `
+      <div style="padding: 12px 16px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; margin-bottom: 8px;">
+        <p style="margin: 0 0 6px; font-size: 15px; color: #1c1917; font-weight: 500;">${escapeHtml(p.promise_text)}</p>
+        <div style="display: flex; gap: 12px; font-size: 13px; color: #78716c;">
+          ${dueLabel}${dueLabel && sourceLink ? ' · ' : ''}${sourceLink}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'DM Sans', -apple-system, sans-serif; line-height: 1.6; color: #1c1917; margin: 0; padding: 0; background-color: #fafaf9;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+    <div style="background: #d97706; color: white; padding: 32px 24px; text-align: center;">
+      <h1 style="margin: 0; font-family: 'Crimson Pro', Georgia, serif; font-size: 22px; font-weight: 600;">Versprechen zur Überprüfung</h1>
+      <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">${escapeHtml(scoutName)}</p>
+    </div>
+    <div style="padding: 24px;">
+      <p style="font-size: 15px; color: #57534e; margin: 0 0 20px;">
+        Die folgenden Versprechen nähern sich ihrer Frist. Prüfen Sie, ob sie eingehalten wurden.
+      </p>
+      ${promiseRows}
+    </div>
+    <div style="padding: 24px; text-align: center; color: #a8a29e; font-size: 13px; border-top: 1px solid #e7e5e4;">
+      <p style="margin: 0;">Diese E-Mail wurde automatisch von Dorfkönig gesendet.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 // Export as module
 export const resend = {
   sendEmail,
   buildScoutAlertEmail,
+  buildCivicPromiseDigestEmail,
 };

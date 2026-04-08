@@ -184,6 +184,19 @@ export const composeApi = {
   }) => api.post<import('./types').Draft>('compose/generate', params),
 };
 
+export const civicApi = {
+  discover: (root_domain: string) =>
+    api.post<import('./types').CandidateUrl[]>('civic-discover', { root_domain }),
+  test: (tracked_urls: string[], criteria?: string) =>
+    api.post<import('./types').CivicTestResult>('civic-test', { tracked_urls, criteria }),
+  promises: {
+    list: (scout_id: string) =>
+      api.get<import('./types').Promise[]>(`civic-promises?scout_id=${scout_id}`),
+    updateStatus: (id: string, status: string) =>
+      api.patch<import('./types').Promise>(`civic-promises/${id}`, { status }),
+  },
+};
+
 export const executionsApi = {
   list: (params?: { scout_id?: string; status?: string; limit?: number; offset?: number }) => {
     const searchParams = new URLSearchParams();

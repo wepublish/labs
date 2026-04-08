@@ -105,7 +105,6 @@
   let savedDraft = $state<BajourDraft | null>(null);
   let sendLoading = $state(false);
   let deleteLoading = $state(false);
-  let mailchimpLoading = $state(false);
   let statusLoading = $state(false);
   let actionError = $state('');
   let actionSuccess = $state<string | null>(null);
@@ -181,7 +180,6 @@
       publicationDate = new Date().toISOString().split('T')[0];
       sendLoading = false;
       deleteLoading = false;
-      mailchimpLoading = false;
       statusLoading = false;
       actionError = '';
       actionSuccess = null;
@@ -325,21 +323,6 @@
     actionSuccess = 'Markdown heruntergeladen.';
   }
 
-  async function handleSendToMailchimp(): Promise<void> {
-    mailchimpLoading = true;
-    actionError = '';
-    actionSuccess = null;
-
-    try {
-      const result = await bajourDrafts.sendToMailchimp();
-      actionSuccess = `An Mailchimp gesendet (${result.village_count} Dörfer).`;
-    } catch (err) {
-      actionError = (err as Error).message;
-    } finally {
-      mailchimpLoading = false;
-    }
-  }
-
   function handleRegenerate(): void {
     const prompt = regenPrompt.trim() || null;
     onRegenerate(prompt);
@@ -456,7 +439,6 @@
           {canSave}
           {sendLoading}
           {deleteLoading}
-          {mailchimpLoading}
           {statusLoading}
           {actionError}
           {actionSuccess}
@@ -466,7 +448,6 @@
           onresendverification={handleResendVerification}
           ondelete={handleDelete}
           onexport={handleExport}
-          onsendmailchimp={handleSendToMailchimp}
           onstatusoverride={handleStatusOverride}
           ontogglregen={() => showRegenPrompt = !showRegenPrompt}
           onregenpromptchange={(v) => { regenPrompt = v; }}

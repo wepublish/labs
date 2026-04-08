@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PenTool, Download, Mail, Trash2, Loader2, Check, MessageCircle } from 'lucide-svelte';
+  import { PenTool, Download, Trash2, Loader2, Check, MessageCircle } from 'lucide-svelte';
   import VerificationToggle from './VerificationToggle.svelte';
   import DraftPromptEditor from './DraftPromptEditor.svelte';
   import type { VerificationStatus } from '../../bajour/types';
@@ -11,7 +11,6 @@
     canSave: boolean;
     sendLoading: boolean;
     deleteLoading: boolean;
-    mailchimpLoading: boolean;
     statusLoading: boolean;
     actionError: string;
     actionSuccess: string | null;
@@ -21,7 +20,6 @@
     onresendverification: () => void;
     ondelete: () => void;
     onexport: () => void;
-    onsendmailchimp: () => void;
     onstatusoverride: (status: VerificationStatus) => void;
     ontogglregen: () => void;
     onregenpromptchange: (prompt: string) => void;
@@ -35,7 +33,6 @@
     canSave,
     sendLoading,
     deleteLoading,
-    mailchimpLoading,
     statusLoading,
     actionError,
     actionSuccess,
@@ -45,7 +42,6 @@
     onresendverification,
     ondelete,
     onexport,
-    onsendmailchimp,
     onstatusoverride,
     ontogglregen,
     onregenpromptchange,
@@ -132,11 +128,9 @@
     </div>
   </div>
 
-  <!-- Stepped send buttons -->
+  <!-- WhatsApp verification -->
   <div class="send-steps">
-    <!-- Step 1: WhatsApp -->
     <div class="send-step" class:done={whatsappSent} class:confirmed={whatsappConfirmed}>
-      <span class="step-number">1</span>
       {#if whatsappConfirmed}
         <span class="step-status-icon confirmed"><Check size={14} strokeWidth={3} /></span>
         <span class="step-label">Bestätigt durch Dorfkönige</span>
@@ -187,24 +181,6 @@
       {/if}
     </div>
 
-    <!-- Step 2: Mailchimp -->
-    <div class="send-step" class:disabled={!whatsappConfirmed}>
-      <span class="step-number">2</span>
-      <button
-        class="step-btn step-btn-mailchimp"
-        onclick={onsendmailchimp}
-        disabled={mailchimpLoading || !whatsappConfirmed}
-        title={!whatsappConfirmed ? 'Mindestens ein bestätigter Entwurf nötig' : ''}
-        type="button"
-      >
-        {#if mailchimpLoading}
-          <Loader2 size={14} class="spin" />
-        {:else}
-          <Mail size={14} />
-        {/if}
-        An Mailchimp senden
-      </button>
-    </div>
   </div>
 </div>
 
@@ -412,24 +388,6 @@
   .step-btn-resend:hover:not(:disabled) {
     color: var(--color-text);
     background: var(--color-background);
-  }
-
-  .step-btn-mailchimp {
-    color: white;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-    box-shadow: 0 1px 3px rgba(234, 114, 110, 0.3);
-  }
-
-  .step-btn-mailchimp:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 114, 110, 0.35);
-  }
-
-  .step-btn-mailchimp:disabled {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-light);
-    box-shadow: none;
   }
 
   @media (max-width: 768px) {

@@ -7,3 +7,6 @@ export const showScoutModal = writable(false);
 
 /** Controls the UploadModal (manual upload wizard) open/close state. */
 export const showUploadModal = writable(false);
+
+/** Controls the CivicScoutModal (civic scout wizard) open/close state. */
+export const showCivicScoutModal = writable(false);

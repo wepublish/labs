@@ -58,11 +58,13 @@ export function requireUserId(req: Request): string {
 }
 
 // Database types
+export type ScoutType = 'web' | 'civic';
+
 export interface Scout {
   id: string;
   user_id: string;
   name: string;
-  url: string;
+  url: string | null;
   criteria: string;
   location: Location | null;
   frequency: 'daily' | 'weekly' | 'monthly';
@@ -73,6 +75,10 @@ export interface Scout {
   topic: string | null;
   provider: string | null;
   content_hash: string | null;
+  scout_type: ScoutType;
+  root_domain: string | null;
+  tracked_urls: string[] | null;
+  processed_pdf_urls: string[] | null;
   created_at: string;
   updated_at: string;
 }

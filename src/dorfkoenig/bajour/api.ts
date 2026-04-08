@@ -40,8 +40,4 @@ export const bajourApi = {
   /** Send draft to village correspondents via WhatsApp for verification. */
   sendVerification: (draftId: string) =>
     api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
-
-  /** Aggregate all verified drafts into a Mailchimp campaign. */
-  sendToMailchimp: () =>
-    api.post<{ campaign_id: string; village_count: number }>('bajour-send-mailchimp', {}),
 };

@@ -159,47 +159,62 @@ async function createScout(
   req: Request
 ) {
   const body = await req.json();
+  const scoutType = body.scout_type || 'web';
 
   // Validate required fields
   if (!body.name?.trim()) {
     return errorResponse('Name ist erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (!body.url?.trim()) {
-    return errorResponse('URL ist erforderlich', 400, 'VALIDATION_ERROR');
-  }
-  // criteria can be empty (criteria_mode === 'any' means monitor all changes)
-  if (body.criteria === undefined || body.criteria === null) {
-    return errorResponse('Kriterien-Feld ist erforderlich', 400, 'VALIDATION_ERROR');
-  }
   if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) {
     return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
   }
 
-  // Validate URL format
-  try {
-    new URL(body.url);
-  } catch {
-    return errorResponse('Ungültige URL', 400, 'VALIDATION_ERROR');
+  if (scoutType === 'civic') {
+    // Civic scout validation
+    if (!body.root_domain?.trim()) {
+      return errorResponse('Domain ist erforderlich', 400, 'VALIDATION_ERROR');
+    }
+  } else {
+    // Web scout validation
+    if (!body.url?.trim()) {
+      return errorResponse('URL ist erforderlich', 400, 'VALIDATION_ERROR');
+    }
+    if (body.criteria === undefined || body.criteria === null) {
+      return errorResponse('Kriterien-Feld ist erforderlich', 400, 'VALIDATION_ERROR');
+    }
+    try {
+      new URL(body.url);
+    } catch {
+      return errorResponse('Ungültige URL', 400, 'VALIDATION_ERROR');
+    }
+    if (!body.location && !body.topic?.trim()) {
+      return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
+    }
   }
 
-  // Require at least location or topic
-  if (!body.location && !body.topic?.trim()) {
-    return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
+  const insertData: Record<string, unknown> = {
+    user_id: userId,
+    name: body.name.trim(),
+    criteria: (body.criteria || '').trim(),
+    location: body.location || null,
+    frequency: body.frequency,
+    notification_email: body.notification_email?.trim() || null,
+    is_active: body.is_active ?? true,
+    topic: body.topic?.trim() || null,
+    scout_type: scoutType,
+  };
+
+  if (scoutType === 'civic') {
+    insertData.root_domain = body.root_domain.trim();
+    insertData.tracked_urls = body.tracked_urls || [];
+    insertData.url = null;
+  } else {
+    insertData.url = body.url.trim();
   }
 
   const { data, error } = await supabase
     .from('scouts')
-    .insert({
-      user_id: userId,
-      name: body.name.trim(),
-      url: body.url.trim(),
-      criteria: (body.criteria || '').trim(),
-      location: body.location || null,
-      frequency: body.frequency,
-      notification_email: body.notification_email?.trim() || null,
-      is_active: body.is_active ?? true,
-      topic: body.topic?.trim() || null,
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -256,6 +271,10 @@ async function updateScout(
   if (body.content_hash !== undefined) {
     updates.content_hash = body.content_hash;
   }
+
+  // Civic-specific fields
+  if (body.root_domain !== undefined) updates.root_domain = body.root_domain;
+  if (body.tracked_urls !== undefined) updates.tracked_urls = body.tracked_urls;
 
   // Reset provider/content_hash when URL changes (re-test required)
   if (body.url !== undefined) {
@@ -359,11 +378,12 @@ async function runScout(
     return errorResponse('Fehler beim Starten der Ausführung', 500);
   }
 
-  // Trigger execute-scout function asynchronously
+  // Trigger execution function asynchronously (route by scout type)
   const projectUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const executeFn = scout.scout_type === 'civic' ? 'execute-civic-scout' : 'execute-scout';
 
-  fetch(`${projectUrl}/functions/v1/execute-scout`, {
+  fetch(`${projectUrl}/functions/v1/${executeFn}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${serviceKey}`,

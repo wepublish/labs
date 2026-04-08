@@ -7,7 +7,6 @@ vi.mock('../api', () => ({
     createDraft: vi.fn(),
     sendVerification: vi.fn(),
     updateDraft: vi.fn(),
-    sendToMailchimp: vi.fn(),
   },
 }));
 
@@ -181,24 +180,6 @@ describe('bajourDrafts store', () => {
       vi.mocked(bajourApi.updateDraft).mockRejectedValue(new Error('Netzwerkfehler'));
 
       await expect(bajourDrafts.updateVerificationStatus('draft-1', 'abgelehnt')).rejects.toThrow('Netzwerkfehler');
-    });
-  });
-
-  describe('sendToMailchimp', () => {
-    it('delegates to bajourApi.sendToMailchimp and returns result', async () => {
-      const result = { campaign_id: 'camp-1', village_count: 3 };
-      vi.mocked(bajourApi.sendToMailchimp).mockResolvedValue(result);
-
-      const response = await bajourDrafts.sendToMailchimp();
-
-      expect(response).toEqual(result);
-      expect(bajourApi.sendToMailchimp).toHaveBeenCalled();
-    });
-
-    it('propagates API errors', async () => {
-      vi.mocked(bajourApi.sendToMailchimp).mockRejectedValue(new Error('Mailchimp-Fehler'));
-
-      await expect(bajourDrafts.sendToMailchimp()).rejects.toThrow('Mailchimp-Fehler');
     });
   });
 

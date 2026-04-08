@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { auth, logout } from '../stores/auth';
-  import { showScoutModal, showUploadModal } from '../stores/ui';
+  import { showScoutModal, showUploadModal, showCivicScoutModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
-  import { Radar, Newspaper, Plus, LogOut } from 'lucide-svelte';
+  import CivicScoutModal from './civic/CivicScoutModal.svelte';
+  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -24,8 +25,25 @@
   // Display user name (falls back to ID for legacy sessions)
   let displayName = $derived($auth.user?.name ?? $auth.user?.id ?? '');
 
-  function handleNewScout() {
+  // Scout type popover
+  let showTypePopover = $state(false);
+
+  function handleNewScoutClick() {
+    showTypePopover = !showTypePopover;
+  }
+
+  function handleNewWebScout() {
+    showTypePopover = false;
     showScoutModal.set(true);
+  }
+
+  function handleNewCivicScout() {
+    showTypePopover = false;
+    showCivicScoutModal.set(true);
+  }
+
+  function closePopover() {
+    showTypePopover = false;
   }
 </script>
 
@@ -51,10 +69,33 @@
 
       <span class="nav-divider"></span>
 
-      <button class="btn-new-scout" onclick={handleNewScout}>
-        <Plus size={14} strokeWidth={2.5} />
-        <span>Neuer Scout</span>
-      </button>
+      <div class="new-scout-wrapper">
+        <button class="btn-new-scout" onclick={handleNewScoutClick}>
+          <Plus size={14} strokeWidth={2.5} />
+          <span>Neuer Scout</span>
+          <ChevronDown size={12} />
+        </button>
+        {#if showTypePopover}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="popover-backdrop" onclick={closePopover}></div>
+          <div class="type-popover">
+            <button class="popover-option" onclick={handleNewWebScout} type="button">
+              <Globe size={16} />
+              <div>
+                <span class="popover-label">Webseite überwachen</span>
+                <span class="popover-desc">URL auf Änderungen prüfen</span>
+              </div>
+            </button>
+            <button class="popover-option" onclick={handleNewCivicScout} type="button">
+              <Landmark size={16} />
+              <div>
+                <span class="popover-label">Gemeinderat verfolgen</span>
+                <span class="popover-desc">Ratsprotokolle nach Versprechen durchsuchen</span>
+              </div>
+            </button>
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- Center: Pill segment control (absolutely centered) -->
@@ -84,6 +125,7 @@
 
   <ScoutModal open={$showScoutModal} onclose={() => showScoutModal.set(false)} />
   <UploadModal open={$showUploadModal} onclose={() => showUploadModal.set(false)} />
+  <CivicScoutModal open={$showCivicScoutModal} onclose={() => showCivicScoutModal.set(false)} />
 </div>
 
 <style>
@@ -167,6 +209,70 @@
   .btn-new-scout:active {
     background: var(--color-primary-dark);
     transform: translateY(0);
+  }
+
+  /* Scout type popover */
+  .new-scout-wrapper {
+    position: relative;
+  }
+
+  .popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+  }
+
+  .type-popover {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    z-index: 100;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    padding: 0.375rem;
+    min-width: 16rem;
+  }
+
+  .popover-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.625rem 0.75rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-body);
+    transition: background var(--transition-base);
+    color: var(--color-text-muted);
+  }
+
+  .popover-option:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+  }
+
+  .popover-option :global(svg) { flex-shrink: 0; margin-top: 0.125rem; }
+
+  .popover-option div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+  }
+
+  .popover-label {
+    font-size: var(--text-base-sm);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .popover-desc {
+    font-size: var(--text-xs);
+    color: var(--color-text-light);
   }
 
   /* Center nav: pill segment control, absolutely centered */

@@ -88,13 +88,6 @@ function createBajourDraftsStore() {
     },
 
     /**
-     * Send all verified drafts to Mailchimp
-     */
-    async sendToMailchimp(): Promise<{ campaign_id: string; village_count: number }> {
-      return bajourApi.sendToMailchimp();
-    },
-
-    /**
      * Start polling for verification status updates (every 30s)
      */
     startPolling() {

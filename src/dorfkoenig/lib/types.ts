@@ -1,5 +1,7 @@
 // coJournalist-Lite TypeScript types
 
+export type ScoutType = 'web' | 'civic';
+
 export interface Location {
   city: string;
   state?: string;
@@ -13,7 +15,7 @@ export interface Scout {
   id: string;
   user_id: string;
   name: string;
-  url: string;
+  url: string | null;
   criteria: string;
   location: Location | null;
   topic?: string | null;
@@ -24,6 +26,9 @@ export interface Scout {
   notification_email: string | null;
   provider?: string | null;
   content_hash?: string | null;
+  scout_type: ScoutType;
+  root_domain?: string | null;
+  tracked_urls?: string[] | null;
   created_at: string;
   updated_at: string;
   // Last execution data (joined from scout_executions)
@@ -35,13 +40,16 @@ export interface Scout {
 
 export interface ScoutCreateInput {
   name: string;
-  url: string;
+  url?: string;
   criteria: string;
   location?: Location | null;
   topic?: string | null;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
   is_active?: boolean;
+  scout_type?: ScoutType;
+  root_domain?: string;
+  tracked_urls?: string[];
 }
 
 export interface ScoutUpdateInput {
@@ -55,6 +63,37 @@ export interface ScoutUpdateInput {
   is_active?: boolean;
   provider?: string | null;
   content_hash?: string | null;
+  root_domain?: string;
+  tracked_urls?: string[];
+}
+
+// Civic scout types
+export interface CandidateUrl {
+  url: string;
+  description: string;
+  confidence: number;
+}
+
+export interface CivicTestResult {
+  valid: boolean;
+  documents_found: number;
+  sample_promises: Promise[];
+  error?: string;
+}
+
+export interface Promise {
+  id: string;
+  scout_id: string;
+  promise_text: string;
+  context: string | null;
+  source_url: string | null;
+  source_title: string | null;
+  meeting_date: string | null;
+  due_date: string | null;
+  date_confidence: 'high' | 'medium' | 'low';
+  status: 'new' | 'in_progress' | 'fulfilled' | 'broken' | 'notified';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Execution {

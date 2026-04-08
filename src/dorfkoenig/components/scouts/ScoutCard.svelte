@@ -184,8 +184,8 @@
     <div class="card-detail">
       <dl class="detail-list">
         <div class="detail-row">
-          <dt>URL</dt>
-          <dd class="detail-url">{scout.url}</dd>
+          <dt>{scout.scout_type === 'civic' ? 'Domain' : 'URL'}</dt>
+          <dd class="detail-url">{scout.scout_type === 'civic' ? scout.root_domain : scout.url}</dd>
         </div>
 
         <div class="detail-row">
