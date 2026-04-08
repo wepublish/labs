@@ -600,6 +600,9 @@ CREATE TABLE bajour_drafts (
     selected_unit_ids UUID[] NOT NULL DEFAULT '{}',
     custom_system_prompt TEXT,
 
+    -- Publication scheduling
+    publication_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
     -- Verification workflow
     verification_status TEXT NOT NULL DEFAULT 'ausstehend'
       CHECK (verification_status IN ('ausstehend', 'bestätigt', 'abgelehnt')),
@@ -631,6 +634,7 @@ CREATE POLICY "Users can manage their own drafts"
 -- Indexes
 CREATE INDEX idx_bajour_drafts_user_id ON bajour_drafts(user_id);
 CREATE INDEX idx_bajour_drafts_village_id ON bajour_drafts(village_id);
+CREATE INDEX idx_bajour_drafts_publication_status ON bajour_drafts(publication_date, verification_status);
 ```
 
 ### resolve_bajour_timeouts

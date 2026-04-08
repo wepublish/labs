@@ -26,6 +26,7 @@ export interface BajourDraft {
   body: string;
   selected_unit_ids: string[];
   custom_system_prompt: string | null;
+  publication_date: string;
   verification_status: VerificationStatus;
   verification_responses: VerificationResponse[];
   verification_sent_at: string | null;

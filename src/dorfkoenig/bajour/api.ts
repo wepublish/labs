@@ -15,10 +15,11 @@ export const bajourApi = {
     body: string;
     selected_unit_ids: string[];
     custom_system_prompt?: string | null;
+    publication_date?: string;
   }) => api.post<BajourDraft>('bajour-drafts', data),
 
-  /** Update a draft's verification status (ausstehend/bestaetigt/abgelehnt). */
-  updateDraft: (draftId: string, data: { verification_status?: VerificationStatus }) =>
+  /** Update a draft's verification status or publication date. */
+  updateDraft: (draftId: string, data: { verification_status?: VerificationStatus; publication_date?: string }) =>
     api.patch<BajourDraft>(`bajour-drafts/${draftId}`, data),
 
   /** Delete a draft. */

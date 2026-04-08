@@ -48,6 +48,7 @@ function createBajourDraftsStore() {
       body: string;
       selected_unit_ids: string[];
       custom_system_prompt?: string | null;
+      publication_date?: string;
     }): Promise<BajourDraft> {
       const draft = await bajourApi.createDraft(data);
       update((s) => ({ ...s, drafts: [draft, ...s.drafts] }));

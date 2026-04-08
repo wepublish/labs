@@ -11,6 +11,7 @@
   import LocationAutocomplete from '../ui/LocationAutocomplete.svelte';
   import DraftList from './DraftList.svelte';
   import { bajourDrafts } from '../../bajour/store';
+  import { bajourApi } from '../../bajour/api';
   import { supabase } from '../../lib/supabase';
   import type { Draft } from '../../lib/types';
   import type { BajourDraft, VerificationStatus } from '../../bajour/types';
@@ -113,6 +114,7 @@
   let showRegenPrompt = $state(false);
   let regenPrompt = $state('');
   let locationFilter = $state('');
+  let publicationDate = $state(new Date().toISOString().split('T')[0]);
 
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -176,6 +178,7 @@
       showRegenPrompt = false;
       regenPrompt = '';
       locationFilter = '';
+      publicationDate = new Date().toISOString().split('T')[0];
       sendLoading = false;
       deleteLoading = false;
       mailchimpLoading = false;
@@ -195,6 +198,13 @@
     }
   });
 
+  // Sync publicationDate when a saved draft is loaded
+  $effect(() => {
+    if (savedDraft?.publication_date) {
+      publicationDate = savedDraft.publication_date;
+    }
+  });
+
   // --- Action handlers ---
 
   async function handleStatusOverride(status: VerificationStatus): Promise<void> {
@@ -211,6 +221,7 @@
           body: draftToMarkdown(draft),
           selected_unit_ids: unitIds,
           custom_system_prompt: _customPrompt || null,
+          publication_date: publicationDate,
         });
       }
       const updated = await bajourDrafts.updateVerificationStatus(savedDraft.id, status);
@@ -236,6 +247,7 @@
         body: draftToMarkdown(draft),
         selected_unit_ids: unitIds,
         custom_system_prompt: _customPrompt || null,
+        publication_date: publicationDate,
       });
 
       try {
@@ -333,6 +345,18 @@
     onRegenerate(prompt);
   }
 
+  async function handlePublicationDateChange(newDate: string): Promise<void> {
+    publicationDate = newDate;
+    if (savedDraft) {
+      try {
+        const updated = await bajourApi.updateDraft(savedDraft.id, { publication_date: newDate });
+        savedDraft = updated;
+      } catch (err) {
+        actionError = (err as Error).message;
+      }
+    }
+  }
+
   function handleKeydown(e: KeyboardEvent): void {
     if (e.key === 'Escape' && open) {
       onClose();
@@ -398,12 +422,26 @@
           <div class="meta-line">
             <span class="village-pill">{savedDraft.village_name}</span>
             <VerificationBadge status={savedDraft.verification_status} />
+            <input
+              type="date"
+              class="publication-date"
+              value={publicationDate}
+              onchange={(e) => handlePublicationDateChange(e.currentTarget.value)}
+              aria-label="Erscheinungsdatum"
+            />
           </div>
           <DraftContent draft={parseSavedDraftBody(savedDraft)} />
         {:else if draft}
           {#if villageName}
             <div class="meta-line">
               <span class="village-pill">{villageName}</span>
+              <input
+                type="date"
+                class="publication-date"
+                value={publicationDate}
+                onchange={(e) => { publicationDate = e.currentTarget.value; }}
+                aria-label="Erscheinungsdatum"
+              />
             </div>
           {/if}
           <DraftContent {draft} />
@@ -517,6 +555,16 @@
     background: var(--color-surface-muted);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-full);
+  }
+
+  .publication-date {
+    margin-left: auto;
+    padding: 0.1875rem 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   @media (max-width: 768px) {

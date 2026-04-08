@@ -94,5 +94,23 @@ verify_jwt = false
 [functions.bajour-send-mailchimp]
 verify_jwt = false
 
+[functions.civic-discover]
+verify_jwt = false
+
+[functions.civic-test]
+verify_jwt = false
+
+[functions.civic-promises]
+verify_jwt = false
+
+[functions.execute-civic-scout]
+verify_jwt = false
+
+[functions.civic-notify-promises]
+verify_jwt = false
+
+[functions.news]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"

@@ -104,6 +104,7 @@ async function createDraft(
       body: body.body.trim(),
       selected_unit_ids: body.selected_unit_ids,
       custom_system_prompt: body.custom_system_prompt?.trim() || null,
+      publication_date: body.publication_date || new Date().toISOString().split('T')[0],
     })
     .select()
     .single();
@@ -135,6 +136,13 @@ async function updateDraft(
   if (body.selected_unit_ids !== undefined) updates.selected_unit_ids = body.selected_unit_ids;
   if (body.custom_system_prompt !== undefined) {
     updates.custom_system_prompt = body.custom_system_prompt?.trim() || null;
+  }
+  // Allow publication date update
+  if (body.publication_date !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.publication_date)) {
+      return errorResponse('Ungültiges Datumsformat (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
+    }
+    updates.publication_date = body.publication_date;
   }
   // Allow manual verification status override
   if (body.verification_status !== undefined) {

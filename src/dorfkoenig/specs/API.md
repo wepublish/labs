@@ -629,6 +629,70 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 ---
 
+## News API (Public)
+
+Public, read-only endpoint for fetching confirmed village news. Used by WePublish overview page. Does **not** require `x-user-id` or `Authorization` headers — authenticates via shared secret query parameter.
+
+### GET /news
+
+Fetch confirmed drafts grouped by village within a date range.
+
+**Request:**
+```http
+GET /functions/v1/news?auth={NEWS_API_TOKEN}&date=2026-04-08&range=3
+```
+
+**Authentication:** Shared secret via `?auth=` query parameter OR `Authorization: Bearer {TOKEN}` header. The header approach is recommended for production (avoids token in logs/URLs).
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `auth` | string | Yes* | - | Shared secret token (`NEWS_API_TOKEN` env var). *Not required if using `Authorization` header. |
+| `date` | string | No | Today | Center date in `YYYY-MM-DD` format |
+| `range` | integer | No | `3` | Symmetric range in days (±N around `date`). Max: 30. `?date=2026-04-08&range=3` returns drafts from 2026-04-05 to 2026-04-11. |
+
+**Response:** `200 OK`
+
+Returns all 10 villages. Each village contains an array of all confirmed drafts within the date range, each with its `publication_date`, draft body, and unit statements. Villages without confirmed drafts return an empty array. Response includes `Cache-Control: public, max-age=300`.
+
+```json
+{
+  "data": {
+    "riehen": [
+      {
+        "publication_date": "2026-04-08",
+        "draft": "## Gemeinderat\nDer Gemeinderat hat den Neubau genehmigt...",
+        "items": [
+          "Der Gemeinderat hat den Neubau am Bahnhof genehmigt.",
+          "Die Hauptstrasse wird nächste Woche gesperrt."
+        ]
+      }
+    ],
+    "bettingen": [],
+    "allschwil": [
+      {
+        "publication_date": "2026-04-07",
+        "draft": "## Wochenrückblick\nDie Gemeindeversammlung hat beschlossen...",
+        "items": [
+          "Die Gemeindeversammlung hat den Budget-Antrag abgelehnt."
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Missing or invalid `auth` token |
+| 400 | `VALIDATION_ERROR` | Invalid date format (not `YYYY-MM-DD`) or invalid date |
+| 405 | - | Non-GET method |
+
+**Environment:** Requires `NEWS_API_TOKEN` as Edge Function secret.
+
+---
+
 ## Bajour API
 
 Feature-flagged (`VITE_FEATURE_BAJOUR=true`). Village newsletter draft workflow with WhatsApp verification and Mailchimp campaign creation.
@@ -650,6 +714,7 @@ List all Bajour drafts for the authenticated user.
       "body": "Newsletter body text...",
       "selected_unit_ids": ["uuid1", "uuid2"],
       "custom_system_prompt": null,
+      "publication_date": "2026-04-08",
       "verification_status": "ausstehend",
       "verification_responses": [],
       "verification_sent_at": null,
@@ -675,9 +740,13 @@ Create a new Bajour draft.
   "title": "Wochenüberblick Riehen",
   "body": "Newsletter body text...",
   "selected_unit_ids": ["uuid1", "uuid2"],
-  "custom_system_prompt": null
+  "custom_system_prompt": null,
+  "publication_date": "2026-04-08"
 }
 ```
+
+**Notes:**
+- `publication_date`: Optional, defaults to today. `YYYY-MM-DD` format. Controls which date this draft is valid for (used by the News API).
 
 **Response:** `201 Created` — same shape as GET item.
 
@@ -692,7 +761,7 @@ Update an existing draft (only own drafts). Used for manual verification status 
 }
 ```
 
-**Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `verification_status`, `verification_responses`, `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids`.
+**Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `publication_date`, `verification_status`.
 
 **Response:** `200 OK` — full draft object.
 

@@ -218,6 +218,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 - `WHATSAPP_APP_SECRET` -- HMAC-SHA256 webhook signature verification
 - `WHATSAPP_WEBHOOK_VERIFY_TOKEN` -- Webhook handshake token
 - `BAJOUR_CORRESPONDENTS` -- JSON mapping village IDs → correspondent arrays
+- `NEWS_API_TOKEN` -- Shared secret for the public `/news` API endpoint
 
 ### Vault Secrets (SQL `vault.create_secret`)
 - `project_url` -- Supabase project URL (for pg_cron → pg_net calls)
@@ -227,6 +228,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 
 | File | Content |
 |------|---------|
+| `docs/mailchimp_api.md` | **External:** News API integration guide for MailChimp developers |
 | `specs/ARCHITECTURE.md` | System design, data flow, component diagrams |
 | `specs/DATABASE.md` | Full schema, indexes, RLS policies, DB functions |
 | `specs/API.md` | Edge Function endpoints, request/response formats |

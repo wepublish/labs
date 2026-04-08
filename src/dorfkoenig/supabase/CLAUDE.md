@@ -17,6 +17,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
 | `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
+| `news` | Public GET endpoint returning confirmed drafts grouped by village within a date range. Auth via `?auth=` or `Authorization: Bearer` (`NEWS_API_TOKEN`). Params: `?date=YYYY-MM-DD&range=N` (default: today ±3 days). | Shared secret | WePublish overview page |
 
 ## Shared Modules (`functions/_shared/`)
 
@@ -69,7 +70,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
-- PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
+- PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `publication_date` (DATE, default CURRENT_DATE), `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
 
 **`bajour_correspondents`** -- Village correspondents for WhatsApp verification
 - PK: `id` (UUID), `village_id` (TEXT), `name` (TEXT), `phone` (TEXT, without '+' prefix), `is_active` (BOOLEAN), `created_at`, `updated_at`
