@@ -68,5 +68,12 @@
     "canton": "BL",
     "latitude": 47.5528,
     "longitude": 7.6222
+  },
+  {
+    "id": "aesch",
+    "name": "Aesch",
+    "canton": "BL",
+    "latitude": 47.4712,
+    "longitude": 7.5947
   }
 ]

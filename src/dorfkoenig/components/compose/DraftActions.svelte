@@ -80,7 +80,7 @@
     </div>
   {/if}
 
-  <!-- Controls row: verification + regen + utility actions -->
+  <!-- Controls row: verification + regen + WhatsApp + utility actions -->
   <div class="controls-row">
     <div class="controls-left">
       <VerificationToggle
@@ -129,58 +129,53 @@
   </div>
 
   <!-- WhatsApp verification -->
-  <div class="send-steps">
-    <div class="send-step" class:done={whatsappSent} class:confirmed={whatsappConfirmed}>
-      {#if whatsappConfirmed}
-        <span class="step-status-icon confirmed"><Check size={14} strokeWidth={3} /></span>
-        <span class="step-label">Bestätigt durch Dorfkönige</span>
-      {:else if whatsappPending}
-        <span class="step-status-icon pending"><Loader2 size={14} class="spin" /></span>
-        <span class="step-label">Gesendet — warte auf Antwort</span>
-        <button
-          class="step-btn step-btn-resend"
-          onclick={onresendverification}
-          disabled={sendLoading}
-          type="button"
-        >
-          {#if sendLoading}
-            <Loader2 size={14} class="spin" />
-          {:else}
-            <MessageCircle size={14} />
-          {/if}
-          Erneut senden
-        </button>
-      {:else if whatsappSent}
-        <button
-          class="step-btn step-btn-resend"
-          onclick={onresendverification}
-          disabled={sendLoading}
-          type="button"
-        >
-          {#if sendLoading}
-            <Loader2 size={14} class="spin" />
-          {:else}
-            <MessageCircle size={14} />
-          {/if}
-          Erneut senden
-        </button>
-      {:else}
-        <button
-          class="step-btn step-btn-whatsapp"
-          onclick={onsavesend}
-          disabled={sendLoading || !canSave}
-          type="button"
-        >
-          {#if sendLoading}
-            <Loader2 size={14} class="spin" />
-          {:else}
-            <MessageCircle size={14} />
-          {/if}
-          An Dorfkönige senden
-        </button>
-      {/if}
-    </div>
-
+  <div class="whatsapp-row">
+    {#if whatsappConfirmed}
+      <span class="whatsapp-status confirmed"><Check size={14} strokeWidth={3} /> Bestätigt durch Dorfkönige</span>
+    {:else if whatsappPending}
+      <span class="whatsapp-status pending"><Loader2 size={14} class="spin" /> Gesendet — warte auf Antwort</span>
+      <button
+        class="step-btn step-btn-resend"
+        onclick={onresendverification}
+        disabled={sendLoading}
+        type="button"
+      >
+        {#if sendLoading}
+          <Loader2 size={14} class="spin" />
+        {:else}
+          <MessageCircle size={14} />
+        {/if}
+        Erneut senden
+      </button>
+    {:else if whatsappSent}
+      <button
+        class="step-btn step-btn-resend"
+        onclick={onresendverification}
+        disabled={sendLoading}
+        type="button"
+      >
+        {#if sendLoading}
+          <Loader2 size={14} class="spin" />
+        {:else}
+          <MessageCircle size={14} />
+        {/if}
+        Erneut senden
+      </button>
+    {:else}
+      <button
+        class="step-btn step-btn-whatsapp"
+        onclick={onsavesend}
+        disabled={sendLoading || !canSave}
+        type="button"
+      >
+        {#if sendLoading}
+          <Loader2 size={14} class="spin" />
+        {:else}
+          <MessageCircle size={14} />
+        {/if}
+        An Dorfkönige senden
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -272,82 +267,29 @@
     color: var(--color-primary);
   }
 
-  /* Stepped send */
-  .send-steps {
+  /* WhatsApp row */
+  .whatsapp-row {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 0.5rem;
   }
 
-  .send-step {
-    display: flex;
+  .whatsapp-status {
+    display: inline-flex;
     align-items: center;
-    gap: 0.625rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
-    transition: all var(--transition-base);
-  }
-
-  .send-step.done {
-    border-color: rgba(34, 197, 94, 0.3);
-    background: rgba(34, 197, 94, 0.04);
-  }
-
-  .send-step.confirmed {
-    border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.06);
-  }
-
-  .send-step.disabled {
-    opacity: 0.5;
-  }
-
-  .step-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    border-radius: var(--radius-full);
-    background: var(--color-surface-muted);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-  }
-
-  .send-step.done .step-number,
-  .send-step.confirmed .step-number {
-    background: rgba(34, 197, 94, 0.15);
-    color: #16a34a;
-  }
-
-  .step-status-icon {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  .step-status-icon.confirmed {
-    color: #16a34a;
-  }
-
-  .step-status-icon.pending {
-    color: var(--color-text-muted);
-  }
-
-  .step-label {
+    gap: 0.375rem;
     font-size: var(--text-base-sm);
     font-weight: 500;
     color: var(--color-text-muted);
-    flex: 1;
   }
 
-  .send-step.confirmed .step-label {
+  .whatsapp-status.confirmed {
     color: #16a34a;
     font-weight: 600;
+  }
+
+  .whatsapp-status.pending {
+    color: var(--color-text-muted);
   }
 
   .step-btn {
