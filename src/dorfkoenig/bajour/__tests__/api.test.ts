@@ -58,36 +58,6 @@ describe('bajourApi', () => {
     expect(result).toEqual({ selected_unit_ids: ['u-1', 'u-2'] });
   });
 
-  it('generateDraft() calls POST /bajour-generate-draft', async () => {
-    const generated = { title: 'Test', greeting: 'Liebe Leser', sections: [], outlook: '', sign_off: '' };
-    mockFetch.mockResolvedValue(createMockResponse({ data: generated }));
-
-    const result = await bajourApi.generateDraft({
-      village_id: 'riehen',
-      village_name: 'Riehen',
-      unit_ids: ['u-1'],
-    });
-    expect(result.title).toBe('Test');
-  });
-
-  it('generateDraft() passes custom_system_prompt when provided', async () => {
-    mockFetch.mockResolvedValue(createMockResponse({ data: { title: 'X', greeting: '', sections: [], outlook: '', sign_off: '' } }));
-
-    await bajourApi.generateDraft({
-      village_id: 'riehen',
-      village_name: 'Riehen',
-      unit_ids: ['u-1'],
-      custom_system_prompt: 'Write formally',
-    });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        body: expect.stringContaining('"custom_system_prompt":"Write formally"'),
-      })
-    );
-  });
-
   it('sendVerification() calls POST /bajour-send-verification with draft_id', async () => {
     mockFetch.mockResolvedValue(createMockResponse({ data: { sent_count: 2 } }));
     const result = await bajourApi.sendVerification('draft-123');

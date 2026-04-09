@@ -79,9 +79,6 @@ verify_jwt = false
 [functions.bajour-select-units]
 verify_jwt = false
 
-[functions.bajour-generate-draft]
-verify_jwt = false
-
 [functions.bajour-drafts]
 verify_jwt = false
 
