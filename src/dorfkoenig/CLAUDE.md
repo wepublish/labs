@@ -237,7 +237,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 
 | File | Content |
 |------|---------|
-| `docs/mailchimp_api.md` | **External:** News API integration guide for MailChimp developers |
+| `docs/news-api.md` | **External:** News API integration guide for CMS developers |
 | `specs/ARCHITECTURE.md` | System design, data flow, component diagrams |
 | `specs/DATABASE.md` | Full schema, indexes, RLS policies, DB functions |
 | `specs/API.md` | Edge Function endpoints, request/response formats |
