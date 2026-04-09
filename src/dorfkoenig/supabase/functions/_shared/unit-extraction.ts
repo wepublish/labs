@@ -85,9 +85,11 @@ AUSGABEFORMAT (JSON):
 
   if (units.length === 0) return 0;
 
-  // Drop units without a date — date is required
-  units = units.filter((u) => u.eventDate);
-  if (units.length === 0) return 0;
+  // For web/civic scouts: use today (scrape date) as fallback for dateless units
+  const today = new Date().toISOString().slice(0, 10);
+  for (const unit of units) {
+    if (!unit.eventDate) unit.eventDate = today;
+  }
 
   // Generate embeddings for all units
   const statements = units.map((u) => u.statement);
