@@ -117,13 +117,15 @@ describe('auth store', () => {
       );
     });
 
-    it('sets loading to false when no stored session', () => {
+    it('sets error when no stored session and no token', () => {
       // localStorage is empty (cleared in beforeEach)
       vi.clearAllMocks();
 
       initAuth();
 
-      expect(mockSharedAuth.setLoading).toHaveBeenCalledWith(false);
+      expect(mockSharedAuth.setError).toHaveBeenCalledWith(
+        'Nicht authentifiziert. Bitte mit gültigem Token zugreifen.'
+      );
       expect(mockSharedAuth.mockAuth).not.toHaveBeenCalled();
     });
 
@@ -183,12 +185,14 @@ describe('auth store', () => {
       );
     });
 
-    it('shows login page when not in iframe and no token', () => {
+    it('sets error when not in iframe and no token', () => {
       vi.clearAllMocks();
 
       initAuth(null, false);
 
-      expect(mockSharedAuth.setLoading).toHaveBeenCalledWith(false);
+      expect(mockSharedAuth.setError).toHaveBeenCalledWith(
+        'Nicht authentifiziert. Bitte mit gültigem Token zugreifen.'
+      );
       expect(mockSharedAuth.mockAuth).not.toHaveBeenCalled();
     });
   });

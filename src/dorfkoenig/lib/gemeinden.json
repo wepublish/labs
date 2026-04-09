@@ -1,17 +1,10 @@
 [
   {
-    "id": "riehen",
-    "name": "Riehen",
-    "canton": "BS",
-    "latitude": 47.5789,
-    "longitude": 7.6469
-  },
-  {
-    "id": "bettingen",
-    "name": "Bettingen",
-    "canton": "BS",
-    "latitude": 47.5726,
-    "longitude": 7.6639
+    "id": "aesch",
+    "name": "Aesch",
+    "canton": "BL",
+    "latitude": 47.4712,
+    "longitude": 7.5947
   },
   {
     "id": "allschwil",
@@ -21,13 +14,6 @@
     "longitude": 7.5362
   },
   {
-    "id": "binningen",
-    "name": "Binningen",
-    "canton": "BL",
-    "latitude": 47.5407,
-    "longitude": 7.5695
-  },
-  {
     "id": "arlesheim",
     "name": "Arlesheim",
     "canton": "BL",
@@ -35,11 +21,18 @@
     "longitude": 7.6207
   },
   {
-    "id": "muttenz",
-    "name": "Muttenz",
+    "id": "binningen",
+    "name": "Binningen",
     "canton": "BL",
-    "latitude": 47.5225,
-    "longitude": 7.6451
+    "latitude": 47.5407,
+    "longitude": 7.5695
+  },
+  {
+    "id": "bottmingen",
+    "name": "Bottmingen",
+    "canton": "BL",
+    "latitude": 47.5228,
+    "longitude": 7.5745
   },
   {
     "id": "muenchenstein",
@@ -49,6 +42,20 @@
     "longitude": 7.6167
   },
   {
+    "id": "muttenz",
+    "name": "Muttenz",
+    "canton": "BL",
+    "latitude": 47.5225,
+    "longitude": 7.6451
+  },
+  {
+    "id": "pratteln",
+    "name": "Pratteln",
+    "canton": "BL",
+    "latitude": 47.5189,
+    "longitude": 7.6928
+  },
+  {
     "id": "reinach",
     "name": "Reinach",
     "canton": "BL",
@@ -56,24 +63,10 @@
     "longitude": 7.5912
   },
   {
-    "id": "oberwil",
-    "name": "Oberwil",
-    "canton": "BL",
-    "latitude": 47.5148,
-    "longitude": 7.5555
-  },
-  {
-    "id": "birsfelden",
-    "name": "Birsfelden",
-    "canton": "BL",
-    "latitude": 47.5528,
-    "longitude": 7.6222
-  },
-  {
-    "id": "aesch",
-    "name": "Aesch",
-    "canton": "BL",
-    "latitude": 47.4712,
-    "longitude": 7.5947
+    "id": "riehen",
+    "name": "Riehen",
+    "canton": "BS",
+    "latitude": 47.5789,
+    "longitude": 7.6469
   }
 ]

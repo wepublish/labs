@@ -1,12 +1,12 @@
 [
-  { "id": "riehen", "name": "Riehen" },
-  { "id": "bettingen", "name": "Bettingen" },
+  { "id": "aesch", "name": "Aesch" },
   { "id": "allschwil", "name": "Allschwil" },
-  { "id": "binningen", "name": "Binningen" },
   { "id": "arlesheim", "name": "Arlesheim" },
-  { "id": "muttenz", "name": "Muttenz" },
+  { "id": "binningen", "name": "Binningen" },
+  { "id": "bottmingen", "name": "Bottmingen" },
   { "id": "muenchenstein", "name": "Münchenstein" },
+  { "id": "muttenz", "name": "Muttenz" },
+  { "id": "pratteln", "name": "Pratteln" },
   { "id": "reinach", "name": "Reinach" },
-  { "id": "oberwil", "name": "Oberwil" },
-  { "id": "birsfelden", "name": "Birsfelden" }
+  { "id": "riehen", "name": "Riehen" }
 ]

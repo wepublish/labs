@@ -7,16 +7,16 @@ export const villages: Village[] = gemeindenJson;
 
 // Village → Scout ID mapping (fixed UUIDs per village)
 const VILLAGE_SCOUT_IDS: Record<string, string> = {
-  riehen: 'ba000000-0001-4000-a000-000000000001',
-  bettingen: 'ba000000-0002-4000-a000-000000000002',
+  aesch: 'ba000000-000b-4000-a000-00000000000b',
   allschwil: 'ba000000-0003-4000-a000-000000000003',
-  binningen: 'ba000000-0004-4000-a000-000000000004',
   arlesheim: 'ba000000-0005-4000-a000-000000000005',
-  muttenz: 'ba000000-0006-4000-a000-000000000006',
+  binningen: 'ba000000-0004-4000-a000-000000000004',
+  bottmingen: 'ba000000-000c-4000-a000-000000000c00',
   muenchenstein: 'ba000000-0007-4000-a000-000000000007',
+  muttenz: 'ba000000-0006-4000-a000-000000000006',
+  pratteln: 'ba000000-000d-4000-a000-000000000d00',
   reinach: 'ba000000-0008-4000-a000-000000000008',
-  oberwil: 'ba000000-0009-4000-a000-000000000009',
-  birsfelden: 'ba000000-000a-4000-a000-00000000000a',
+  riehen: 'ba000000-0001-4000-a000-000000000001',
 };
 
 export function getScoutIdForVillage(villageId: string): string | undefined {

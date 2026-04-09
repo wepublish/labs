@@ -125,6 +125,10 @@
     animation: spin 0.6s linear infinite;
   }
 
+  .content {
+    display: contents;
+  }
+
   .hidden {
     visibility: hidden;
   }
