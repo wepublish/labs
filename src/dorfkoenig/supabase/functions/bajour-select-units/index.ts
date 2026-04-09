@@ -7,44 +7,13 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
+import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT } from '../_shared/prompts.ts';
 
 interface SelectUnitsRequest {
   village_id: string;
   scout_id: string;
   recency_days?: number;
   selection_prompt?: string;
-}
-
-// System prompt for unit selection with configurable recency and optional editor instructions
-function buildSystemPrompt(currentDate: string, recencyDays: number | null, selectionPrompt?: string): string {
-  const recencyInstruction = recencyDays !== null
-    ? `1. AKTUALITÄT: Bevorzuge Informationen der letzten ${recencyDays} Tage STARK.
-   Informationen älter als ${recencyDays * 2} Tage nur bei aussergewöhnlicher Bedeutung.`
-    : `1. AKTUALITÄT: Berücksichtige alle verfügbaren Informationen unabhängig vom Alter.
-   Neuere Informationen dürfen leicht bevorzugt werden.`;
-
-  let prompt = `Du bist ein erfahrener Redakteur für einen wöchentlichen lokalen Newsletter.
-Deine Aufgabe: Wähle die relevantesten Informationseinheiten für die nächste Ausgabe.
-
-AUSWAHLKRITERIEN (nach Priorität):
-${recencyInstruction}
-2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes JETZT?
-3. VIELFALT: Decke verschiedene Themen ab (Politik, Kultur, Infrastruktur, Gesellschaft).
-4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
-
-Wähle 5-15 Einheiten. Gib die IDs als JSON-Array zurück.
-Heute ist: ${currentDate}
-
-AUSGABEFORMAT (JSON):
-{
-  "selected_unit_ids": ["uuid-1", "uuid-2", ...]
-}`;
-
-  if (selectionPrompt) {
-    prompt += `\n\nZUSÄTZLICHE ANWEISUNGEN DES REDAKTEURS:\n${selectionPrompt}`;
-  }
-
-  return prompt;
 }
 
 Deno.serve(async (req) => {
@@ -55,6 +24,11 @@ Deno.serve(async (req) => {
   try {
     const userId = requireUserId(req);
     const supabase = createServiceClient();
+
+    // GET: return the current selection prompt template (for UI display)
+    if (req.method === 'GET') {
+      return jsonResponse({ data: { prompt: INFORMATION_SELECT_PROMPT } });
+    }
 
     if (req.method !== 'POST') {
       return errorResponse('Methode nicht erlaubt', 405);
@@ -115,7 +89,7 @@ Deno.serve(async (req) => {
     // Call LLM for selection
     const response = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildSystemPrompt(currentDate, recencyDays, selection_prompt) },
+        { role: 'system', content: buildInformationSelectPrompt(currentDate, recencyDays, selection_prompt) },
         {
           role: 'user',
           content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`,

@@ -9,7 +9,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { scrape } from '../_shared/firecrawl.ts';
-import { COMPOSE_GUIDELINES } from '../_shared/prompts.ts';
+import { DRAFT_COMPOSE_PROMPT } from '../_shared/prompts.ts';
 import { MAX_UNITS_PER_COMPOSE, MAX_SOURCE_CONTENT_CHARS } from '../_shared/constants.ts';
 
 interface GenerateRequest {
@@ -91,7 +91,7 @@ KRITISCH - UMGANG MIT MEHREREN THEMEN (UNVERÄNDERLICH):
 - Verwende NIEMALS Übergangssätze wie "Inzwischen" oder "In verwandten Nachrichten" für unzusammenhängende Themen
 - Jeder Abschnitt sollte für sich stehen`;
 
-const LAYER_2_DEFAULT_GUIDELINES = COMPOSE_GUIDELINES;
+const LAYER_2_DEFAULT_GUIDELINES = DRAFT_COMPOSE_PROMPT;
 
 const LAYER_3_OUTPUT_FORMAT = `ÜBERSCHRIFT: Ein Satz, der den nachrichtenwürdigsten Aspekt erfasst. Beginne mit der Auswirkung, nicht mit der Zuordnung.
 ABSCHNITTE: Jede Abschnittsüberschrift sollte 2-4 Wörter lang sein. Inhalt beginnt mit der Nachricht, dann Kontext.
