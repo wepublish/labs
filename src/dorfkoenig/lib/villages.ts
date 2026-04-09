@@ -1,26 +1,13 @@
-// Village config: shared village list + scout ID mapping for Bajour integration.
+// Village config: shared village list for Bajour integration.
+// Canonical source: gemeinden.json — do not duplicate village data elsewhere.
 
 import gemeindenJson from './gemeinden.json';
 import type { Village } from '../bajour/types';
 
 export const villages: Village[] = gemeindenJson;
 
-// Village → Scout ID mapping (fixed UUIDs per village)
-const VILLAGE_SCOUT_IDS: Record<string, string> = {
-  aesch: 'ba000000-000b-4000-a000-00000000000b',
-  allschwil: 'ba000000-0003-4000-a000-000000000003',
-  arlesheim: 'ba000000-0005-4000-a000-000000000005',
-  binningen: 'ba000000-0004-4000-a000-000000000004',
-  bottmingen: 'ba000000-000c-4000-a000-000000000c00',
-  muenchenstein: 'ba000000-0007-4000-a000-000000000007',
-  muttenz: 'ba000000-0006-4000-a000-000000000006',
-  pratteln: 'ba000000-000d-4000-a000-000000000d00',
-  reinach: 'ba000000-0008-4000-a000-000000000008',
-  riehen: 'ba000000-0001-4000-a000-000000000001',
-};
-
 export function getScoutIdForVillage(villageId: string): string | undefined {
-  return VILLAGE_SCOUT_IDS[villageId];
+  return villages.find(v => v.id === villageId)?.scout_id;
 }
 
 export function getVillageByName(name: string): Village | undefined {

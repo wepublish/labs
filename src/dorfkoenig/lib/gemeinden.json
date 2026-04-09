@@ -4,69 +4,79 @@
     "name": "Aesch",
     "canton": "BL",
     "latitude": 47.4712,
-    "longitude": 7.5947
+    "longitude": 7.5947,
+    "scout_id": "ba000000-000b-4000-a000-00000000000b"
   },
   {
     "id": "allschwil",
     "name": "Allschwil",
     "canton": "BL",
     "latitude": 47.5508,
-    "longitude": 7.5362
+    "longitude": 7.5362,
+    "scout_id": "ba000000-0003-4000-a000-000000000003"
   },
   {
     "id": "arlesheim",
     "name": "Arlesheim",
     "canton": "BL",
     "latitude": 47.4949,
-    "longitude": 7.6207
+    "longitude": 7.6207,
+    "scout_id": "ba000000-0005-4000-a000-000000000005"
   },
   {
     "id": "binningen",
     "name": "Binningen",
     "canton": "BL",
     "latitude": 47.5407,
-    "longitude": 7.5695
+    "longitude": 7.5695,
+    "scout_id": "ba000000-0004-4000-a000-000000000004"
   },
   {
     "id": "bottmingen",
     "name": "Bottmingen",
     "canton": "BL",
     "latitude": 47.5228,
-    "longitude": 7.5745
+    "longitude": 7.5745,
+    "scout_id": "ba000000-000c-4000-a000-000000000c00"
   },
   {
     "id": "muenchenstein",
     "name": "Münchenstein",
     "canton": "BL",
     "latitude": 47.5167,
-    "longitude": 7.6167
+    "longitude": 7.6167,
+    "scout_id": "ba000000-0007-4000-a000-000000000007"
   },
   {
     "id": "muttenz",
     "name": "Muttenz",
     "canton": "BL",
     "latitude": 47.5225,
-    "longitude": 7.6451
+    "longitude": 7.6451,
+    "scout_id": "ba000000-0006-4000-a000-000000000006"
   },
   {
     "id": "pratteln",
     "name": "Pratteln",
     "canton": "BL",
     "latitude": 47.5189,
-    "longitude": 7.6928
+    "longitude": 7.6928,
+    "scout_id": "ba000000-000d-4000-a000-000000000d00"
   },
   {
     "id": "reinach",
     "name": "Reinach",
     "canton": "BL",
     "latitude": 47.4935,
-    "longitude": 7.5912
+    "longitude": 7.5912,
+    "scout_id": "ba000000-0008-4000-a000-000000000008"
   },
   {
     "id": "riehen",
     "name": "Riehen",
     "canton": "BS",
     "latitude": 47.5789,
-    "longitude": 7.6469
+    "longitude": 7.6469,
+    "scout_id": "ba000000-0001-4000-a000-000000000001"
   }
 ]

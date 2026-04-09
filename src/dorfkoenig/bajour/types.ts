@@ -6,6 +6,7 @@ export interface Village {
   canton: string;
   latitude: number;
   longitude: number;
+  scout_id: string;
 }
 
 export type VerificationStatus = 'ausstehend' | 'bestätigt' | 'abgelehnt';
