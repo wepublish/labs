@@ -314,20 +314,28 @@ async function handleFileConfirm(
 ): Promise<Response> {
   const contentType = body.content_type as string;
   const storagePath = body.storage_path as string;
-  const description = body.description as string;
+  const description = body.description as string | undefined;
   const location = body.location as { city: string; state?: string; country: string; latitude?: number; longitude?: number } | null;
   const topic = (body.topic as string) || null;
   const sourceTitle = (body.source_title as string) || null;
+  const publicationDate = (body.publication_date as string) || null;
+
+  const isPhoto = contentType === 'photo_confirm';
+  const isPdf = contentType === 'pdf_confirm';
 
   // Validation
   if (!storagePath || typeof storagePath !== 'string') {
     return errorResponse('storage_path ist erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (!description || typeof description !== 'string' || description.trim().length < 10) {
-    return errorResponse('Beschreibung muss mindestens 10 Zeichen lang sein', 400, 'VALIDATION_ERROR');
-  }
-  if (!location && !topic) {
-    return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
+
+  // Photo uploads still require description and location
+  if (isPhoto) {
+    if (!description || typeof description !== 'string' || description.trim().length < 10) {
+      return errorResponse('Beschreibung muss mindestens 10 Zeichen lang sein', 400, 'VALIDATION_ERROR');
+    }
+    if (!location && !topic) {
+      return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
+    }
   }
 
   // Verify the storage path belongs to this user
@@ -346,7 +354,6 @@ async function handleFileConfirm(
 
   // Validate magic bytes
   const buffer = new Uint8Array(await fileData.arrayBuffer());
-  const isPhoto = contentType === 'photo_confirm';
   const expectedMimeTypes = isPhoto
     ? ['image/jpeg', 'image/png', 'image/webp']
     : ['application/pdf'];
@@ -365,7 +372,6 @@ async function handleFileConfirm(
       }
     }
 
-    // Check extra bytes (e.g. WebP has bytes at offset 8)
     if (matches && magic.extraBytes && magic.extraOffset !== undefined) {
       for (let i = 0; i < magic.extraBytes.length; i++) {
         if (buffer[magic.extraOffset + i] !== magic.extraBytes[i]) {
@@ -382,39 +388,87 @@ async function handleFileConfirm(
   }
 
   if (!validMagic) {
-    // Delete the invalid file
     await supabase.storage.from('uploads').remove([storagePath]);
     return errorResponse('Ungültiger Dateityp. Die Datei entspricht nicht dem erwarteten Format.', 400, 'VALIDATION_ERROR');
   }
 
-  // Generate embedding from description
+  // ── PDF: trigger async processing ──
+  if (isPdf) {
+    // Create newspaper_jobs row
+    const { data: job, error: jobError } = await supabase
+      .from('newspaper_jobs')
+      .insert({
+        user_id: userId,
+        storage_path: storagePath,
+        publication_date: publicationDate,
+        label: description?.trim() || null,
+      })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      console.error('Failed to create newspaper job:', jobError);
+      return errorResponse('Verarbeitung konnte nicht gestartet werden', 500);
+    }
+
+    // Trigger process-newspaper (fire-and-forget with flush delay)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    fetch(`${supabaseUrl}/functions/v1/process-newspaper`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        job_id: job.id,
+        storage_path: storagePath,
+        user_id: userId,
+        publication_date: publicationDate,
+        label: description?.trim() || null,
+      }),
+    }).catch((err) => console.error('Failed to trigger process-newspaper:', err));
+
+    // 50ms flush delay to ensure request is dispatched
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Record rate limit
+    await recordRateLimit(supabase, userId, 'file');
+
+    return jsonResponse({
+      data: {
+        status: 'processing',
+        job_id: job.id,
+        storage_path: storagePath,
+      },
+    });
+  }
+
+  // ── Photo: existing single-unit flow ──
   let descriptionEmbedding: number[];
   try {
-    descriptionEmbedding = await embeddings.generate(description.trim());
+    descriptionEmbedding = await embeddings.generate(description!.trim());
   } catch (err) {
     console.error('Embedding error:', err);
     return errorResponse('Verarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
 
-  const sourceType = isPhoto ? 'manual_photo' : 'manual_pdf';
-  const sourceUrl = isPhoto ? 'manual://photo' : 'manual://pdf';
-
-  // Store unit
   const { data, error } = await supabase
     .from('information_units')
     .insert({
       user_id: userId,
       scout_id: null,
       execution_id: null,
-      statement: description.trim(),
+      statement: description!.trim(),
       unit_type: 'fact',
       entities: [],
-      source_url: sourceUrl,
+      source_url: 'manual://photo',
       source_domain: 'manual',
       source_title: sourceTitle,
       location: location,
       topic: topic,
-      source_type: sourceType,
+      source_type: 'manual_photo',
       file_path: storagePath,
       embedding: descriptionEmbedding,
     })
@@ -426,7 +480,6 @@ async function handleFileConfirm(
     return errorResponse('Einheit konnte nicht gespeichert werden', 500);
   }
 
-  // Record rate limit usage
   await recordRateLimit(supabase, userId, 'file');
 
   return jsonResponse({
