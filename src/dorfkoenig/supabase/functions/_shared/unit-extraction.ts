@@ -46,7 +46,8 @@ REGELN:
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
 - Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
-- Wenn kein spezifisches Datum erkennbar, verwende das heutige Datum: ${new Date().toISOString().slice(0, 10)}
+- Wenn kein Datum erkennbar, setze eventDate auf null
+- Einheiten OHNE Datum werden verworfen — extrahiere Daten aggressiv
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -82,6 +83,10 @@ AUSGABEFORMAT (JSON):
     return 0;
   }
 
+  if (units.length === 0) return 0;
+
+  // Drop units without a date — date is required
+  units = units.filter((u) => u.eventDate);
   if (units.length === 0) return 0;
 
   // Generate embeddings for all units
@@ -129,7 +134,7 @@ AUSGABEFORMAT (JSON):
       location: params.location,
       topic: params.topic || null,
       embedding: unitEmbeddings[i],
-      event_date: unit.eventDate || new Date().toISOString().slice(0, 10),
+      event_date: unit.eventDate,
     });
 
     if (!error) storedCount++;

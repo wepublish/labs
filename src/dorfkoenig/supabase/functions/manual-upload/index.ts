@@ -141,7 +141,8 @@ REGELN:
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
 - Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
-- Wenn kein spezifisches Datum erkennbar, verwende das heutige Datum: ${new Date().toISOString().slice(0, 10)}
+- Wenn kein Datum erkennbar, setze eventDate auf null
+- Einheiten OHNE Datum werden verworfen — extrahiere Daten aggressiv
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -177,6 +178,9 @@ AUSGABEFORMAT (JSON):
     console.error('LLM extraction error:', err);
     return errorResponse('Textverarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
+
+  // Drop units without a date — date is required
+  units = units.filter((u) => u.eventDate);
 
   if (units.length === 0) {
     return jsonResponse({ data: { units_created: 0, unit_ids: [] } });
@@ -235,7 +239,7 @@ AUSGABEFORMAT (JSON):
         source_type: 'manual_text',
         file_path: null,
         embedding: unitEmbeddings[i],
-        event_date: unit.eventDate || new Date().toISOString().slice(0, 10),
+        event_date: unit.eventDate,
       })
       .select('id')
       .single();

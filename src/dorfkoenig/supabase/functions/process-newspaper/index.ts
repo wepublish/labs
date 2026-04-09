@@ -154,9 +154,9 @@ Deno.serve(async (req) => {
 
     // ── Step 7: Post-process ──
 
-    // 7a. Filter out village: null
+    // 7a. Filter out units without date or village
     const villageUnits = allUnits.filter(
-      (u) => u.village && VILLAGE_ID_MAP[u.village]
+      (u) => u.eventDate && u.village && VILLAGE_ID_MAP[u.village]
     );
     console.log(`[process-newspaper] ${villageUnits.length} units after village filter`);
 
