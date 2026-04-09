@@ -553,7 +553,56 @@ CREATE TRIGGER units_extend_ttl
     EXECUTE FUNCTION extend_unit_ttl();
 ```
 
+### dispatch_auto_drafts
+
+Dispatches `bajour-auto-draft` edge function for each active village at 18:00 Europe/Zurich. Staggers calls by 10 seconds to respect rate limits.
+
+```sql
+CREATE OR REPLACE FUNCTION dispatch_auto_drafts()
+RETURNS INTEGER AS $$
+DECLARE
+    village_record RECORD;
+    dispatched_count INTEGER := 0;
+    project_url TEXT;
+    service_key TEXT;
+BEGIN
+    SELECT decrypted_secret INTO project_url
+    FROM vault.decrypted_secrets WHERE name = 'project_url';
+
+    SELECT decrypted_secret INTO service_key
+    FROM vault.decrypted_secrets WHERE name = 'service_role_key';
+
+    FOR village_record IN
+        SELECT village_id, village_name, scout_id, user_id
+        FROM bajour_village_config  -- logical view / config table
+        ORDER BY village_id
+    LOOP
+        PERFORM net.http_post(
+            url := project_url || '/functions/v1/bajour-auto-draft',
+            headers := jsonb_build_object(
+                'Authorization', 'Bearer ' || service_key,
+                'Content-Type', 'application/json'
+            ),
+            body := jsonb_build_object(
+                'village_id', village_record.village_id,
+                'village_name', village_record.village_name,
+                'scout_id', village_record.scout_id,
+                'user_id', village_record.user_id
+            )
+        );
+
+        dispatched_count := dispatched_count + 1;
+        PERFORM pg_sleep(10);
+    END LOOP;
+
+    RETURN dispatched_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
 ## pg_cron Jobs
+
+Seven active jobs. pg_cron schedules in UTC; DST is handled via timezone-safe wrapper functions rather than the 5-parameter `cron.schedule` overload (not available on this Supabase instance).
 
 ```sql
 -- Dispatch due scouts every 15 minutes
@@ -563,12 +612,63 @@ SELECT cron.schedule(
     'SELECT dispatch_due_scouts()'
 );
 
--- Cleanup expired data daily at 3 AM
+-- Cleanup expired data daily at 3 AM UTC
 SELECT cron.schedule(
     'cleanup-expired-data',
     '0 3 * * *',
     'SELECT cleanup_expired_data()'
 );
+
+-- Dispatch auto-drafts: dual schedule covers both DST states.
+-- dispatch_auto_drafts_tz_safe() checks EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 18
+-- before calling dispatch_auto_drafts(), so only one of the two fires per day.
+SELECT cron.schedule(
+    'dispatch-auto-drafts-summer',
+    '0 16 * * *',  -- 18:00 CEST (UTC+2, Apr–Oct)
+    'SELECT dispatch_auto_drafts_tz_safe()'
+);
+SELECT cron.schedule(
+    'dispatch-auto-drafts-winter',
+    '0 17 * * *',  -- 18:00 CET (UTC+1, Nov–Mar)
+    'SELECT dispatch_auto_drafts_tz_safe()'
+);
+
+-- Resolve bajour verification timeouts: same dual-schedule pattern.
+-- resolve_bajour_timeouts_tz_safe() checks Zurich hour = 21 before proceeding.
+SELECT cron.schedule(
+    'resolve-timeouts-summer',
+    '0 19 * * *',  -- 21:00 CEST (UTC+2)
+    'SELECT resolve_bajour_timeouts_tz_safe()'
+);
+SELECT cron.schedule(
+    'resolve-timeouts-winter',
+    '0 20 * * *',  -- 21:00 CET (UTC+1)
+    'SELECT resolve_bajour_timeouts_tz_safe()'
+);
+```
+
+### Timezone-safe wrapper functions
+
+The `_tz_safe()` wrappers guard against the off-season UTC slot firing. Only one of each pair executes per day:
+
+```sql
+CREATE OR REPLACE FUNCTION dispatch_auto_drafts_tz_safe()
+RETURNS VOID AS $$
+BEGIN
+    IF EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 18 THEN
+        PERFORM dispatch_auto_drafts();
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION resolve_bajour_timeouts_tz_safe()
+RETURNS VOID AS $$
+BEGIN
+    IF EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 21 THEN
+        PERFORM resolve_bajour_timeouts();
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 ## Vault Secrets
@@ -636,6 +736,34 @@ CREATE INDEX idx_bajour_drafts_user_id ON bajour_drafts(user_id);
 CREATE INDEX idx_bajour_drafts_village_id ON bajour_drafts(village_id);
 CREATE INDEX idx_bajour_drafts_publication_status ON bajour_drafts(publication_date, verification_status);
 ```
+
+### bajour_correspondents (see supabase/CLAUDE.md for full details)
+
+Village correspondents for WhatsApp verification. Managed via table editor, no redeployment needed.
+
+### auto_draft_runs
+
+Audit log for the automated daily draft pipeline. One row per village per run.
+
+```sql
+CREATE TABLE auto_draft_runs (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    village_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+    error_message TEXT,
+    draft_id UUID REFERENCES bajour_drafts(id) ON DELETE SET NULL,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ
+);
+
+-- RLS: service_role only
+ALTER TABLE auto_draft_runs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role manages auto_draft_runs"
+  ON auto_draft_runs FOR ALL
+  USING (current_setting('role', true) = 'service_role');
+```
+
+---
 
 ### resolve_bajour_timeouts
 

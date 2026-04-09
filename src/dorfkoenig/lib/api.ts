@@ -115,12 +115,14 @@ export const scoutsApi = {
 };
 
 export const unitsApi = {
-  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number }) => {
+  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number; date_from?: string; date_to?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.date_from) searchParams.set('date_from', params.date_from);
+    if (params?.date_to) searchParams.set('date_to', params.date_to);
     return api.get<import('./types').InformationUnit[]>(`units?${searchParams}`);
   },
   locations: () => api.get<import('./types').Location[]>('units/locations'),
@@ -159,12 +161,13 @@ export const manualUploadApi = {
   confirmUpload: (data: {
     content_type: 'photo_confirm' | 'pdf_confirm';
     storage_path: string;
-    description: string;
+    description?: string;
     location?: import('./types').Location | null;
     topic?: string | null;
     source_title?: string | null;
+    publication_date?: string | null;
   }) =>
-    api.post<import('./types').ManualUploadResult>('manual-upload', data),
+    api.post<import('./types').ManualUploadResult | import('./types').NewspaperProcessingResult>('manual-upload', data),
 
   uploadFile: (url: string, file: File) =>
     fetch(url, {

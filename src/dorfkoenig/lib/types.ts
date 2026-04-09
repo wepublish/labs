@@ -151,6 +151,28 @@ export interface PresignedUploadResult {
   token: string;
 }
 
+export interface NewspaperJob {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  publication_date: string | null;
+  label: string | null;
+  status: 'processing' | 'completed' | 'failed';
+  chunks_total: number;
+  chunks_processed: number;
+  units_created: number;
+  skipped_items: string[];
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface NewspaperProcessingResult {
+  status: 'processing';
+  job_id: string;
+  storage_path: string;
+}
+
 export interface Draft {
   title: string;
   headline: string;

@@ -45,8 +45,9 @@ REGELN:
 - Maximal 8 Einheiten pro Text
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
-- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD (wenn im Text erwähnt)
+- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
 - Wenn kein Datum erkennbar, setze eventDate auf null
+- Einheiten OHNE Datum werden verworfen — extrahiere Daten aggressiv
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -84,31 +85,18 @@ AUSGABEFORMAT (JSON):
 
   if (units.length === 0) return 0;
 
+  // For web/civic scouts: use today (scrape date) as fallback for dateless units
+  const today = new Date().toISOString().slice(0, 10);
+  for (const unit of units) {
+    if (!unit.eventDate) unit.eventDate = today;
+  }
+
   // Generate embeddings for all units
   const statements = units.map((u) => u.statement);
   const unitEmbeddings = await embeddings.generateBatch(statements);
 
   // Deduplicate within run (0.75 threshold)
-  const uniqueIndices = new Set<number>();
-  const seenEmbeddings: number[][] = [];
-
-  for (let i = 0; i < unitEmbeddings.length; i++) {
-    const embedding = unitEmbeddings[i];
-    let isDuplicate = false;
-
-    for (const seen of seenEmbeddings) {
-      const similarity = embeddings.similarity(embedding, seen);
-      if (similarity >= UNIT_DEDUP_THRESHOLD) {
-        isDuplicate = true;
-        break;
-      }
-    }
-
-    if (!isDuplicate) {
-      uniqueIndices.add(i);
-      seenEmbeddings.push(embedding);
-    }
-  }
+  const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
   // Store unique units
   const domain = firecrawl.getDomain(params.sourceUrl);
@@ -129,7 +117,7 @@ AUSGABEFORMAT (JSON):
       location: params.location,
       topic: params.topic || null,
       embedding: unitEmbeddings[i],
-      event_date: unit.eventDate || null,
+      event_date: unit.eventDate,
     });
 
     if (!error) storedCount++;

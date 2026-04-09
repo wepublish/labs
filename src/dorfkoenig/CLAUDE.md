@@ -73,6 +73,14 @@ src/dorfkoenig/
 │       ├── scout-wizard.test.ts  # Two-step wizard flow
 │       └── units.test.ts  # Units store load/search/markUsed
 ├── supabase/              # Backend (see supabase/CLAUDE.md)
+│   ├── functions/
+│   │   ├── process-newspaper/  # Async newspaper PDF extraction pipeline
+│   │   ├── ... (other functions)
+│   ├── migrations/
+│   │   └── ... (database schema)
+│   ├── _shared/
+│   │   ├── zeitung-extraction-prompt.ts  # Newspaper extraction prompt + ranking table
+│   │   ├── ... (other shared modules)
 ├── specs/                 # Detailed specifications
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md
@@ -138,6 +146,7 @@ Pagination: page size 20, `hasMore` flag.
 ### `bajourDrafts` (`bajour/store.ts`)
 `load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
 Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `DraftSlideOver` subscribes to Realtime updates for live verification status.
+State also reflects `auto_draft_runs` logs for automated pipeline tracking.
 
 ### `auth` (`stores/auth.ts`)
 Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`

@@ -4,6 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "sync:gemeinden": "cp src/dorfkoenig/lib/gemeinden.json src/dorfkoenig/supabase/functions/_shared/gemeinden.json",
+    "predev": "npm run sync:gemeinden",
+    "prebuild": "npm run sync:gemeinden",
     "dev": "vite",
     "build": "vite build",
     "build:production": "vite build --mode production",

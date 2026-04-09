@@ -11,7 +11,6 @@
 
 import { handleCors, corsHeaders, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
-// Canonical source: src/dorfkoenig/lib/gemeinden.json — keep in sync
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
 const NEWS_API_TOKEN = Deno.env.get('NEWS_API_TOKEN');

@@ -765,6 +765,19 @@ Update an existing draft (only own drafts). Used for manual verification status 
 
 **Response:** `200 OK` — full draft object.
 
+### GET /bajour-select-units
+
+Returns the current unit selection prompt.
+
+**Response:**
+```json
+{
+  "data": {
+    "prompt": "..."
+  }
+}
+```
+
 ### POST /bajour-select-units
 
 AI-selects relevant information units for a village based on its scout's data.
@@ -786,34 +799,37 @@ AI-selects relevant information units for a village based on its scout's data.
 }
 ```
 
-### POST /bajour-generate-draft
+### POST /bajour-auto-draft
 
-Generate a newsletter draft from selected units via LLM.
+Automated daily draft pipeline for a single village. Dispatched by pg_cron via `dispatch_auto_drafts()`. **Not for frontend use** — service role only.
 
 **Request:**
 ```json
 {
   "village_id": "riehen",
   "village_name": "Riehen",
-  "unit_ids": ["uuid1", "uuid2"],
-  "custom_system_prompt": "Schreibe in einem formellen Ton"
+  "scout_id": "ba000000-0001-4000-a000-000000000001",
+  "user_id": "493c6d51531c7444365b0ec094bc2d67"
 }
 ```
+
+**Auth:** Service role key (`Authorization: Bearer {SERVICE_ROLE_KEY}`). Dispatched by pg_cron, not accessible from the frontend.
+
+**Pipeline:** idempotency check → select units (`INFORMATION_SELECT_PROMPT`, 2-day recency, max 20) → generate draft (`DRAFT_COMPOSE_PROMPT`) → save to `bajour_drafts` (publication_date = today Zurich) → send WhatsApp verification (non-fatal) → log to `auto_draft_runs`.
 
 **Response:**
 ```json
 {
   "data": {
-    "title": "Wochenüberblick Riehen",
-    "greeting": "Liebe Riehenerinnen und Riehener",
-    "sections": [
-      { "heading": "Gemeinderat", "body": "..." }
-    ],
-    "outlook": "Nächste Woche...",
-    "sign_off": "Euer Dorfkönig"
+    "status": "completed",
+    "draft_id": "uuid",
+    "units_selected": 8,
+    "verification_sent": true
   }
 }
 ```
+
+Possible `status` values: `completed`, `skipped` (already ran today for this village), `failed`.
 
 ### POST /bajour-send-verification
 

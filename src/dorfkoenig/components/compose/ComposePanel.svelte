@@ -4,7 +4,6 @@
     Sparkles,
     Loader2,
     Trash2,
-    Upload,
     FileText,
   } from 'lucide-svelte';
   import { units } from '../../stores/units';
@@ -13,7 +12,7 @@
   import { bajourApi } from '../../bajour/api';
   import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
   import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
-  import { showUploadModal } from '../../stores/ui';
+
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import AISelectDropdown from './AISelectDropdown.svelte';
@@ -51,6 +50,8 @@
   let selectedScoutId = $state<string | null>(null);
   let searchQuery = $state('');
   let isSearching = $state(false);
+  let dateFrom = $state<string>('');
+  let dateTo = $state<string>('');
 
   // Load on mount + start background draft polling
   onMount(() => {
@@ -135,7 +136,7 @@
     selectedLocation = city;
     selectedScoutId = null;
     units.setLocation(city);
-    units.load(city ?? undefined);
+    units.load(city ?? undefined, true, undefined, dateFrom || undefined, dateTo || undefined);
     resetDraftState();
   }
 
@@ -143,7 +144,15 @@
     selectedTopic = topic;
     selectedScoutId = null;
     units.setTopic(topic);
-    units.load(selectedLocation ?? undefined, true, topic ?? undefined);
+    units.load(selectedLocation ?? undefined, true, topic ?? undefined, dateFrom || undefined, dateTo || undefined);
+    resetDraftState();
+  }
+
+  function handleDateChange(from: string, to: string) {
+    dateFrom = from;
+    dateTo = to;
+    units.setDateRange(from || null, to || null);
+    units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined, from || undefined, to || undefined);
     resetDraftState();
   }
 
@@ -157,7 +166,7 @@
         isSearching = false;
       }
     } else {
-      units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined);
+      units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined, dateFrom || undefined, dateTo || undefined);
     }
   }
 
@@ -225,7 +234,7 @@
     }
   }
 
-  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
+  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string, systemPromptOverride?: string) {
     showAISelectDropdown = false;
     retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
 
@@ -255,7 +264,7 @@
         village_id: village.id,
         scout_id: scoutId,
         ...(recencyDays !== null && { recency_days: recencyDays }),
-        selection_prompt: selectionPrompt.trim() || undefined,
+        selection_prompt: systemPromptOverride || selectionPrompt.trim() || undefined,
       });
 
       const selectedIds = selectResult.selected_unit_ids;
@@ -336,6 +345,9 @@
       searchPlaceholder="Informationen filtern..."
       onSearch={handleSearch}
       {isSearching}
+      dateFrom={dateFrom}
+      dateTo={dateTo}
+      onDateChange={handleDateChange}
     />
 
     <!-- Data status row -->
@@ -357,11 +369,6 @@
           <button class="text-link" onclick={selectAll} type="button">Alle auswählen</button>
         {/if}
       {/if}
-
-      <button class="upload-btn" onclick={() => showUploadModal.set(true)} type="button" style="margin-left: auto;">
-        <Upload size={14} />
-        <span>Hochladen</span>
-      </button>
     </div>
   </div>
 
@@ -532,29 +539,6 @@
     background: var(--color-status-error-bg);
     border-color: var(--color-danger-light);
     color: var(--color-danger-dark);
-  }
-
-  .upload-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.625rem 0.25rem 0.5rem;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    font-family: var(--font-body);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all var(--transition-base);
-    white-space: nowrap;
-  }
-
-  .upload-btn:hover {
-    background: var(--color-background);
-    color: var(--color-text);
-    border-color: var(--color-primary);
   }
 
   /* ── SCROLLABLE CONTENT ── */

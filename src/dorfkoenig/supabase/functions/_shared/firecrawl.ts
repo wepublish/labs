@@ -160,15 +160,19 @@ export async function computeContentHash(content: string): Promise<string> {
 }
 
 /**
- * Double-probe to detect whether Firecrawl persists baselines for a URL.
+ * Double-probe to detect whether Firecrawl persists usable baselines for a URL.
  *
- * Two sequential changeTracking calls with the same tag. On the second call,
- * `previousScrapeAt` is definitive:
- *   - Has timestamp → baseline stored → 'firecrawl'
- *   - null → baseline dropped → 'firecrawl_plain'
+ * Two sequential changeTracking calls with the same tag:
+ *   Call 1 — establishes the baseline (also serves as the preview scrape).
+ *   Call 2 — verifies the baseline was stored AND has real content.
  *
- * Assumption: Firecrawl persists baselines synchronously (confirmed via CLI
- * testing 2026-03-04, but no documented API guarantee).
+ * Verification on call 2 checks TWO conditions:
+ *   1. `previousScrapeAt` has a timestamp → Firecrawl stored something.
+ *   2. `changeStatus` is 'same' or 'changed' → Firecrawl actually compared
+ *      against stored content (not just a timestamp with empty data).
+ *
+ * If `previousScrapeAt` is set but `changeStatus` is 'new' or null, the
+ * baseline is empty — changeTracking won't work. Falls back to firecrawl_plain.
  */
 export async function doubleProbe(
   url: string,
@@ -194,7 +198,7 @@ export async function doubleProbe(
   // Safety delay for Firecrawl persistence
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Call 2: check if baseline persisted
+  // Call 2: verify baseline persisted with real content
   const call2 = await scrape({
     url,
     formats: ['markdown'],
@@ -207,9 +211,16 @@ export async function doubleProbe(
     return { provider: 'firecrawl_plain', scrapeResult: call1 };
   }
 
-  if (call2.previousScrapeAt) {
-    console.log(`[doubleProbe] Baseline persisted for ${url} (previousScrapeAt: ${call2.previousScrapeAt})`);
+  const baselineHasContent = call2.changeStatus === 'same' || call2.changeStatus === 'changed';
+
+  if (call2.previousScrapeAt && baselineHasContent) {
+    console.log(`[doubleProbe] Baseline verified for ${url} (previousScrapeAt: ${call2.previousScrapeAt}, changeStatus: ${call2.changeStatus})`);
     return { provider: 'firecrawl', scrapeResult: call1 };
+  }
+
+  if (call2.previousScrapeAt && !baselineHasContent) {
+    console.log(`[doubleProbe] Baseline exists but is EMPTY for ${url} (previousScrapeAt: ${call2.previousScrapeAt}, changeStatus: ${call2.changeStatus}) — falling back to hash`);
+    return { provider: 'firecrawl_plain', scrapeResult: call1 };
   }
 
   console.log(`[doubleProbe] Baseline dropped for ${url} (previousScrapeAt: null)`);

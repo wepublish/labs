@@ -71,12 +71,14 @@ async function listUnits(
   const scoutId = url.searchParams.get('scout_id');
   const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_UNITS_PAGE_SIZE)), MAX_PAGE_SIZE);
   const offset = parseInt(url.searchParams.get('offset') || '0');
+  const dateFrom = url.searchParams.get('date_from');
+  const dateTo = url.searchParams.get('date_to');
 
   let query = supabase
     .from('information_units')
-    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, source_type, file_path, created_at, used_in_article', { count: 'exact' })
+    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, source_type, file_path, created_at, used_in_article, event_date', { count: 'exact' })
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order('event_date', { ascending: true, nullsFirst: false })
     .range(offset, offset + limit - 1);
 
   if (locationCity) {
@@ -94,6 +96,13 @@ async function listUnits(
 
   if (scoutId) {
     query = query.eq('scout_id', scoutId);
+  }
+
+  if (dateFrom) {
+    query = query.gte('event_date', dateFrom);
+  }
+  if (dateTo) {
+    query = query.lte('event_date', dateTo);
   }
 
   const { data, error, count } = await query;

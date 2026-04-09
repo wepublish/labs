@@ -13,11 +13,12 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
 | `bajour-drafts` | CRUD for Bajour village newsletter drafts (GET list, POST create, PATCH update) | x-user-id header | Frontend API calls |
 | `bajour-select-units` | AI-powered selection of relevant information units for a village | x-user-id header | Frontend API calls |
-| `bajour-generate-draft` | Generate newsletter draft from selected units via LLM | x-user-id header | Frontend API calls |
+| `bajour-auto-draft` | Automated daily draft pipeline per village (select → generate → save → verify) | Service role (pg_cron) | pg_cron dispatch |
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
 | `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
 | `news` | Public GET endpoint returning confirmed drafts grouped by village within a date range. Auth via `?auth=` or `Authorization: Bearer` (`NEWS_API_TOKEN`). Params: `?date=YYYY-MM-DD&range=N` (default: today ±3 days). | Shared secret | WePublish overview page |
+| `process-newspaper` | Async newspaper PDF extraction: Firecrawl parse → chunk → LLM extract → dedup → store units. Updates `newspaper_jobs` for Realtime progress. | Service role (manual-upload trigger) | manual-upload pdf_confirm |
 
 ## Shared Modules (`functions/_shared/`)
 
@@ -29,6 +30,8 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
 | `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()` | Resend API |
+| `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT` | - |
+| `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter | OpenRouter API |
 
 ## 9-Step Execution Pipeline (`execute-scout/index.ts`)
 
@@ -66,17 +69,42 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `should_run_scout(frequency, last_run_at)` | Check if scout is due |
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
+| `dispatch_auto_drafts()` | Core dispatcher: calls `bajour-auto-draft` edge function per village. Not called directly by cron — invoked by `dispatch_auto_drafts_tz_safe()` after timezone check. |
+| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 18, then calls `dispatch_auto_drafts()`. Dual-scheduled at 16:00 and 17:00 UTC to cover both DST states. |
+| `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 21, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 19:00 and 20:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
+### Active pg_cron Jobs (7 total)
+
+| Job name | Schedule (UTC) | Purpose |
+|----------|---------------|---------|
+| `dispatch-due-scouts` | `*/15 * * * *` | Dispatch due scouts every 15 minutes |
+| `cleanup-expired-data` | `0 3 * * *` | Delete expired units, old executions, fix stuck runs |
+| `dispatch-auto-drafts-summer` | `0 16 * * *` | 18:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
+| `dispatch-auto-drafts-winter` | `0 17 * * *` | 18:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-summer` | `0 19 * * *` | 21:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-winter` | `0 20 * * *` | 21:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| *(implicit cleanup)* | — | Stuck execution timeout handled inside `cleanup_expired_data()` |
+
+**Dual-schedule pattern:** The `_tz_safe()` wrappers check `EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich')` before proceeding. Both UTC slots fire daily but only one matches the actual Zurich hour, so only one executes. This avoids the pg_cron 5-parameter timezone overload that is not available on this Supabase instance.
+
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
 - PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `publication_date` (DATE, default CURRENT_DATE), `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
+
+**`auto_draft_runs`** -- Audit log for automated daily draft pipeline per village
+- PK: `id` (BIGINT IDENTITY), `village_id` (TEXT), `status` (TEXT, CHECK: pending/running/completed/failed/skipped), `error_message` (TEXT, nullable), `draft_id` (UUID, FK → bajour_drafts, nullable), `started_at` (TIMESTAMPTZ), `completed_at` (TIMESTAMPTZ, nullable)
 
 **`bajour_correspondents`** -- Village correspondents for WhatsApp verification
 - PK: `id` (UUID), `village_id` (TEXT), `name` (TEXT), `phone` (TEXT, without '+' prefix), `is_active` (BOOLEAN), `created_at`, `updated_at`
 - Phone format: no '+' prefix (matches Meta webhook format). WhatsApp send prepends '+'.
 - Unique constraint: (village_id, phone). Phone format check: `^[1-9][0-9]{6,14}$`
 - Managed via Supabase table editor or SQL. No redeployment needed.
+
+**`newspaper_jobs`** -- Async PDF processing status tracker with Realtime
+- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed), `chunks_total`, `chunks_processed`, `units_created`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
+- RLS: user SELECT on own rows, service_role ALL
+- Realtime enabled for live progress updates
 
 ### RLS Policies
 

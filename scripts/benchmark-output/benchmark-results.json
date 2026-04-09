@@ -1,0 +1,1636 @@
+{
+  "units": [
+    {
+      "statement": "Die Bürgergemeinde Dornach genehmigte die Rückgabe des Kredits für den Neubau des Mutterkuhstalls beim Schlosshof.",
+      "unitType": "fact",
+      "entities": [
+        "Bürgergemeinde Dornach"
+      ],
+      "eventDate": null,
+      "village": "Dornach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Bürgergemeindeversammlung hat den Antrag des Bürgerrats zur Rückgabe des Baukredits gutgeheissen.",
+      "unitType": "fact",
+      "entities": [
+        "Bürgerrat Dornach"
+      ],
+      "eventDate": null,
+      "village": "Dornach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 20. Mai 2026 in Münchenstein und Arlesheim sowie am 21. Mai 2026 in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-05-20",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 20. Mai 2026 in Münchenstein und Arlesheim sowie am 21. Mai 2026 in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-05-20",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 20. Mai 2026 in Münchenstein und Arlesheim sowie am 21. Mai 2026 in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-05-21",
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 8. Juni 2026 in Aesch statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-06-08",
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 15. Juni 2026 in Arlesheim statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-06-15",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 30. Juli 2026 in Münchenstein statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-07-30",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 6. August 2026 in Aesch statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-08-06",
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die nächsten Neophyten-Aktionstage finden am 25. August 2026 in Arlesheim statt.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": "2026-08-25",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Der Zoo Basel hält die Kordofan-Giraffen seit 15 Jahren.",
+      "unitType": "fact",
+      "entities": [
+        "Zoo Basel"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Augusta Raurica ergänzt ihr Programm um neue Angebote, die ohne Anmeldung und feste Startzeiten genutzt werden können.",
+      "unitType": "event",
+      "entities": [
+        "Augusta Raurica"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Swisscom möchte im Turm der Kirche St. Martin in Pfeffingen eine Mobilfunkantenne installieren.",
+      "unitType": "event",
+      "entities": [
+        "Swisscom",
+        "Kirche St. Martin"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die geplante Antennenanlage in der Kirche St. Martin würde ausschließlich für die Versorgung des Gemeindegebietes von Pfeffingen dienen.",
+      "unitType": "fact",
+      "entities": [
+        "Kirche St. Martin",
+        "Swisscom"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "medium",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Für das zur Verfügung stellen des Kirchturms für die Mobilfunkanlage würde die Kirchgemeinde Pfeffingen von der Swisscom einen mittleren vierstelligen Betrag im Jahr erhalten.",
+      "unitType": "fact",
+      "entities": [
+        "Kirche St. Martin",
+        "Swisscom"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "medium",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Für die Landratswahlen im April 2027 werden die 90 Sitze im Kantonsparlament neu auf die zwölf Wahlkreise verteilt.",
+      "unitType": "fact",
+      "entities": [
+        "Kantonsparlament"
+      ],
+      "eventDate": "2027-04-01",
+      "village": "null",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Laufen und Münchenstein erhalten je einen zusätzlichen Sitz im Kantonsparlament.",
+      "unitType": "fact",
+      "entities": [
+        "Laufen",
+        "Münchenstein"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Oberwil und Waldenburg verlieren je ein Mandat im Kantonsparlament.",
+      "unitType": "fact",
+      "entities": [
+        "Oberwil",
+        "Waldenburg"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die N18 soll leistungsfähiger gemacht und mit einem Tunnel zwischen Aesch und Laufen ausgestattet werden.",
+      "unitType": "fact",
+      "entities": [
+        "N18"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Vom 1. April bis 31. Juli gilt die gesetzliche Leinenpflicht für Hunde zum Schutz der Wildtiere.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "high",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die Gemeinde Arlesheim bietet ab sofort keine Wespenbekämpfung mehr an.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinde Arlesheim"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die Gemeindeverwaltung Arlesheim bietet Ferienjobs für Jugendliche ab 15 Jahren an.",
+      "unitType": "event",
+      "entities": [
+        "Gemeindeverwaltung Arlesheim"
+      ],
+      "eventDate": "2026-03-29",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Gemeindeverwaltung Arlesheim ist über die Ostertage vom 2. April bis 6. April 2026 geschlossen.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeindeverwaltung Arlesheim"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Der Stärne-Treff findet am Montag, 23. März 2026, im Café-Restaurant der Klinik Arlesheim statt.",
+      "unitType": "event",
+      "entities": [
+        "Stärne-Treff",
+        "Klinik Arlesheim"
+      ],
+      "eventDate": "2026-03-23",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Das Bring- und Holhäuschen für Kinder- und Jugendsportartikel ist am 25. März 2026 von 15 bis 17 Uhr geöffnet.",
+      "unitType": "event",
+      "entities": [
+        "Bring- und Holhäuschen"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Anmeldung für die Workshops der Happy Oase startet am 18. März 2026 um 13 Uhr online.",
+      "unitType": "event",
+      "entities": [
+        "Happy Oase"
+      ],
+      "eventDate": "2026-03-18",
+      "village": "Therwil",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Ehrung aussergewöhnlicher Leistungen findet am Freitag, 17. April 2026, ab 18 Uhr im Setzwerk statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-04-17",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Das traditionelle Dorfanlass Eierleset findet am Weissen Sonntag, 12. April 2026, statt.",
+      "unitType": "event",
+      "entities": [
+        "Eierleset"
+      ],
+      "eventDate": "2026-04-12",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Yoga-Lehrerin Sally Cox gründete vor drei Jahren ihre eigene Kleiderlinie.",
+      "unitType": "entity_update",
+      "entities": [
+        "Sally Cox"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "feature"
+    },
+    {
+      "statement": "Der Naturschutzverein Arlesheim lädt am Samstag, 21. März, um 7 Uhr beim Sportplatz Gigersloch in Dornach zu diesem Naturspaziergang ein.",
+      "unitType": "event",
+      "entities": [
+        "Naturschutzverein Arlesheim"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Arlesheim",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am Dienstagabend fand die 103. Generalversammlung des Arlesheimer Gewerbe- und Industrievereins statt.",
+      "unitType": "event",
+      "entities": [
+        "Arlesheimer Gewerbe- und Industrieverein"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Die Luxor Haushaltsapparate AG wurde während der Generalversammlung des AGIV als 'Unternehmen des Jahres' ausgezeichnet.",
+      "unitType": "entity_update",
+      "entities": [
+        "Luxor Haushaltsapparate AG"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "feature"
+    },
+    {
+      "statement": "Die FDP Arlesheim hat einen Generationenwechsel in der Parteiführung eingeleitet.",
+      "unitType": "entity_update",
+      "entities": [
+        "FDP Arlesheim"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Cyril Bleisch wurde zum neuen Präsidenten der FDP Arlesheim gewählt.",
+      "unitType": "entity_update",
+      "entities": [
+        "Cyril Bleisch"
+      ],
+      "eventDate": null,
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Die Reformierte Kirchgemeinde Arlesheim lädt am Freitag, 20. März, um 10.15 Uhr zu einem reformierten Gottesdienst in der 'Obesunne' ein.",
+      "unitType": "event",
+      "entities": [
+        "Reformierte Kirchgemeinde Arlesheim"
+      ],
+      "eventDate": "2026-03-20",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Sonntag, 22. März, findet um 10.00 Uhr ein Familiengottesdienst in der Reformierten Kirchgemeinde Arlesheim statt.",
+      "unitType": "event",
+      "entities": [
+        "Reformierte Kirchgemeinde Arlesheim"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Arlesheim",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Der Verein für Natur- und Vogelschutz Reinach begleitet am 20. März 2026 eine Führung durch drei Naturschutzgebiete von nationaler Bedeutung.",
+      "unitType": "event",
+      "entities": [
+        "Verein für Natur- und Vogelschutz Reinach"
+      ],
+      "eventDate": "2026-03-20",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am 21. und 22. März 2026 findet der Kunsthandwerksmarkt im Heimatmuseum in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Heimatmuseum Reinach"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Das Pfingst-Tageslager findet vom Freitagabend, 22. Mai bis Sonntagmittag, 24. Mai 2026 im Paradiso neben der Kirche statt.",
+      "unitType": "event",
+      "entities": [
+        "Pfingst-Tageslager",
+        "Paradiso"
+      ],
+      "eventDate": "2026-05-22",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Das Herbstlager findet von Montag, 28. September bis Freitag, 2. Oktober 2026 in Fällanden statt.",
+      "unitType": "event",
+      "entities": [
+        "Herbstlager"
+      ],
+      "eventDate": "2026-09-28",
+      "village": "null",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die bunte Kinderfeier findet am Freitag, 27. März 2026 um 15 Uhr in der Mischelikirche statt.",
+      "unitType": "event",
+      "entities": [
+        "bunte Kinderfeier",
+        "Mischelikirche"
+      ],
+      "eventDate": "2026-03-27",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Das Gospelkonzert der Voices of Unity findet am Samstag, 21. März 2026 um 19:30 Uhr in der Mischelikirche statt.",
+      "unitType": "event",
+      "entities": [
+        "Gospelkonzert",
+        "Voices of Unity",
+        "Mischelikirche"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Der Gottesdienst mit den Voices of Unity findet am Sonntag, 22. März 2026 um 10:30 Uhr in der Mischelikirche statt.",
+      "unitType": "event",
+      "entities": [
+        "Gottesdienst",
+        "Voices of Unity",
+        "Mischelikirche"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die 518. Sitzung des Einwohnerrates findet am Montag, 23. März 2026 um 19:30 Uhr im Gemeindesaal statt.",
+      "unitType": "event",
+      "entities": [
+        "Einwohnerrat Reinach",
+        "Gemeindesaal"
+      ],
+      "eventDate": "2026-03-23",
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Am Samstag, 28. März 2026 findet das Palmbinden von 10–12 Uhr im Paradiso neben der Kirche statt.",
+      "unitType": "event",
+      "entities": [
+        "Palmbinden",
+        "Paradiso"
+      ],
+      "eventDate": "2026-03-28",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Gemeinde Reinach bietet Beratung und finanzielle Unterstützung für sozialhilfebeziehende Menschen an.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinde Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Wahlempfehlungen für die Abstimmungen am 14. Juni 2026 werden durch die Buchbinderei Grollimund AG verpackt und versandt.",
+      "unitType": "fact",
+      "entities": [
+        "Buchbinderei Grollimund AG"
+      ],
+      "eventDate": "2026-06-14",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Am Mittwoch, 25. März 2026 spielen Schülerinnen und Schüler von Beat Kappeler (Saxophon) und Heiner Krause (Horn) um 18.00 Uhr im Saal im Haus der Musik.",
+      "unitType": "event",
+      "entities": [
+        "Beat Kappeler",
+        "Heiner Krause"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Musikschule Reinach veranstaltet am Samstag, 21. März 2026 einen Tag der offenen Tür im Haus der Musik an der Römerstrasse 50.",
+      "unitType": "event",
+      "entities": [
+        "Musikschule Reinach"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Bio-/Grünabfuhr findet am 24. März 2026 in der gesamten Gemeinde Reinach statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-24",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Der Häckseldienst findet am 25. März 2026 in der gesamten Gemeinde Reinach statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-25",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Einwohnerratssitzung findet am 23. März 2026 um 19:30 Uhr im Gemeindesaal Gemeindehaus statt.",
+      "unitType": "event",
+      "entities": [
+        "Einwohnerrat Reinach"
+      ],
+      "eventDate": "2026-03-23",
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Am Samstag, 21. März 2026 findet das Biblioweekend «Brot & Spiele» von 16 bis 20 Uhr in der Gemeinde- und Schulbibliothek statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Freitag, 20. März 2026 findet ein Frischwarenmarkt am Gemeindehausplatz von 8.30 bis 11.30 Uhr statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-20",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Versöhnungsfeier findet am Mittwoch, 25. März 2026 um 19.00 Uhr statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-25",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Eucharistiefeier findet am Sonntag, 22. März 2026 um 10.30 Uhr in der Dorfkirche St. Nikolaus statt.",
+      "unitType": "event",
+      "entities": [],
+      "eventDate": "2026-03-22",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Mitgliederversammlung des Tierparks Reinach fand am 12. März 2026 statt, bei der Thomas Roth zum neuen Präsidenten gewählt wurde.",
+      "unitType": "entity_update",
+      "entities": [
+        "Thomas Roth"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "feature"
+    },
+    {
+      "statement": "Am Dienstag, 24. März 2026, findet um 12.00 Uhr ein Mittagstisch im Bistro Glöggli, Reformierte Kirche Mischeli, statt.",
+      "unitType": "event",
+      "entities": [
+        "Bistro Glöggli",
+        "Reformierte Kirche Mischeli"
+      ],
+      "eventDate": "2026-03-24",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Chrischona-Gemeinde Reinach-Münchenstein veranstaltet am Samstag, 21. März 2026, um 14.00 Uhr eine Jungschi.",
+      "unitType": "event",
+      "entities": [
+        "Chrischona-Gemeinde Reinach-Münchenstein"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Sonntag, 22. März 2026, findet um 10.00 Uhr ein Gottesdienst in der Chrischona-Gemeinde Reinach-Münchenstein statt.",
+      "unitType": "event",
+      "entities": [
+        "Chrischona-Gemeinde Reinach-Münchenstein"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Montag, 23. März 2026, findet um 6.00 Uhr ein Männergebet in der Chrischona-Gemeinde Reinach-Münchenstein statt.",
+      "unitType": "event",
+      "entities": [
+        "Chrischona-Gemeinde Reinach-Münchenstein"
+      ],
+      "eventDate": "2026-03-23",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Donnerstag, 26. März 2026, um 20.00 Uhr finden Kleingruppen im CBB – Christliches Begegnungszentrum Birseck in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "CBB – Christliches Begegnungszentrum Birseck"
+      ],
+      "eventDate": "2026-03-26",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Sonntag, 22. März 2026, findet um 10.00 Uhr ein Gottesdienst im CBB – Christliches Begegnungszentrum Birseck statt.",
+      "unitType": "event",
+      "entities": [
+        "CBB – Christliches Begegnungszentrum Birseck"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Sonntag, 22. März 2026, um 9.30 Uhr findet ein Gottesdienst in der Neuapostolischen Kirche Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Neuapostolische Kirche Reinach"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Mittwoch, 25. März 2026, um 20.00 Uhr findet ein Gottesdienst in der Neuapostolischen Kirche Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Neuapostolische Kirche Reinach"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Das Orchester Reinach hat jeden Donnerstag um 19.30 Uhr eine Probe in der Aula Schulhaus Bachmatten, Egertenstrasse 8.",
+      "unitType": "event",
+      "entities": [
+        "Orchester Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am Samstag, 21. März 2026, findet von 10 bis 20 Uhr und am Sonntag, 22. März 2026, von 11 bis 17 Uhr der 8. Kunsthandwerksmarkt im Heimatmuseum statt.",
+      "unitType": "event",
+      "entities": [
+        "Heimatmuseum"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Zunft zu Wein- und Herbergsleuten Aesch feiert am 19. März 2026 ihr 50-jähriges Bestehen mit einem internen Anlass im Gasthof Mühle.",
+      "unitType": "event",
+      "entities": [
+        "Zunft zu Wein- und Herbergsleuten Aesch"
+      ],
+      "eventDate": "2026-03-19",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Zunft zu Wein- und Herbergsleuten Aesch veranstaltet am 21. März 2026 eine Feier in der Mehrzweckhalle Löhrenacker.",
+      "unitType": "event",
+      "entities": [
+        "Zunft zu Wein- und Herbergsleuten Aesch"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Theatergruppe Aesch führt am 21. März 2026 das Stück 'Dr Feriemuffel' im Pfarreiheim auf.",
+      "unitType": "event",
+      "entities": [
+        "Theatergruppe Aesch"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Mitgliederversammlung des Kath. Frauenvereins Aesch fand am 11. März 2026 statt.",
+      "unitType": "event",
+      "entities": [
+        "Kath. Frauenverein Aesch"
+      ],
+      "eventDate": "2026-03-11",
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Gemeinderatssitzung Aesch fand am 10. März 2026 statt.",
+      "unitType": "event",
+      "entities": [
+        "Gemeinderat Aesch"
+      ],
+      "eventDate": "2026-03-10",
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Der Gemeinderat Aesch hat am 10. März 2026 die Stellungnahme zum Waldentwicklungsplan 2026 bis 2040 verabschiedet.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinderat Aesch"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Der Gemeinderat Aesch hat am 10. März 2026 den Fernwärme-Liefervertrag mit der Primeo Wärme AG unterzeichnet.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinderat Aesch",
+        "Primeo Wärme AG"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Das Repair Kaffi Aesch findet am 9. Mai 2026 statt.",
+      "unitType": "event",
+      "entities": [
+        "Repair Kaffi Aesch"
+      ],
+      "eventDate": "2026-05-09",
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Feldschützen Pfeffingen feiern ihr 175-jähriges Bestehen im Jahr 2026.",
+      "unitType": "event",
+      "entities": [
+        "Feldschützen Pfeffingen"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Zunft zu Wein- und Herbergsleuten Aesch hat insgesamt 62 Mitglieder.",
+      "unitType": "fact",
+      "entities": [
+        "Zunft zu Wein- und Herbergsleuten Aesch"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "low",
+      "category": "feature"
+    },
+    {
+      "statement": "Für die auf den 10. Mai 2026 angesetzte Ersatzwahl des Bürgerrates ist Monika Langlotz Bretscher in stiller Wahl gewählt worden.",
+      "unitType": "entity_update",
+      "entities": [
+        "Monika Langlotz Bretscher"
+      ],
+      "eventDate": "2026-05-10",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Am Wochenende hat auf dem Robi-Spielplatz das erste Aescher Repair Kaffi stattgefunden.",
+      "unitType": "event",
+      "entities": [
+        "Aescher Repair Kaffi"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Das nächste Repair Kaffi gibt’s am 9. Mai am Aescher Flohmi auf dem «Früschmärt»-Platz.",
+      "unitType": "event",
+      "entities": [
+        "Repair Kaffi"
+      ],
+      "eventDate": "2026-05-09",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Gemeinde Aesch fördert mit der Wurmkompost-Aktion eine einfache Art der Küchenabfall-Verwertung.",
+      "unitType": "event",
+      "entities": [
+        "Wurmkompost-Aktion"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Aescher Haushalte können einen Wurmkomposter zum halben Preis kaufen.",
+      "unitType": "event",
+      "entities": [
+        "Wurmkomposter"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die Gemeinde Aesch unterstützt den Basler Zolli mit vergünstigten Tickets für Erwachsene.",
+      "unitType": "event",
+      "entities": [
+        "Basler Zolli"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Neophyten-Aktionstage finden in den Birsstadt-Gemeinden statt, darunter auch in Aesch.",
+      "unitType": "event",
+      "entities": [
+        "Neophyten-Aktionstage"
+      ],
+      "eventDate": null,
+      "village": "Aesch",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Der nächste Papitreff findet am 31. März 2026 um 19.30 Uhr im Leimgruberhaus Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Papitreff"
+      ],
+      "eventDate": "2026-03-31",
+      "village": "Reinach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am Samstag, 21. März 2026, findet eine Besichtigung der Heizzentrale in Aesch statt.",
+      "unitType": "event",
+      "entities": [
+        "Heizzentrale Aesch"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Der Gemeinderat Reinach genehmigte einen Kredit für den Umbau des Asphaltplatzes in einen farbenfrohen Begegnungsort.",
+      "unitType": "event",
+      "entities": [
+        "Gemeinderat Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Einwohnerschaft von Reinach wird in die Bepflanzung und Bemalung des neuen Begegnungsortes einbezogen.",
+      "unitType": "event",
+      "entities": [
+        "Einwohnerschaft Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Der Gemeinderat Reinach genehmigte einen Investitionskredit von 293.000 Franken für den Einbau eines Kunststoffbelags auf dem bestehenden Hartplatz des Schulareals.",
+      "unitType": "event",
+      "entities": [
+        "Gemeinderat Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Versammlung in Reinach genehmigte den Kredit für den Kunststoffbelag mit grossem Mehr.",
+      "unitType": "event",
+      "entities": [
+        "Versammlung Reinach"
+      ],
+      "eventDate": null,
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Die katholische Kirche Aesch feiert am 19. März 2026 eine Patroziniums-Messe des Kirchenpatrons Hl. Josef.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Aesch"
+      ],
+      "eventDate": "2026-03-19",
+      "village": "Aesch",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "In Aesch findet am 22. März 2026 eine Buss- und Versöhnungsfeier statt.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Aesch"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Aesch",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am 25. März 2026 findet in Aesch eine Kommunionfeier statt.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Aesch"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Aesch",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Elternabend zur Erstkommunion 2026 in Aesch findet am 25. März 2026 um 19:00 Uhr statt.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Aesch"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Aesch",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "In Pfeffingen findet am 20. März 2026 ein Krabbeltreff statt.",
+      "unitType": "event",
+      "entities": [
+        "Evangelisch-reformierte Kirche Pfeffingen"
+      ],
+      "eventDate": "2026-03-20",
+      "village": "Pfeffingen",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Am 22. März 2026 findet in Aesch ein Gottesdienst in der reformierten Kirche statt.",
+      "unitType": "event",
+      "entities": [
+        "Reformierte Kirche Aesch"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Aesch",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die öffentliche Besichtigung der betriebsamtlichen Schätzung findet am Dienstag, 24. März 2026, von 15 – 16 Uhr statt.",
+      "unitType": "event",
+      "entities": [
+        "Betreibungsamt"
+      ],
+      "eventDate": "2026-03-24",
+      "village": "Arlesheim",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Gemeindeversammlung in Pfeffingen hat am 17. März 2026 mehrere Beschlüsse gefasst.",
+      "unitType": "event",
+      "entities": [
+        "Gemeindeversammlung Pfeffingen"
+      ],
+      "eventDate": "2026-03-17",
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Der Brutto-Investitionskredit in Höhe von CHF 946 000 für die Neugestaltung der Spiel- und Aussenbereiche des Primarschulhauses Pfeffingen wurde genehmigt.",
+      "unitType": "fact",
+      "entities": [
+        "Primarschulhaus Pfeffingen"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Der Brutto-Investitionskredit in Höhe von CHF 293 000 für den Einbau eines Kunststoffbelags auf dem Schulgelände Pfeffingen wurde bewilligt.",
+      "unitType": "fact",
+      "entities": [
+        "Schulgelände Pfeffingen"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Der Brutto-Investitionskredit in Höhe von CHF 220 000 für den Pumpenersatz im Reservoir/Stufenpumpwerk Hangelimatt wurde genehmigt.",
+      "unitType": "fact",
+      "entities": [
+        "Reservoir/Stufenpumpwerk Hangelimatt"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Gemeindeversammlung in Pfeffingen hat dem Kauf der Parzelle Nr. 454 zugestimmt.",
+      "unitType": "fact",
+      "entities": [
+        "Parzelle Nr. 454"
+      ],
+      "eventDate": null,
+      "village": "Pfeffingen",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Frist für die Abgabe der Steuererklärung 2025 endet am 31. März 2026.",
+      "unitType": "event",
+      "entities": [
+        "Steuererklärung 2025"
+      ],
+      "eventDate": "2026-03-31",
+      "village": "Pfeffingen",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Blutspendeaktion findet am Mittwoch, 25. März 2026, von 16.30 bis 19.00 Uhr in der Weiermatthalle in Reinach statt.",
+      "unitType": "event",
+      "entities": [
+        "Blutspendeaktion"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die grosse Kunst- und Kunsthandwerkerausstellung findet am 28. und 29. März 2026 im Mittenza in Muttenz statt.",
+      "unitType": "event",
+      "entities": [
+        "Kunst- und Kunsthandwerkerausstellung"
+      ],
+      "eventDate": "2026-03-28",
+      "village": "Muttenz",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die öffentliche Führung Onkologie findet am Mittwoch, 1. April 2026, von 17.30 bis 18.30 Uhr im Foyer Haus Wegman, Klinik Arlesheim, statt.",
+      "unitType": "event",
+      "entities": [
+        "Öffentliche Führung Onkologie"
+      ],
+      "eventDate": "2026-04-01",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Ausstellung «young & creARTivity» in der Trotte Münchenstein zeigt Werke junger Künstler, darunter Sofia Giordano, Aline Hartsleben, Kayla Guex und Len Steger.",
+      "unitType": "event",
+      "entities": [
+        "Sofia Giordano",
+        "Aline Hartsleben",
+        "Kayla Guex",
+        "Len Steger"
+      ],
+      "eventDate": null,
+      "village": "Münchenstein",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am 11. März 2026 kam es in der Postfiliale Gartenstadt in Münchenstein zu einem Raubüberfall.",
+      "unitType": "event",
+      "entities": [
+        "Postfiliale Gartenstadt"
+      ],
+      "eventDate": "2026-03-11",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die FDP Münchenstein hat an ihrer Parteiversammlung am 11. März 2026 Parolen für die kommende Gemeindeversammlung gefasst.",
+      "unitType": "event",
+      "entities": [
+        "FDP Münchenstein"
+      ],
+      "eventDate": "2026-03-11",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "Die Gemeindeversammlung in Münchenstein findet am 26. März 2026 statt.",
+      "unitType": "event",
+      "entities": [
+        "Gemeindeversammlung Münchenstein"
+      ],
+      "eventDate": "2026-03-26",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Der Gemeinderat Münchenstein hat am 10. März 2026 beschlossen, einen Inklusionscheck durch den Verein Sensability durchzuführen.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinderat Münchenstein",
+        "Verein Sensability"
+      ],
+      "eventDate": "2026-03-10",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Bauverwaltung Münchenstein führt im April 2026 Markierungsarbeiten in der Heiligholzstrasse durch.",
+      "unitType": "event",
+      "entities": [
+        "Bauverwaltung Münchenstein"
+      ],
+      "eventDate": "2026-04-01",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die Brut- und Setzzeit für einheimische Tiere beginnt am 1. April und endet am 31. Juli 2026.",
+      "unitType": "fact",
+      "entities": [],
+      "eventDate": "2026-04-01",
+      "village": "Münchenstein",
+      "priority": "low",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die Mitglieder der Gemeinschaftskompostplätze und die Kompostberatung Münchenstein bieten am 21. März 2026 von 8.30 bis 12.30 Uhr im Einkaufszentrum Zollweiden Münchensteiner Reifkompost an.",
+      "unitType": "event",
+      "entities": [
+        "Gemeinschaftskompostplätze Münchenstein",
+        "Kompostberatung Münchenstein"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Koordinationsstelle für das Alter und der Seniorenrat Münchenstein laden am 24. März 2026 von 15.00 bis 16.00 Uhr zu einem Informationsanlass im Saal der Stiftung Hofmatt an der Pumpwerkstrasse 3 in Münchenstein ein.",
+      "unitType": "event",
+      "entities": [
+        "Koordinationsstelle für das Alter",
+        "Seniorenrat Münchenstein"
+      ],
+      "eventDate": "2026-03-24",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Ludothek lädt am 25. März 2026 um 19.15 Uhr zu einem Spielabend für Erwachsene in der Bibliothek ein.",
+      "unitType": "event",
+      "entities": [
+        "Ludothek Münchenstein"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am 18. April 2026 findet um 10.00 Uhr im Kultur- und Sportzentrum KUSPO Bruckfeld eine Instrumentenvorstellung der Musikschule Münchenstein statt.",
+      "unitType": "event",
+      "entities": [
+        "Musikschule Münchenstein"
+      ],
+      "eventDate": "2026-04-18",
+      "village": "Münchenstein",
+      "priority": "medium",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Gemeindeversammlung findet am 26. März 2026 um 19.30 Uhr im KUSPO Bruckfeld, Loogstrasse 2, statt.",
+      "unitType": "event",
+      "entities": [
+        "Gemeindeversammlung Münchenstein"
+      ],
+      "eventDate": "2026-03-26",
+      "village": "Münchenstein",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Kapelle von Nuglar-St. Pantaleon bleibt tagsüber geöffnet.",
+      "unitType": "fact",
+      "entities": [
+        "Kapelle Nuglar-St. Pantaleon"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "high",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Die neue Erlebniskarte Laufen & Region ist seit März 2026 erhältlich.",
+      "unitType": "event",
+      "entities": [
+        "Erlebniskarte Laufen & Region"
+      ],
+      "eventDate": "2026-03-01",
+      "village": "Laufen",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Am 27. Mai 2026 findet die Vernissage des Buches des Forum Schwarzbubenland statt.",
+      "unitType": "event",
+      "entities": [
+        "Forum Schwarzbubenland"
+      ],
+      "eventDate": "2026-05-27",
+      "village": "null",
+      "priority": "medium",
+      "category": "feature"
+    },
+    {
+      "statement": "Vom 1. April bis 31. Juli gilt im Solothurner Wald eine generelle Leinenpflicht für alle Hunde.",
+      "unitType": "fact",
+      "entities": [
+        "Kanton Solothurn"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Gemeinde bittet alle Einwohnerinnen und Einwohner, beim Befüllen der Grüngutbehälter auf das Gewicht zu achten.",
+      "unitType": "fact",
+      "entities": [
+        "Gemeinde"
+      ],
+      "eventDate": null,
+      "village": "null",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Am Samstag, 21. März 2026, findet in Aesch ein Tag der offenen Tür zur neuen Heizzentrale statt.",
+      "unitType": "event",
+      "entities": [
+        "Heizzentrale Aesch"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Aesch",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Der Natur- und Vogelschutzverein Dornach lädt herzlich zum Themenspaziergang am Sonntag, 29. März, ein.",
+      "unitType": "event",
+      "entities": [
+        "Natur- und Vogelschutzverein Dornach"
+      ],
+      "eventDate": "2026-03-29",
+      "village": "Dornach",
+      "priority": "medium",
+      "category": "nature_environment"
+    },
+    {
+      "statement": "Adrian Baschung hält am Dienstag, 24. März, um 19.30 Uhr in der Bibliothek des Klosters Dornach einen Vortrag mit dem Titel «Aufstieg und Niedergang der Waffenfabrik Solothurn 1929–1961».",
+      "unitType": "event",
+      "entities": [
+        "Adrian Baschung",
+        "Bibliothek des Klosters Dornach"
+      ],
+      "eventDate": "2026-03-24",
+      "village": "Dornach",
+      "priority": "medium",
+      "category": "feature"
+    },
+    {
+      "statement": "Die Mitgliederversammlung der Mitte Dornach vom 12. März stand ganz im Zeichen des Wechsels.",
+      "unitType": "entity_update",
+      "entities": [
+        "Mitte Dornach"
+      ],
+      "eventDate": "2026-03-12",
+      "village": "Dornach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die EBM (Genossenschaft Elektra Birseck) lädt ein zur 128. ordentlichen Delegiertenversammlung am Mittwoch, 15. April 2026, 17.30 Uhr in der uptownHall in Arlesheim.",
+      "unitType": "event",
+      "entities": [
+        "EBM",
+        "uptownHall Arlesheim"
+      ],
+      "eventDate": "2026-04-15",
+      "village": "Arlesheim",
+      "priority": "medium",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Musikschule Reinach veranstaltet am 21. März 2026 einen Tag der offenen Tür.",
+      "unitType": "event",
+      "entities": [
+        "Musikschule Reinach"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Reinach",
+      "priority": "high",
+      "category": "community_events"
+    },
+    {
+      "statement": "Der Einwohnerrat Reinach tagt am 23. März 2026 um 19:30 Uhr im Gemeindesaal.",
+      "unitType": "event",
+      "entities": [
+        "Einwohnerrat Reinach"
+      ],
+      "eventDate": "2026-03-23",
+      "village": "Reinach",
+      "priority": "medium",
+      "category": "council"
+    },
+    {
+      "statement": "William White tritt am 21. März 2026 in der Wydekantine Dornach auf.",
+      "unitType": "event",
+      "entities": [
+        "William White",
+        "Wydekantine Dornach"
+      ],
+      "eventDate": "2026-03-21",
+      "village": "Dornach",
+      "priority": "low",
+      "category": "community_events"
+    },
+    {
+      "statement": "Die Bürgergemeindeversammlung Dornach stimmte dem Kauf der Immobilien an der Hauptstrasse 5a und 5b zu.",
+      "unitType": "fact",
+      "entities": [
+        "Bürgergemeindeversammlung Dornach"
+      ],
+      "eventDate": null,
+      "village": "Dornach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Baukommission Hochwald hat die Einsprachefrist für das Bauprojekt Wärmepumpe bis zum 8. April 2026 festgelegt.",
+      "unitType": "fact",
+      "entities": [
+        "Baukommission Hochwald"
+      ],
+      "eventDate": "2026-04-08",
+      "village": "Hochwald",
+      "priority": "high",
+      "category": "infrastructure"
+    },
+    {
+      "statement": "Die katholische Kirche in Dornach feiert am 25. März 2026 eine Kreuzwegandacht.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Dornach"
+      ],
+      "eventDate": "2026-03-25",
+      "village": "Dornach",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die katholische Kirche in Gempen feiert am 22. März 2026 eine Eucharistiefeier.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Gempen"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Gempen",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die katholische Kirche in Hochwald feiert am 22. März 2026 eine Eucharistiefeier.",
+      "unitType": "event",
+      "entities": [
+        "Katholische Kirche Hochwald"
+      ],
+      "eventDate": "2026-03-22",
+      "village": "Hochwald",
+      "priority": "low",
+      "category": "church_association"
+    },
+    {
+      "statement": "Die Bürgergemeindeversammlung Dornach hat dem Antrag des Bürgerrats zugestimmt.",
+      "unitType": "fact",
+      "entities": [
+        "Bürgergemeindeversammlung Dornach",
+        "Bürgerrat"
+      ],
+      "eventDate": null,
+      "village": "Dornach",
+      "priority": "high",
+      "category": "municipal_notices"
+    },
+    {
+      "statement": "Die Raiffeisenbank Dornach hat die Finanzierung für den Kauf der Immobilien an der Hauptstrasse 5a und 5b bestätigt.",
+      "unitType": "fact",
+      "entities": [
+        "Raiffeisenbank Dornach"
+      ],
+      "eventDate": null,
+      "village": "Dornach",
+      "priority": "high",
+      "category": "municipal_notices"
+    }
+  ],
+  "skipped": [
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Handgemachte Mode: Die Yoga-Lehrerin Sally Cox gründete vor drei Jahren ihre eigene Kleiderlinie.",
+    "Die Geburt von Xahara",
+    "Das Antilopenhaus blieb die letzten Tage geschlossen",
+    "Die Workshops werden begleitet",
+    "Die Swisscom betreibt schweizweit rund 80 Mobilfunkanlagen in Kirchtürmen",
+    "Die Anpassung zeigt",
+    "Die Verkehrsprojekte der Region Basel befinden sich unter Hochdruck im Stillstand",
+    "Die Baselbieter Regierung hält fest, was ist",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Stiftung Sunnegarte. Familienergänzende Kinderbetreuung in Tagesheim, Tagesfamilien oder schulergänzender Tagesbetreuung/Mittagstisch.",
+    "Tennisclub Arlesheim. Der Tennisclub im Dorf und mitten im Sportzentrum von Arlesheim für Aktive, Breitensportler und Junioren.",
+    "Tennisclub Reichenstein Arlesheim. Tennis und Clubleben an attraktiver Lage.",
+    "Turnverein Arlesheim. Der polysportive Verein für Kinder, Jugendliche, Frauen und Männer.",
+    "Verein «AHE – Arleser hälfe enand». Angebot: Diverse Hilfsleistungen des täglichen Bedarfs zu bescheidenen Preisen.",
+    "Luxor Haushaltsapparate AG am Postplatz in Arlesheim.",
+    "Amphibien unter Druck: «Der Lebensraumverlust ist ein grosses Problem».",
+    "Ausgesetzte Fische sind eine  Bedrohung.",
+    "Kunsthandwerksmarkt. An diesem Wochenende findet bereits zum achten Mal der Kunsthandwerksmarkt im Heimatmuseum statt.",
+    "Lagerhaus in Adelboden. Dieses Lagerhaus ist seit Jahrzehnten eine Perle.",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Impressum und Metadaten",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Öffentlicher Vortrag: Schmerzen verstehen – Beweglichkeit zurückgewinnen, Seniorenzentrum Aumatt",
+    "Das Tagebuch der Anne Frank, Neues Theater Dornach",
+    "Boutique-Kleider-Flohmarkt, WBZ",
+    "Stricktreff, Gemeinde-und Schulbibliothek",
+    "Amphibien auf dem Bruderholz, siehe www.vnvr.ch",
+    "Pizza z’Nacht & Mocktailworkshop für Jugendliche, Palais noir",
+    "Muggli, dr Waldtroll, Gewölbekeller Gemeindehaus",
+    "Walwerdung, Neues Theater Dornach",
+    "Breakdancebattle, Palais noir",
+    "Kasperlitheater, Gemeinde- und Schulbibliothek",
+    "Stammtisch Senioren für Senioren, Bistro Glöggli, Kirchgemeindehaus",
+    "Eucharistiefeier, Seniorenzentrum Aumatt",
+    "Gospel-Gottesdienst in der Mischelikirche, Pfarrerin Florence Develey",
+    "Spielnachmittag für Seniorinnen und Senioren in der reformierten Kirche",
+    "Singprobe der Kantorei in der Reformierten Kirche Mischeli",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Anzeigenschluss für Inserate und Reklamen",
+    "Danksagung",
+    "Abdankung: Freitag, 20. März, 14 Uhr, Kapelle Alterszentrum Im Brüel, anschliessend Beisetzung.",
+    "Stille Beisetzung im engsten Familien- und Freundeskreis.",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Einreichungsfristen 2026/2027 Ausbildungsbeiträge Basel-Landschaft",
+    "Vergünstigte Zolli-Tickets",
+    "Rücksicht beim Rückschnitt – Vögel haben Brutzeit",
+    "Inserat für Wohneigentum in Reinach",
+    "Inserat für 4-Zimmerwohnung in Therwil",
+    "Betreibungs- und Konkursamt Informationen",
+    "Mitarbeiter\text{*}in Verkauf im Stundenlohn",
+    "Lehrstelle Dentalassistentin EFZ per 1.8.2026 zu vergeben",
+    "Betreibungsamtliche Schätzung: $:$ CHF 690‘000.00",
+    "Mindestzuschlagspreis: CHF 565‘464.15",
+    "Der Einwohnerrat Reinach tagt am 23. März 2026 um 19:30 Uhr im Gemeindesaal.",
+    "Tipp: Mit der webbasierten Standardlösung «E-Tax BL» wird das Ausfüllen der Steuererklärung wesentlich einfacher.",
+    "Weitere Informationen finden Sie unter [www.etax.bl.ch](http://www.etax.bl.ch/)",
+    "Die Drehscheibe Aesch-Pfeffingen-Duggingen vermittelt Generationen übergreifende «Nachbarschaftshilfe».",
+    "Vorstandsmitglieder, Kontaktpersonen, Trainingszeiten, Mitgliederwerbung etc.",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "ANZEIGE",
+    "Redaktionsschluss",
+    "Weitere Informationen sowie Newsletter-Abo siehe MITTEILUNGEN DER GEMEINDE MÜNCHENSTEIN",
+    "Ref. Kirchgemeinde Münchenstein",
+    "Kath. Pfarrei St. Franz Xaver",
+    "Eckstein Birseck",
+    "LIQUIDATIONS AUSVERKAUF WARE LÄDELI LÄDELI ERNI LÄDELI TROLL-MUTTER",
+    "Der Überflieger aus Gempen",
+    "Tobias Gfeller",
+    "Yoga für die Beweglichkeit",
+    "Bestleistung auf 2,05 m verbessern",
+    "Familie im Leichtathletik-fieber",
+    "Müll und entwendete Kerzen in der Kapelle St. Wendelin",
+    "Inserat zur Erlebniskarte",
+    "Rätsel",
+    "Impressum",
+    "Inserat Stocker AG Sanitär",
+    "Sudoku Nr. 12",
+    "Kino in der Kirche",
+    "Pächter/in gesucht – Restaurant Arlésienne, Arlesheim",
+    "Gartenpflege im Abo",
+    "Kaufe Autosaufe",
+    "Inserat Stohler Bett",
+    "Sudoku Nr. 12",
+    "Anzeigenteil",
+    "Anmeldung erforderlich.",
+    "Platzzahl beschränkt.",
+    "Gutschein im Wert von 50 Franken von Bider und Tanner",
+    "Einsendungen müssen bis spätestens Montag, 23. März 2026, bei uns eintreffen.",
+    "Geistig und körperlich fitter, schöner, leistungsfähiger und länger gesund durch zusätzliche Vitamine, Mineralstoffe und Co. – das versprechen viele Nahrungsergänzungsmittel.",
+    "Ob für das Gehirn, besseren Schlaf, den Muskelaufbau oder in den Wechseljahren: In seinem neuen Buch erklärt der renommierte Wissenschafts- und Bestsellerautor Bas Kast, welche Nährstoffe nach neuesten Erkenntnissen für wen in welcher Lebensphase sinnvoll sind – und welche nicht.",
+    "Der ultimative Wegweiser durch die Welt der Nahrungsergänzungsmittel – für alle, die gesund und lange leben möchten."
+  ]
+}

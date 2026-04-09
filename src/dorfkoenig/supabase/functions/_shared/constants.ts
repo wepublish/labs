@@ -25,7 +25,7 @@ export const MAX_SOURCE_CONTENT_CHARS = 30_000;
 export const MAX_UNITS_PER_COMPOSE = 20;
 
 // --- Timeouts ---
-/** Default timeout for Firecrawl double-probe (ms) */
+/** Default timeout per Firecrawl call within double-probe (ms) */
 export const DOUBLE_PROBE_TIMEOUT_MS = 30_000;
 
 /** Lookback window for execution deduplication (days) */

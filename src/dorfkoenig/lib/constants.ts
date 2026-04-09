@@ -88,8 +88,6 @@ export const COMPOSE_STYLE_OPTIONS = [
 // Preset users
 export const PRESET_USERS = [
   { id: '493c6d51531c7444365b0ec094bc2d67', name: 'We.Publish Redaktion' },
-  { id: 'journalist-1', name: 'Journalist Berlin' },
-  { id: 'journalist-2', name: 'Journalist Hamburg' },
 ];
 
 // Date formatting for German locale

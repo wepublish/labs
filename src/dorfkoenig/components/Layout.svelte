@@ -5,7 +5,7 @@
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
   import CivicScoutModal from './civic/CivicScoutModal.svelte';
-  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown } from 'lucide-svelte';
+  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown, Upload } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -96,6 +96,11 @@
           </div>
         {/if}
       </div>
+
+      <button class="btn-upload" onclick={() => showUploadModal.set(true)} type="button">
+        <Upload size={14} />
+        <span>Hochladen</span>
+      </button>
     </div>
 
     <!-- Center: Pill segment control (absolutely centered) -->
@@ -209,6 +214,30 @@
   .btn-new-scout:active {
     background: var(--color-primary-dark);
     transform: translateY(0);
+  }
+
+  .btn-upload {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-left: -0.75rem;
+    padding: 0.375rem 0.875rem 0.375rem 0.625rem;
+    font-size: var(--text-base-sm);
+    font-weight: 500;
+    font-family: var(--font-body);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    white-space: nowrap;
+  }
+
+  .btn-upload:hover {
+    color: var(--color-text);
+    border-color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.04);
   }
 
   /* Scout type popover */
@@ -382,5 +411,7 @@
 
     .btn-new-scout span { display: none; }
     .btn-new-scout { padding: 0.375rem; }
+    .btn-upload span { display: none; }
+    .btn-upload { padding: 0.375rem; }
   }
 </style>

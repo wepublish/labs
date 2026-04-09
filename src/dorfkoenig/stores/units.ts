@@ -10,6 +10,8 @@ interface UnitsState {
   topics: string[];
   selectedLocation: string | null;
   selectedTopic: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
   searchQuery: string;
   loading: boolean;
   error: string | null;
@@ -22,6 +24,8 @@ function createUnitsStore() {
     topics: [],
     selectedLocation: null,
     selectedTopic: null,
+    dateFrom: null,
+    dateTo: null,
     searchQuery: '',
     loading: false,
     error: null,
@@ -45,7 +49,7 @@ function createUnitsStore() {
     /**
      * Load units with optional filters
      */
-    async load(locationCity?: string, unusedOnly = true, topic?: string) {
+    async load(locationCity?: string, unusedOnly = true, topic?: string, dateFrom?: string, dateTo?: string) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         const data = await unitsApi.list({
@@ -53,6 +57,8 @@ function createUnitsStore() {
           unused_only: unusedOnly,
           limit: 100,
           ...(topic && { topic }),
+          ...(dateFrom && { date_from: dateFrom }),
+          ...(dateTo && { date_to: dateTo }),
         });
         const topics = [...new Set(data.filter(u => u.topic).map(u => u.topic!))].sort();
         update((s) => ({ ...s, units: data, topics, loading: false }));
@@ -90,6 +96,13 @@ function createUnitsStore() {
      */
     setTopic(topic: string | null) {
       update((s) => ({ ...s, selectedTopic: topic }));
+    },
+
+    /**
+     * Set date range filter
+     */
+    setDateRange(from: string | null, to: string | null) {
+      update((s) => ({ ...s, dateFrom: from, dateTo: to }));
     },
 
     /**

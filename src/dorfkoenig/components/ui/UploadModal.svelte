@@ -1,16 +1,17 @@
 <script lang="ts">
-  import { X, Upload, FileText, Camera, File as FileIcon } from 'lucide-svelte';
+  import { X, Upload, FileText, File as FileIcon } from 'lucide-svelte';
   import { focusTrap } from '../../lib/actions/focus-trap';
   import { manualUploadApi } from '../../lib/api';
-  import { MIN_TEXT_LENGTH, MIN_DESCRIPTION_LENGTH, extractTopics } from '../../lib/constants';
+  import { MIN_TEXT_LENGTH, extractTopics } from '../../lib/constants';
   import { scouts } from '../../stores/scouts';
   import { Button } from '@shared/components';
   import ScopeToggle from './ScopeToggle.svelte';
   import ProgressIndicator from './ProgressIndicator.svelte';
   import UploadTextTab from './UploadTextTab.svelte';
-  import UploadPhotoTab from './UploadPhotoTab.svelte';
+  // import UploadPhotoTab from './UploadPhotoTab.svelte';  // Hidden until image embedding
   import UploadPdfTab from './UploadPdfTab.svelte';
-  import type { Location } from '../../lib/types';
+  import type { Location, NewspaperJob } from '../../lib/types';
+  import { supabase } from '../../lib/supabase';
 
   interface Props {
     open: boolean;
@@ -22,7 +23,7 @@
   let existingTopics = $derived(extractTopics($scouts.scouts));
 
   // Tab state
-  type Tab = 'text' | 'photo' | 'pdf';
+  type Tab = 'text' | 'pdf';
   let activeTab = $state<Tab>('text');
 
   // Shared state
@@ -44,6 +45,13 @@
   let uploadProgress = $state(0);
   let uploadError = $state('');
   let unitsCreated = $state(0);
+
+  // PDF processing state
+  let publicationDate = $state('');
+  let processingJobId = $state<string | null>(null);
+  let chunksTotal = $state(0);
+  let chunksProcessed = $state(0);
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // Validation error
   let validationError = $state('');
@@ -71,6 +79,14 @@
       filePreviewUrl = null;
     }
     description = '';
+    publicationDate = '';
+    processingJobId = null;
+    chunksTotal = 0;
+    chunksProcessed = 0;
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
     uploadState = 'idle';
     uploadProgress = 0;
     uploadError = '';
@@ -112,33 +128,24 @@
     }
   }
 
-  function handleFileRemove(): void {
-    file = null;
-    if (filePreviewUrl) {
-      URL.revokeObjectURL(filePreviewUrl);
-      filePreviewUrl = null;
-    }
-  }
-
   let isValid = $derived.by(() => {
-    if (location === null) return false;
-
     if (activeTab === 'text') {
+      if (location === null) return false;
       return text.trim().length >= MIN_TEXT_LENGTH;
     } else {
-      return file !== null && description.trim().length >= MIN_DESCRIPTION_LENGTH;
+      // PDF: file required, publication date required, no location needed
+      return file !== null && publicationDate !== '';
     }
   });
 
   function validate(): boolean {
     validationError = '';
 
-    if (!location) {
-      validationError = 'Ort ist erforderlich';
-      return false;
-    }
-
     if (activeTab === 'text') {
+      if (!location) {
+        validationError = 'Ort ist erforderlich';
+        return false;
+      }
       if (text.trim().length < MIN_TEXT_LENGTH) {
         validationError = `Text muss mindestens ${MIN_TEXT_LENGTH} Zeichen lang sein`;
         return false;
@@ -148,8 +155,8 @@
         validationError = 'Datei ist erforderlich';
         return false;
       }
-      if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
-        validationError = `Beschreibung muss mindestens ${MIN_DESCRIPTION_LENGTH} Zeichen lang sein`;
+      if (!publicationDate) {
+        validationError = 'Publikationsdatum ist erforderlich';
         return false;
       }
     }
@@ -175,11 +182,13 @@
         });
         uploadProgress = 100;
         unitsCreated = result.units_created;
+        uploadState = 'success';
+        autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
       } else {
+        // PDF upload: 3-step process
         uploadProgress = 20;
-        const contentType = activeTab as 'photo' | 'pdf';
         const presigned = await manualUploadApi.requestUploadUrl({
-          content_type: contentType,
+          content_type: 'pdf',
           file_name: file!.name,
           file_size: file!.size,
           mime_type: file!.type,
@@ -192,24 +201,68 @@
         }
 
         uploadProgress = 80;
-        const confirmType = contentType === 'photo' ? 'photo_confirm' : 'pdf_confirm';
         const result = await manualUploadApi.confirmUpload({
-          content_type: confirmType as 'photo_confirm' | 'pdf_confirm',
+          content_type: 'pdf_confirm',
           storage_path: presigned.storage_path,
-          description: description.trim(),
-          location,
-          topic: topic.trim() || null,
+          description: description.trim() || undefined,
+          publication_date: publicationDate || null,
           source_title: sourceTitle.trim() || null,
         });
-        uploadProgress = 100;
-        unitsCreated = result.units_created;
+
+        // Check if response is processing (PDF) or immediate (photo)
+        if ('status' in result && result.status === 'processing') {
+          processingJobId = result.job_id;
+          uploadState = 'uploading';
+          uploadProgress = 0;
+
+          // Subscribe to Realtime updates
+          realtimeChannel = supabase
+            .channel(`newspaper-job-${result.job_id}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'newspaper_jobs',
+                filter: `id=eq.${result.job_id}`,
+              },
+              (payload) => {
+                const job = payload.new as NewspaperJob;
+                chunksTotal = job.chunks_total;
+                chunksProcessed = job.chunks_processed;
+
+                if (job.chunks_total > 0) {
+                  uploadProgress = Math.round((job.chunks_processed / job.chunks_total) * 100);
+                }
+
+                if (job.status === 'completed') {
+                  unitsCreated = job.units_created;
+                  uploadState = 'success';
+                  if (realtimeChannel) {
+                    supabase.removeChannel(realtimeChannel);
+                    realtimeChannel = null;
+                  }
+                } else if (job.status === 'failed') {
+                  uploadState = 'error';
+                  uploadProgress = 100;
+                  uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
+                  if (realtimeChannel) {
+                    supabase.removeChannel(realtimeChannel);
+                    realtimeChannel = null;
+                  }
+                }
+              }
+            )
+            .subscribe();
+        } else {
+          uploadProgress = 100;
+          if ('units_created' in result) {
+            unitsCreated = result.units_created;
+          }
+          uploadState = 'success';
+          autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+        }
       }
-
-      uploadState = 'success';
-
-      autoCloseTimer = setTimeout(() => {
-        handleClose();
-      }, 2000);
     } catch (err) {
       uploadState = 'error';
       uploadProgress = 100;
@@ -244,7 +297,7 @@
           </div>
           <div>
             <h2 class="modal-title">Information hochladen</h2>
-            <p class="modal-subtitle">Text, Fotos oder PDFs manuell hinzufügen</p>
+            <p class="modal-subtitle">Text oder PDFs manuell hinzufügen</p>
           </div>
         </div>
         <button class="modal-close" onclick={handleClose} aria-label="Schliessen">
@@ -263,6 +316,7 @@
             <FileText size={15} />
             <span>Text</span>
           </button>
+          <!-- Photo tab hidden until image embedding is implemented
           <button
             class="tab"
             class:active={activeTab === 'photo'}
@@ -271,6 +325,7 @@
             <Camera size={15} />
             <span>Foto</span>
           </button>
+          -->
           <button
             class="tab"
             class:active={activeTab === 'pdf'}
@@ -288,15 +343,17 @@
           <ProgressIndicator
             state="loading"
             progress={uploadProgress}
-            message={activeTab === 'text' ? 'KI extrahiert Fakten...' : 'Datei wird hochgeladen...'}
-            hintText="Dies kann einen Moment dauern"
+            message={processingJobId ? 'Zeitung wird analysiert...' : activeTab === 'text' ? 'KI extrahiert Fakten...' : 'Datei wird hochgeladen...'}
+            hintText={processingJobId && chunksTotal > 0
+              ? `Abschnitt ${chunksProcessed} von ${chunksTotal} — ca. ${Math.max(1, Math.round((chunksTotal - chunksProcessed) * 15 / 60))} Min. verbleibend`
+              : 'Dies kann einen Moment dauern'}
           />
 
         {:else if uploadState === 'success'}
           <ProgressIndicator
             state="success"
             progress={100}
-            successMessage="Erfolgreich hochgeladen"
+            successMessage="Erfolgreich verarbeitet"
             successDetails={unitsCreated === 1
               ? '1 Informationseinheit erstellt'
               : `${unitsCreated} Informationseinheiten erstellt`}
@@ -306,7 +363,7 @@
           <ProgressIndicator
             state="error"
             progress={100}
-            errorTitle="Upload fehlgeschlagen"
+            errorTitle="Verarbeitung fehlgeschlagen"
             errorMessage={uploadError}
           />
 
@@ -317,36 +374,31 @@
 
           {#if activeTab === 'text'}
             <UploadTextTab {text} ontextchange={(v) => { text = v; }} />
-          {:else if activeTab === 'photo'}
-            <UploadPhotoTab
-              {file}
-              {filePreviewUrl}
-              {description}
-              onfileselect={handleFileSelect}
-              onfileremove={handleFileRemove}
-              ondescriptionchange={(v) => { description = v; }}
-            />
           {:else if activeTab === 'pdf'}
             <UploadPdfTab
               {file}
               {description}
+              {publicationDate}
               onfileselect={handleFileSelect}
               onfileremove={() => { file = null; }}
               ondescriptionchange={(v) => { description = v; }}
+              onpublicationdatechange={(v) => { publicationDate = v; }}
             />
           {/if}
 
-          <!-- Scope toggle (shared across tabs) -->
-          <div class="form-group" role="group" aria-label="Ort und Thema">
-            <span class="form-label">Ort und Thema <span class="optional">(Thema optional)</span></span>
-            <ScopeToggle
-              {location}
-              {topic}
-              {existingTopics}
-              onlocationchange={(loc) => { location = loc; }}
-              ontopicchange={(t) => { topic = t; }}
-            />
-          </div>
+          <!-- Scope toggle: only for text uploads (PDF assigns villages via LLM) -->
+          {#if activeTab === 'text'}
+            <div class="form-group" role="group" aria-label="Ort und Thema">
+              <span class="form-label">Ort und Thema <span class="optional">(Thema optional)</span></span>
+              <ScopeToggle
+                {location}
+                {topic}
+                {existingTopics}
+                onlocationchange={(loc) => { location = loc; }}
+                ontopicchange={(t) => { topic = t; }}
+              />
+            </div>
+          {/if}
 
           <!-- Optional source title -->
           <div class="form-group">
