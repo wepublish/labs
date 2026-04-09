@@ -14,8 +14,8 @@ CREATE TABLE auto_draft_runs (
 );
 
 -- Indexes for common queries
-CREATE INDEX idx_auto_draft_runs_village_date
-    ON auto_draft_runs (village_id, (started_at::date));
+CREATE INDEX idx_auto_draft_runs_village_started
+    ON auto_draft_runs (village_id, started_at);
 CREATE INDEX idx_auto_draft_runs_status
     ON auto_draft_runs (status) WHERE status IN ('running', 'failed');
 
