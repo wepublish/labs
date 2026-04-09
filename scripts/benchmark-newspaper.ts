@@ -64,9 +64,9 @@ async function firecrawlScrape(url: string, apiKey: string): Promise<string> {
   });
 
   const raw = await resp.text();
-  const data = JSON.parse(raw.replace(/[\x00-\x1f]/g, (c: string) =>
-    c === '\n' || c === '\r' || c === '\t' ? c : ''
-  ));
+  // Strip control characters except whitespace (eslint no-control-regex safe)
+  const cleaned = raw.replace(/[^\P{Cc}\n\r\t]/gu, '');
+  const data = JSON.parse(cleaned);
 
   if (!data.success || !data.data?.markdown) {
     throw new Error(`Firecrawl failed: ${data.error || 'no markdown'}`);
