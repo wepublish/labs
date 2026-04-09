@@ -4,17 +4,21 @@
   interface Props {
     file: File | null;
     description: string;
+    publicationDate: string;
     onfileselect: (e: Event) => void;
     onfileremove: () => void;
     ondescriptionchange: (description: string) => void;
+    onpublicationdatechange: (date: string) => void;
   }
 
   let {
     file,
     description,
+    publicationDate,
     onfileselect,
     onfileremove,
     ondescriptionchange,
+    onpublicationdatechange,
   }: Props = $props();
 
   function formatFileSize(bytes: number): string {
@@ -53,13 +57,22 @@
   {/if}
 </div>
 <div class="form-group">
-  <label for="upload-pdf-desc">Beschreibung</label>
+  <label for="upload-pdf-date">Publikationsdatum</label>
+  <input
+    id="upload-pdf-date"
+    type="date"
+    value={publicationDate}
+    oninput={(e) => onpublicationdatechange(e.currentTarget.value)}
+  />
+</div>
+<div class="form-group">
+  <label for="upload-pdf-desc">Bezeichnung <span class="optional">(optional)</span></label>
   <textarea
     id="upload-pdf-desc"
     value={description}
     oninput={(e) => ondescriptionchange(e.currentTarget.value)}
-    placeholder="Worum geht es in diesem Dokument?"
-    rows="3"
+    placeholder="z.B. Wochenblatt 19. März 2026"
+    rows="2"
   ></textarea>
 </div>
 
@@ -76,7 +89,13 @@
     color: var(--color-text);
   }
 
-  .form-group textarea {
+  .optional {
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .form-group textarea,
+  .form-group input[type="date"] {
     width: 100%;
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
@@ -88,7 +107,8 @@
     resize: vertical;
   }
 
-  .form-group textarea:focus {
+  .form-group textarea:focus,
+  .form-group input[type="date"]:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
