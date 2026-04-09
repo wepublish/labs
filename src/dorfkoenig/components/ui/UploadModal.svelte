@@ -202,7 +202,13 @@
           source_title: sourceTitle.trim() || null,
         });
         uploadProgress = 100;
-        unitsCreated = result.units_created;
+        // Handle both ManualUploadResult and NewspaperProcessingResult
+        if ('units_created' in result) {
+          unitsCreated = result.units_created;
+        } else if ('job_id' in result) {
+          // NewspaperProcessingResult - newspaper processing job started
+          unitsCreated = 0; // Job is still processing, show 0 for now
+        }
       }
 
       uploadState = 'success';

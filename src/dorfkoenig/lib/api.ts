@@ -159,12 +159,13 @@ export const manualUploadApi = {
   confirmUpload: (data: {
     content_type: 'photo_confirm' | 'pdf_confirm';
     storage_path: string;
-    description: string;
+    description?: string;
     location?: import('./types').Location | null;
     topic?: string | null;
     source_title?: string | null;
+    publication_date?: string | null;
   }) =>
-    api.post<import('./types').ManualUploadResult>('manual-upload', data),
+    api.post<import('./types').ManualUploadResult | import('./types').NewspaperProcessingResult>('manual-upload', data),
 
   uploadFile: (url: string, file: File) =>
     fetch(url, {
