@@ -602,6 +602,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ## pg_cron Jobs
 
+Seven active jobs. pg_cron schedules in UTC; DST is handled via timezone-safe wrapper functions rather than the 5-parameter `cron.schedule` overload (not available on this Supabase instance).
+
 ```sql
 -- Dispatch due scouts every 15 minutes
 SELECT cron.schedule(
@@ -610,30 +612,63 @@ SELECT cron.schedule(
     'SELECT dispatch_due_scouts()'
 );
 
--- Cleanup expired data daily at 3 AM
+-- Cleanup expired data daily at 3 AM UTC
 SELECT cron.schedule(
     'cleanup-expired-data',
     '0 3 * * *',
     'SELECT cleanup_expired_data()'
 );
 
--- Dispatch auto-drafts daily at 18:00 Europe/Zurich (= 16:00 UTC winter, 17:00 UTC summer)
--- Uses AT TIME ZONE to ensure consistent local time regardless of DST
+-- Dispatch auto-drafts: dual schedule covers both DST states.
+-- dispatch_auto_drafts_tz_safe() checks EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 18
+-- before calling dispatch_auto_drafts(), so only one of the two fires per day.
 SELECT cron.schedule(
-    'dispatch-auto-drafts',
-    '0 17 * * *',  -- adjust offset for DST; see note below
-    'SELECT dispatch_auto_drafts()'
+    'dispatch-auto-drafts-summer',
+    '0 16 * * *',  -- 18:00 CEST (UTC+2, Apr–Oct)
+    'SELECT dispatch_auto_drafts_tz_safe()'
 );
--- Note: pg_cron schedules in UTC. Use a wrapper that checks
--- CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Zurich' to handle DST robustly,
--- or schedule at both 16:00 and 17:00 UTC with idempotency guard in the function.
+SELECT cron.schedule(
+    'dispatch-auto-drafts-winter',
+    '0 17 * * *',  -- 18:00 CET (UTC+1, Nov–Mar)
+    'SELECT dispatch_auto_drafts_tz_safe()'
+);
 
--- Resolve bajour verification timeouts daily at 21:00 Europe/Zurich
+-- Resolve bajour verification timeouts: same dual-schedule pattern.
+-- resolve_bajour_timeouts_tz_safe() checks Zurich hour = 21 before proceeding.
 SELECT cron.schedule(
-    'resolve-bajour-timeouts-daily',
-    '0 20 * * *',  -- 20:00 UTC ≈ 21:00 CET / 22:00 CEST; adjust for DST
-    'SELECT resolve_bajour_timeouts()'
+    'resolve-timeouts-summer',
+    '0 19 * * *',  -- 21:00 CEST (UTC+2)
+    'SELECT resolve_bajour_timeouts_tz_safe()'
 );
+SELECT cron.schedule(
+    'resolve-timeouts-winter',
+    '0 20 * * *',  -- 21:00 CET (UTC+1)
+    'SELECT resolve_bajour_timeouts_tz_safe()'
+);
+```
+
+### Timezone-safe wrapper functions
+
+The `_tz_safe()` wrappers guard against the off-season UTC slot firing. Only one of each pair executes per day:
+
+```sql
+CREATE OR REPLACE FUNCTION dispatch_auto_drafts_tz_safe()
+RETURNS VOID AS $$
+BEGIN
+    IF EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 18 THEN
+        PERFORM dispatch_auto_drafts();
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION resolve_bajour_timeouts_tz_safe()
+RETURNS VOID AS $$
+BEGIN
+    IF EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich') = 21 THEN
+        PERFORM resolve_bajour_timeouts();
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 ## Vault Secrets

@@ -69,9 +69,25 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `should_run_scout(frequency, last_run_at)` | Check if scout is due |
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
-| `dispatch_auto_drafts()` | pg_cron: dispatch auto-draft edge function per village at 18:00 Europe/Zurich |
+| `dispatch_auto_drafts()` | Core dispatcher: calls `bajour-auto-draft` edge function per village. Not called directly by cron — invoked by `dispatch_auto_drafts_tz_safe()` after timezone check. |
+| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 18, then calls `dispatch_auto_drafts()`. Dual-scheduled at 16:00 and 17:00 UTC to cover both DST states. |
+| `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 21, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 19:00 and 20:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
+
+### Active pg_cron Jobs (7 total)
+
+| Job name | Schedule (UTC) | Purpose |
+|----------|---------------|---------|
+| `dispatch-due-scouts` | `*/15 * * * *` | Dispatch due scouts every 15 minutes |
+| `cleanup-expired-data` | `0 3 * * *` | Delete expired units, old executions, fix stuck runs |
+| `dispatch-auto-drafts-summer` | `0 16 * * *` | 18:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
+| `dispatch-auto-drafts-winter` | `0 17 * * *` | 18:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-summer` | `0 19 * * *` | 21:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-winter` | `0 20 * * *` | 21:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| *(implicit cleanup)* | — | Stuck execution timeout handled inside `cleanup_expired_data()` |
+
+**Dual-schedule pattern:** The `_tz_safe()` wrappers check `EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich')` before proceeding. Both UTC slots fire daily but only one matches the actual Zurich hour, so only one executes. This avoids the pg_cron 5-parameter timezone overload that is not available on this Supabase instance.
 
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
 - PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `publication_date` (DATE, default CURRENT_DATE), `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
