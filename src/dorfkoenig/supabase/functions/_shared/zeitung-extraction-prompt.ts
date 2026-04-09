@@ -104,7 +104,7 @@ Regeln:
    "letzten Freitag" → berechne ab Publikationsdatum
    "am kommenden Samstag" → berechne ab Publikationsdatum
 3. Vage Zeitangaben ("im Frühling", "Ende April") → eventDate: null, im Statement belassen
-4. Kein erkennbares Datum → eventDate: null
+4. Kein erkennbares Datum → verwende das Publikationsdatum: ${publicationDate}
 
 PRIORITÄT:
 - high: Gemeindeanlässe, amtliche Mitteilungen, Infrastruktur/Politik

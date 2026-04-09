@@ -140,6 +140,8 @@ REGELN:
 - Maximal 8 Einheiten pro Text
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
+- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
+- Wenn kein spezifisches Datum erkennbar, verwende das heutige Datum: ${new Date().toISOString().slice(0, 10)}
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -152,12 +154,13 @@ AUSGABEFORMAT (JSON):
     {
       "statement": "Vollständiger Satz",
       "unitType": "fact",
-      "entities": ["Entity1", "Entity2"]
+      "entities": ["Entity1", "Entity2"],
+      "eventDate": "2026-03-19"
     }
   ]
 }`;
 
-  let units: { statement: string; unitType: string; entities: string[] }[] = [];
+  let units: { statement: string; unitType: string; entities: string[]; eventDate?: string }[] = [];
   try {
     const response = await openrouter.chat({
       messages: [
@@ -232,6 +235,7 @@ AUSGABEFORMAT (JSON):
         source_type: 'manual_text',
         file_path: null,
         embedding: unitEmbeddings[i],
+        event_date: unit.eventDate || new Date().toISOString().slice(0, 10),
       })
       .select('id')
       .single();

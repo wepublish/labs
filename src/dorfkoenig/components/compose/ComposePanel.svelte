@@ -50,6 +50,8 @@
   let selectedScoutId = $state<string | null>(null);
   let searchQuery = $state('');
   let isSearching = $state(false);
+  let dateFrom = $state<string>('');
+  let dateTo = $state<string>('');
 
   // Load on mount + start background draft polling
   onMount(() => {
@@ -134,7 +136,7 @@
     selectedLocation = city;
     selectedScoutId = null;
     units.setLocation(city);
-    units.load(city ?? undefined);
+    units.load(city ?? undefined, true, undefined, dateFrom || undefined, dateTo || undefined);
     resetDraftState();
   }
 
@@ -142,7 +144,15 @@
     selectedTopic = topic;
     selectedScoutId = null;
     units.setTopic(topic);
-    units.load(selectedLocation ?? undefined, true, topic ?? undefined);
+    units.load(selectedLocation ?? undefined, true, topic ?? undefined, dateFrom || undefined, dateTo || undefined);
+    resetDraftState();
+  }
+
+  function handleDateChange(from: string, to: string) {
+    dateFrom = from;
+    dateTo = to;
+    units.setDateRange(from || null, to || null);
+    units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined, from || undefined, to || undefined);
     resetDraftState();
   }
 
@@ -156,7 +166,7 @@
         isSearching = false;
       }
     } else {
-      units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined);
+      units.load(selectedLocation ?? undefined, true, selectedTopic ?? undefined, dateFrom || undefined, dateTo || undefined);
     }
   }
 
@@ -335,6 +345,9 @@
       searchPlaceholder="Informationen filtern..."
       onSearch={handleSearch}
       {isSearching}
+      dateFrom={dateFrom}
+      dateTo={dateTo}
+      onDateChange={handleDateChange}
     />
 
     <!-- Data status row -->

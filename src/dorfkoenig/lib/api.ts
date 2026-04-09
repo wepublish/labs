@@ -115,12 +115,14 @@ export const scoutsApi = {
 };
 
 export const unitsApi = {
-  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number }) => {
+  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number; date_from?: string; date_to?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.date_from) searchParams.set('date_from', params.date_from);
+    if (params?.date_to) searchParams.set('date_to', params.date_to);
     return api.get<import('./types').InformationUnit[]>(`units?${searchParams}`);
   },
   locations: () => api.get<import('./types').Location[]>('units/locations'),

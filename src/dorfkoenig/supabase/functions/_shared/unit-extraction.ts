@@ -45,8 +45,8 @@ REGELN:
 - Maximal 8 Einheiten pro Text
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
-- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD (wenn im Text erwähnt)
-- Wenn kein Datum erkennbar, setze eventDate auf null
+- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
+- Wenn kein spezifisches Datum erkennbar, verwende das heutige Datum: ${new Date().toISOString().slice(0, 10)}
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -129,7 +129,7 @@ AUSGABEFORMAT (JSON):
       location: params.location,
       topic: params.topic || null,
       embedding: unitEmbeddings[i],
-      event_date: unit.eventDate || null,
+      event_date: unit.eventDate || new Date().toISOString().slice(0, 10),
     });
 
     if (!error) storedCount++;

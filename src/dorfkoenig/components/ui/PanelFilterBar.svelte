@@ -25,6 +25,9 @@
     searchPlaceholder?: string;
     onSearch?: (query: string) => void;
     isSearching?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+    onDateChange?: (from: string, to: string) => void;
   }
 
   let {
@@ -43,6 +46,9 @@
     searchPlaceholder = 'Suchen...',
     onSearch,
     isSearching = false,
+    dateFrom = '',
+    dateTo = '',
+    onDateChange,
   }: Props = $props();
 
   let searchInput = $state(untrack(() => searchQuery));
@@ -123,6 +129,25 @@
       {/if}
     {/if}
   </div>
+  {#if onDateChange}
+    <div class="date-filter">
+      <input
+        type="date"
+        value={dateFrom}
+        oninput={(e) => onDateChange?.(e.currentTarget.value, dateTo)}
+        class="date-input"
+        placeholder="Von"
+      />
+      <span class="date-separator">–</span>
+      <input
+        type="date"
+        value={dateTo}
+        oninput={(e) => onDateChange?.(dateFrom, e.currentTarget.value)}
+        class="date-input"
+        placeholder="Bis"
+      />
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -195,5 +220,34 @@
 
   .search-clear:hover {
     color: var(--color-text);
+  }
+
+  .date-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .date-input {
+    flex: 1;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-sm, 0.375rem);
+    background: var(--color-background, #f9fafb);
+    color: var(--color-text);
+    font-family: inherit;
+  }
+
+  .date-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
+  }
+
+  .date-separator {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
   }
 </style>
