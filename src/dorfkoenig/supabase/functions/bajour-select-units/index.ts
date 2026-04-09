@@ -7,7 +7,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT } from '../_shared/prompts.ts';
+import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT, formatUnitsForSelection } from '../_shared/prompts.ts';
 
 interface SelectUnitsRequest {
   village_id: string;
@@ -77,12 +77,7 @@ Deno.serve(async (req) => {
     }
 
     // Format units for LLM
-    const formattedUnits = units
-      .map((unit, index) => {
-        const date = unit.event_date || unit.created_at?.split('T')[0] || 'unbekannt';
-        return `[${index + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type} | ${unit.statement}`;
-      })
-      .join('\n');
+    const formattedUnits = formatUnitsForSelection(units);
 
     const currentDate = new Date().toISOString().split('T')[0];
 

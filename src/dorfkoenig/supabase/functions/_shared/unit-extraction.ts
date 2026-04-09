@@ -96,26 +96,7 @@ AUSGABEFORMAT (JSON):
   const unitEmbeddings = await embeddings.generateBatch(statements);
 
   // Deduplicate within run (0.75 threshold)
-  const uniqueIndices = new Set<number>();
-  const seenEmbeddings: number[][] = [];
-
-  for (let i = 0; i < unitEmbeddings.length; i++) {
-    const embedding = unitEmbeddings[i];
-    let isDuplicate = false;
-
-    for (const seen of seenEmbeddings) {
-      const similarity = embeddings.similarity(embedding, seen);
-      if (similarity >= UNIT_DEDUP_THRESHOLD) {
-        isDuplicate = true;
-        break;
-      }
-    }
-
-    if (!isDuplicate) {
-      uniqueIndices.add(i);
-      seenEmbeddings.push(embedding);
-    }
-  }
+  const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
   // Store unique units
   const domain = firecrawl.getDomain(params.sourceUrl);

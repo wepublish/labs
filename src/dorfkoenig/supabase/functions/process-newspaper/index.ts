@@ -20,20 +20,14 @@ import {
   type ExtractionResult,
   type ExtractionUnit,
 } from '../_shared/zeitung-extraction-prompt.ts';
+import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
-// Villages from gemeinden.json — the LLM assigns units to these
-const VILLAGES = [
-  'Aesch', 'Allschwil', 'Arlesheim', 'Binningen', 'Bottmingen',
-  'Münchenstein', 'Muttenz', 'Pratteln', 'Reinach', 'Riehen',
-];
-
-// Village name → gemeinden.json ID for location JSONB
-const VILLAGE_ID_MAP: Record<string, string> = {
-  'Aesch': 'aesch', 'Allschwil': 'allschwil', 'Arlesheim': 'arlesheim',
-  'Binningen': 'binningen', 'Bottmingen': 'bottmingen',
-  'Münchenstein': 'muenchenstein', 'Muttenz': 'muttenz',
-  'Pratteln': 'pratteln', 'Reinach': 'reinach', 'Riehen': 'riehen',
-};
+// Derived from gemeinden.json — the LLM assigns units to village names,
+// VILLAGE_ID_MAP resolves them to IDs for location JSONB.
+const VILLAGES = gemeinden.map((g: { name: string }) => g.name);
+const VILLAGE_ID_MAP: Record<string, string> = Object.fromEntries(
+  gemeinden.map((g: { id: string; name: string }) => [g.name, g.id])
+);
 
 const LLM_CONCURRENCY = 3;
 const FIRECRAWL_TIMEOUT = 120000;
@@ -175,70 +169,61 @@ Deno.serve(async (req) => {
     const unitEmbeddings = await embeddings.generateBatch(statements);
 
     // 7c. Deduplicate within batch (0.75 threshold)
-    const uniqueIndices = new Set<number>();
-    const seenEmbeddings: number[][] = [];
+    const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
-    for (let i = 0; i < unitEmbeddings.length; i++) {
-      let isDuplicate = false;
-      for (const seen of seenEmbeddings) {
-        if (embeddings.similarity(unitEmbeddings[i], seen) >= UNIT_DEDUP_THRESHOLD) {
-          isDuplicate = true;
-          break;
-        }
-      }
-      if (!isDuplicate) {
-        uniqueIndices.add(i);
-        seenEmbeddings.push(unitEmbeddings[i]);
-      }
-    }
+    // 7d. Per-village dedup against existing units in DB (parallel)
+    const dedupResults = await Promise.all(
+      uniqueIndices.map(async (i) => {
+        const unit = villageUnits[i];
+        const villageId = VILLAGE_ID_MAP[unit.village!];
 
-    // 7d. Per-village dedup against existing units in DB
-    const finalIndices: number[] = [];
-    for (const i of uniqueIndices) {
-      const unit = villageUnits[i];
-      const villageId = VILLAGE_ID_MAP[unit.village!];
+        const { data: similar } = await supabase.rpc('search_units_semantic', {
+          user_id: userId,
+          embedding: unitEmbeddings[i],
+          location_city: villageId,
+          min_similarity: UNIT_DEDUP_THRESHOLD,
+          limit: 1,
+        });
 
-      // Parameter names match the DB function: search_units_semantic(user_id, embedding, location_city, topic, unused_only, min_similarity, limit)
-      const { data: similar } = await supabase.rpc('search_units_semantic', {
-        user_id: userId,
-        embedding: unitEmbeddings[i],
-        location_city: villageId,
-        min_similarity: UNIT_DEDUP_THRESHOLD,
-        limit: 1,
-      });
-
-      if (!similar || similar.length === 0) {
-        finalIndices.push(i);
-      }
-    }
+        return { index: i, isDuplicate: similar && similar.length > 0 };
+      })
+    );
+    const finalIndices = dedupResults
+      .filter((r) => !r.isDuplicate)
+      .map((r) => r.index);
 
     console.log(`[process-newspaper] ${finalIndices.length} units after dedup (from ${villageUnits.length})`);
 
-    // ── Step 8: Store units ──
+    // ── Step 8: Store units (batched insert) ──
     let storedCount = 0;
-    for (const i of finalIndices) {
-      const unit = villageUnits[i];
-      const villageId = VILLAGE_ID_MAP[unit.village!];
-
-      const { error } = await supabase.from('information_units').insert({
-        user_id: userId,
-        scout_id: null,
-        execution_id: null,
-        statement: unit.statement,
-        unit_type: unit.unitType || 'fact',
-        entities: unit.entities || [],
-        source_url: 'manual://pdf',
-        source_domain: 'manual',
-        source_title: label,
-        location: { city: villageId, country: 'Schweiz' },
-        topic: 'Wochenblatt',
-        source_type: 'manual_pdf',
-        file_path: storagePath,
-        embedding: unitEmbeddings[i],
-        event_date: unit.eventDate || null,
+    if (finalIndices.length > 0) {
+      const rows = finalIndices.map((i) => {
+        const unit = villageUnits[i];
+        const villageId = VILLAGE_ID_MAP[unit.village!];
+        return {
+          user_id: userId,
+          scout_id: null,
+          execution_id: null,
+          statement: unit.statement,
+          unit_type: unit.unitType || 'fact',
+          entities: unit.entities || [],
+          source_url: 'manual://pdf',
+          source_domain: 'manual',
+          source_title: label,
+          location: { city: villageId, country: 'Schweiz' },
+          topic: 'Wochenblatt',
+          source_type: 'manual_pdf',
+          file_path: storagePath,
+          embedding: unitEmbeddings[i],
+          event_date: unit.eventDate || null,
+        };
       });
 
-      if (!error) storedCount++;
+      const { error, count } = await supabase
+        .from('information_units')
+        .insert(rows, { count: 'exact' });
+
+      storedCount = error ? 0 : (count ?? rows.length);
     }
 
     // ── Step 9: Complete ──

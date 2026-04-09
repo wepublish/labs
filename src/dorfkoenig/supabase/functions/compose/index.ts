@@ -9,7 +9,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { scrape } from '../_shared/firecrawl.ts';
-import { DRAFT_COMPOSE_PROMPT } from '../_shared/prompts.ts';
+import { DRAFT_COMPOSE_PROMPT, formatUnitsByType } from '../_shared/prompts.ts';
 import { MAX_UNITS_PER_COMPOSE, MAX_SOURCE_CONTENT_CHARS } from '../_shared/constants.ts';
 
 interface GenerateRequest {
@@ -182,11 +182,6 @@ async function generateDraft(
     return errorResponse('Keine Einheiten gefunden', 404);
   }
 
-  // Group units by type
-  const facts = units.filter((u) => u.unit_type === 'fact');
-  const events = units.filter((u) => u.unit_type === 'event');
-  const entityUpdates = units.filter((u) => u.unit_type === 'entity_update');
-
   // Extract frequent entities
   const entityCounts = new Map<string, number>();
   for (const unit of units) {
@@ -223,32 +218,7 @@ ${LAYER_3_OUTPUT_FORMAT}`;
 
   // --- Build user prompt ---
 
-  // Format units grouped by type
-  let formattedUnits = '';
-
-  if (facts.length > 0) {
-    formattedUnits += 'FAKTEN:\n';
-    for (const f of facts) {
-      formattedUnits += `- ${f.statement} [${f.source_domain}]\n`;
-    }
-    formattedUnits += '\n';
-  }
-
-  if (events.length > 0) {
-    formattedUnits += 'EREIGNISSE:\n';
-    for (const e of events) {
-      formattedUnits += `- ${e.statement} [${e.source_domain}]\n`;
-    }
-    formattedUnits += '\n';
-  }
-
-  if (entityUpdates.length > 0) {
-    formattedUnits += 'AKTUALISIERUNGEN:\n';
-    for (const u of entityUpdates) {
-      formattedUnits += `- ${u.statement} [${u.source_domain}]\n`;
-    }
-    formattedUnits += '\n';
-  }
+  const formattedUnits = formatUnitsByType(units);
 
   // Extract unique source URLs and fetch via Firecrawl
   const uniqueUrls = [...new Set(units.map(u => u.source_url).filter(Boolean))];

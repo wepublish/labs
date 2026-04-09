@@ -9,7 +9,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT } from '../_shared/prompts.ts';
+import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
 import { getCorrespondentsForVillage } from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 
@@ -135,12 +135,7 @@ Deno.serve(async (req) => {
     }
 
     // Format units for LLM
-    const formattedUnits = units
-      .map((unit, index) => {
-        const date = unit.event_date || unit.created_at?.split('T')[0] || 'unbekannt';
-        return `[${index + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type} | ${unit.statement}`;
-      })
-      .join('\n');
+    const formattedUnits = formatUnitsForSelection(units);
 
     // Call LLM to select units
     const selectResponse = await openrouter.chat({
@@ -181,18 +176,8 @@ Deno.serve(async (req) => {
 
     if (selectedError) throw new Error(`Selected units fetch failed: ${selectedError.message}`);
 
-    // Group units by type
-    const facts = (selectedUnits || []).filter(u => u.unit_type === 'fact');
-    const events = (selectedUnits || []).filter(u => u.unit_type === 'event');
-    const entityUpdates = (selectedUnits || []).filter(u => u.unit_type === 'entity_update');
-
-    let formattedSelected = '';
-    const formatUnit = (u: { event_date?: string | null; created_at: string; statement: string; source_domain: string }) =>
-      `- [${u.event_date || u.created_at?.split('T')[0] || 'unbekannt'}] ${u.statement} [${u.source_domain}]`;
-
-    if (facts.length > 0) formattedSelected += 'FAKTEN:\n' + facts.map(formatUnit).join('\n') + '\n\n';
-    if (events.length > 0) formattedSelected += 'EREIGNISSE:\n' + events.map(formatUnit).join('\n') + '\n\n';
-    if (entityUpdates.length > 0) formattedSelected += 'AKTUALISIERUNGEN:\n' + entityUpdates.map(formatUnit).join('\n') + '\n\n';
+    // Format units grouped by type for draft generation
+    const formattedSelected = formatUnitsByType(selectedUnits || [], true);
 
     // Build 3-layer newsletter prompt
     const layer1 = `Du bist ein KI-Assistent für den Newsletter "${village_name} — Wochenüberblick".

@@ -103,6 +103,34 @@ export async function deduplicateTexts(
   return uniqueIndices;
 }
 
+/**
+ * Deduplicate pre-computed embeddings by similarity.
+ * Returns a Set of indices for unique embeddings (first occurrence wins).
+ */
+export function deduplicateFromEmbeddings(
+  vectors: number[][],
+  threshold = 0.75,
+): Set<number> {
+  const uniqueIndices = new Set<number>();
+  const seen: number[][] = [];
+
+  for (let i = 0; i < vectors.length; i++) {
+    let isDuplicate = false;
+    for (const s of seen) {
+      if (cosineSimilarity(vectors[i], s) >= threshold) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    if (!isDuplicate) {
+      uniqueIndices.add(i);
+      seen.push(vectors[i]);
+    }
+  }
+
+  return uniqueIndices;
+}
+
 // Export as module
 export const embeddings = {
   generate: generateEmbedding,
@@ -111,4 +139,5 @@ export const embeddings = {
   areSimilar,
   findMostSimilar,
   deduplicate: deduplicateTexts,
+  deduplicateFromEmbeddings,
 };

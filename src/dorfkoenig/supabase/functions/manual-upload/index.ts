@@ -197,25 +197,7 @@ AUSGABEFORMAT (JSON):
   }
 
   // Deduplicate within batch (0.75 threshold)
-  const uniqueIndices = new Set<number>();
-  const seenEmbeddings: number[][] = [];
-
-  for (let i = 0; i < unitEmbeddings.length; i++) {
-    const embedding = unitEmbeddings[i];
-    let isDuplicate = false;
-
-    for (const seen of seenEmbeddings) {
-      if (embeddings.similarity(embedding, seen) >= UNIT_DEDUP_THRESHOLD) {
-        isDuplicate = true;
-        break;
-      }
-    }
-
-    if (!isDuplicate) {
-      uniqueIndices.add(i);
-      seenEmbeddings.push(embedding);
-    }
-  }
+  const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
   // Store unique units
   const unitIds: string[] = [];

@@ -38,8 +38,7 @@ DECLARE
     dispatched_count INTEGER := 0;
     project_url TEXT;
     service_key TEXT;
-    -- Hardcoded user ID for automated drafts (matches existing dev user)
-    auto_user_id TEXT := 'tom';
+    auto_user_id TEXT;
 BEGIN
     -- Get secrets from Vault
     BEGIN
@@ -57,6 +56,21 @@ BEGIN
 
     IF project_url IS NULL OR service_key IS NULL THEN
         RAISE WARNING 'dispatch_auto_drafts: Vault secrets not configured';
+        RETURN 0;
+    END IF;
+
+    -- Get auto-draft user ID from Vault
+    BEGIN
+        SELECT decrypted_secret INTO auto_user_id
+        FROM vault.decrypted_secrets
+        WHERE name = 'auto_draft_user_id';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'dispatch_auto_drafts: Could not retrieve auto_draft_user_id: %', SQLERRM;
+        RETURN 0;
+    END;
+
+    IF auto_user_id IS NULL THEN
+        RAISE WARNING 'dispatch_auto_drafts: auto_draft_user_id not configured in Vault';
         RETURN 0;
     END IF;
 
@@ -92,11 +106,6 @@ BEGIN
         );
 
         dispatched_count := dispatched_count + 1;
-
-        -- Stagger dispatches (10s between villages for LLM rate limits)
-        IF dispatched_count < 10 THEN
-            PERFORM pg_sleep(10);
-        END IF;
     END LOOP;
 
     RETURN dispatched_count;
