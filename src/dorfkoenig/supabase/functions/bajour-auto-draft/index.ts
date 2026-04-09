@@ -1,0 +1,364 @@
+/**
+ * @module bajour-auto-draft
+ * Automated daily newsletter draft pipeline for a single village.
+ * Triggered by pg_cron via dispatch_auto_drafts() at 18:00 Europe/Zurich.
+ *
+ * Pipeline: idempotency check → select units (LLM) → generate draft (LLM) → save → verify (WhatsApp)
+ */
+
+import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { createServiceClient } from '../_shared/supabase-client.ts';
+import { openrouter } from '../_shared/openrouter.ts';
+import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT } from '../_shared/prompts.ts';
+import { getCorrespondentsForVillage } from '../_shared/correspondents.ts';
+import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
+
+interface AutoDraftRequest {
+  village_id: string;
+  village_name: string;
+  scout_id: string;
+  user_id: string;
+}
+
+const RECENCY_DAYS = 2;
+
+// WhatsApp Business API credentials
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!;
+const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN')!;
+
+// --- Helpers ---
+
+function zurichToday(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+}
+
+async function sendWhatsAppMessage(
+  payload: Record<string, unknown>
+): Promise<{ message_id: string }> {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`WhatsApp API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  return { message_id: data.messages?.[0]?.id || 'unknown' };
+}
+
+// --- Main handler ---
+
+Deno.serve(async (req) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+
+  if (req.method !== 'POST') {
+    return errorResponse('Methode nicht erlaubt', 405);
+  }
+
+  const supabase = createServiceClient();
+  const body: AutoDraftRequest = await req.json();
+  const { village_id, village_name, scout_id, user_id } = body;
+
+  if (!village_id || !village_name || !scout_id || !user_id) {
+    return errorResponse('village_id, village_name, scout_id, user_id erforderlich', 400);
+  }
+
+  const today = zurichToday();
+  let runId: number | null = null;
+
+  try {
+    // --- 1. Idempotency check ---
+    const { data: existingDraft } = await supabase
+      .from('bajour_drafts')
+      .select('id')
+      .eq('village_id', village_id)
+      .eq('publication_date', today)
+      .neq('verification_status', 'abgelehnt')
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDraft) {
+      console.log(`Auto-draft skipped: draft already exists for ${village_id} on ${today}`);
+      await supabase.from('auto_draft_runs').insert({
+        village_id,
+        status: 'skipped',
+        error_message: 'Draft already exists for today',
+        completed_at: new Date().toISOString(),
+      });
+      return jsonResponse({ data: { status: 'skipped', reason: 'draft_exists' } });
+    }
+
+    // --- 2. Log run start ---
+    const { data: runData } = await supabase
+      .from('auto_draft_runs')
+      .insert({ village_id, status: 'running' })
+      .select('id')
+      .single();
+    runId = runData?.id ?? null;
+
+    // --- 3. Select units ---
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - RECENCY_DAYS);
+
+    const { data: units, error: unitsError } = await supabase
+      .from('information_units')
+      .select('id, statement, unit_type, event_date, created_at')
+      .eq('scout_id', scout_id)
+      .eq('user_id', user_id)
+      .eq('used_in_article', false)
+      .gte('created_at', cutoffDate.toISOString())
+      .order('event_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (unitsError) throw new Error(`Unit query failed: ${unitsError.message}`);
+
+    if (!units || units.length === 0) {
+      console.log(`Auto-draft skipped: no units for ${village_id}`);
+      if (runId) {
+        await supabase.from('auto_draft_runs')
+          .update({ status: 'skipped', error_message: 'No unused units available', completed_at: new Date().toISOString() })
+          .eq('id', runId);
+      }
+      return jsonResponse({ data: { status: 'skipped', reason: 'no_units' } });
+    }
+
+    // Format units for LLM
+    const formattedUnits = units
+      .map((unit, index) => {
+        const date = unit.event_date || unit.created_at?.split('T')[0] || 'unbekannt';
+        return `[${index + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type} | ${unit.statement}`;
+      })
+      .join('\n');
+
+    // Call LLM to select units
+    const selectResponse = await openrouter.chat({
+      messages: [
+        { role: 'system', content: buildInformationSelectPrompt(today, RECENCY_DAYS) },
+        { role: 'user', content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.` },
+      ],
+      temperature: 0.2,
+      max_tokens: 1000,
+      response_format: { type: 'json_object' },
+    });
+
+    let selectedIds: string[];
+    try {
+      const parsed = JSON.parse(selectResponse.choices[0].message.content);
+      const validIds = new Set(units.map(u => u.id));
+      selectedIds = (parsed.selected_unit_ids || []).filter((id: string) => validIds.has(id));
+    } catch {
+      console.error('Failed to parse LLM selection response');
+      selectedIds = [];
+    }
+
+    // Fallback: if empty, use first MAX_UNITS_PER_COMPOSE units
+    if (selectedIds.length === 0) {
+      selectedIds = units.slice(0, MAX_UNITS_PER_COMPOSE).map(u => u.id);
+    }
+
+    // Cap at MAX_UNITS_PER_COMPOSE
+    if (selectedIds.length > MAX_UNITS_PER_COMPOSE) {
+      selectedIds = selectedIds.slice(0, MAX_UNITS_PER_COMPOSE);
+    }
+
+    // --- 4. Generate draft ---
+    const { data: selectedUnits, error: selectedError } = await supabase
+      .from('information_units')
+      .select('id, statement, unit_type, event_date, created_at, source_domain')
+      .in('id', selectedIds);
+
+    if (selectedError) throw new Error(`Selected units fetch failed: ${selectedError.message}`);
+
+    // Group units by type
+    const facts = (selectedUnits || []).filter(u => u.unit_type === 'fact');
+    const events = (selectedUnits || []).filter(u => u.unit_type === 'event');
+    const entityUpdates = (selectedUnits || []).filter(u => u.unit_type === 'entity_update');
+
+    let formattedSelected = '';
+    const formatUnit = (u: { event_date?: string | null; created_at: string; statement: string; source_domain: string }) =>
+      `- [${u.event_date || u.created_at?.split('T')[0] || 'unbekannt'}] ${u.statement} [${u.source_domain}]`;
+
+    if (facts.length > 0) formattedSelected += 'FAKTEN:\n' + facts.map(formatUnit).join('\n') + '\n\n';
+    if (events.length > 0) formattedSelected += 'EREIGNISSE:\n' + events.map(formatUnit).join('\n') + '\n\n';
+    if (entityUpdates.length > 0) formattedSelected += 'AKTUALISIERUNGEN:\n' + entityUpdates.map(formatUnit).join('\n') + '\n\n';
+
+    // Build 3-layer newsletter prompt
+    const layer1 = `Du bist ein KI-Assistent für den Newsletter "${village_name} — Wochenüberblick".
+Du schreibst AUSSCHLIEßLICH basierend auf den bereitgestellten Informationseinheiten.
+ERFINDE KEINE Informationen. Wenn etwas unklar ist, kennzeichne es als "nicht bestätigt".`;
+
+    const layer3 = `Schreibe den gesamten Newsletter auf Deutsch.
+
+Ausgabeformat (JSON):
+{
+  "title": "Wochentitel",
+  "greeting": "Kurze Begrüssung (1 Satz)",
+  "sections": [
+    {
+      "heading": "Abschnittsüberschrift",
+      "body": "Inhalt mit **Hervorhebungen** und [Quellen]"
+    }
+  ],
+  "outlook": "Ausblick auf nächste Woche",
+  "sign_off": "Abschlussgruss"
+}`;
+
+    const systemPrompt = `${layer1}\n\n${DRAFT_COMPOSE_PROMPT}\n\n${layer3}`;
+
+    const draftResponse = await openrouter.chat({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Hier sind die Informationseinheiten für den Newsletter:\n\n${formattedSelected}\nErstelle den Newsletter basierend auf diesen Informationen.` },
+      ],
+      temperature: 0.2,
+      max_tokens: 2500,
+      response_format: { type: 'json_object' },
+    });
+
+    let draft;
+    try {
+      draft = JSON.parse(draftResponse.choices[0].message.content);
+    } catch {
+      throw new Error('Failed to parse draft generation LLM response');
+    }
+
+    // Convert structured draft to markdown body
+    let body_md = '';
+    if (draft.greeting) body_md += `${draft.greeting}\n\n`;
+    for (const section of draft.sections || []) {
+      body_md += `## ${section.heading}\n\n${section.body}\n\n`;
+    }
+    if (draft.outlook) body_md += `## Ausblick\n\n${draft.outlook}\n\n`;
+    if (draft.sign_off) body_md += `---\n\n${draft.sign_off}`;
+
+    // --- 5. Save draft ---
+    const { data: savedDraft, error: saveError } = await supabase
+      .from('bajour_drafts')
+      .insert({
+        user_id,
+        village_id,
+        village_name,
+        title: draft.title || `${village_name} — ${today}`,
+        body: body_md.trim(),
+        selected_unit_ids: selectedIds,
+        publication_date: today,
+        verification_status: 'ausstehend',
+      })
+      .select('id')
+      .single();
+
+    if (saveError) throw new Error(`Draft save failed: ${saveError.message}`);
+
+    const draftId = savedDraft.id;
+
+    // Mark units as used
+    await supabase
+      .from('information_units')
+      .update({ used_in_article: true, used_at: new Date().toISOString() })
+      .in('id', selectedIds);
+
+    // --- 6. Send WhatsApp verification (non-fatal) ---
+    let verificationSent = false;
+    try {
+      const correspondents = await getCorrespondentsForVillage(village_id);
+
+      if (correspondents.length > 0) {
+        const allMessageIds: string[] = [];
+
+        for (const correspondent of correspondents) {
+          const phoneWithPlus = '+' + correspondent.phone;
+
+          const templateResult = await sendWhatsAppMessage({
+            to: phoneWithPlus,
+            type: 'template',
+            template: {
+              name: 'bajour_draft_verification',
+              language: { code: 'de' },
+              components: [
+                { type: 'body', parameters: [{ type: 'text', text: village_name }] },
+              ],
+            },
+          });
+          allMessageIds.push(templateResult.message_id);
+
+          const textResult = await sendWhatsAppMessage({
+            to: phoneWithPlus,
+            type: 'text',
+            text: { body: body_md.trim() },
+          });
+          allMessageIds.push(textResult.message_id);
+        }
+
+        // Update draft with verification metadata
+        const now = new Date();
+        const timeoutAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+        await supabase
+          .from('bajour_drafts')
+          .update({
+            verification_sent_at: now.toISOString(),
+            verification_timeout_at: timeoutAt.toISOString(),
+            whatsapp_message_ids: allMessageIds,
+          })
+          .eq('id', draftId);
+
+        verificationSent = true;
+      } else {
+        console.warn(`No active correspondents for ${village_id}, skipping verification`);
+      }
+    } catch (whatsappErr) {
+      console.error(`WhatsApp send failed for ${village_id} (non-fatal):`, whatsappErr);
+    }
+
+    // --- 7. Update run log ---
+    if (runId) {
+      await supabase.from('auto_draft_runs')
+        .update({
+          status: 'completed',
+          draft_id: draftId,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', runId);
+    }
+
+    console.log(`Auto-draft completed for ${village_id}: draft ${draftId}, units: ${selectedIds.length}, verification: ${verificationSent}`);
+
+    return jsonResponse({
+      data: {
+        status: 'completed',
+        draft_id: draftId,
+        units_selected: selectedIds.length,
+        verification_sent: verificationSent,
+      },
+    });
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`bajour-auto-draft error for ${village_id}:`, message);
+
+    // Update run log with failure
+    if (runId) {
+      await supabase.from('auto_draft_runs')
+        .update({
+          status: 'failed',
+          error_message: message.slice(0, 500),
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', runId);
+    }
+
+    return errorResponse(message, 500);
+  }
+});

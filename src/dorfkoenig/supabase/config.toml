@@ -109,5 +109,8 @@ verify_jwt = false
 [functions.process-newspaper]
 verify_jwt = false
 
+[functions.bajour-auto-draft]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"
