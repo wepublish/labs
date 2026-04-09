@@ -101,8 +101,8 @@ describe('CHANGE_STATUS_LABELS', () => {
 });
 
 describe('PRESET_USERS', () => {
-  it('has 3 users', () => {
-    expect(PRESET_USERS).toHaveLength(3);
+  it('has 1 user', () => {
+    expect(PRESET_USERS).toHaveLength(1);
   });
 
   it('has We.Publish Redaktion as the first user', () => {
