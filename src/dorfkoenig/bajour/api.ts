@@ -32,4 +32,7 @@ export const bajourApi = {
   /** Send draft to village correspondents via WhatsApp for verification. */
   sendVerification: (draftId: string) =>
     api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
+
+  /** Fetch the current INFORMATION_SELECT_PROMPT template from the backend. */
+  getSelectPrompt: () => api.get<{ prompt: string }>('bajour-select-units'),
 };

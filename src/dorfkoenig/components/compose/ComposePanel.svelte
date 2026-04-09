@@ -225,7 +225,7 @@
     }
   }
 
-  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
+  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string, systemPromptOverride?: string) {
     showAISelectDropdown = false;
     retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
 
@@ -255,7 +255,7 @@
         village_id: village.id,
         scout_id: scoutId,
         ...(recencyDays !== null && { recency_days: recencyDays }),
-        selection_prompt: selectionPrompt.trim() || undefined,
+        selection_prompt: systemPromptOverride || selectionPrompt.trim() || undefined,
       });
 
       const selectedIds = selectResult.selected_unit_ids;
