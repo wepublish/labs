@@ -4,7 +4,6 @@
     Sparkles,
     Loader2,
     Trash2,
-    Upload,
     FileText,
   } from 'lucide-svelte';
   import { units } from '../../stores/units';
@@ -13,7 +12,7 @@
   import { bajourApi } from '../../bajour/api';
   import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
   import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
-  import { showUploadModal } from '../../stores/ui';
+
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import AISelectDropdown from './AISelectDropdown.svelte';
@@ -357,11 +356,6 @@
           <button class="text-link" onclick={selectAll} type="button">Alle auswählen</button>
         {/if}
       {/if}
-
-      <button class="upload-btn" onclick={() => showUploadModal.set(true)} type="button" style="margin-left: auto;">
-        <Upload size={14} />
-        <span>Hochladen</span>
-      </button>
     </div>
   </div>
 
@@ -532,29 +526,6 @@
     background: var(--color-status-error-bg);
     border-color: var(--color-danger-light);
     color: var(--color-danger-dark);
-  }
-
-  .upload-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.625rem 0.25rem 0.5rem;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    font-family: var(--font-body);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all var(--transition-base);
-    white-space: nowrap;
-  }
-
-  .upload-btn:hover {
-    background: var(--color-background);
-    color: var(--color-text);
-    border-color: var(--color-primary);
   }
 
   /* ── SCROLLABLE CONTENT ── */
