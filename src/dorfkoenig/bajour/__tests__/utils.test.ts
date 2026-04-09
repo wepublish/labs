@@ -13,6 +13,7 @@ function makeDraft(overrides: Partial<BajourDraft> = {}): BajourDraft {
     body: 'Test',
     selected_unit_ids: [],
     custom_system_prompt: null,
+    publication_date: '2026-02-25',
     verification_status: 'ausstehend',
     verification_responses: [],
     verification_sent_at: null,

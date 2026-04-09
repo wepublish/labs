@@ -74,10 +74,21 @@ export interface CandidateUrl {
   confidence: number;
 }
 
+export interface ExtractedPromise {
+  promise_text: string;
+  context: string;
+  source_url: string;
+  source_title: string | null;
+  source_date: string;
+  due_date: string | null;
+  date_confidence: 'high' | 'medium' | 'low';
+  criteria_match: boolean;
+}
+
 export interface CivicTestResult {
   valid: boolean;
   documents_found: number;
-  sample_promises: Promise[];
+  sample_promises: ExtractedPromise[];
   error?: string;
 }
 
