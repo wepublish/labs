@@ -138,6 +138,7 @@ Pagination: page size 20, `hasMore` flag.
 ### `bajourDrafts` (`bajour/store.ts`)
 `load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
 Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `DraftSlideOver` subscribes to Realtime updates for live verification status.
+State also reflects `auto_draft_runs` logs for automated pipeline tracking.
 
 ### `auth` (`stores/auth.ts`)
 Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`

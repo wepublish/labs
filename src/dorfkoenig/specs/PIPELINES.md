@@ -770,3 +770,23 @@ if (extractUnits && (scout.location || scout.topic)) {
 - Sequential pipeline steps (dependencies)
 - Parallel embedding + notification (independent)
 - Staggered dispatch (10s between scouts)
+
+---
+
+## Auto-Draft Pipeline
+
+Daily at 18:00 Europe/Zurich:
+1. pg_cron → dispatch_auto_drafts() → loops 10 villages, 10s stagger
+2. Per village: bajour-auto-draft edge function
+   a. Idempotency check (village + today)
+   b. Select units (INFORMATION_SELECT_PROMPT, 2-day recency, max 20)
+   c. Generate draft (DRAFT_COMPOSE_PROMPT, 3-layer newsletter prompt)
+   d. Save to bajour_drafts (publication_date = today Zurich)
+   e. Send WhatsApp verification (non-fatal)
+   f. Log to auto_draft_runs
+
+Daily at 21:00 Europe/Zurich:
+3. pg_cron → resolve_bajour_timeouts() — auto-confirms unresponded drafts
+
+Daily at 22:00:
+4. CMS queries news endpoint → returns confirmed drafts by village

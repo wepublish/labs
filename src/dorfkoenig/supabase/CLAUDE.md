@@ -13,7 +13,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
 | `bajour-drafts` | CRUD for Bajour village newsletter drafts (GET list, POST create, PATCH update) | x-user-id header | Frontend API calls |
 | `bajour-select-units` | AI-powered selection of relevant information units for a village | x-user-id header | Frontend API calls |
-| `bajour-generate-draft` | Generate newsletter draft from selected units via LLM | x-user-id header | Frontend API calls |
+| `bajour-auto-draft` | Automated daily draft pipeline per village (select → generate → save → verify) | Service role (pg_cron) | pg_cron dispatch |
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
 | `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
@@ -29,6 +29,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
 | `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()` | Resend API |
+| `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT` | - |
 
 ## 9-Step Execution Pipeline (`execute-scout/index.ts`)
 
@@ -66,11 +67,15 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `should_run_scout(frequency, last_run_at)` | Check if scout is due |
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
+| `dispatch_auto_drafts()` | pg_cron: dispatch auto-draft edge function per village at 18:00 Europe/Zurich |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
 **`bajour_drafts`** -- Village newsletter drafts with verification workflow
 - PK: `id` (UUID), `user_id` (TEXT), `village_id`, `village_name`, `title`, `body`, `selected_unit_ids` (UUID[]), `custom_system_prompt`, `publication_date` (DATE, default CURRENT_DATE), `verification_status` (ausstehend/bestätigt/abgelehnt), `verification_responses` (JSONB[]), `verification_sent_at`, `verification_resolved_at`, `verification_timeout_at`, `whatsapp_message_ids` (JSONB)
+
+**`auto_draft_runs`** -- Audit log for automated daily draft pipeline per village
+- PK: `id` (BIGINT IDENTITY), `village_id` (TEXT), `status` (TEXT, CHECK: pending/running/completed/failed/skipped), `error_message` (TEXT, nullable), `draft_id` (UUID, FK → bajour_drafts, nullable), `started_at` (TIMESTAMPTZ), `completed_at` (TIMESTAMPTZ, nullable)
 
 **`bajour_correspondents`** -- Village correspondents for WhatsApp verification
 - PK: `id` (UUID), `village_id` (TEXT), `name` (TEXT), `phone` (TEXT, without '+' prefix), `is_active` (BOOLEAN), `created_at`, `updated_at`
