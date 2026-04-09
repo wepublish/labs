@@ -73,6 +73,14 @@ src/dorfkoenig/
 │       ├── scout-wizard.test.ts  # Two-step wizard flow
 │       └── units.test.ts  # Units store load/search/markUsed
 ├── supabase/              # Backend (see supabase/CLAUDE.md)
+│   ├── functions/
+│   │   ├── process-newspaper/  # Async newspaper PDF extraction pipeline
+│   │   ├── ... (other functions)
+│   ├── migrations/
+│   │   └── ... (database schema)
+│   ├── _shared/
+│   │   ├── zeitung-extraction-prompt.ts  # Newspaper extraction prompt + ranking table
+│   │   ├── ... (other shared modules)
 ├── specs/                 # Detailed specifications
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md

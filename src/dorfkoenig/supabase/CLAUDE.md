@@ -18,6 +18,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
 | `news` | Public GET endpoint returning confirmed drafts grouped by village within a date range. Auth via `?auth=` or `Authorization: Bearer` (`NEWS_API_TOKEN`). Params: `?date=YYYY-MM-DD&range=N` (default: today ±3 days). | Shared secret | WePublish overview page |
+| `process-newspaper` | Async newspaper PDF extraction: Firecrawl parse → chunk → LLM extract → dedup → store units. Updates `newspaper_jobs` for Realtime progress. | Service role (manual-upload trigger) | manual-upload pdf_confirm |
 
 ## Shared Modules (`functions/_shared/`)
 
@@ -30,6 +31,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()` | Resend API |
 | `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT` | - |
+| `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter | OpenRouter API |
 
 ## 9-Step Execution Pipeline (`execute-scout/index.ts`)
 
@@ -82,6 +84,11 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 - Phone format: no '+' prefix (matches Meta webhook format). WhatsApp send prepends '+'.
 - Unique constraint: (village_id, phone). Phone format check: `^[1-9][0-9]{6,14}$`
 - Managed via Supabase table editor or SQL. No redeployment needed.
+
+**`newspaper_jobs`** -- Async PDF processing status tracker with Realtime
+- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed), `chunks_total`, `chunks_processed`, `units_created`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
+- RLS: user SELECT on own rows, service_role ALL
+- Realtime enabled for live progress updates
 
 ### RLS Policies
 

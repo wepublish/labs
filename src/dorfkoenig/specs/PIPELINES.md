@@ -790,3 +790,36 @@ Daily at 21:00 Europe/Zurich:
 
 Daily at 22:00:
 4. CMS queries news endpoint → returns confirmed drafts by village
+
+---
+
+## Newspaper PDF Processing Pipeline
+
+Triggered by `manual-upload` (pdf_confirm) → `process-newspaper` edge function.
+
+### 10-Step Pipeline
+
+1. **Get signed URL** — Generate signed download URL for PDF in Supabase Storage
+2. **Firecrawl parse** — `/v2/scrape` with `formats: ['markdown']`, timeout 120s
+3. **Preprocess** — Collapse whitespace, remove page headers/footers, strip OCR artifacts
+4. **Chunk** — Boundary-aware splitting on markdown headings, ALL CAPS section headers, horizontal rules (~15K target per chunk)
+5. **Pre-filter** — Skip chunks where >40% of lines contain ad/puzzle signals (CHF, Tel., www., Sudoku, etc.)
+6. **LLM extraction** — GPT-4o-mini via OpenRouter with `zeitung-extraction-prompt.ts` prompt. Concurrency limit of 3-4. Each chunk returns `{ units[], skipped[] }`.
+7. **Post-process** — Filter out `village: null` units, generate embeddings (batch), deduplicate within batch (0.75 threshold), per-village dedup against existing units in DB (0.75 threshold)
+8. **Store units** — Insert into `information_units` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`
+9. **Update job** — Set `newspaper_jobs` status to `completed` with `units_created` count
+10. **Error handling** — Per-chunk try/catch (partial results kept), fatal errors set `status: 'failed'`
+
+### Ranking Table
+
+See `_shared/zeitung-extraction-prompt.ts` for the editable ranking table that determines what content is extracted vs ignored and its priority level.
+
+### Deduplication
+
+- **Within batch:** 0.75 cosine similarity threshold
+- **Per-village against DB:** Queries `search_units_semantic()` scoped to `location_city` for each unit
+- **Duplicate upload guard:** Checks `newspaper_jobs` for existing `processing` job with same `storage_path`
+
+### Status Tracking
+
+`newspaper_jobs` table with Supabase Realtime. Frontend subscribes to `postgres_changes` on the job row for live progress updates (chunks_processed / chunks_total).
