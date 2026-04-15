@@ -10,7 +10,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
-import { getCorrespondentsForVillage } from '../_shared/correspondents.ts';
+import { getCorrespondentsForVillage, sendWhatsAppMessage } from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 
 interface AutoDraftRequest {
@@ -22,38 +22,10 @@ interface AutoDraftRequest {
 
 const RECENCY_DAYS = 2;
 
-// WhatsApp Business API credentials
-const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!;
-const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN')!;
-
 // --- Helpers ---
 
 function zurichToday(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
-}
-
-async function sendWhatsAppMessage(
-  payload: Record<string, unknown>
-): Promise<{ message_id: string }> {
-  const response = await fetch(
-    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`WhatsApp API error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  return { message_id: data.messages?.[0]?.id || 'unknown' };
 }
 
 // --- Main handler ---

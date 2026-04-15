@@ -26,6 +26,7 @@ import {
   type WebExtractionResult,
 } from './web-extraction-prompt.ts';
 import { assignVillage, type AssignmentPath } from './village-assignment.ts';
+import type { Village } from './village-matcher.ts';
 import {
   getCachedExtraction,
   setCachedExtraction,
@@ -33,7 +34,6 @@ import {
 } from './extraction-cache.ts';
 import gemeindenJson from './gemeinden.json' with { type: 'json' };
 
-interface Village { id: string; name: string }
 const villages = gemeindenJson as Village[];
 const VILLAGE_IDS = villages.map((v) => v.id);
 

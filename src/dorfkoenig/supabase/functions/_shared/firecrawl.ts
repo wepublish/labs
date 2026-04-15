@@ -22,6 +22,7 @@ interface ScrapeResponse {
   data?: {
     markdown?: string;
     html?: string;
+    rawHtml?: string;
     metadata?: {
       title?: string;
       description?: string;
@@ -66,7 +67,11 @@ export async function scrape(options: ScrapeOptions): Promise<{
       resolvedFormats.push({ type: 'changeTracking', tag: changeTrackingTag });
     }
 
-    const body: Record<string, unknown> = {
+    const body: {
+      url: string;
+      formats: (string | { type: string; tag: string })[];
+      parsers?: { type: 'pdf'; mode: string }[];
+    } = {
       url,
       formats: resolvedFormats,
     };
@@ -302,7 +307,7 @@ export async function scrapeRawHtml(
 
     return {
       success: true,
-      html: (data.data as Record<string, unknown>).rawHtml as string || null,
+      html: data.data.rawHtml || null,
       error: null,
     };
   } catch (error) {

@@ -38,15 +38,12 @@ async function request<T>(
     },
   });
 
-  // Handle no content
   if (response.status === 204) {
     return undefined as T;
   }
 
-  // Parse response
   const result = await response.json();
 
-  // Handle errors
   if (!response.ok) {
     const error = result as ApiError;
     throw new ApiClientError(
@@ -56,47 +53,31 @@ async function request<T>(
     );
   }
 
-  // Return data (unwrap if wrapped in { data: ... })
+  // Unwrap if response is wrapped in { data: ... }
   return result.data !== undefined ? result.data : result;
 }
 
-// API methods
 export const api = {
-  /**
-   * GET request
-   */
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
 
-  /**
-   * POST request
-   */
   post: <T>(endpoint: string, data?: object) =>
     request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  /**
-   * PUT request
-   */
   put: <T>(endpoint: string, data: object) =>
     request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  /**
-   * PATCH request
-   */
   patch: <T>(endpoint: string, data: object) =>
     request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
-  /**
-   * DELETE request
-   */
   delete: <T = void>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 

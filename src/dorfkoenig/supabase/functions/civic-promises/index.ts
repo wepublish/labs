@@ -8,7 +8,8 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 
-const VALID_STATUSES = ['new', 'in_progress', 'fulfilled', 'broken', 'notified'];
+const VALID_STATUSES = ['new', 'in_progress', 'fulfilled', 'broken', 'notified'] as const;
+type PromiseStatus = (typeof VALID_STATUSES)[number];
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -84,7 +85,7 @@ async function updatePromise(
     return errorResponse('Ungültiger Status', 400, 'VALIDATION_ERROR');
   }
 
-  const updates: Record<string, unknown> = {};
+  const updates: { status?: PromiseStatus } = {};
   if (body.status !== undefined) updates.status = body.status;
 
   if (Object.keys(updates).length === 0) {

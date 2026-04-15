@@ -38,10 +38,3 @@ export interface BajourDraft {
   updated_at: string;
 }
 
-export interface BajourDraftGenerated {
-  title: string;
-  greeting: string;
-  sections: { heading: string; body: string }[];
-  outlook: string;
-  sign_off: string;
-}

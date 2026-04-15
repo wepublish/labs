@@ -351,7 +351,11 @@ Deno.serve(async (req) => {
     // STEP 8: UPDATE SCOUT
     // =========================================================================
 
-    const scoutUpdate: Record<string, unknown> = {
+    const scoutUpdate: {
+      last_run_at: string;
+      consecutive_failures: number;
+      content_hash?: string;
+    } = {
       last_run_at: new Date().toISOString(),
       consecutive_failures: 0,
     };

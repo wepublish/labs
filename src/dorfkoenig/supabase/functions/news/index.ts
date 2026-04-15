@@ -11,6 +11,7 @@
 
 import { handleCors, corsHeaders, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { constantTimeEqual } from '../_shared/admin-link-core.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
 const NEWS_API_TOKEN = Deno.env.get('NEWS_API_TOKEN');
@@ -19,16 +20,6 @@ const MAX_RANGE = 30;
 const UNIT_BATCH_SIZE = 500;
 
 // --- Helpers ---
-
-/** Constant-time string comparison to prevent timing attacks. */
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
-}
 
 /** Validate YYYY-MM-DD and check it's a real calendar date. */
 function isValidDate(s: string): boolean {

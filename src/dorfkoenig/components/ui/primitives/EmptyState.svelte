@@ -1,10 +1,9 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import type { Snippet, ComponentType, SvelteComponent } from 'svelte';
 
   interface Props {
-    // lucide-svelte uses Svelte 4 class components, incompatible with Svelte 5 Component type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon?: any;
+    // lucide-svelte exports Svelte 4 class components; ComponentType<SvelteComponent> covers them
+    icon?: ComponentType<SvelteComponent>;
     title: string;
     description?: string;
     action?: Snippet;

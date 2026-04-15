@@ -4,7 +4,9 @@
 // (migration 20260416000006). Kept here so the behaviour is unit-testable
 // without spinning up Deno or the database.
 
-export type VerificationStatus = 'ausstehend' | 'bestätigt' | 'abgelehnt';
+import type { VerificationStatus } from './types';
+
+export type { VerificationStatus };
 
 export interface ResolvableResponse {
   response: 'bestätigt' | 'abgelehnt';

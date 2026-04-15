@@ -19,9 +19,7 @@
  */
 
 import gemeindenJson from './gemeinden.json' with { type: 'json' };
-import { matchVillagesDeterministic } from './village-matcher.ts';
-
-interface Village { id: string; name: string }
+import { matchVillagesDeterministic, type Village } from './village-matcher.ts';
 
 const villages = gemeindenJson as Village[];
 

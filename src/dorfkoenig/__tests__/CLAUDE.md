@@ -21,7 +21,7 @@ npm run test:watch  # watch mode
 | Source Module | Test File | What's Covered |
 |---------------|-----------|----------------|
 | `lib/api.ts` | `lib/api.test.ts` | `api.get/post/delete` (headers, auth, envelope unwrap, errors), `scoutsApi` (list, get, create, update, delete, run, test — incl. is_active, location, frequency, extract_units), `unitsApi` (list with filters, search with topic, combined location+topic), `composeApi` (generate), `executionsApi` (list with filters, get) |
-| `lib/constants.ts` | `lib/constants.test.ts` | `FREQUENCY_OPTIONS`, `FREQUENCY_OPTIONS_EXTENDED`, `DAY_OF_WEEK_OPTIONS`, `UNIT_TYPE_LABELS`, `EXECUTION_STATUS_LABELS`, `CHANGE_STATUS_LABELS`, `PRESET_USERS`, `formatDate`, `formatRelativeTime` |
+| `lib/constants.ts` | `lib/constants.test.ts` | `FREQUENCY_OPTIONS_EXTENDED`, `DAY_OF_WEEK_OPTIONS`, `UNIT_TYPE_LABELS`, `PRESET_USERS`, `formatDate`, `formatRelativeTime` |
 | `stores/auth.ts` | `stores/auth.test.ts` | `login` (localStorage, trim, empty validation), `logout`, `getUserId`, `initAuth` (session restore, URL token auth, token priority over localStorage, empty token fallback, iframe error, standalone login page) |
 | `stores/scouts.ts` | `stores/scouts.test.ts` | `load` (success + error), `create` (with topic, without topic), `get` (success + null on failure), `update` (name, topic, clear topic), `delete`, `run` (with/without options, error propagation), `test` (success, failure, error propagation), `clearError`, enrichment fields, derived stores (`scoutsCount`) |
 | `stores/units.ts` | `stores/units.test.ts` | `load` (with city, topic, topic derivation, errors), `search` (with/without location, with topic, combined location+topic), `setLocation`, `setTopic`, `markUsed`, `clearError` |

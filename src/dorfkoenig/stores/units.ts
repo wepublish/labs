@@ -34,9 +34,6 @@ function createUnitsStore() {
   return {
     subscribe,
 
-    /**
-     * Load available locations for filter
-     */
     async loadLocations() {
       try {
         const data = await unitsApi.locations();
@@ -46,9 +43,6 @@ function createUnitsStore() {
       }
     },
 
-    /**
-     * Load units with optional filters
-     */
     async load(locationCity?: string, unusedOnly = true, topic?: string, dateFrom?: string, dateTo?: string) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
@@ -67,9 +61,6 @@ function createUnitsStore() {
       }
     },
 
-    /**
-     * Semantic search for units
-     */
     async search(query: string, locationCity?: string, topic?: string) {
       update((s) => ({ ...s, loading: true, searchQuery: query, error: null }));
       try {
@@ -84,49 +75,30 @@ function createUnitsStore() {
       }
     },
 
-    /**
-     * Set selected location filter
-     */
     setLocation(city: string | null) {
       update((s) => ({ ...s, selectedLocation: city }));
     },
 
-    /**
-     * Set selected topic filter
-     */
     setTopic(topic: string | null) {
       update((s) => ({ ...s, selectedTopic: topic }));
     },
 
-    /**
-     * Set date range filter
-     */
     setDateRange(from: string | null, to: string | null) {
       update((s) => ({ ...s, dateFrom: from, dateTo: to }));
     },
 
-    /**
-     * Clear search query
-     */
     clearSearch() {
       update((s) => ({ ...s, searchQuery: '' }));
     },
 
-    /**
-     * Mark units as used in article
-     */
     async markUsed(unitIds: string[]) {
       await unitsApi.markUsed(unitIds);
-      // Remove marked units from the list
       update((s) => ({
         ...s,
         units: s.units.filter((u) => !unitIds.includes(u.id)),
       }));
     },
 
-    /**
-     * Clear error
-     */
     clearError() {
       update((s) => ({ ...s, error: null }));
     },
