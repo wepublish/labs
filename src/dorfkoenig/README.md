@@ -259,7 +259,7 @@ npm run build:production
 ### bajour_drafts
 - Village newsletter drafts with WhatsApp verification workflow
 - Verification status: ausstehend, bestätigt, abgelehnt
-- 2-hour timeout auto-resolves to bestätigt
+- 4-hour timeout auto-resolves to abgelehnt (silence = rejection)
 
 ## Scheduled Jobs
 

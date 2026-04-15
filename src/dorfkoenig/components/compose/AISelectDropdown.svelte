@@ -1,14 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Loader2, Sparkles, MapPin, ArrowRight, ChevronDown, ChevronRight } from 'lucide-svelte';
-  import { bajourApi } from '../../bajour/api';
+  import { Loader2, Sparkles, MapPin, ArrowRight } from 'lucide-svelte';
   import type { Village } from '../../bajour/types';
 
   interface Props {
     loading: boolean;
     villages: Village[];
     prefilledLocation: string | null;
-    onrun: (villageName: string, recencyDays: number | null, selectionPrompt: string, systemPromptOverride?: string) => void;
+    onrun: (villageName: string, recencyDays: number | null, selectionPrompt: string) => void;
     onclose: () => void;
   }
 
@@ -22,9 +21,6 @@
   let recencyDays = $state(3);
   let selectionPrompt = $state('');
   let dropdownEl: HTMLDivElement | undefined = $state();
-  let showSystemPrompt = $state(false);
-  let systemPrompt = $state('');
-  let systemPromptLoaded = $state(false);
 
   let recencyLabel = $derived(
     recencyDays === 1 ? '1 Tag' : `${recencyDays} Tage`
@@ -47,31 +43,12 @@
     step = 'location';
   }
 
-  async function loadSystemPrompt() {
-    if (systemPromptLoaded) return;
-    try {
-      const result = await bajourApi.getSelectPrompt();
-      systemPrompt = result.prompt;
-      systemPromptLoaded = true;
-    } catch {
-      systemPrompt = '(Fehler beim Laden des Prompts)';
-    }
-  }
-
-  function handleToggleSystemPrompt() {
-    showSystemPrompt = !showSystemPrompt;
-    if (showSystemPrompt && !systemPromptLoaded) {
-      loadSystemPrompt();
-    }
-  }
-
   function handleRun() {
     if (!selectedVillage) return;
     onrun(
       selectedVillage,
       useRecencyFilter ? recencyDays : null,
-      selectionPrompt,
-      showSystemPrompt && systemPrompt ? systemPrompt : undefined
+      selectionPrompt
     );
   }
 
@@ -79,9 +56,6 @@
     useRecencyFilter = true;
     recencyDays = 3;
     selectionPrompt = '';
-    showSystemPrompt = false;
-    systemPrompt = '';
-    systemPromptLoaded = false;
   }
 
   function handleClickOutside(e: MouseEvent) {
@@ -168,26 +142,6 @@
         rows="3"
       ></textarea>
     </div>
-
-    <!-- System prompt toggle -->
-    <button class="system-prompt-toggle" onclick={handleToggleSystemPrompt} type="button">
-      {#if showSystemPrompt}
-        <ChevronDown size={14} />
-      {:else}
-        <ChevronRight size={14} />
-      {/if}
-      <span>System-Prompt</span>
-    </button>
-    {#if showSystemPrompt}
-      <div class="system-prompt-section">
-        <textarea
-          class="system-prompt-textarea"
-          bind:value={systemPrompt}
-          rows="8"
-          placeholder="System-Prompt wird geladen..."
-        ></textarea>
-      </div>
-    {/if}
 
     <!-- Footer -->
     <div class="dropdown-footer">
@@ -496,47 +450,4 @@
     cursor: not-allowed;
   }
 
-  .system-prompt-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--color-text-muted);
-    cursor: pointer;
-  }
-
-  .system-prompt-toggle:hover {
-    color: var(--color-text);
-  }
-
-  .system-prompt-section {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .system-prompt-textarea {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: var(--text-xs);
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    line-height: 1.5;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
-    color: var(--color-text-muted);
-    resize: vertical;
-    min-height: 120px;
-    box-sizing: border-box;
-  }
-
-  .system-prompt-textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.1);
-    color: var(--color-text);
-  }
 </style>

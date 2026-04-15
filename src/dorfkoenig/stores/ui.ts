@@ -10,3 +10,6 @@ export const showUploadModal = writable(false);
 
 /** Controls the CivicScoutModal (civic scout wizard) open/close state. */
 export const showCivicScoutModal = writable(false);
+
+/** Controls the SettingsModal (prompts + max units) open/close state. */
+export const showSettingsModal = writable(false);

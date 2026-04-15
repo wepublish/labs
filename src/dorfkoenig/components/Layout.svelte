@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { auth, logout } from '../stores/auth';
-  import { showScoutModal, showUploadModal, showCivicScoutModal } from '../stores/ui';
+  import { showScoutModal, showUploadModal, showCivicScoutModal, showSettingsModal } from '../stores/ui';
   import ScoutModal from './ui/ScoutModal.svelte';
   import UploadModal from './ui/UploadModal.svelte';
   import CivicScoutModal from './civic/CivicScoutModal.svelte';
-  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown, Upload } from 'lucide-svelte';
+  import SettingsModal from './ui/SettingsModal.svelte';
+  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown, Upload, Settings as SettingsIcon } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -118,6 +119,15 @@
     <!-- Right: User only -->
     <div class="nav-right">
       <span class="user-name">{displayName}</span>
+      <button
+        class="btn-settings"
+        onclick={() => showSettingsModal.set(true)}
+        title="Einstellungen"
+        aria-label="Einstellungen"
+        type="button"
+      >
+        <SettingsIcon size={14} />
+      </button>
       <button class="btn-logout" onclick={logout} title="Abmelden">
         <LogOut size={14} />
       </button>
@@ -131,6 +141,7 @@
   <ScoutModal open={$showScoutModal} onclose={() => showScoutModal.set(false)} />
   <UploadModal open={$showUploadModal} onclose={() => showUploadModal.set(false)} />
   <CivicScoutModal open={$showCivicScoutModal} onclose={() => showCivicScoutModal.set(false)} />
+  <SettingsModal open={$showSettingsModal} onclose={() => showSettingsModal.set(false)} />
 </div>
 
 <style>
@@ -364,7 +375,8 @@
     font-weight: 500;
   }
 
-  .btn-logout {
+  .btn-logout,
+  .btn-settings {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -376,12 +388,19 @@
     color: var(--color-text-light);
     cursor: pointer;
     transition: all var(--transition-base);
+    padding: 0;
   }
 
   .btn-logout:hover {
     border-color: var(--color-danger);
     color: var(--color-danger);
     background: rgba(239, 68, 68, 0.04);
+  }
+
+  .btn-settings:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.04);
   }
 
   .main-content {

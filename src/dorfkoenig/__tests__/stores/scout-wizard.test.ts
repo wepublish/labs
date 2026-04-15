@@ -118,6 +118,32 @@ describe('scout wizard flow', () => {
       );
     });
 
+    it('creates auto-mode draft with null location', async () => {
+      const draft = makeScout({
+        id: 'draft-auto',
+        location: null,
+        location_mode: 'auto',
+      });
+      vi.mocked(scoutsApi.create).mockResolvedValue(draft);
+
+      await scouts.create({
+        name: 'example.com',
+        url: 'https://example.com',
+        criteria: '',
+        frequency: 'daily',
+        is_active: false,
+        location: null,
+        location_mode: 'auto',
+      });
+
+      expect(scoutsApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          location_mode: 'auto',
+          location: null,
+        })
+      );
+    });
+
     it('creates draft with topic instead of location', async () => {
       const draft = makeScout({ id: 'draft-topic', topic: 'Stadtentwicklung, Verkehr' });
       vi.mocked(scoutsApi.create).mockResolvedValue(draft);
@@ -389,6 +415,55 @@ describe('scout wizard flow', () => {
       expect(scoutsApi.test).toHaveBeenCalledTimes(1);
       expect(scoutsApi.update).toHaveBeenCalledTimes(1);
       expect(scoutsApi.run).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes old draft and creates new one when locationMode flips after test', async () => {
+      // User tests in manual mode — draft persisted with location + location_mode='manual'
+      const manualDraft = makeScout({
+        id: 'draft-manual',
+        location: { city: 'Riehen', country: 'Switzerland' },
+        location_mode: 'manual',
+      });
+      vi.mocked(scoutsApi.create).mockResolvedValue(manualDraft);
+      await scouts.create({
+        name: 'example.com',
+        url: 'https://example.com',
+        criteria: '',
+        frequency: 'daily',
+        is_active: false,
+        location: { city: 'Riehen', country: 'Switzerland' },
+        location_mode: 'manual',
+      });
+
+      expect(get(scouts).scouts).toHaveLength(1);
+      expect(get(scouts).scouts[0].location_mode).toBe('manual');
+
+      // Mode flip: ScoutModal deletes the stale draft before re-creation
+      vi.mocked(scoutsApi.delete).mockResolvedValue(undefined);
+      await scouts.delete('draft-manual');
+      expect(get(scouts).scouts).toHaveLength(0);
+      expect(scoutsApi.delete).toHaveBeenCalledWith('draft-manual');
+
+      // Next test run after flip — auto mode with null location
+      const autoDraft = makeScout({
+        id: 'draft-auto',
+        location: null,
+        location_mode: 'auto',
+      });
+      vi.mocked(scoutsApi.create).mockResolvedValue(autoDraft);
+      await scouts.create({
+        name: 'example.com',
+        url: 'https://example.com',
+        criteria: '',
+        frequency: 'daily',
+        is_active: false,
+        location: null,
+        location_mode: 'auto',
+      });
+
+      expect(get(scouts).scouts).toHaveLength(1);
+      expect(get(scouts).scouts[0].location_mode).toBe('auto');
+      expect(get(scouts).scouts[0].location).toBeNull();
     });
 
     it('re-creates draft if test is retried (old draft deleted first)', async () => {

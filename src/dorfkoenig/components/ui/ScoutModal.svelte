@@ -5,7 +5,7 @@
   import { extractTopics } from '../../lib/constants';
   import ScoutWizardStep1 from './ScoutWizardStep1.svelte';
   import ScoutWizardStep2 from './ScoutWizardStep2.svelte';
-  import type { Location, TestResult } from '../../lib/types';
+  import type { Location, LocationMode, TestResult } from '../../lib/types';
 
   interface Props {
     open: boolean;
@@ -25,6 +25,7 @@
   let criteria = $state('');
   let location = $state<Location | null>(null);
   let topic = $state('');
+  let locationMode = $state<LocationMode>('manual');
 
   // Test state
   let testing = $state(false);
@@ -52,7 +53,7 @@
   let step1Valid = $derived(
     url.trim() !== '' &&
     (criteriaMode === 'any' || criteria.trim() !== '') &&
-    (location !== null || topic.trim() !== '')
+    (locationMode === 'auto' || location !== null || topic.trim() !== '')
   );
 
   function resetState(): void {
@@ -62,6 +63,7 @@
     criteria = '';
     location = null;
     topic = '';
+    locationMode = 'manual';
     testing = false;
     testProgress = 0;
     testResult = null;
@@ -129,7 +131,7 @@
       return;
     }
 
-    if (!location && !topic.trim()) {
+    if (locationMode === 'manual' && !location && !topic.trim()) {
       step1Error = 'Ort oder Thema ist erforderlich';
       return;
     }
@@ -147,8 +149,9 @@
         name: new URL(url).hostname,
         url: url.trim(),
         criteria: criteriaMode === 'any' ? '' : criteria.trim(),
-        location,
+        location: locationMode === 'auto' ? null : location,
         topic: topic.trim() || null,
+        location_mode: locationMode,
         frequency: 'daily',
         is_active: false,
       });
@@ -266,6 +269,7 @@
           {criteria}
           {location}
           {topic}
+          {locationMode}
           {existingTopics}
           {testing}
           {testProgress}
@@ -278,6 +282,14 @@
           oncriteriachange={(v) => { criteria = v; }}
           onlocationchange={(loc) => { location = loc; testResult = null; }}
           ontopicchange={(t) => { topic = t; testResult = null; }}
+          onlocationmodechange={(m) => {
+            if (draftScoutId) {
+              scouts.delete(draftScoutId).catch(console.warn);
+              draftScoutId = null;
+            }
+            locationMode = m;
+            testResult = null;
+          }}
           ontest={handleTest}
           onnext={() => { step = 2; }}
           onclose={handleClose}

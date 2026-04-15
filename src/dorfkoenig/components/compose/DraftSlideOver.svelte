@@ -28,6 +28,7 @@
     villageId?: string;
     unitIds?: string[];
     initialShowDraftList?: boolean;
+    initialSavedDraft?: BajourDraft | null;
     onClose: () => void;
     onRetry: () => void;
     onRegenerate: (customPrompt: string | null) => void;
@@ -45,6 +46,7 @@
     villageId,
     unitIds = [],
     initialShowDraftList = false,
+    initialSavedDraft = null,
     onClose,
     onRetry,
     onRegenerate,
@@ -166,6 +168,12 @@
     if (open) {
       bajourDrafts.load();
       showDraftList = initialShowDraftList;
+      // Admin deep-link: adopt the pre-fetched draft as the selected one.
+      // Do NOT call subscribeToUpdates — Realtime respects bajour_drafts RLS,
+      // so an admin who isn't the draft owner would get a silent no-op.
+      if (initialSavedDraft && !savedDraft) {
+        savedDraft = initialSavedDraft;
+      }
     }
   });
 

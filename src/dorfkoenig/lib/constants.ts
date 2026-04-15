@@ -11,9 +11,6 @@ export const DEFAULT_PROMPT = `SCHREIBRICHTLINIEN:
 // Bajour draft polling interval (ms)
 export const POLL_INTERVAL_MS = 30_000;
 
-// Custom prompt persistence TTL (7 days in ms)
-export const CUSTOM_PROMPT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
 // Minimum text length for manual upload (characters)
 export const MIN_TEXT_LENGTH = 20;
 

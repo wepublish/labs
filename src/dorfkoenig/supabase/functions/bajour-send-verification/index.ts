@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 
     // Update the draft with verification metadata
     const now = new Date();
-    const timeoutAt = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours
+    const timeoutAt = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4 hours
 
     const { error: updateError } = await supabase
       .from('bajour_drafts')

@@ -8,7 +8,7 @@ Every day, Dorfkoenig automatically generates one newsletter draft (KI-Entwurf) 
 
 | Time (Zurich) | What happens |
 |---------------|--------------|
-| **18:00** | `dispatch_auto_drafts` fires -- one edge function call per village (10 total) |
+| **18:00** | `dispatch_auto_drafts` fires -- one edge function call per village (10 total, or fewer during the pilot, see "Pilot allow-list" below) |
 | **18:00--18:05** | Per village: select units, generate draft, save, send WhatsApp verification |
 | **18:05--21:00** | Correspondents can respond via WhatsApp (bestaetigt/abgelehnt) |
 | **21:00** | Timeout sweep: any draft still "ausstehend" is auto-confirmed (bestaetigt) |
@@ -90,6 +90,12 @@ Navigate to **Table Editor > auto_draft_runs** and sort by `started_at` descendi
 | `completed_at` | When it finished |
 
 You can also check `bajour_drafts` filtered by today's `publication_date` to see all generated drafts and their verification status.
+
+## Pilot allow-list
+
+For the launch, the daily dispatcher is gated by the optional `bajour_pilot_villages` Vault secret (comma-separated lowercase village IDs). When set, only listed villages dispatch; when missing or empty, all 10 dispatch (post-pilot default). Information extraction (web/civic scouts, manual upload) is never affected -- the backlog stays warm for every village so newly onboarded villages get useful drafts on day one.
+
+Operators expand the list weekly via the Supabase SQL editor. The full runbook (commands to start, expand, verify, and end the pilot) lives in `src/dorfkoenig/CLAUDE.md` under "Bajour pilot allow-list (weekly expansion runbook)".
 
 ## DST Handling
 

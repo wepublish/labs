@@ -112,5 +112,8 @@ verify_jwt = false
 [functions.bajour-auto-draft]
 verify_jwt = false
 
+[functions.bajour-get-draft-admin]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"

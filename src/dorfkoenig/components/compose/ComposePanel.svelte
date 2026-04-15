@@ -11,7 +11,6 @@
   import { composeApi } from '../../lib/api';
   import { bajourApi } from '../../bajour/api';
   import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
-  import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
 
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
@@ -20,6 +19,7 @@
   import { Loading } from '@shared/components';
   import { bajourDrafts } from '../../bajour/store';
   import type { Draft, Scout } from '../../lib/types';
+  import type { BajourDraft } from '../../bajour/types';
 
   let selectedUnitIds = $state<Set<string>>(new Set());
   let draft = $state<Draft | null>(null);
@@ -29,6 +29,7 @@
   let openDraftList = $state(false);
   let customPrompt = $state<string | null>(null);
   let unitsUsedForDraft = $state<string[]>([]);
+  let adminLinkedDraft = $state<BajourDraft | null>(null);
 
   // Frozen village context — captured at draft generation time
   let draftVillageName = $state<string | undefined>(undefined);
@@ -61,16 +62,22 @@
     bajourDrafts.load().then(() => {
       bajourDrafts.startPolling();
     });
-    const stored = localStorage.getItem('dk_custom_draft_prompt');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < CUSTOM_PROMPT_TTL_MS) {
-          customPrompt = parsed.value;
-        } else {
-          localStorage.removeItem('dk_custom_draft_prompt');
-        }
-      } catch { /* ignore invalid data */ }
+
+    // Admin email deep-link: ?draft=<id>&sig=<hex>&exp=<unix>
+    const params = new URLSearchParams(window.location.search);
+    const adminDraftId = params.get('draft');
+    const adminSig = params.get('sig');
+    const adminExp = params.get('exp');
+    if (adminDraftId && adminSig && adminExp) {
+      bajourApi
+        .getDraftAdmin(adminDraftId, adminSig, adminExp)
+        .then((fetched) => {
+          adminLinkedDraft = fetched;
+          showDraftSlideOver = true;
+        })
+        .catch((err) => {
+          error = `Entwurf konnte nicht geladen werden: ${(err as Error).message}`;
+        });
     }
   });
 
@@ -188,15 +195,6 @@
     selectedUnitIds = new Set();
   }
 
-  function handlePromptChange(prompt: string | null) {
-    customPrompt = prompt;
-    if (prompt) {
-      localStorage.setItem('dk_custom_draft_prompt', JSON.stringify({ value: prompt, timestamp: Date.now() }));
-    } else {
-      localStorage.removeItem('dk_custom_draft_prompt');
-    }
-  }
-
   async function handleDeleteSelected() {
     if (selectedUnitIds.size === 0) return;
     await units.markUsed(Array.from(selectedUnitIds));
@@ -234,7 +232,7 @@
     }
   }
 
-  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string, systemPromptOverride?: string) {
+  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
     showAISelectDropdown = false;
     retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
 
@@ -264,7 +262,7 @@
         village_id: village.id,
         scout_id: scoutId,
         ...(recencyDays !== null && { recency_days: recencyDays }),
-        selection_prompt: systemPromptOverride || selectionPrompt.trim() || undefined,
+        selection_hint: selectionPrompt.trim() || undefined,
       });
 
       const selectedIds = selectResult.selected_unit_ids;
@@ -301,7 +299,7 @@
     generating = true;
     error = '';
     aiPhase = 'generating';
-    handlePromptChange(regenPrompt);
+    customPrompt = regenPrompt;
     try {
       const result = await composeApi.generate({
         unit_ids: unitsUsedForDraft,
@@ -449,7 +447,8 @@
   villageId={draftVillageId}
   unitIds={unitsUsedForDraft}
   initialShowDraftList={openDraftList}
-  onClose={() => { showDraftSlideOver = false; openDraftList = false; }}
+  initialSavedDraft={adminLinkedDraft}
+  onClose={() => { showDraftSlideOver = false; openDraftList = false; adminLinkedDraft = null; }}
   onRetry={() => retryHandler?.()}
   onRegenerate={regenerateDraft}
 />

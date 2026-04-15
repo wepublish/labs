@@ -23,20 +23,20 @@ AUSGABEFORMAT (JSON):
 
 /**
  * Build the final selection prompt with runtime values.
- * If `override` is provided, it replaces the entire prompt (UI editor override).
+ * `template` defaults to the hardcoded prompt; pass a user override (from user_prompts table
+ * or a per-request body field) to substitute placeholders against that instead. The PUT
+ * validator on the edit endpoint enforces that overrides contain both placeholders.
  */
 export function buildInformationSelectPrompt(
   currentDate: string,
   recencyDays: number | null,
-  override?: string
+  template: string = INFORMATION_SELECT_PROMPT
 ): string {
-  if (override) return override;
-
   const recencyInstruction = recencyDays !== null
     ? `Bevorzuge Informationen der letzten ${recencyDays} Tage STARK. Informationen älter als ${recencyDays * 2} Tage nur bei aussergewöhnlicher Bedeutung.`
     : `Berücksichtige alle verfügbaren Informationen unabhängig vom Alter. Neuere Informationen dürfen leicht bevorzugt werden.`;
 
-  return INFORMATION_SELECT_PROMPT
+  return template
     .replace('{{recencyInstruction}}', recencyInstruction)
     .replace('{{currentDate}}', currentDate);
 }
