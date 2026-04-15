@@ -18,7 +18,11 @@
 
 import gemeindenJson from './gemeinden.json' with { type: 'json' };
 
-interface Village { id: string; name: string }
+/** Minimal village shape needed by deterministic/LLM matchers. The full
+ *  `gemeinden.json` record has canton/lat/lng/scout_id, but the matcher
+ *  ladder only consumes id + name. Exported so sibling modules
+ *  (`village-assignment.ts`, `unit-extraction.ts`) share one definition. */
+export interface Village { id: string; name: string }
 
 const villages = gemeindenJson as Village[];
 
