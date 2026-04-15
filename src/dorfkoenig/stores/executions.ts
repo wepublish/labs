@@ -26,9 +26,6 @@ function createExecutionsStore() {
   return {
     subscribe,
 
-    /**
-     * Load executions with optional scout filter
-     */
     async load(scoutId?: string, reset = true) {
       update((s) => ({
         ...s,
@@ -63,27 +60,14 @@ function createExecutionsStore() {
       }
     },
 
-    /**
-     * Load more executions (pagination)
-     */
     async loadMore(scoutId?: string) {
       await this.load(scoutId, false);
     },
 
-    /**
-     * Get single execution with details
-     */
-    async getDetail(id: string): Promise<Execution | null> {
-      try {
-        return await executionsApi.get(id);
-      } catch {
-        return null;
-      }
+    async getDetail(id: string): Promise<Execution> {
+      return await executionsApi.get(id);
     },
 
-    /**
-     * Clear error
-     */
     clearError() {
       update((s) => ({ ...s, error: null }));
     },
