@@ -228,10 +228,51 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 - `WHATSAPP_WEBHOOK_VERIFY_TOKEN` -- Webhook handshake token
 - `BAJOUR_CORRESPONDENTS` -- JSON mapping village IDs → correspondent arrays
 - `NEWS_API_TOKEN` -- Shared secret for the public `/news` API endpoint
+- `ADMIN_EMAILS` -- Comma-separated admin mailboxes that receive Bajour draft-rejection alerts. Defaults (if unset) to `samuel.hufschmid@bajour.ch,ernst.field@bajour.ch`. Parsed in `bajour-whatsapp-webhook`.
+- `ADMIN_LINK_SECRET` -- HMAC-SHA256 secret for signed admin draft deep-links. Generate with `openssl rand -hex 32`. Rotating invalidates all outstanding admin links.
+- `PUBLIC_APP_URL` -- Base URL of the deployed app (default `https://wepublish.github.io/labs/dorfkoenig`). Used to build admin draft links.
 
 ### Vault Secrets (SQL `vault.create_secret`)
 - `project_url` -- Supabase project URL (for pg_cron → pg_net calls)
 - `service_role_key` -- Service role key (bypasses RLS for scheduled jobs)
+- `bajour_pilot_villages` -- Optional comma-separated village IDs (lowercase). Gates `dispatch_auto_drafts()`. Unset = all villages dispatch.
+
+### Bajour pilot allow-list (weekly expansion runbook)
+
+During launch we restrict the daily auto-draft cron to a subset of villages while extraction keeps running for all 10. The list is a single Vault secret you edit in the Supabase SQL editor. Only the daily 18:00 CET draft pipeline is affected; web/civic scouts and manual upload are not.
+
+**Valid village IDs** (lowercase, ASCII): `aesch, allschwil, arlesheim, binningen, bottmingen, muenchenstein, muttenz, pratteln, reinach, riehen`.
+
+**First-time pilot start** (one-shot — only if the secret does not exist yet):
+```sql
+SELECT vault.create_secret('arlesheim,muenchenstein', 'bajour_pilot_villages');
+```
+
+**Weekly: add a village to the pilot.** Edit the comma-separated list — no spaces required, but allowed:
+```sql
+UPDATE vault.secrets
+   SET secret = 'arlesheim,muenchenstein,aesch'
+ WHERE name = 'bajour_pilot_villages';
+```
+
+**Verify the active list immediately:**
+```sql
+SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'bajour_pilot_villages';
+```
+
+**Verify the next dispatch will fan out as expected** (safe to run any time; bypasses the DST-safe wrapper, so it runs even outside 18:00 Zurich):
+```sql
+SELECT dispatch_auto_drafts();  -- returns the count of villages that fired
+SELECT village_id, status, started_at FROM auto_draft_runs
+ WHERE started_at::date = current_date ORDER BY started_at DESC;
+```
+
+**End the pilot** (deletes the secret → all 10 villages dispatch from the next cron tick):
+```sql
+SELECT vault.delete_secret(id) FROM vault.secrets WHERE name = 'bajour_pilot_villages';
+```
+
+If a village is misspelled in the secret, `dispatch_auto_drafts()` silently dispatches one fewer than expected — confirm via the `auto_draft_runs` query above; the count must match the number of comma-separated entries.
 
 ## Documentation Index
 
