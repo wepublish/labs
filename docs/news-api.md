@@ -1,5 +1,7 @@
 # Dorfkoenig News API
 
+> **Machine-readable spec:** [`../src/dorfkoenig/docs/api/openapi.json`](../src/dorfkoenig/docs/api/openapi.json) — import into Postman/Insomnia or run through `openapi-generator` / `openapi-typescript` to produce clients.
+
 Public, read-only endpoint for fetching confirmed village newsletter drafts. Designed for CMS integration — returns drafts grouped by village within a configurable date range.
 
 ## Base URL
