@@ -1,5 +1,9 @@
 # Labs Monorepo - Agent Guide
 
+## Hard rules
+
+- **Never merge a pull request unless the user explicitly says so.** Committing, pushing, and opening PRs are fine without explicit ask. `gh pr merge`, `git merge`, fast-forward merges, direct pushes to `main` — all off-limits until the user says "merge it" (or similar). If in doubt, leave the PR open and tell the user it's ready.
+
 ## Project Overview
 
 Multi-app monorepo hosting Svelte 5 + TypeScript applications deployed to GitHub Pages at `wepublish.github.io/labs/{app-name}/`. Apps are embedded as iframes in a parent CMS and authenticate via JWT postMessage.
