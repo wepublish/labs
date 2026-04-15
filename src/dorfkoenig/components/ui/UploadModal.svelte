@@ -302,12 +302,12 @@
 
           pollInterval = setInterval(async () => {
             if (!processingJobId) return;
-            const { data } = await supabase
-              .from('newspaper_jobs')
-              .select('*')
-              .eq('id', processingJobId)
-              .maybeSingle();
-            if (data) applyJobUpdate(data as NewspaperJob);
+            try {
+              const job = await manualUploadApi.getJob(processingJobId);
+              applyJobUpdate(job);
+            } catch {
+              // 404 mid-poll (e.g. race with completion) is benign — try again next tick.
+            }
           }, JOB_POLL_INTERVAL_MS);
         } else {
           uploadProgress = 100;

@@ -226,11 +226,11 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    padding: 0 0.75rem 0.75rem;
+    padding-bottom: 0.5rem;
   }
 
   .date-input {
-    flex: 1;
+    width: 9rem;
     padding: 0.375rem 0.5rem;
     font-size: 0.75rem;
     border: 1px solid var(--color-border, #e5e7eb);
