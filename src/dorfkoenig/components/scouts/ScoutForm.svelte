@@ -4,7 +4,7 @@
   import { scouts } from '../../stores/scouts';
   import { FREQUENCY_OPTIONS_EXTENDED, extractTopics } from '../../lib/constants';
   import ScopeToggle from '../ui/ScopeToggle.svelte';
-  import type { Scout, ScoutUpdateInput, Location } from '../../lib/types';
+  import type { Scout, ScoutUpdateInput, Location, LocationMode } from '../../lib/types';
 
   interface Props {
     scout: Scout;
@@ -25,6 +25,7 @@
   let frequency = $state<'daily' | 'weekly' | 'biweekly' | 'monthly'>(init.frequency || 'daily');
   let location = $state<Location | null>(init.location || null);
   let topic = $state(init.topic || '');
+  let locationMode = $state<LocationMode>(init.location_mode || 'manual');
 
   // Derive existing topics from all scouts for autocomplete suggestions
   let existingTopics = $derived(extractTopics($scouts.scouts));
@@ -49,7 +50,8 @@
     saving = true;
 
     try {
-      const effectiveLocation = location;
+      // Auto mode: clear location — units get one assigned from content.
+      const effectiveLocation = locationMode === 'auto' ? null : location;
       const effectiveTopic = topic.trim() || null;
       const effectiveCriteria = criteriaMode === 'any' ? '' : criteria.trim();
 
@@ -60,6 +62,7 @@
         frequency,
         location: effectiveLocation,
         topic: effectiveTopic,
+        location_mode: locationMode,
       };
       await scouts.update(init.id, updates);
 
@@ -144,15 +147,62 @@
         {/each}
       </select>
     </div>
-    <div class="form-group" role="group" aria-label="Ort und/oder Thema">
-      <span class="form-label">Ort und/oder Thema (optional)</span>
+    <div class="form-group" role="group" aria-label="Gemeinde-Zuordnung">
+      <span class="form-label">Gemeinde-Zuordnung</span>
+      <div class="criteria-toggle-wrapper">
+        <div class="criteria-toggle">
+          <button
+            type="button"
+            class="criteria-label"
+            class:active={locationMode === 'manual'}
+            onclick={() => { locationMode = 'manual'; }}
+          >
+            Manuell
+          </button>
+          <button
+            type="button"
+            class="criteria-track"
+            class:specific={locationMode === 'auto'}
+            onclick={() => { locationMode = locationMode === 'manual' ? 'auto' : 'manual'; }}
+            aria-label="Gemeinde-Zuordnungsmodus umschalten"
+          >
+            <span class="criteria-thumb"></span>
+          </button>
+          <button
+            type="button"
+            class="criteria-label"
+            class:active={locationMode === 'auto'}
+            onclick={() => { locationMode = 'auto'; }}
+          >
+            Automatisch (KI)
+          </button>
+        </div>
+      </div>
+
       <ScopeToggle
         {location}
         {topic}
         {existingTopics}
+        hideLocation={locationMode === 'auto'}
         onlocationchange={(loc) => { location = loc; }}
         ontopicchange={(t) => { topic = t; }}
       />
+
+      {#if locationMode === 'auto'}
+        <p class="scope-hint">
+          Die KI erkennt die betroffene Gemeinde automatisch aus dem Artikeltext.
+          Jede Information zeigt ein Vertrauens-Indikator (hoch/mittel/niedrig) im
+          Feed-Panel &mdash; unsichere Zuordnungen kannst Du dort pr&uuml;fen und
+          korrigieren.
+        </p>
+      {:else}
+        <p class="scope-hint">
+          F&uuml;r regionale Seiten (z.&nbsp;B. Kantonspolizei), die mehrere Gemeinden
+          abdecken, schalte auf &bdquo;Automatisch (KI)&ldquo; um &mdash; so wird jede
+          Information der passenden Gemeinde zugeordnet, ohne pro Gemeinde einen
+          eigenen Scout zu erstellen.
+        </p>
+      {/if}
     </div>
   </div>
 
@@ -236,5 +286,13 @@
 
   .criteria-track.specific .criteria-thumb {
     transform: translateX(16px);
+  }
+
+  .scope-hint {
+    margin: 0.375rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    font-style: italic;
   }
 </style>

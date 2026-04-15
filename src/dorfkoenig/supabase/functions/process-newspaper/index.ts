@@ -20,14 +20,22 @@ import {
   type ExtractionResult,
   type ExtractionUnit,
 } from '../_shared/zeitung-extraction-prompt.ts';
+import { assignVillage } from '../_shared/village-assignment.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
-// Derived from gemeinden.json — the LLM assigns units to village names,
-// VILLAGE_ID_MAP resolves them to IDs for location JSONB.
+// Display names used in the extraction prompt.
 const VILLAGES = gemeinden.map((g: { name: string }) => g.name);
+
+// Legacy name→id map, only used when PDF_USE_LEGACY_VILLAGE_MAP is set for rollback.
 const VILLAGE_ID_MAP: Record<string, string> = Object.fromEntries(
   gemeinden.map((g: { id: string; name: string }) => [g.name, g.id])
 );
+
+// Rollback switch. Default (unset/false) uses the shared assignVillage() ladder,
+// which writes village_confidence + assignment_path + review_required and
+// preserves units whose village the LLM hallucinated. Setting to 'true' restores
+// the pre-2026-04-16 behaviour (drop units whose village isn't in the 10-set).
+const USE_LEGACY_VILLAGE_MAP = Deno.env.get('PDF_USE_LEGACY_VILLAGE_MAP') === 'true';
 
 const LLM_CONCURRENCY = 3;
 const FIRECRAWL_TIMEOUT = 120000;
@@ -83,7 +91,8 @@ Deno.serve(async (req) => {
       throw new Error(`Signed URL failed: ${signedUrlError?.message || 'unknown'}`);
     }
 
-    // ── Step 2: Firecrawl parse ──
+    // ── Step 2: Firecrawl parse (Fire-PDF runs automatically on PDF URLs) ──
+    await updateJob(supabase, jobId, { stage: 'parsing_pdf' });
     console.log(`[process-newspaper] Parsing PDF via Firecrawl...`);
     const scrapeResult = await firecrawl.scrape({
       url: signedUrlData.signedUrl,
@@ -98,6 +107,7 @@ Deno.serve(async (req) => {
     console.log(`[process-newspaper] Parsed ${scrapeResult.markdown.length} chars`);
 
     // ── Step 3: Preprocess ──
+    await updateJob(supabase, jobId, { stage: 'chunking' });
     const cleaned = preprocessMarkdown(scrapeResult.markdown);
 
     // ── Step 4: Chunk ──
@@ -109,6 +119,7 @@ Deno.serve(async (req) => {
 
     // Update job with chunk counts
     await updateJob(supabase, jobId, {
+      stage: 'extracting',
       chunks_total: validChunks.length,
       chunks_processed: 0,
     });
@@ -148,13 +159,51 @@ Deno.serve(async (req) => {
 
     // ── Step 7: Post-process ──
 
-    // 7a. Filter out units without date or village
-    const villageUnits = allUnits.filter(
-      (u) => u.eventDate && u.village && VILLAGE_ID_MAP[u.village]
-    );
-    console.log(`[process-newspaper] ${villageUnits.length} units after village filter`);
+    // 7a. Require eventDate. Resolve each unit's village through assignVillage
+    //     (or the legacy VILLAGE_ID_MAP filter on the rollback path).
+    const dated = allUnits.filter((u) => u.eventDate);
+    interface ResolvedUnit {
+      unit: ExtractionUnit;
+      villageId: string | null;
+      confidence: 'high' | 'medium' | 'low' | null;
+      assignmentPath: string | null;
+      reviewRequired: boolean;
+    }
 
-    if (villageUnits.length === 0) {
+    let resolved: ResolvedUnit[];
+    if (USE_LEGACY_VILLAGE_MAP) {
+      resolved = dated
+        .filter((u) => u.village && VILLAGE_ID_MAP[u.village])
+        .map((u) => ({
+          unit: u,
+          villageId: VILLAGE_ID_MAP[u.village!],
+          confidence: null,
+          assignmentPath: null,
+          reviewRequired: false,
+        }));
+    } else {
+      resolved = dated.map((u) => {
+        const a = assignVillage({
+          village: u.village,
+          villageConfidence: u.villageConfidence,
+          villageEvidence: u.villageEvidence,
+          statement: u.statement,
+        });
+        return {
+          unit: u,
+          villageId: a.villageId,
+          confidence: a.confidence,
+          assignmentPath: a.assignmentPath,
+          reviewRequired: a.reviewRequired,
+        };
+      });
+    }
+
+    console.log(
+      `[process-newspaper] ${resolved.length} units after resolve (legacy=${USE_LEGACY_VILLAGE_MAP})`,
+    );
+
+    if (resolved.length === 0) {
       await updateJob(supabase, jobId, {
         status: 'completed',
         units_created: 0,
@@ -165,57 +214,61 @@ Deno.serve(async (req) => {
     }
 
     // 7b. Generate embeddings
-    const statements = villageUnits.map((u) => u.statement);
+    const statements = resolved.map((r) => r.unit.statement);
     const unitEmbeddings = await embeddings.generateBatch(statements);
 
-    // 7c. Deduplicate within batch (0.75 threshold)
+    // 7c. Deduplicate within batch
     const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
-    // 7d. Per-village dedup against existing units in DB (parallel)
+    // 7d. Per-village dedup against existing units in DB (parallel). Skip when
+    //     villageId is null — the Überregional bucket has no per-village slot to collide in.
     const dedupResults = await Promise.all(
       uniqueIndices.map(async (i) => {
-        const unit = villageUnits[i];
-        const villageId = VILLAGE_ID_MAP[unit.village!];
+        const r = resolved[i];
+        if (!r.villageId) return { index: i, isDuplicate: false };
 
         const { data: similar } = await supabase.rpc('search_units_semantic', {
           user_id: userId,
           embedding: unitEmbeddings[i],
-          location_city: villageId,
+          location_city: r.villageId,
           min_similarity: UNIT_DEDUP_THRESHOLD,
           limit: 1,
         });
 
         return { index: i, isDuplicate: similar && similar.length > 0 };
-      })
+      }),
     );
     const finalIndices = dedupResults
       .filter((r) => !r.isDuplicate)
       .map((r) => r.index);
 
-    console.log(`[process-newspaper] ${finalIndices.length} units after dedup (from ${villageUnits.length})`);
+    console.log(`[process-newspaper] ${finalIndices.length} units after dedup (from ${resolved.length})`);
 
     // ── Step 8: Store units (batched insert) ──
+    await updateJob(supabase, jobId, { stage: 'storing' });
     let storedCount = 0;
     if (finalIndices.length > 0) {
       const rows = finalIndices.map((i) => {
-        const unit = villageUnits[i];
-        const villageId = VILLAGE_ID_MAP[unit.village!];
+        const r = resolved[i];
         return {
           user_id: userId,
           scout_id: null,
           execution_id: null,
-          statement: unit.statement,
-          unit_type: unit.unitType || 'fact',
-          entities: unit.entities || [],
+          statement: r.unit.statement,
+          unit_type: r.unit.unitType || 'fact',
+          entities: r.unit.entities || [],
           source_url: 'manual://pdf',
           source_domain: 'manual',
           source_title: label,
-          location: { city: villageId, country: 'Schweiz' },
+          location: r.villageId ? { city: r.villageId, country: 'Schweiz' } : null,
           topic: 'Wochenblatt',
           source_type: 'manual_pdf',
           file_path: storagePath,
           embedding: unitEmbeddings[i],
-          event_date: unit.eventDate || null,
+          event_date: r.unit.eventDate || null,
+          village_confidence: r.confidence,
+          review_required: r.reviewRequired,
+          assignment_path: r.assignmentPath,
         };
       });
 

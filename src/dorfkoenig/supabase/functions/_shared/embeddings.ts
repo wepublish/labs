@@ -105,13 +105,13 @@ export async function deduplicateTexts(
 
 /**
  * Deduplicate pre-computed embeddings by similarity.
- * Returns a Set of indices for unique embeddings (first occurrence wins).
+ * Returns indices of unique embeddings (first occurrence wins).
  */
 export function deduplicateFromEmbeddings(
   vectors: number[][],
   threshold = 0.75,
-): Set<number> {
-  const uniqueIndices = new Set<number>();
+): number[] {
+  const uniqueIndices: number[] = [];
   const seen: number[][] = [];
 
   for (let i = 0; i < vectors.length; i++) {
@@ -123,7 +123,7 @@ export function deduplicateFromEmbeddings(
       }
     }
     if (!isDuplicate) {
-      uniqueIndices.add(i);
+      uniqueIndices.push(i);
       seen.push(vectors[i]);
     }
   }

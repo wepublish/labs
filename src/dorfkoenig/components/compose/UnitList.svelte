@@ -66,6 +66,12 @@
       default: return 'var(--color-text-muted)';
     }
   }
+
+  function confidenceLabel(c: 'high' | 'medium' | 'low'): string {
+    return c === 'high' ? 'KI-Zuordnung: hohes Vertrauen'
+      : c === 'medium' ? 'KI-Zuordnung: mittleres Vertrauen'
+      : 'KI-Zuordnung: niedriges Vertrauen';
+  }
 </script>
 
 {#if units.length === 0}
@@ -90,9 +96,23 @@
         {/if}
 
         <!-- Type label as colored text -->
-        <span class="unit-type" style="color: {getTypeColor(unit.unit_type)}">
-          {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
-        </span>
+        <div class="unit-header">
+          <span class="unit-type" style="color: {getTypeColor(unit.unit_type)}">
+            {UNIT_TYPE_LABELS[unit.unit_type] || unit.unit_type}
+          </span>
+          {#if unit.village_confidence}
+            <span
+              class="confidence-dot confidence-{unit.village_confidence}"
+              title={confidenceLabel(unit.village_confidence)}
+              aria-label={confidenceLabel(unit.village_confidence)}
+            ></span>
+          {/if}
+          {#if unit.review_required}
+            <span class="review-pill" title="Gemeinde-Zuordnung unsicher — bitte prüfen">
+              prüfen
+            </span>
+          {/if}
+        </div>
 
         <!-- Statement: hero text -->
         <p
@@ -209,12 +229,48 @@
     justify-content: center;
   }
 
+  .unit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   /* Type label: colored text, no badge box */
   .unit-type {
     font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .confidence-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .confidence-high {
+    background: #16a34a;
+  }
+
+  .confidence-medium {
+    background: #d97706;
+  }
+
+  .confidence-low {
+    background: #9ca3af;
+  }
+
+  .review-pill {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 0.0625rem 0.375rem;
+    border-radius: var(--radius-full);
+    text-transform: lowercase;
   }
 
   .unit-statement {

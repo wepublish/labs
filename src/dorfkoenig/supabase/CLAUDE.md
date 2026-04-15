@@ -102,9 +102,10 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 - Managed via Supabase table editor or SQL. No redeployment needed.
 
 **`newspaper_jobs`** -- Async PDF processing status tracker with Realtime
-- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed), `chunks_total`, `chunks_processed`, `units_created`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
+- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed), `stage` (parsing_pdf/chunking/extracting/storing, nullable), `chunks_total`, `chunks_processed`, `units_created`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
 - RLS: user SELECT on own rows, service_role ALL
 - Realtime enabled for live progress updates
+- Stuck jobs (8+ min in `processing`) are marked `failed` by `cleanup_expired_data()`
 
 ### RLS Policies
 
@@ -122,7 +123,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 3. **Firecrawl tag format** -- `scout-{scoutId}`. Firecrawl tracks content per tag. Do not change format or existing baselines break.
 10. **Provider detection (double-probe)** -- `testScout()` runs `doubleProbe()` which makes 2 sequential Firecrawl calls to detect if a URL's changeTracking baselines persist. Result: `firecrawl` (baselines persist, use changeTracking) or `firecrawl_plain` (baselines dropped, use hash comparison). Stored on the scout as `provider` + `content_hash`. Legacy scouts with `provider=null` default to `firecrawl` behavior.
 4. **Embedding dimensions** -- 1536 (OpenAI `text-embedding-3-small` via OpenRouter). Schema enforces `vector(1536)`.
-5. **pg_cron stagger** -- `dispatch_due_scouts()` calls `pg_sleep(10)` between dispatches to respect Firecrawl rate limits.
+5. **pg_cron stagger (jittered)** -- `dispatch_due_scouts()` uses `pg_sleep(10 + RANDOM()*5)` for web scouts, `pg_sleep(20 + RANDOM()*10)` for civic. Jitter breaks cross-user synchronisation at the 15-min tick boundary so Firecrawl/OpenRouter rate limits don't cascade.
 6. **CASCADE deletes** -- Deleting a scout cascades to executions and units.
 7. **Dedup thresholds** -- Execution: 0.85, Unit within batch: 0.75, Semantic search minimum: 0.3.
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.

@@ -6,7 +6,7 @@
   import { scouts } from '../../stores/scouts';
   import { civicApi } from '../../lib/api';
   import { extractTopics, FREQUENCY_OPTIONS_EXTENDED } from '../../lib/constants';
-  import type { CandidateUrl, Location, ExtractedPromise } from '../../lib/types';
+  import type { CandidateUrl, Location, ExtractedPromise, LocationMode } from '../../lib/types';
 
   interface Props {
     open: boolean;
@@ -37,6 +37,7 @@
   let frequency = $state<string>('weekly');
   let location = $state<Location | null>(null);
   let topic = $state('');
+  let locationMode = $state<LocationMode>('manual');
   let notificationEmail = $state('');
   let submitting = $state(false);
   let submitError = $state('');
@@ -60,6 +61,7 @@
     frequency = 'weekly';
     location = null;
     topic = '';
+    locationMode = 'manual';
     notificationEmail = '';
     submitting = false;
     submitError = '';
@@ -148,8 +150,9 @@
         tracked_urls: [...selectedUrls],
         criteria: criteria.trim(),
         frequency: frequency as 'daily' | 'weekly' | 'biweekly' | 'monthly',
-        location,
+        location: locationMode === 'auto' ? null : location,
         topic: topic.trim() || undefined,
+        location_mode: locationMode,
         notification_email: notificationEmail.trim() || undefined,
         is_active: true,
       });
@@ -365,13 +368,49 @@
             </select>
           </div>
 
+          <div class="field-group" role="group" aria-label="Gemeinde-Zuordnung">
+            <span class="field-label">Gemeinde-Zuordnung</span>
+            <div class="mode-toggle">
+              <button
+                type="button"
+                class="mode-label"
+                class:active={locationMode === 'manual'}
+                onclick={() => { locationMode = 'manual'; }}
+              >Manuell</button>
+              <button
+                type="button"
+                class="mode-track"
+                class:auto={locationMode === 'auto'}
+                onclick={() => { locationMode = locationMode === 'manual' ? 'auto' : 'manual'; }}
+                aria-label="Gemeinde-Zuordnungsmodus umschalten"
+              >
+                <span class="mode-thumb"></span>
+              </button>
+              <button
+                type="button"
+                class="mode-label"
+                class:active={locationMode === 'auto'}
+                onclick={() => { locationMode = 'auto'; }}
+              >Automatisch (KI)</button>
+            </div>
+          </div>
+
           <ScopeToggle
             {location}
             topic={topic}
             {existingTopics}
+            hideLocation={locationMode === 'auto'}
             onlocationchange={(loc) => { location = loc; }}
             ontopicchange={(t) => { topic = t; }}
           />
+
+          {#if locationMode === 'auto'}
+            <p class="mode-hint">
+              Die KI erkennt die betroffene Gemeinde automatisch aus dem Artikeltext.
+              Jede Information zeigt ein Vertrauens-Indikator im Feed-Panel &mdash;
+              unsichere Zuordnungen kannst Du dort pr&uuml;fen.
+            </p>
+          {/if}
 
           <div class="field-group">
             <label for="civic-email" class="field-label">
@@ -741,5 +780,64 @@
     background: #fef3c7;
     padding: 0.0625rem 0.375rem;
     border-radius: var(--radius-full);
+  }
+
+  .mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .mode-label {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .mode-label.active {
+    color: var(--color-primary, #4f46e5);
+  }
+
+  .mode-track {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #e0e7ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 9999px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+  }
+
+  .mode-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: var(--color-primary, #4f46e5);
+    border-radius: 9999px;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
+  .mode-track.auto .mode-thumb {
+    transform: translateX(16px);
+  }
+
+  .mode-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    font-style: italic;
   }
 </style>

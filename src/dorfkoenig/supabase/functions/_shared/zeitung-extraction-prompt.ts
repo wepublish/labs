@@ -30,6 +30,9 @@ export const CONTENT_RANKING = [
 export type ContentCategory = (typeof CONTENT_RANKING)[number]['key'];
 export type Priority = 'high' | 'medium' | 'low';
 
+/** Bump when prompt text changes so the extraction cache invalidates stale entries. */
+export const NEWSPAPER_EXTRACTION_PROMPT_VERSION = 1;
+
 export interface ExtractionUnit {
   statement: string;
   unitType: 'fact' | 'event' | 'entity_update';
@@ -38,6 +41,11 @@ export interface ExtractionUnit {
   village: string | null;
   priority: Priority;
   category: ContentCategory;
+  /** Optional in v1 for backward compat; emitted when present so the shared
+   *  assignVillage() ladder can weigh the LLM's confidence. */
+  villageConfidence?: 'high' | 'medium' | 'low';
+  /** Quoted span from input supporting the village choice (anti-hallucination). */
+  villageEvidence?: string;
 }
 
 export interface ExtractionResult {
@@ -93,6 +101,14 @@ Regeln:
 3. Wenn keine der bekannten Gemeinden betroffen ist → village: null
 4. Wenn mehrere Gemeinden gleichermassen betroffen sind → erstelle eine Einheit pro Gemeinde.
 
+VERTRAUENSBEWERTUNG (villageConfidence):
+- high: Die Gemeinde wird explizit als Ort des Geschehens genannt. Kaum Zweifel.
+- medium: Starker Kontext, aber nicht explizit. Leichte Unsicherheit.
+- low: Schwacher Hinweis, mehrere Gemeinden möglich, oder deduktive Zuordnung.
+
+EVIDENZ (villageEvidence):
+Zitiere den Textausschnitt (max. 120 Zeichen), der deine Gemeindewahl stützt. Bei village: null → villageEvidence: "".
+
 DATUMSEXTRAKTION:
 
 Publikationsdatum dieser Ausgabe: ${publicationDate}
@@ -123,6 +139,8 @@ AUSGABEFORMAT (ausschliesslich valides JSON):
       "entities": ["Musikschule Reinach"],
       "eventDate": "2026-03-21",
       "village": "Reinach",
+      "villageConfidence": "high",
+      "villageEvidence": "Musikschule Reinach veranstaltet",
       "priority": "high",
       "category": "community_events"
     },
@@ -132,6 +150,8 @@ AUSGABEFORMAT (ausschliesslich valides JSON):
       "entities": ["Einwohnerrat Reinach"],
       "eventDate": "2026-03-23",
       "village": "Reinach",
+      "villageConfidence": "high",
+      "villageEvidence": "Einwohnerrat Reinach tagt",
       "priority": "medium",
       "category": "council"
     }

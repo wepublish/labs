@@ -188,21 +188,26 @@ async function createScout(
     } catch {
       return errorResponse('Ungültige URL', 400, 'VALIDATION_ERROR');
     }
-    if (!body.location && !body.topic?.trim()) {
+    // Auto-mode scouts don't need a location — the LLM assigns per unit.
+    const locationMode = body.location_mode === 'auto' ? 'auto' : 'manual';
+    if (locationMode === 'manual' && !body.location && !body.topic?.trim()) {
       return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
     }
   }
 
+  const locationMode = body.location_mode === 'auto' ? 'auto' : 'manual';
   const insertData: Record<string, unknown> = {
     user_id: userId,
     name: body.name.trim(),
     criteria: (body.criteria || '').trim(),
-    location: body.location || null,
+    // Auto mode intentionally clears scout.location — units get location from content.
+    location: locationMode === 'auto' ? null : (body.location || null),
     frequency: body.frequency,
     notification_email: body.notification_email?.trim() || null,
     is_active: body.is_active ?? true,
     topic: body.topic?.trim() || null,
     scout_type: scoutType,
+    location_mode: locationMode,
   };
 
   if (scoutType === 'civic') {
@@ -249,7 +254,16 @@ async function updateScout(
     }
   }
   if (body.criteria !== undefined) updates.criteria = body.criteria.trim();
+  if (body.location_mode !== undefined) {
+    if (body.location_mode !== 'manual' && body.location_mode !== 'auto') {
+      return errorResponse('Ungültiger location_mode-Wert', 400, 'VALIDATION_ERROR');
+    }
+    updates.location_mode = body.location_mode;
+  }
   if (body.location !== undefined) updates.location = body.location;
+  // Switching to auto clears the scout's location regardless of what `body.location`
+  // supplied — units get a location from content, not the scout.
+  if (body.location_mode === 'auto') updates.location = null;
   if (body.frequency !== undefined) {
     if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) {
       return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
