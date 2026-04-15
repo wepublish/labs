@@ -785,8 +785,8 @@ Daily at 18:00 Europe/Zurich:
    e. Send WhatsApp verification (non-fatal)
    f. Log to auto_draft_runs
 
-Daily at 21:00 Europe/Zurich:
-3. pg_cron → resolve_bajour_timeouts() — auto-confirms unresponded drafts
+Daily at 22:00 Europe/Zurich:
+3. pg_cron → resolve_bajour_timeouts() — auto-rejects unresponded drafts (silence = rejection, any-reject-wins policy)
 
 Daily at 22:00:
 4. CMS queries news endpoint → returns confirmed drafts by village
@@ -800,7 +800,7 @@ Triggered by `manual-upload` (pdf_confirm) → `process-newspaper` edge function
 ### 10-Step Pipeline
 
 1. **Get signed URL** — Generate signed download URL for PDF in Supabase Storage
-2. **Firecrawl parse** — `/v2/scrape` with `formats: ['markdown']`, timeout 120s
+2. **Firecrawl parse** — `/v2/scrape` with `formats: ['markdown']`, `parsers: [{ type: 'pdf', mode: 'fast' }]`, timeout 120s. **`fast` mode is mandatory** — see the Fire-PDF mode decision below.
 3. **Preprocess** — Collapse whitespace, remove page headers/footers, strip OCR artifacts
 4. **Chunk** — Boundary-aware splitting on markdown headings, ALL CAPS section headers, horizontal rules (~15K target per chunk)
 5. **Pre-filter** — Skip chunks where >40% of lines contain ad/puzzle signals (CHF, Tel., www., Sudoku, etc.)
@@ -809,6 +809,18 @@ Triggered by `manual-upload` (pdf_confirm) → `process-newspaper` edge function
 8. **Store units** — Insert into `information_units` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`
 9. **Update job** — Set `newspaper_jobs` status to `completed` with `units_created` count
 10. **Error handling** — Per-chunk try/catch (partial results kept), fatal errors set `status: 'failed'`
+
+### Fire-PDF mode decision (2026-04-15)
+
+We force `parsers: [{ type: 'pdf', mode: 'fast' }]` in both `process-newspaper` and `execute-civic-scout`. Rationale from the benchmark:
+
+| Mode | Chars | Section markers | Dates | OCR hallucinations |
+|---|---|---|---|---|
+| `fast` | **144 063** | **41** | **35** | **0** |
+| `ocr` | 92 559 | 4 | 5 | 6 |
+| `auto` (default) | 92 559 | 4 | 5 | 6 |
+
+`auto` and `ocr` were byte-identical (same md5) — Fire-PDF's classifier incorrectly flags InDesign-export newspapers as needing OCR on page 1, and the vision model then hallucinates (wrong dates, `"Grenzteilbahn für Baumenladen"` loops, garbled titles like `REHEINZ ZEITHUNG`). Newspapers and Swiss council-minutes PDFs always have embedded text, so `fast` (pure Rust text extraction via pdf-inspector, no OCR) is strictly better. Reproduce with `scripts/benchmark-pdf-parse-modes.sh <storage_path>`.
 
 ### Ranking Table
 

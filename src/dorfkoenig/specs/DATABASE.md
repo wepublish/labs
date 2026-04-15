@@ -634,15 +634,15 @@ SELECT cron.schedule(
 );
 
 -- Resolve bajour verification timeouts: same dual-schedule pattern.
--- resolve_bajour_timeouts_tz_safe() checks Zurich hour = 21 before proceeding.
+-- resolve_bajour_timeouts_tz_safe() checks Zurich hour = 22 before proceeding.
 SELECT cron.schedule(
     'resolve-timeouts-summer',
-    '0 19 * * *',  -- 21:00 CEST (UTC+2)
+    '0 20 * * *',  -- 22:00 CEST (UTC+2)
     'SELECT resolve_bajour_timeouts_tz_safe()'
 );
 SELECT cron.schedule(
     'resolve-timeouts-winter',
-    '0 20 * * *',  -- 21:00 CET (UTC+1)
+    '0 21 * * *',  -- 22:00 CET (UTC+1)
     'SELECT resolve_bajour_timeouts_tz_safe()'
 );
 ```
@@ -767,7 +767,7 @@ CREATE POLICY "Service role manages auto_draft_runs"
 
 ### resolve_bajour_timeouts
 
-Auto-resolves draft verifications that exceed the 2-hour timeout. Defaults to `bestätigt`.
+Auto-resolves draft verifications that exceed the 4-hour timeout. Defaults to `abgelehnt` (silence = rejection).
 
 ```sql
 CREATE OR REPLACE FUNCTION resolve_bajour_timeouts()

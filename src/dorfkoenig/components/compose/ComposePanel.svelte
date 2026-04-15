@@ -20,6 +20,7 @@
   import { Loading } from '@shared/components';
   import { bajourDrafts } from '../../bajour/store';
   import type { Draft, Scout } from '../../lib/types';
+  import type { BajourDraft } from '../../bajour/types';
 
   let selectedUnitIds = $state<Set<string>>(new Set());
   let draft = $state<Draft | null>(null);
@@ -29,6 +30,7 @@
   let openDraftList = $state(false);
   let customPrompt = $state<string | null>(null);
   let unitsUsedForDraft = $state<string[]>([]);
+  let adminLinkedDraft = $state<BajourDraft | null>(null);
 
   // Frozen village context — captured at draft generation time
   let draftVillageName = $state<string | undefined>(undefined);
@@ -71,6 +73,23 @@
           localStorage.removeItem('dk_custom_draft_prompt');
         }
       } catch { /* ignore invalid data */ }
+    }
+
+    // Admin email deep-link: ?draft=<id>&sig=<hex>&exp=<unix>
+    const params = new URLSearchParams(window.location.search);
+    const adminDraftId = params.get('draft');
+    const adminSig = params.get('sig');
+    const adminExp = params.get('exp');
+    if (adminDraftId && adminSig && adminExp) {
+      bajourApi
+        .getDraftAdmin(adminDraftId, adminSig, adminExp)
+        .then((fetched) => {
+          adminLinkedDraft = fetched;
+          showDraftSlideOver = true;
+        })
+        .catch((err) => {
+          error = `Entwurf konnte nicht geladen werden: ${(err as Error).message}`;
+        });
     }
   });
 
@@ -449,7 +468,8 @@
   villageId={draftVillageId}
   unitIds={unitsUsedForDraft}
   initialShowDraftList={openDraftList}
-  onClose={() => { showDraftSlideOver = false; openDraftList = false; }}
+  initialSavedDraft={adminLinkedDraft}
+  onClose={() => { showDraftSlideOver = false; openDraftList = false; adminLinkedDraft = null; }}
   onRetry={() => retryHandler?.()}
   onRegenerate={regenerateDraft}
 />

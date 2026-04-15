@@ -15,7 +15,8 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `bajour-select-units` | AI-powered selection of relevant information units for a village | x-user-id header | Frontend API calls |
 | `bajour-auto-draft` | Automated daily draft pipeline per village (select → generate → save → verify) | Service role (pg_cron) | pg_cron dispatch |
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
-| `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks (bestätigt/abgelehnt) | None (webhook) | Meta WhatsApp API |
+| `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks. Calls `append_bajour_response` RPC (any-reject-wins) and emails `ADMIN_EMAILS` on every `abgelehnt` with a signed deep-link. | None (webhook) | Meta WhatsApp API |
+| `bajour-get-draft-admin` | Service-role read of a single draft, authorized by HMAC-signed URL (`ADMIN_LINK_SECRET`). Used by the admin deep-link in rejection emails. | Signed URL params | Frontend (admin email link) |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
 | `news` | Public GET endpoint returning confirmed drafts grouped by village within a date range. Auth via `?auth=` or `Authorization: Bearer` (`NEWS_API_TOKEN`). Params: `?date=YYYY-MM-DD&range=N` (default: today ±3 days). | Shared secret | WePublish overview page |
 | `process-newspaper` | Async newspaper PDF extraction: Firecrawl parse → chunk → LLM extract → dedup → store units. Updates `newspaper_jobs` for Realtime progress. | Service role (manual-upload trigger) | manual-upload pdf_confirm |
@@ -71,7 +72,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
 | `dispatch_auto_drafts()` | Core dispatcher: calls `bajour-auto-draft` edge function per village. Not called directly by cron — invoked by `dispatch_auto_drafts_tz_safe()` after timezone check. |
 | `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 18, then calls `dispatch_auto_drafts()`. Dual-scheduled at 16:00 and 17:00 UTC to cover both DST states. |
-| `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 21, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 19:00 and 20:00 UTC to cover both DST states. |
+| `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 22, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 20:00 and 21:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
 
@@ -83,8 +84,8 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `cleanup-expired-data` | `0 3 * * *` | Delete expired units, old executions, fix stuck runs |
 | `dispatch-auto-drafts-summer` | `0 16 * * *` | 18:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
 | `dispatch-auto-drafts-winter` | `0 17 * * *` | 18:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
-| `resolve-timeouts-summer` | `0 19 * * *` | 21:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
-| `resolve-timeouts-winter` | `0 20 * * *` | 21:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-summer` | `0 20 * * *` | 22:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
+| `resolve-timeouts-winter` | `0 21 * * *` | 22:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
 | *(implicit cleanup)* | — | Stuck execution timeout handled inside `cleanup_expired_data()` |
 
 **Dual-schedule pattern:** The `_tz_safe()` wrappers check `EXTRACT(HOUR FROM NOW() AT TIME ZONE 'Europe/Zurich')` before proceeding. Both UTC slots fire daily but only one matches the actual Zurich hour, so only one executes. This avoids the pg_cron 5-parameter timezone overload that is not available on this Supabase instance.
@@ -129,6 +130,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.
 9. **Stuck execution timeout** -- 10 minutes. `cleanup_expired_data()` marks stuck runs as failed.
 11. **JSONB `.contains()` gotcha** -- `bajour_drafts.whatsapp_message_ids` is JSONB (not TEXT[]). supabase-js `.contains(col, [val])` generates the PostgREST filter `cs.{val}` (PG array literal), which **silently returns zero rows** on JSONB columns -- no error, just an empty result set. The fix: `.contains(col, JSON.stringify([val]))` generates `cs.["val"]` (correct JSON literal for JSONB containment via the `@>` operator). This applies to any JSONB array column queried with `.contains()`.
+12. **Fire-PDF `fast` mode is mandatory** for PDF ingest (`process-newspaper`, `execute-civic-scout`). Default `auto` and `ocr` mis-classify InDesign-export newspapers and hallucinate via the vision model (wrong dates, garbled titles, looped phrases). `fast` gives 10× more section markers + zero hallucinations on embedded-text PDFs. Reproduce: `scripts/benchmark-pdf-parse-modes.sh`. Full rationale: `specs/PIPELINES.md § Fire-PDF mode decision`.
 
 ## CLI Commands
 

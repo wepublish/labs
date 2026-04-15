@@ -169,7 +169,7 @@ Dorfkoenig is a web scout monitoring system for journalists, deployed as a stati
 
 - **Purpose**: Send draft previews to village correspondents for verification
 - **Flow**: Edge Function sends template message via Meta API, webhook receives quick-reply callbacks (bestätigt/abgelehnt)
-- **Timeout**: 2-hour auto-resolve to `bestätigt` via `resolve_bajour_timeouts()` DB function
+- **Timeout**: 4-hour auto-resolve to `abgelehnt` (silence = rejection) via `resolve_bajour_timeouts()` DB function
 
 ### Mailchimp (Bajour Newsletter)
 
@@ -196,7 +196,7 @@ Feature-flagged (`VITE_FEATURE_BAJOUR=true`). Village newsletter draft creation 
        │
        ▼
 5. Correspondents reply bestätigt/abgelehnt (bajour-whatsapp-webhook)
-       │ (2-hour timeout auto-resolves to bestätigt)
+       │ (any-reject-wins; 4-hour timeout auto-resolves to abgelehnt)
        ▼
 6. Aggregate all verified drafts into Mailchimp campaign (bajour-send-mailchimp)
 ```

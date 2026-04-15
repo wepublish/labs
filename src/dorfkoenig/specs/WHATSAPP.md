@@ -16,9 +16,27 @@ Correspondent taps "Bestätigt" or "Abgelehnt" on WhatsApp
     → bajour-whatsapp-webhook Edge Function
       → HMAC-SHA256 signature verification
       → Find matching pending draft by whatsapp_message_ids (JSONB containment)
-      → Append response, resolve status by majority vote
-      → Update bajour_drafts: verification_status, responses, resolved_at
+      → append_bajour_response RPC (SELECT ... FOR UPDATE) appends + resolves atomically
+      → On abgelehnt: await Resend admin-alert email with signed deep-link
 ```
+
+## Resolution rules (as of 2026-04-15)
+
+- **Any `abgelehnt` response** → draft status flips to `abgelehnt` immediately, regardless of how many confirmations have landed.
+- **≥1 `bestätigt` AND zero `abgelehnt`** → status flips to `bestätigt`. A single yes is enough when nobody said no.
+- **No response before timeout** → status flips to `abgelehnt` (silence is rejection). Implemented in `resolve_bajour_timeouts()`.
+- **Every `abgelehnt` webhook** fires an email to `ADMIN_EMAILS` containing the rejecter's name, village, draft title, prior responses, and a signed deep-link back to the draft. Timeout resolutions do **not** fire email (no one actively rejected).
+
+Authoritative logic lives in the `append_bajour_response` Postgres RPC (migration `20260416000006_bajour_any_reject_wins.sql`). A Node-importable mirror for tests is at `bajour/verification.ts`.
+
+## Signed admin deep-link
+
+URL format: `<PUBLIC_APP_URL>/?draft=<uuid>&sig=<hex>&exp=<unix>#/feed`
+
+- HMAC-SHA256 over `${draftId}:${exp}` using `ADMIN_LINK_SECRET`.
+- `exp` = now + 7 days.
+- The `bajour-get-draft-admin` edge function verifies the signature, then reads the draft via the service role, bypassing the per-user RLS on `bajour_drafts`.
+- Rotating `ADMIN_LINK_SECRET` invalidates every outstanding admin link.
 
 Message order per correspondent: template (with verification buttons) is sent first, then the full draft text. This ensures atomicity — if the template fails, no text is sent.
 
@@ -151,9 +169,11 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 
 2. **Webhook response** — Tap "Bestätigt" or "Abgelehnt" on a dev phone. The draft's `verification_status` should update in the UI within 30 seconds (polling interval). Check Supabase logs for webhook processing.
 
-3. **Majority vote** — With 2 correspondents per village, one "Bestätigt" is a majority. Verify that a single approval resolves the draft to `bestätigt`.
+3. **Any-reject-wins** — Have one correspondent reply `Abgelehnt` first: status must flip to `abgelehnt` immediately and `ADMIN_EMAILS` must receive an email within ~5 s. Then have another reply `Bestätigt`: status stays `abgelehnt` (prior reject sticks).
 
-4. **Timeout resolution** — Drafts have a 2-hour timeout. Verify `resolve_bajour_timeouts` DB function resolves expired drafts (test by manually setting `verification_timeout_at` to the past).
+4. **Single-confirm-wins** — Have one correspondent reply `Bestätigt` with no rejects outstanding: status flips to `bestätigt`.
+
+5. **Timeout resolution → abgelehnt** — Set `verification_timeout_at` to the past for an `ausstehend` draft, run `SELECT resolve_bajour_timeouts();` — status must flip to `abgelehnt` (no admin email).
 
 5. **Mailchimp pipeline** — After verification, click "An Mailchimp senden" to confirm full pipeline: WhatsApp verification → Mailchimp campaign creation.
 
@@ -215,7 +235,12 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 | `supabase/functions/_shared/correspondents.ts` | Async DB queries for correspondents (with env fallback) |
 | `supabase/migrations/20260311000000_bajour_correspondents.sql` | Correspondents table, RLS, indexes, seed data |
 | `supabase/migrations/00000000000005_bajour_drafts.sql` | DB schema with verification columns |
-| `supabase/migrations/00000000000006_bajour_timeout.sql` | Timeout resolution function |
+| `supabase/migrations/00000000000006_bajour_timeout.sql` | Original timeout resolution (superseded by `20260416000006_bajour_any_reject_wins.sql`) |
+| `supabase/migrations/20260416000006_bajour_any_reject_wins.sql` | Timeout defaults to `abgelehnt` + `append_bajour_response` atomic RPC |
+| `supabase/functions/bajour-get-draft-admin/index.ts` | Service-role read of a single draft, authorized by signed admin link |
+| `supabase/functions/_shared/admin-link-core.ts` | Pure HMAC helpers for signed admin draft links (Vitest-testable) |
+| `supabase/functions/_shared/admin-link.ts` | Deno entry wrapping the core with `ADMIN_LINK_SECRET` from env |
+| `bajour/verification.ts` | Node-importable mirror of the resolution rules |
 | `bajour/components/StepPreviewSend.svelte` | Frontend: preview, send, status override, error handling |
 | `bajour/components/VerificationBadge.svelte` | Status badge (ausstehend/bestätigt/abgelehnt) |
 | `bajour/api.ts` | API client (`sendVerification()`) |
