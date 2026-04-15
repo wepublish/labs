@@ -173,19 +173,45 @@ export interface PresignedUploadResult {
 
 export type NewspaperJobStage = 'parsing_pdf' | 'chunking' | 'extracting' | 'storing';
 
+export type NewspaperJobStatus =
+  | 'processing'
+  | 'review_pending'
+  | 'storing'
+  | 'completed'
+  | 'cancelled'
+  | 'failed';
+
+/**
+ * Mirror of the ResolvedUnit staged in newspaper_jobs.extracted_units.
+ * The UI submits selection by `uid` rather than array index.
+ */
+export interface NewspaperExtractedUnit {
+  uid: string;
+  statement: string;
+  unit_type: 'fact' | 'event' | 'entity_update';
+  entities: string[];
+  event_date: string | null;
+  location: { city: string; country?: string } | null;
+  village_confidence: VillageConfidence | null;
+  assignment_path: string | null;
+  review_required: boolean;
+  evidence?: string;
+}
+
 export interface NewspaperJob {
   id: string;
   user_id: string;
   storage_path: string;
   publication_date: string | null;
   label: string | null;
-  status: 'processing' | 'completed' | 'failed';
+  status: NewspaperJobStatus;
   stage: NewspaperJobStage | null;
   chunks_total: number;
   chunks_processed: number;
   units_created: number;
   skipped_items: string[];
   error_message: string | null;
+  extracted_units: NewspaperExtractedUnit[] | null;
   created_at: string;
   completed_at: string | null;
 }

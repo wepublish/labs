@@ -77,6 +77,10 @@ Deno.serve(async (req) => {
       case 'photo_confirm':
       case 'pdf_confirm':
         return await handleFileConfirm(supabase, userId, body);
+      case 'pdf_finalize':
+        return await handlePdfFinalize(supabase, userId, body);
+      case 'pdf_cancel':
+        return await handlePdfCancel(supabase, userId, body);
       default:
         return errorResponse('Ungültiger content_type', 400, 'VALIDATION_ERROR');
     }
@@ -500,4 +504,205 @@ async function handleFileConfirm(
       unit_ids: [data.id],
     },
   });
+}
+
+// ── PDF Preview & Confirm ────────────────────────────────────────
+//
+// process-newspaper stages the LLM-extracted units on
+// newspaper_jobs.extracted_units and sets status='review_pending'. The modal
+// shows a checkbox list and calls back here with the selected UIDs. This
+// handler runs embed / dedup / insert on just the picked subset.
+
+interface StagedUnit {
+  uid: string;
+  statement: string;
+  unit_type: 'fact' | 'event' | 'entity_update';
+  entities: string[];
+  event_date: string | null;
+  location: { city: string; country?: string } | null;
+  village_confidence: 'high' | 'medium' | 'low' | null;
+  assignment_path: string | null;
+  review_required: boolean;
+  evidence?: string;
+}
+
+async function handlePdfFinalize(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  body: Record<string, unknown>,
+) {
+  const jobId = body.job_id as string | undefined;
+  const selectedUids = body.selected_uids as string[] | undefined;
+
+  if (!jobId) return errorResponse('job_id erforderlich', 400, 'VALIDATION_ERROR');
+  if (!Array.isArray(selectedUids) || selectedUids.length === 0) {
+    return errorResponse('selected_uids darf nicht leer sein', 400, 'VALIDATION_ERROR');
+  }
+
+  // Idempotent status transition: review_pending → storing. Concurrent
+  // retries (double-click, 504 retry) see zero rows affected and return the
+  // existing result instead of re-inserting.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('newspaper_jobs')
+    .update({ status: 'storing' })
+    .eq('id', jobId)
+    .eq('user_id', userId)
+    .eq('status', 'review_pending')
+    .select('id, extracted_units, storage_path, label')
+    .maybeSingle();
+
+  if (claimErr) {
+    console.error('[pdf_finalize] claim error:', claimErr);
+    return errorResponse('Job konnte nicht reserviert werden', 500);
+  }
+
+  if (!claimed) {
+    // Either already finalized, cancelled, or not in review_pending. Return the
+    // current state so the client can reconcile.
+    const { data: current } = await supabase
+      .from('newspaper_jobs')
+      .select('status, units_created, error_message')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!current) return errorResponse('Job nicht gefunden', 404);
+    if (current.status === 'completed') {
+      return jsonResponse({ data: { units_created: current.units_created, already_finalized: true } });
+    }
+    return errorResponse(
+      `Job ist nicht mehr zur Freigabe bereit (Status: ${current.status})`,
+      409,
+      'INVALID_STATE',
+    );
+  }
+
+  const staged = (claimed.extracted_units as StagedUnit[] | null) ?? [];
+  const byUid = new Map(staged.map((u) => [u.uid, u]));
+  const chosen = selectedUids
+    .map((uid) => byUid.get(uid))
+    .filter((u): u is StagedUnit => u !== undefined);
+
+  if (chosen.length === 0) {
+    // User sent only unknown UIDs. Treat like cancel.
+    await supabase
+      .from('newspaper_jobs')
+      .update({
+        status: 'completed',
+        units_created: 0,
+        extracted_units: null,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    return jsonResponse({ data: { units_created: 0 } });
+  }
+
+  try {
+    // Embed the selected statements.
+    const unitEmbeddings = await embeddings.generateBatch(chosen.map((u) => u.statement));
+
+    // In-batch dedup.
+    const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
+
+    // Per-village dedup against existing information_units.
+    const dedupResults = await Promise.all(
+      uniqueIndices.map(async (i) => {
+        const u = chosen[i];
+        if (!u.location?.city) return { index: i, isDuplicate: false };
+
+        const { data: similar } = await supabase.rpc('search_units_semantic', {
+          user_id: userId,
+          embedding: unitEmbeddings[i],
+          location_city: u.location.city,
+          min_similarity: UNIT_DEDUP_THRESHOLD,
+          limit: 1,
+        });
+
+        return { index: i, isDuplicate: Array.isArray(similar) && similar.length > 0 };
+      }),
+    );
+    const finalIndices = dedupResults.filter((r) => !r.isDuplicate).map((r) => r.index);
+
+    // Batched insert.
+    let storedCount = 0;
+    if (finalIndices.length > 0) {
+      const rows = finalIndices.map((i) => {
+        const u = chosen[i];
+        return {
+          user_id: userId,
+          scout_id: null,
+          execution_id: null,
+          statement: u.statement,
+          unit_type: u.unit_type,
+          entities: u.entities,
+          source_url: 'manual://pdf',
+          source_domain: 'manual',
+          source_title: claimed.label,
+          location: u.location,
+          topic: 'Wochenblatt',
+          source_type: 'manual_pdf',
+          file_path: claimed.storage_path,
+          embedding: unitEmbeddings[i],
+          event_date: u.event_date,
+          village_confidence: u.village_confidence,
+          review_required: u.review_required,
+          assignment_path: u.assignment_path,
+        };
+      });
+
+      const { error: insErr, count } = await supabase
+        .from('information_units')
+        .insert(rows, { count: 'exact' });
+
+      if (insErr) throw insErr;
+      storedCount = count ?? rows.length;
+    }
+
+    await supabase
+      .from('newspaper_jobs')
+      .update({
+        status: 'completed',
+        units_created: storedCount,
+        extracted_units: null,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    return jsonResponse({ data: { units_created: storedCount } });
+  } catch (error) {
+    console.error('[pdf_finalize] pipeline error:', error);
+    // Revert the 'storing' claim so the user can retry from the review panel.
+    await supabase
+      .from('newspaper_jobs')
+      .update({ status: 'review_pending' })
+      .eq('id', jobId);
+    return errorResponse('Speichern fehlgeschlagen. Bitte erneut versuchen.', 500);
+  }
+}
+
+async function handlePdfCancel(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  body: Record<string, unknown>,
+) {
+  const jobId = body.job_id as string | undefined;
+  if (!jobId) return errorResponse('job_id erforderlich', 400, 'VALIDATION_ERROR');
+
+  const { error } = await supabase
+    .from('newspaper_jobs')
+    .update({
+      status: 'cancelled',
+      extracted_units: null,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', jobId)
+    .eq('user_id', userId)
+    .in('status', ['review_pending', 'storing']);
+
+  if (error) {
+    console.error('[pdf_cancel] error:', error);
+    return errorResponse('Abbrechen fehlgeschlagen', 500);
+  }
+
+  return jsonResponse({ data: { status: 'cancelled' } });
 }
