@@ -12,6 +12,7 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 import { findCorrespondentByPhone } from '../_shared/correspondents.ts';
 import { resend } from '../_shared/resend.ts';
 import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
+import { hmacHex, constantTimeEqual } from '../_shared/admin-link-core.ts';
 
 // Environment secrets
 const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET')!;
@@ -34,26 +35,8 @@ async function verifySignature(
   if (!signatureHeader.startsWith(expectedPrefix)) return false;
   const receivedHex = signatureHeader.slice(expectedPrefix.length);
 
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(WHATSAPP_APP_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-  const computedHex = Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-
-  if (computedHex.length !== receivedHex.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < computedHex.length; i++) {
-    mismatch |= computedHex.charCodeAt(i) ^ receivedHex.charCodeAt(i);
-  }
-  return mismatch === 0;
+  const computedHex = await hmacHex(WHATSAPP_APP_SECRET, payload);
+  return constantTimeEqual(computedHex, receivedHex);
 }
 
 // Status resolution is authoritative in the `append_bajour_response` RPC.
@@ -65,6 +48,15 @@ interface VerificationResponse {
   phone: string;
   response: 'bestätigt' | 'abgelehnt';
   responded_at: string;
+}
+
+// Subset of bajour_drafts columns read by the webhook handler. The
+// .select('*') call returns the full row, but we only consume these fields.
+interface MatchingDraft {
+  id: string;
+  title: string | null;
+  village_id: string;
+  village_name: string;
 }
 
 function maskPhone(phone: string): string {
@@ -188,16 +180,16 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   const supabase = createServiceClient();
   const contextMessageId = message.context?.id;
 
-  let matchingDraft: Record<string, unknown> | null = null;
+  let matchingDraft: MatchingDraft | null = null;
 
   if (contextMessageId) {
     const { data, error } = await supabase
       .from('bajour_drafts')
-      .select('*')
+      .select('id, title, village_id, village_name')
       .contains('whatsapp_message_ids', JSON.stringify([contextMessageId]))
       .eq('verification_status', 'ausstehend')
       .not('verification_sent_at', 'is', null)
-      .maybeSingle();
+      .maybeSingle<MatchingDraft>();
 
     if (error) {
       console.error('Fehler bei Message-ID-Suche:', error);
@@ -217,11 +209,12 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
 
     const { data: pendingDrafts, error: fetchError } = await supabase
       .from('bajour_drafts')
-      .select('*')
+      .select('id, title, village_id, village_name')
       .eq('verification_status', 'ausstehend')
       .not('verification_sent_at', 'is', null)
       .is('verification_resolved_at', null)
-      .order('verification_sent_at', { ascending: false });
+      .order('verification_sent_at', { ascending: false })
+      .returns<MatchingDraft[]>();
 
     if (fetchError) {
       console.error('Fehler beim Laden der Entwuerfe:', fetchError);
@@ -229,7 +222,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
     }
 
     matchingDraft = (pendingDrafts || []).find(
-      (draft: Record<string, unknown>) => draft.village_id === correspondent.villageId
+      (draft) => draft.village_id === correspondent.villageId
     ) || null;
   }
 
@@ -281,9 +274,9 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
         !(r.phone && newResponse.phone && r.phone.replace(/^\+/, '') === newResponse.phone.replace(/^\+/, ''))
     );
     await sendAdminRejectionEmail({
-      draftId: matchingDraft.id as string,
-      draftTitle: (matchingDraft.title as string) || '',
-      villageName: (matchingDraft.village_name as string) || '',
+      draftId: matchingDraft.id,
+      draftTitle: matchingDraft.title || '',
+      villageName: matchingDraft.village_name || '',
       correspondentName: correspondent.name,
       respondedAt: newResponse.responded_at,
       priorResponses,

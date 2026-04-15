@@ -9,6 +9,57 @@ export interface Correspondent {
   phone: string; // without '+' prefix
 }
 
+// --- WhatsApp Business API send helper ---
+// Used by bajour-send-verification and bajour-auto-draft to notify correspondents.
+
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!;
+const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN')!;
+
+// WhatsApp Business API message payloads we actually send. The full API supports
+// more shapes (media, location, contacts, interactive replies); extend as needed.
+export type WhatsAppMessagePayload =
+  | {
+      to: string;
+      type: 'template';
+      template: {
+        name: string;
+        language: { code: string };
+        components: {
+          type: 'body' | 'header' | 'footer' | 'button';
+          parameters?: { type: 'text'; text: string }[];
+        }[];
+      };
+    }
+  | {
+      to: string;
+      type: 'text';
+      text: { body: string; preview_url?: boolean };
+    };
+
+export async function sendWhatsAppMessage(
+  payload: WhatsAppMessagePayload
+): Promise<{ message_id: string }> {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`WhatsApp API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  return { message_id: data.messages?.[0]?.id || 'unknown' };
+}
+
 // --- Env-var fallback (remove after DB migration validated) ---
 
 let envFallback: Record<string, Correspondent[]> | null = null;
