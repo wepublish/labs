@@ -175,6 +175,9 @@ export const manualUploadApi = {
       body: file,
       headers: { 'Content-Type': file.type },
     }),
+
+  getJob: (jobId: string) =>
+    api.get<import('./types').NewspaperJob>(`manual-upload?job=${encodeURIComponent(jobId)}`),
 };
 
 export const composeApi = {

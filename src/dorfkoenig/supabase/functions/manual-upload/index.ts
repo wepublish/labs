@@ -36,13 +36,35 @@ Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
-  if (req.method !== 'POST') {
-    return errorResponse('Methode nicht erlaubt', 405);
-  }
-
   try {
     const userId = requireUserId(req);
     const supabase = createServiceClient();
+
+    // GET /manual-upload?job=<id>: polling target for UploadModal. Browser
+    // supabase-js can't read newspaper_jobs directly because RLS expects an
+    // x-user-id header that the JS client doesn't send on raw queries. This
+    // endpoint applies the user_id filter explicitly via service client.
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const jobId = url.searchParams.get('job');
+      if (!jobId) return errorResponse('job parameter required', 400, 'VALIDATION_ERROR');
+
+      const { data, error } = await supabase
+        .from('newspaper_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) return errorResponse('Job-Abruf fehlgeschlagen', 500);
+      if (!data) return errorResponse('Job nicht gefunden', 404);
+      return jsonResponse({ data });
+    }
+
+    if (req.method !== 'POST') {
+      return errorResponse('Methode nicht erlaubt', 405);
+    }
+
     const body = await req.json();
     const contentType = body.content_type;
 
