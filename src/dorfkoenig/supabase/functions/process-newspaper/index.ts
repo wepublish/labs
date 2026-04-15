@@ -1,17 +1,17 @@
 /**
  * @module process-newspaper
- * Async newspaper PDF processing pipeline.
+ * Async newspaper PDF extraction pipeline.
  * Triggered by manual-upload (pdf_confirm) via service role fetch.
- * Parses PDF → chunks → LLM extraction → dedup → store units.
- * Updates newspaper_jobs row for Realtime progress tracking.
+ * Parses PDF → chunks → LLM extraction → resolves village per unit → stages
+ * units on newspaper_jobs.extracted_units and sets status=review_pending.
+ * The manual-upload edge function's `pdf_finalize` branch handles embed /
+ * dedup / insert on the user-selected subset.
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { embeddings } from '../_shared/embeddings.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
-import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
 import {
   buildNewspaperExtractionPrompt,
   preprocessMarkdown,
@@ -203,7 +203,27 @@ Deno.serve(async (req) => {
       `[process-newspaper] ${resolved.length} units after resolve (legacy=${USE_LEGACY_VILLAGE_MAP})`,
     );
 
-    if (resolved.length === 0) {
+    // ── Step 7b: Shape for review and hand off to the UI ──
+    //
+    // Stamp each unit with a UUID so the UI can submit selection by uid
+    // rather than array index (keeps edit-in-place unblocked for v2).
+    // No embeddings in extracted_units — regenerated at finalize time to
+    // keep the JSONB payload small.
+    const stagedUnits = resolved.map((r) => ({
+      uid: crypto.randomUUID(),
+      statement: r.unit.statement,
+      unit_type: r.unit.unitType || 'fact',
+      entities: r.unit.entities || [],
+      event_date: r.unit.eventDate || null,
+      location: r.villageId ? { city: r.villageId, country: 'Schweiz' } : null,
+      village_confidence: r.confidence,
+      assignment_path: r.assignmentPath,
+      review_required: r.reviewRequired,
+      evidence: r.unit.villageEvidence ?? undefined,
+    }));
+
+    if (stagedUnits.length === 0) {
+      // Nothing to review — close the job immediately so the UI shows "0 Einheiten".
       await updateJob(supabase, jobId, {
         status: 'completed',
         units_created: 0,
@@ -213,82 +233,18 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { units_created: 0 } });
     }
 
-    // 7b. Generate embeddings
-    const statements = resolved.map((r) => r.unit.statement);
-    const unitEmbeddings = await embeddings.generateBatch(statements);
-
-    // 7c. Deduplicate within batch
-    const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
-
-    // 7d. Per-village dedup against existing units in DB (parallel). Skip when
-    //     villageId is null — the Überregional bucket has no per-village slot to collide in.
-    const dedupResults = await Promise.all(
-      uniqueIndices.map(async (i) => {
-        const r = resolved[i];
-        if (!r.villageId) return { index: i, isDuplicate: false };
-
-        const { data: similar } = await supabase.rpc('search_units_semantic', {
-          user_id: userId,
-          embedding: unitEmbeddings[i],
-          location_city: r.villageId,
-          min_similarity: UNIT_DEDUP_THRESHOLD,
-          limit: 1,
-        });
-
-        return { index: i, isDuplicate: similar && similar.length > 0 };
-      }),
-    );
-    const finalIndices = dedupResults
-      .filter((r) => !r.isDuplicate)
-      .map((r) => r.index);
-
-    console.log(`[process-newspaper] ${finalIndices.length} units after dedup (from ${resolved.length})`);
-
-    // ── Step 8: Store units (batched insert) ──
-    await updateJob(supabase, jobId, { stage: 'storing' });
-    let storedCount = 0;
-    if (finalIndices.length > 0) {
-      const rows = finalIndices.map((i) => {
-        const r = resolved[i];
-        return {
-          user_id: userId,
-          scout_id: null,
-          execution_id: null,
-          statement: r.unit.statement,
-          unit_type: r.unit.unitType || 'fact',
-          entities: r.unit.entities || [],
-          source_url: 'manual://pdf',
-          source_domain: 'manual',
-          source_title: label,
-          location: r.villageId ? { city: r.villageId, country: 'Schweiz' } : null,
-          topic: 'Wochenblatt',
-          source_type: 'manual_pdf',
-          file_path: storagePath,
-          embedding: unitEmbeddings[i],
-          event_date: r.unit.eventDate || null,
-          village_confidence: r.confidence,
-          review_required: r.reviewRequired,
-          assignment_path: r.assignmentPath,
-        };
-      });
-
-      const { error, count } = await supabase
-        .from('information_units')
-        .insert(rows, { count: 'exact' });
-
-      storedCount = error ? 0 : (count ?? rows.length);
-    }
-
-    // ── Step 9: Complete ──
     await updateJob(supabase, jobId, {
-      status: 'completed',
-      units_created: storedCount,
+      status: 'review_pending',
+      extracted_units: stagedUnits,
       skipped_items: allSkipped.slice(0, 50),
-      completed_at: new Date().toISOString(),
     });
 
-    console.log(`[process-newspaper] Done. Stored ${storedCount} units.`);
-    return jsonResponse({ data: { units_created: storedCount } });
+    console.log(
+      `[process-newspaper] Review pending for job=${jobId} with ${stagedUnits.length} staged units`,
+    );
+    return jsonResponse({
+      data: { status: 'review_pending', staged: stagedUnits.length },
+    });
 
   } catch (error) {
     console.error('[process-newspaper] Fatal error:', error);

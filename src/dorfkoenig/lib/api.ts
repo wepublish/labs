@@ -178,6 +178,19 @@ export const manualUploadApi = {
 
   getJob: (jobId: string) =>
     api.get<import('./types').NewspaperJob>(`manual-upload?job=${encodeURIComponent(jobId)}`),
+
+  finalizePdf: (jobId: string, selectedUids: string[]) =>
+    api.post<{ units_created: number; already_finalized?: boolean }>('manual-upload', {
+      content_type: 'pdf_finalize',
+      job_id: jobId,
+      selected_uids: selectedUids,
+    }),
+
+  cancelPdf: (jobId: string) =>
+    api.post<{ status: 'cancelled' }>('manual-upload', {
+      content_type: 'pdf_cancel',
+      job_id: jobId,
+    }),
 };
 
 export const composeApi = {

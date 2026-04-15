@@ -10,7 +10,13 @@
   import UploadTextTab from './UploadTextTab.svelte';
   // import UploadPhotoTab from './UploadPhotoTab.svelte';  // Hidden until image embedding
   import UploadPdfTab from './UploadPdfTab.svelte';
-  import type { Location, NewspaperJob, NewspaperJobStage } from '../../lib/types';
+  import PdfReviewPanel from './PdfReviewPanel.svelte';
+  import type {
+    Location,
+    NewspaperJob,
+    NewspaperJobStage,
+    NewspaperExtractedUnit,
+  } from '../../lib/types';
   import { supabase } from '../../lib/supabase';
 
   const JOB_POLL_INTERVAL_MS = 10_000;
@@ -49,11 +55,15 @@
   let description = $state('');
 
   // Upload state
-  type UploadState = 'idle' | 'uploading' | 'success' | 'error';
+  type UploadState = 'idle' | 'uploading' | 'review' | 'finalizing' | 'success' | 'error';
   let uploadState = $state<UploadState>('idle');
   let uploadProgress = $state(0);
   let uploadError = $state('');
   let unitsCreated = $state(0);
+
+  // Review state (PDF preview-and-confirm)
+  let reviewUnits = $state<NewspaperExtractedUnit[]>([]);
+  let selectedUids = $state<Set<string>>(new Set());
 
   // PDF processing state
   let publicationDate = $state('');
@@ -108,6 +118,8 @@
     uploadProgress = 0;
     uploadError = '';
     unitsCreated = 0;
+    reviewUnits = [];
+    selectedUids = new Set();
     validationError = '';
     if (autoCloseTimer) {
       clearTimeout(autoCloseTimer);
@@ -220,18 +232,71 @@
       uploadProgress = Math.round((job.chunks_processed / job.chunks_total) * 100);
     }
 
+    if (job.status === 'review_pending' && job.extracted_units) {
+      teardownJobWatchers();
+      reviewUnits = job.extracted_units;
+      selectedUids = new Set(reviewUnits.map((u) => u.uid));
+      uploadState = 'review';
+      return;
+    }
+
     if (job.status === 'completed') {
       processingJobId = null;
       teardownJobWatchers();
       unitsCreated = job.units_created;
       uploadState = 'success';
-    } else if (job.status === 'failed') {
+    } else if (job.status === 'failed' || job.status === 'cancelled') {
       processingJobId = null;
       teardownJobWatchers();
-      uploadState = 'error';
-      uploadProgress = 100;
-      uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
+      if (job.status === 'cancelled') {
+        uploadState = 'idle';
+      } else {
+        uploadState = 'error';
+        uploadProgress = 100;
+        uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
+      }
     }
+  }
+
+  function toggleReviewUid(uid: string): void {
+    const next = new Set(selectedUids);
+    if (next.has(uid)) next.delete(uid);
+    else next.add(uid);
+    selectedUids = next;
+  }
+
+  function selectAllReview(): void {
+    selectedUids = new Set(reviewUnits.map((u) => u.uid));
+  }
+
+  function selectNoneReview(): void {
+    selectedUids = new Set();
+  }
+
+  async function confirmReview(): Promise<void> {
+    if (!processingJobId || selectedUids.size === 0) return;
+    uploadState = 'finalizing';
+    uploadError = '';
+    try {
+      const result = await manualUploadApi.finalizePdf(processingJobId, [...selectedUids]);
+      unitsCreated = result.units_created;
+      uploadState = 'success';
+      autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+    } catch (err) {
+      uploadState = 'review';
+      uploadError = (err as Error).message || 'Speichern fehlgeschlagen';
+    }
+  }
+
+  async function cancelReview(): Promise<void> {
+    if (processingJobId) {
+      try {
+        await manualUploadApi.cancelPdf(processingJobId);
+      } catch {
+        // best-effort; close either way
+      }
+    }
+    handleClose();
   }
 
   async function handleSubmit(): Promise<void> {
@@ -360,7 +425,7 @@
         </button>
       </div>
 
-      <!-- Content type tabs -->
+      <!-- Content type tabs (hidden in review/finalizing to focus on preview) -->
       {#if uploadState === 'idle'}
         <div class="tab-bar">
           <button
@@ -401,6 +466,26 @@
             message={uploadMessage}
             hintText={uploadHint}
           />
+
+        {:else if uploadState === 'review' || uploadState === 'finalizing'}
+          <div class="review-header-row">
+            <h3 class="review-title">
+              {reviewUnits.length} Informationseinheiten gefunden
+            </h3>
+            <p class="review-subtitle">
+              Wähle aus, welche gespeichert werden sollen. Standardmässig sind alle ausgewählt.
+            </p>
+          </div>
+          <PdfReviewPanel
+            units={reviewUnits}
+            selected={selectedUids}
+            ontoggle={toggleReviewUid}
+            onselectall={selectAllReview}
+            onselectnone={selectNoneReview}
+          />
+          {#if uploadError}
+            <div class="error-message">{uploadError}</div>
+          {/if}
 
         {:else if uploadState === 'success'}
           <ProgressIndicator
@@ -471,6 +556,17 @@
         {#if uploadState === 'idle'}
           <Button variant="ghost" onclick={handleClose}>Abbrechen</Button>
           <Button onclick={handleSubmit} disabled={!isValid}>Hochladen</Button>
+        {:else if uploadState === 'review' || uploadState === 'finalizing'}
+          <Button variant="ghost" onclick={cancelReview} disabled={uploadState === 'finalizing'}>
+            Abbrechen
+          </Button>
+          <Button
+            onclick={confirmReview}
+            disabled={selectedUids.size === 0 || uploadState === 'finalizing'}
+            loading={uploadState === 'finalizing'}
+          >
+            {selectedUids.size} von {reviewUnits.length} speichern
+          </Button>
         {:else if uploadState === 'error'}
           <Button variant="ghost" onclick={handleClose}>Abbrechen</Button>
           <Button onclick={handleRetry}>Erneut versuchen</Button>
@@ -667,5 +763,24 @@
     background: var(--color-danger-surface);
     border: 1px solid var(--color-danger-border);
     border-radius: var(--radius-sm);
+  }
+
+  .review-header-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .review-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .review-subtitle {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
   }
 </style>
