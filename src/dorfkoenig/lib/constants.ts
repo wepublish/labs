@@ -14,9 +14,6 @@ export const POLL_INTERVAL_MS = 30_000;
 // Minimum text length for manual upload (characters)
 export const MIN_TEXT_LENGTH = 20;
 
-// Minimum description length for file upload (characters)
-export const MIN_DESCRIPTION_LENGTH = 10;
-
 // Extract unique, sorted topic strings from a list of scouts
 export function extractTopics(scouts: { topic?: string | null }[]): string[] {
   return [...new Set(
@@ -27,14 +24,7 @@ export function extractTopics(scouts: { topic?: string | null }[]): string[] {
   )].sort();
 }
 
-// Frequency options for scouts
-export const FREQUENCY_OPTIONS = [
-  { value: 'daily', label: 'Täglich' },
-  { value: 'weekly', label: 'Wöchentlich' },
-  { value: 'monthly', label: 'Monatlich' },
-] as const;
-
-// Extended frequency options (for scout creation wizard)
+// Frequency options (scout creation wizard, scout form, scout card)
 export const FREQUENCY_OPTIONS_EXTENDED = [
   { value: 'daily', label: 'Täglich' },
   { value: 'weekly', label: 'Wöchentlich' },
@@ -59,28 +49,6 @@ export const UNIT_TYPE_LABELS: Record<string, string> = {
   event: 'Ereignis',
   entity_update: 'Aktualisierung',
 };
-
-// Execution status labels
-export const EXECUTION_STATUS_LABELS: Record<string, string> = {
-  running: 'Läuft',
-  completed: 'Abgeschlossen',
-  failed: 'Fehlgeschlagen',
-};
-
-// Change status labels
-export const CHANGE_STATUS_LABELS: Record<string, string> = {
-  changed: 'Geändert',
-  same: 'Unverändert',
-  error: 'Fehler',
-  first_run: 'Erster Lauf',
-};
-
-// Compose style options
-export const COMPOSE_STYLE_OPTIONS = [
-  { value: 'news', label: 'Nachrichtenartikel' },
-  { value: 'summary', label: 'Zusammenfassung' },
-  { value: 'analysis', label: 'Analyse' },
-] as const;
 
 // Preset users
 export const PRESET_USERS = [

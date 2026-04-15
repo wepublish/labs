@@ -38,28 +38,3 @@ export function processInlineMarkdown(text: string): string {
   return html;
 }
 
-/**
- * Render a markdown body string (as stored in the database) into HTML.
- * Converts ## headings, **bold**, [source] refs, and paragraph breaks.
- */
-export function renderMarkdownBody(body: string): string {
-  const lines = body.split('\n');
-  const parts: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      parts.push('');
-      continue;
-    }
-
-    const headingMatch = trimmed.match(/^##\s+(.+)$/);
-    if (headingMatch) {
-      parts.push(`<h3>${escapeHtml(headingMatch[1])}</h3>`);
-    } else {
-      parts.push(`<p>${processInlineMarkdown(trimmed)}</p>`);
-    }
-  }
-
-  return parts.filter(Boolean).join('\n');
-}

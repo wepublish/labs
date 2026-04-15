@@ -1,25 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  FREQUENCY_OPTIONS,
   FREQUENCY_OPTIONS_EXTENDED,
   DAY_OF_WEEK_OPTIONS,
   UNIT_TYPE_LABELS,
-  EXECUTION_STATUS_LABELS,
-  CHANGE_STATUS_LABELS,
   PRESET_USERS,
   formatDate,
   formatRelativeTime,
 } from '../../lib/constants';
-
-describe('FREQUENCY_OPTIONS', () => {
-  it('contains daily, weekly, and monthly with German labels', () => {
-    expect(FREQUENCY_OPTIONS).toEqual([
-      { value: 'daily', label: 'Täglich' },
-      { value: 'weekly', label: 'Wöchentlich' },
-      { value: 'monthly', label: 'Monatlich' },
-    ]);
-  });
-});
 
 describe('FREQUENCY_OPTIONS_EXTENDED', () => {
   it('contains daily, weekly, biweekly, and monthly with German labels', () => {
@@ -29,13 +16,6 @@ describe('FREQUENCY_OPTIONS_EXTENDED', () => {
       { value: 'biweekly', label: 'Alle 2 Wochen' },
       { value: 'monthly', label: 'Monatlich' },
     ]);
-  });
-
-  it('includes biweekly which FREQUENCY_OPTIONS does not', () => {
-    const extendedValues = FREQUENCY_OPTIONS_EXTENDED.map(o => o.value);
-    const basicValues = FREQUENCY_OPTIONS.map(o => o.value);
-    expect(extendedValues).toContain('biweekly');
-    expect(basicValues).not.toContain('biweekly');
   });
 });
 
@@ -69,34 +49,6 @@ describe('UNIT_TYPE_LABELS', () => {
 
   it('maps entity_update to Aktualisierung', () => {
     expect(UNIT_TYPE_LABELS.entity_update).toBe('Aktualisierung');
-  });
-});
-
-describe('EXECUTION_STATUS_LABELS', () => {
-  it('maps running to Läuft', () => {
-    expect(EXECUTION_STATUS_LABELS.running).toBe('Läuft');
-  });
-
-  it('maps completed to Abgeschlossen', () => {
-    expect(EXECUTION_STATUS_LABELS.completed).toBe('Abgeschlossen');
-  });
-
-  it('maps failed to Fehlgeschlagen', () => {
-    expect(EXECUTION_STATUS_LABELS.failed).toBe('Fehlgeschlagen');
-  });
-});
-
-describe('CHANGE_STATUS_LABELS', () => {
-  it('maps changed to Geändert', () => {
-    expect(CHANGE_STATUS_LABELS.changed).toBe('Geändert');
-  });
-
-  it('maps same to Unverändert', () => {
-    expect(CHANGE_STATUS_LABELS.same).toBe('Unverändert');
-  });
-
-  it('maps first_run to Erster Lauf', () => {
-    expect(CHANGE_STATUS_LABELS.first_run).toBe('Erster Lauf');
   });
 });
 
