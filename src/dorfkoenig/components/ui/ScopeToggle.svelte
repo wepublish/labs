@@ -6,6 +6,8 @@
     location: Location | null;
     topic: string;
     existingTopics?: string[];
+    /** Hide the Ort (location) section when the parent uses auto-mode Gemeinde assignment. */
+    hideLocation?: boolean;
     onlocationchange: (loc: Location | null) => void;
     ontopicchange: (topic: string) => void;
   }
@@ -14,6 +16,7 @@
     location: loc,
     topic,
     existingTopics = [],
+    hideLocation = false,
     onlocationchange,
     ontopicchange,
   }: Props = $props();
@@ -106,14 +109,16 @@
 </script>
 
 <div class="scope-toggle">
-  <div class="scope-section">
-    <span class="scope-label">Ort</span>
-    <LocationAutocomplete
-      value={loc?.city || ''}
-      onselect={handleLocationSelect}
-      placeholder="z.B. Riehen"
-    />
-  </div>
+  {#if !hideLocation}
+    <div class="scope-section">
+      <span class="scope-label">Ort</span>
+      <LocationAutocomplete
+        value={loc?.city || ''}
+        onselect={handleLocationSelect}
+        placeholder="z.B. Riehen"
+      />
+    </div>
+  {/if}
   <div class="scope-section">
     <span class="scope-label">Thema</span>
     <div class="scope-input topic-input-container">

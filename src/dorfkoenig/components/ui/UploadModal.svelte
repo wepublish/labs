@@ -10,8 +10,17 @@
   import UploadTextTab from './UploadTextTab.svelte';
   // import UploadPhotoTab from './UploadPhotoTab.svelte';  // Hidden until image embedding
   import UploadPdfTab from './UploadPdfTab.svelte';
-  import type { Location, NewspaperJob } from '../../lib/types';
+  import type { Location, NewspaperJob, NewspaperJobStage } from '../../lib/types';
   import { supabase } from '../../lib/supabase';
+
+  const JOB_POLL_INTERVAL_MS = 10_000;
+  const SECONDS_PER_CHUNK = 15;
+  const STAGE_MESSAGES: Record<NewspaperJobStage, string> = {
+    parsing_pdf: 'PDF wird gelesen…',
+    chunking: 'Inhalt wird aufgeteilt…',
+    extracting: 'KI extrahiert Fakten…',
+    storing: 'Einheiten werden gespeichert…',
+  };
 
   interface Props {
     open: boolean;
@@ -51,7 +60,9 @@
   let processingJobId = $state<string | null>(null);
   let chunksTotal = $state(0);
   let chunksProcessed = $state(0);
+  let jobStage = $state<NewspaperJobStage | null>(null);
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
 
   // Validation error
   let validationError = $state('');
@@ -59,11 +70,12 @@
   // Auto-close timer
   let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Clean up auto-close timer and object URLs on component destroy
+  // Clean up auto-close timer, object URLs, and job watchers on component destroy
   $effect(() => {
     return () => {
       if (autoCloseTimer) clearTimeout(autoCloseTimer);
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+      teardownJobWatchers();
     };
   });
 
@@ -83,9 +95,14 @@
     processingJobId = null;
     chunksTotal = 0;
     chunksProcessed = 0;
+    jobStage = null;
     if (realtimeChannel) {
       supabase.removeChannel(realtimeChannel);
       realtimeChannel = null;
+    }
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
     }
     uploadState = 'idle';
     uploadProgress = 0;
@@ -128,6 +145,22 @@
     }
   }
 
+  let uploadMessage = $derived.by(() => {
+    if (processingJobId) {
+      return jobStage ? STAGE_MESSAGES[jobStage] : 'Zeitung wird analysiert…';
+    }
+    return activeTab === 'text' ? 'KI extrahiert Fakten...' : 'Datei wird hochgeladen...';
+  });
+
+  let uploadHint = $derived.by(() => {
+    if (!processingJobId) return 'Dies kann einen Moment dauern';
+    if (chunksTotal === 0) {
+      return 'Dies kann einen Moment dauern. Du kannst das Fenster schliessen — die Verarbeitung läuft im Hintergrund weiter.';
+    }
+    const minsLeft = Math.max(1, Math.round((chunksTotal - chunksProcessed) * SECONDS_PER_CHUNK / 60));
+    return `Abschnitt ${chunksProcessed} von ${chunksTotal} — ca. ${minsLeft} Min. verbleibend`;
+  });
+
   let isValid = $derived.by(() => {
     if (activeTab === 'text') {
       if (location === null) return false;
@@ -162,6 +195,43 @@
     }
 
     return true;
+  }
+
+  function teardownJobWatchers(): void {
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  function applyJobUpdate(job: NewspaperJob): void {
+    // Guard against late callbacks firing after the modal already moved past uploading.
+    if (uploadState !== 'uploading') return;
+
+    chunksTotal = job.chunks_total;
+    chunksProcessed = job.chunks_processed;
+    jobStage = job.stage ?? null;
+
+    if (job.chunks_total > 0) {
+      uploadProgress = Math.round((job.chunks_processed / job.chunks_total) * 100);
+    }
+
+    if (job.status === 'completed') {
+      processingJobId = null;
+      teardownJobWatchers();
+      unitsCreated = job.units_created;
+      uploadState = 'success';
+    } else if (job.status === 'failed') {
+      processingJobId = null;
+      teardownJobWatchers();
+      uploadState = 'error';
+      uploadProgress = 100;
+      uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
+    }
   }
 
   async function handleSubmit(): Promise<void> {
@@ -215,7 +285,7 @@
           uploadState = 'uploading';
           uploadProgress = 0;
 
-          // Subscribe to Realtime updates
+          // Realtime subscription (primary) + 10s polling fallback for dropped channels.
           realtimeChannel = supabase
             .channel(`newspaper-job-${result.job_id}`)
             .on(
@@ -226,34 +296,19 @@
                 table: 'newspaper_jobs',
                 filter: `id=eq.${result.job_id}`,
               },
-              (payload) => {
-                const job = payload.new as NewspaperJob;
-                chunksTotal = job.chunks_total;
-                chunksProcessed = job.chunks_processed;
-
-                if (job.chunks_total > 0) {
-                  uploadProgress = Math.round((job.chunks_processed / job.chunks_total) * 100);
-                }
-
-                if (job.status === 'completed') {
-                  unitsCreated = job.units_created;
-                  uploadState = 'success';
-                  if (realtimeChannel) {
-                    supabase.removeChannel(realtimeChannel);
-                    realtimeChannel = null;
-                  }
-                } else if (job.status === 'failed') {
-                  uploadState = 'error';
-                  uploadProgress = 100;
-                  uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
-                  if (realtimeChannel) {
-                    supabase.removeChannel(realtimeChannel);
-                    realtimeChannel = null;
-                  }
-                }
-              }
+              (payload) => applyJobUpdate(payload.new as NewspaperJob)
             )
             .subscribe();
+
+          pollInterval = setInterval(async () => {
+            if (!processingJobId) return;
+            const { data } = await supabase
+              .from('newspaper_jobs')
+              .select('*')
+              .eq('id', processingJobId)
+              .maybeSingle();
+            if (data) applyJobUpdate(data as NewspaperJob);
+          }, JOB_POLL_INTERVAL_MS);
         } else {
           uploadProgress = 100;
           if ('units_created' in result) {
@@ -343,10 +398,8 @@
           <ProgressIndicator
             state="loading"
             progress={uploadProgress}
-            message={processingJobId ? 'Zeitung wird analysiert...' : activeTab === 'text' ? 'KI extrahiert Fakten...' : 'Datei wird hochgeladen...'}
-            hintText={processingJobId && chunksTotal > 0
-              ? `Abschnitt ${chunksProcessed} von ${chunksTotal} — ca. ${Math.max(1, Math.round((chunksTotal - chunksProcessed) * 15 / 60))} Min. verbleibend`
-              : 'Dies kann einen Moment dauern'}
+            message={uploadMessage}
+            hintText={uploadHint}
           />
 
         {:else if uploadState === 'success'}

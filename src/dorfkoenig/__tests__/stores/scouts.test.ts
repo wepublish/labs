@@ -29,6 +29,7 @@ function makeScout(overrides: Partial<Scout> = {}): Scout {
     url: 'https://example.com',
     criteria: 'test criteria',
     location: null,
+    location_mode: 'manual',
     scout_type: 'web',
     frequency: 'daily',
     is_active: true,

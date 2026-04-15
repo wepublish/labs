@@ -236,8 +236,12 @@ Deno.serve(async (req) => {
       allPromises.push(...promises);
 
       // Extract information units (for Compose panel)
-      if (extractUnits && (scout.location || scout.topic)) {
+      const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
+      const hasScope = locationMode === 'auto' || scout.location || scout.topic;
+
+      if (extractUnits && hasScope) {
         try {
+          const docContentHash = await firecrawl.computeContentHash(scrapeResult.markdown);
           const units = await extractInformationUnits(supabase, scrapeResult.markdown, {
             scoutId: scout.id,
             userId: scout.user_id,
@@ -245,6 +249,9 @@ Deno.serve(async (req) => {
             sourceUrl: docUrl,
             location: scout.location,
             topic: scout.topic,
+            locationMode,
+            criteria: scout.criteria,
+            contentHash: docContentHash,
           });
           totalUnitsExtracted += units;
         } catch (error) {

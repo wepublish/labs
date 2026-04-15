@@ -289,7 +289,11 @@ Deno.serve(async (req) => {
     // =========================================================================
     let unitsExtracted = 0;
 
-    if (extractUnits && analysis.matches && (scout.location || scout.topic)) {
+    const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
+    // Auto-mode scouts don't need a scout.location — the LLM assigns per unit.
+    const hasScope = locationMode === 'auto' || scout.location || scout.topic;
+
+    if (extractUnits && analysis.matches && hasScope) {
       try {
         unitsExtracted = await extractInformationUnits(
           supabase,
@@ -301,6 +305,9 @@ Deno.serve(async (req) => {
             sourceUrl: scout.url,
             location: scout.location,
             topic: scout.topic,
+            locationMode,
+            criteria: scout.criteria,
+            contentHash: newHash ?? undefined,
           },
         );
       } catch (error) {

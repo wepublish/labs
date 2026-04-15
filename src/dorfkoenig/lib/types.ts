@@ -1,6 +1,8 @@
 // coJournalist-Lite TypeScript types
 
 export type ScoutType = 'web' | 'civic';
+export type LocationMode = 'manual' | 'auto';
+export type VillageConfidence = 'high' | 'medium' | 'low';
 
 export interface Location {
   city: string;
@@ -18,6 +20,7 @@ export interface Scout {
   url: string | null;
   criteria: string;
   location: Location | null;
+  location_mode: LocationMode;
   topic?: string | null;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   is_active: boolean;
@@ -43,6 +46,7 @@ export interface ScoutCreateInput {
   url?: string;
   criteria: string;
   location?: Location | null;
+  location_mode?: LocationMode;
   topic?: string | null;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
@@ -57,6 +61,7 @@ export interface ScoutUpdateInput {
   url?: string;
   criteria?: string;
   location?: Location | null;
+  location_mode?: LocationMode;
   topic?: string | null;
   frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   notification_email?: string | null;
@@ -149,6 +154,10 @@ export interface InformationUnit {
   used_in_article: boolean;
   event_date?: string | null;
   similarity?: number;
+  /** Auto-mode metadata (null for manual-mode and legacy rows). */
+  village_confidence?: VillageConfidence | null;
+  review_required?: boolean;
+  assignment_path?: string | null;
 }
 
 export interface ManualUploadResult {
@@ -162,6 +171,8 @@ export interface PresignedUploadResult {
   token: string;
 }
 
+export type NewspaperJobStage = 'parsing_pdf' | 'chunking' | 'extracting' | 'storing';
+
 export interface NewspaperJob {
   id: string;
   user_id: string;
@@ -169,6 +180,7 @@ export interface NewspaperJob {
   publication_date: string | null;
   label: string | null;
   status: 'processing' | 'completed' | 'failed';
+  stage: NewspaperJobStage | null;
   chunks_total: number;
   chunks_processed: number;
   units_created: number;

@@ -76,6 +76,11 @@
   ></textarea>
 </div>
 
+<p class="pdf-gemeinde-hint">
+  Die KI erkennt automatisch, welche Gemeinden im PDF vorkommen, und ordnet jede
+  Information der entsprechenden Gemeinde zu. Kein Ort erforderlich.
+</p>
+
 <style>
   .form-group {
     display: flex;
@@ -204,5 +209,13 @@
   .file-remove:hover {
     background: var(--color-danger, #ef4444);
     color: white;
+  }
+
+  .pdf-gemeinde-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    font-style: italic;
   }
 </style>

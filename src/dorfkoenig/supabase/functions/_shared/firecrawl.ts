@@ -11,6 +11,10 @@ interface ScrapeOptions {
   timeout?: number;
   waitFor?: number;
   changeTrackingTag?: string;
+  /** Fire-PDF parsing mode. `auto` = text-first with OCR fallback (default, ~400ms/page),
+   *  `fast` = text-only (milliseconds/page, skips scanned pages),
+   *  `ocr` = force vision model on every page. */
+  pdfMode?: 'auto' | 'fast' | 'ocr';
 }
 
 interface ScrapeResponse {
@@ -49,6 +53,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
     formats = ['markdown'],
     timeout = 60000,
     changeTrackingTag,
+    pdfMode,
   } = options;
 
   try {
@@ -65,6 +70,12 @@ export async function scrape(options: ScrapeOptions): Promise<{
       url,
       formats: resolvedFormats,
     };
+
+    // Fire-PDF explicit mode. Firecrawl only applies `parsers` when the content is a PDF,
+    // so this is safe to send for non-PDF URLs too (ignored).
+    if (pdfMode) {
+      body.parsers = [{ type: 'pdf', mode: pdfMode }];
+    }
 
     const response = await fetch(`${FIRECRAWL_BASE_URL}/scrape`, {
       method: 'POST',

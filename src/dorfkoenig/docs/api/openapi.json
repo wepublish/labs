@@ -1,0 +1,297 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Dorfkönig News API",
+    "version": "1.0.0",
+    "description": "Public, read-only endpoint for fetching confirmed Bajour village newsletter drafts.\n\nReturns drafts grouped by village within a configurable date range, for CMS and newsletter-platform integration (WePublish overview, Mailchimp, etc.).\n\nSee the prose documentation at [`../news-api.md`](../news-api.md) for lifecycle, verification workflow, and usage examples.",
+    "contact": {
+      "name": "Dorfkönig",
+      "url": "https://wepublish.github.io/labs/dorfkoenig/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://ayksajwtwyjhvpqngvcb.supabase.co/functions/v1",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    { "newsApiKeyQuery": [] },
+    { "newsApiBearer": [] }
+  ],
+  "paths": {
+    "/news": {
+      "get": {
+        "summary": "Fetch confirmed village newsletter drafts",
+        "description": "Returns all 10 Basel-area villages as keys. Villages without confirmed drafts in the requested date range return an empty array. Only drafts with `verification_status = 'bestätigt'` are included. Results sorted by `publication_date` descending.",
+        "operationId": "getNews",
+        "tags": ["News"],
+        "parameters": [
+          {
+            "name": "auth",
+            "in": "query",
+            "description": "Shared secret token. Alternative to the `Authorization: Bearer` header. Not required if the header is set.\n\n**Security note:** query-param auth lands in upstream access logs. Prefer the `Authorization` header in production.",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "e113ffabd16d920907f8584c35fb1620dba385b1d0968fa2ce4d104b290c1b87"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Center date for the range query (UTC). Defaults to today.",
+            "required": false,
+            "schema": { "type": "string", "format": "date" },
+            "example": "2026-04-15"
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "description": "Symmetric range in days around `date`. The response includes drafts with `publication_date` between `date - range` and `date + range` inclusive. Values above 30 are silently clamped to 30; negative values are clamped to 0.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 30,
+              "default": 3
+            },
+            "example": 7
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Drafts grouped by village. All 10 villages are always present as keys.",
+            "headers": {
+              "Cache-Control": {
+                "description": "5-minute public cache.",
+                "schema": { "type": "string", "example": "public, max-age=300" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "CORS — wildcard.",
+                "schema": { "type": "string", "example": "*" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NewsResponse" },
+                "example": {
+                  "data": {
+                    "aesch": [],
+                    "allschwil": [
+                      {
+                        "publication_date": "2026-04-14",
+                        "draft": "## Wochenrückblick\nDie Gemeindeversammlung hat beschlossen...",
+                        "items": [
+                          "Die Gemeindeversammlung hat den Budget-Antrag abgelehnt."
+                        ]
+                      }
+                    ],
+                    "arlesheim": [],
+                    "binningen": [],
+                    "bottmingen": [],
+                    "muenchenstein": [],
+                    "muttenz": [],
+                    "pratteln": [],
+                    "reinach": [],
+                    "riehen": [
+                      {
+                        "publication_date": "2026-04-15",
+                        "draft": "## Gemeinderat\nDer Gemeinderat hat den Neubau genehmigt...",
+                        "items": [
+                          "Der Gemeinderat hat den Neubau am Bahnhof genehmigt.",
+                          "Die Hauptstrasse wird nächste Woche gesperrt."
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`VALIDATION_ERROR` — the `date` parameter is not a valid `YYYY-MM-DD` date.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "message": "Ungültiges Datum (YYYY-MM-DD erwartet)",
+                    "code": "VALIDATION_ERROR"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHORIZED` — missing token or token does not match the configured shared secret.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "message": "Ungültiger API-Token",
+                    "code": "UNAUTHORIZED"
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed — only `GET` is supported. Note: the function uses the shared `errorResponse()` helper, whose default code mapping falls through to `INTERNAL_ERROR` for status 405.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "message": "Methode nicht erlaubt",
+                    "code": "INTERNAL_ERROR"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`INTERNAL_ERROR` — server misconfiguration (`NEWS_API_TOKEN` unset) or database error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "configError": {
+                    "summary": "NEWS_API_TOKEN not configured",
+                    "value": {
+                      "error": {
+                        "message": "Server-Konfigurationsfehler",
+                        "code": "INTERNAL_ERROR"
+                      }
+                    }
+                  },
+                  "dbError": {
+                    "summary": "Database query failed",
+                    "value": {
+                      "error": {
+                        "message": "Datenbankfehler",
+                        "code": "INTERNAL_ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "description": "Returns CORS headers. Always allowed from any origin.",
+        "operationId": "newsPreflight",
+        "tags": ["News"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "CORS headers.",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": { "type": "string", "example": "*" }
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": { "type": "string", "example": "GET, POST, PUT, PATCH, DELETE, OPTIONS" }
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": { "type": "string", "example": "authorization, x-user-id, content-type, x-client-info, apikey" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "newsApiKeyQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "auth",
+        "description": "Shared secret passed as a query parameter. Convenient for browsers and static consumers, but leaks to access logs. Prefer `newsApiBearer` in production."
+      },
+      "newsApiBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Shared secret passed as `Authorization: Bearer <token>`. Recommended for server-to-server callers."
+      }
+    },
+    "schemas": {
+      "Draft": {
+        "type": "object",
+        "description": "A single confirmed village newsletter draft.",
+        "required": ["publication_date", "draft", "items"],
+        "properties": {
+          "publication_date": {
+            "type": "string",
+            "format": "date",
+            "description": "The date the draft is intended for (`YYYY-MM-DD`).",
+            "example": "2026-04-15"
+          },
+          "draft": {
+            "type": "string",
+            "description": "Newsletter body in Markdown. Contains headings, paragraphs, and source citations.",
+            "example": "## Gemeinderat\nDer Gemeinderat hat den Neubau genehmigt..."
+          },
+          "items": {
+            "type": "array",
+            "description": "Individual verified statements (information units) used to generate the draft.",
+            "items": { "type": "string" },
+            "example": [
+              "Der Gemeinderat hat den Neubau am Bahnhof genehmigt.",
+              "Die Hauptstrasse wird nächste Woche gesperrt."
+            ]
+          }
+        }
+      },
+      "VillageDrafts": {
+        "type": "array",
+        "description": "Confirmed drafts for a single village, sorted by `publication_date` descending.",
+        "items": { "$ref": "#/components/schemas/Draft" }
+      },
+      "NewsResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "Map of village ID → array of drafts. All 10 currently-covered villages appear as keys, with `[]` when no confirmed drafts fall in the range. The map is **open** — village IDs are iterated from the backend's canonical list, so new villages can be added without a spec bump. Current IDs: `aesch`, `allschwil`, `arlesheim`, `binningen`, `bottmingen`, `muenchenstein`, `muttenz`, `pratteln`, `reinach`, `riehen`.",
+            "additionalProperties": { "$ref": "#/components/schemas/VillageDrafts" }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Error envelope returned by the function itself. Note that the Supabase platform router emits a different flat shape (`{code, message}`) for router-level 404s; that is not produced by this function and is not part of this contract.",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["message", "code"],
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "Human-readable message, in German.",
+                "example": "Ungültiger API-Token"
+              },
+              "code": {
+                "type": "string",
+                "description": "Machine-readable error code.",
+                "enum": ["UNAUTHORIZED", "VALIDATION_ERROR", "NOT_FOUND", "INTERNAL_ERROR"],
+                "example": "UNAUTHORIZED"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "News",
+      "description": "Public newsletter draft retrieval."
+    }
+  ]
+}
