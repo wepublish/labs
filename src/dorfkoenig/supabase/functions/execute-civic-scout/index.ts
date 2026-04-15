@@ -210,11 +210,16 @@ Deno.serve(async (req) => {
       await shortDelay();
       const docUrl = batch[i];
 
+      // Council-minutes PDFs are always InDesign/PDF-export with embedded text,
+      // so force `fast` mode to skip Fire-PDF's OCR mis-classification (same
+      // rationale as process-newspaper). If a URL turns out to be a scanned
+      // document we'll just get minimal text and log zero units — acceptable.
       console.log(`[${executionId}] Parsing document: ${docUrl}`);
       const scrapeResult = await firecrawl.scrape({
         url: docUrl,
         formats: ['markdown'],
         timeout: 60000,
+        pdfMode: 'fast',
       });
 
       if (!scrapeResult.success || !scrapeResult.markdown) {

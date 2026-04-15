@@ -91,13 +91,19 @@ Deno.serve(async (req) => {
       throw new Error(`Signed URL failed: ${signedUrlError?.message || 'unknown'}`);
     }
 
-    // ── Step 2: Firecrawl parse (Fire-PDF runs automatically on PDF URLs) ──
+    // ── Step 2: Firecrawl parse (Fire-PDF `fast` = pure text extraction) ──
+    // Default `auto` mis-classifies InDesign-export newspapers as needing OCR,
+    // then the vision model hallucinates (wrong dates, gibberish, looped phrases).
+    // Benchmark 2026-04-15 on Riehener Zeitung: fast 41 section markers vs auto 4,
+    // zero hallucinations vs 6. Newspapers always have embedded text so OCR is
+    // unnecessary.
     await updateJob(supabase, jobId, { stage: 'parsing_pdf' });
-    console.log(`[process-newspaper] Parsing PDF via Firecrawl...`);
+    console.log(`[process-newspaper] Parsing PDF via Firecrawl (fast mode)...`);
     const scrapeResult = await firecrawl.scrape({
       url: signedUrlData.signedUrl,
       formats: ['markdown'],
       timeout: FIRECRAWL_TIMEOUT,
+      pdfMode: 'fast',
     });
 
     if (!scrapeResult.success || !scrapeResult.markdown) {
