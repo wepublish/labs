@@ -268,10 +268,22 @@ Deno.serve(async (req) => {
 
 // ── Helpers ───────────────────────────────────────────────────
 
+interface NewspaperJobUpdate {
+  status?: 'processing' | 'review_pending' | 'completed' | 'failed' | 'cancelled' | 'storing';
+  stage?: 'parsing_pdf' | 'chunking' | 'extracting' | 'storing';
+  error_message?: string;
+  chunks_total?: number;
+  chunks_processed?: number;
+  units_created?: number;
+  skipped_items?: string[];
+  extracted_units?: unknown[];
+  completed_at?: string;
+}
+
 async function updateJob(
   supabase: ReturnType<typeof createServiceClient>,
   jobId: string,
-  updates: Record<string, unknown>,
+  updates: NewspaperJobUpdate,
 ): Promise<void> {
   const { error } = await supabase
     .from('newspaper_jobs')

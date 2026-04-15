@@ -6,7 +6,7 @@
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
-import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
+import { createServiceClient, requireUserId, type Location } from '../_shared/supabase-client.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { DEFAULT_UNITS_PAGE_SIZE, DEFAULT_SEARCH_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_PAGE_SIZE, SEARCH_MIN_SIMILARITY } from '../_shared/constants.ts';
 
@@ -112,20 +112,23 @@ async function listUnits(
     return errorResponse('Fehler beim Laden der Einheiten', 500);
   }
 
-  // Generate signed URLs for units with file_path
-  if (data) {
-    for (const unit of data) {
-      if (unit.file_path) {
-        const { data: signedUrl } = await supabase.storage
-          .from('uploads')
-          .createSignedUrl(unit.file_path, 3600);
-        (unit as Record<string, unknown>).file_url = signedUrl?.signedUrl || null;
-      }
+  // Generate signed URLs for units with file_path (derived per-response field;
+  // not stored on the row, added to the output payload).
+  const rows = data ?? [];
+  const enriched: Array<(typeof rows)[number] & { file_url?: string | null }> = [];
+  for (const unit of rows) {
+    if (unit.file_path) {
+      const { data: signedUrl } = await supabase.storage
+        .from('uploads')
+        .createSignedUrl(unit.file_path, 3600);
+      enriched.push({ ...unit, file_url: signedUrl?.signedUrl || null });
+    } else {
+      enriched.push(unit);
     }
   }
 
   return jsonResponse({
-    data,
+    data: enriched,
     meta: {
       total: count || 0,
       limit,
@@ -153,7 +156,7 @@ async function getLocations(
   }
 
   // Aggregate locations client-side
-  const locationCounts = new Map<string, { location: Record<string, unknown>; count: number }>();
+  const locationCounts = new Map<string, { location: Location; count: number }>();
 
   for (const row of data || []) {
     if (row.location?.city) {

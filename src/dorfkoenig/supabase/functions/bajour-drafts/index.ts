@@ -127,7 +127,17 @@ async function updateDraft(
   const body = await req.json();
 
   // Build update object with only provided fields
-  const updates: Record<string, unknown> = {};
+  const updates: {
+    title?: string | null;
+    body?: string;
+    village_id?: string;
+    village_name?: string;
+    selected_unit_ids?: string[];
+    custom_system_prompt?: string | null;
+    publication_date?: string;
+    verification_status?: 'ausstehend' | 'bestätigt' | 'abgelehnt';
+    verification_resolved_at?: string;
+  } = {};
 
   if (body.title !== undefined) updates.title = body.title?.trim() || null;
   if (body.body !== undefined) updates.body = body.body.trim();
