@@ -601,7 +601,11 @@
     border: 1px solid var(--color-border);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     max-height: 90vh;
-    overflow-y: auto;
+    /* Flex column so the review list scrolls inside a fixed-height panel
+       while header and footer stay pinned. Matters for PDFs with 40+ units. */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .modal-header {
@@ -610,11 +614,10 @@
     justify-content: space-between;
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
-    position: sticky;
-    top: 0;
     background: var(--color-surface, white);
     z-index: 1;
     border-radius: var(--radius-lg, 1rem) var(--radius-lg, 1rem) 0 0;
+    flex: 0 0 auto;
   }
 
   .modal-header-left {
@@ -672,6 +675,7 @@
     padding: 0.75rem 1.5rem;
     gap: 0.375rem;
     border-bottom: 1px solid var(--color-border);
+    flex: 0 0 auto;
   }
 
   .tab {
@@ -706,6 +710,9 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    flex: 1 1 auto;
+    overflow: hidden;
+    min-height: 0;
   }
 
   /* Footer */
@@ -717,6 +724,7 @@
     border-top: 1px solid var(--color-border);
     background: var(--color-surface);
     border-radius: 0 0 var(--radius-lg, 1rem) var(--radius-lg, 1rem);
+    flex: 0 0 auto;
   }
 
   /* Form elements */

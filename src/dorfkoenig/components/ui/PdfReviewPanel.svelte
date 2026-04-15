@@ -95,7 +95,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    max-height: 60vh;
+    /* Inherit height from parent .modal-body flex chain — list scrolls inside,
+       header and bulk-toggle row stay pinned. Works for 5 units or 50. */
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -151,7 +154,8 @@
     flex-direction: column;
     gap: 0.375rem;
     overflow-y: auto;
-    max-height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
     padding-right: 0.25rem;
   }
 
