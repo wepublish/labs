@@ -25,9 +25,6 @@ function createBajourDraftsStore() {
   return {
     subscribe,
 
-    /**
-     * Load all Bajour drafts for current user
-     */
     async load() {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
@@ -38,9 +35,6 @@ function createBajourDraftsStore() {
       }
     },
 
-    /**
-     * Create a new Bajour draft
-     */
     async create(data: {
       village_id: string;
       village_name: string;
@@ -55,9 +49,6 @@ function createBajourDraftsStore() {
       return draft;
     },
 
-    /**
-     * Delete a draft
-     */
     async delete(draftId: string) {
       await bajourApi.deleteDraft(draftId);
       update((s) => ({
@@ -66,18 +57,13 @@ function createBajourDraftsStore() {
       }));
     },
 
-    /**
-     * Send verification for a draft
-     */
     async sendVerification(draftId: string): Promise<{ sent_count: number }> {
       const result = await bajourApi.sendVerification(draftId);
       await this.load();
       return result;
     },
 
-    /**
-     * Update verification status of a draft (manual override)
-     */
+    /** Manual override of verification_status. */
     async updateVerificationStatus(draftId: string, status: VerificationStatus): Promise<BajourDraft> {
       const updated = await bajourApi.updateDraft(draftId, { verification_status: status });
       update((s) => ({
@@ -87,9 +73,7 @@ function createBajourDraftsStore() {
       return updated;
     },
 
-    /**
-     * Start polling for verification status updates (every 30s)
-     */
+    /** Poll verification status every POLL_INTERVAL_MS; auto-stops when no drafts remain ausstehend. */
     startPolling() {
       this.stopPolling();
       pollInterval = setInterval(async () => {
@@ -105,9 +89,6 @@ function createBajourDraftsStore() {
       }, POLL_INTERVAL_MS);
     },
 
-    /**
-     * Stop polling
-     */
     stopPolling() {
       if (pollInterval) {
         clearInterval(pollInterval);
@@ -115,9 +96,6 @@ function createBajourDraftsStore() {
       }
     },
 
-    /**
-     * Clear error
-     */
     clearError() {
       update((s) => ({ ...s, error: null }));
     },

@@ -62,9 +62,6 @@ export function initAuth(urlToken?: string | null, inIframe: boolean = false) {
   sharedAuth.setError('Nicht authentifiziert. Bitte mit gültigem Token zugreifen.');
 }
 
-/**
- * Login with mock user ID
- */
 export function login(userId: string) {
   const trimmedId = userId.trim();
   if (!trimmedId) {
@@ -80,9 +77,6 @@ export function login(userId: string) {
   });
 }
 
-/**
- * Logout - clear session
- */
 export function logout() {
   localStorage.removeItem('dev_user_id');
   sharedAuth.clear();
@@ -97,16 +91,10 @@ export function getUserId(): string | null {
   return state.user?.id ?? null;
 }
 
-/**
- * Get current user
- */
 export function getUser() {
   return get(sharedAuth).user;
 }
 
-/**
- * Check if user is authenticated
- */
 export function isAuthenticated(): boolean {
   const state = get(sharedAuth);
   return !state.loading && state.user !== null;
