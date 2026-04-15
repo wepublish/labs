@@ -59,16 +59,14 @@ export const bajourApi = {
   /** Delete a draft. */
   deleteDraft: (draftId: string) => api.delete(`bajour-drafts/${draftId}`),
 
-  /** LLM-powered selection of relevant units for a village newsletter. */
-  selectUnits: (data: { village_id: string; scout_id: string; recency_days?: number; selection_prompt?: string }) =>
+  /** LLM-powered selection of relevant units for a village newsletter.
+   *  `selection_hint` is a per-run free-text hint prepended to the user message. */
+  selectUnits: (data: { village_id: string; scout_id: string; recency_days?: number; selection_hint?: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
 
   /** Send draft to village correspondents via WhatsApp for verification. */
   sendVerification: (draftId: string) =>
     api.post<{ sent_count: number }>('bajour-send-verification', { draft_id: draftId }),
-
-  /** Fetch the current INFORMATION_SELECT_PROMPT template from the backend. */
-  getSelectPrompt: () => api.get<{ prompt: string }>('bajour-select-units'),
 
   /**
    * Fetch a single draft via an HMAC-signed admin link (no user session required).

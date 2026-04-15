@@ -1,7 +1,9 @@
 /**
  * @module bajour-select-units
  * AI-powered selection of relevant information units for a village newsletter.
+ *
  * POST: uses LLM with recency bias to pick the most relevant units for a given village.
+ * GET/PUT/DELETE: manage the per-user override of INFORMATION_SELECT_PROMPT stored in user_prompts.
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -13,11 +15,40 @@ interface SelectUnitsRequest {
   village_id: string;
   scout_id: string;
   recency_days?: number;
-  selection_prompt?: string;
+  /**
+   * Per-run hint from the user (free text, e.g. "Bevorzuge kulturelle Veranstaltungen").
+   * Prepended to the user message — does NOT replace the system prompt template.
+   */
+  selection_hint?: string;
+}
+
+const PROMPT_KEY = 'information_select';
+const MIN_LEN = 20;
+const MAX_LEN = 8000;
+
+async function loadPromptOverride(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('user_prompts')
+    .select('content')
+    .eq('user_id', userId)
+    .eq('prompt_key', PROMPT_KEY)
+    .maybeSingle();
+  return data?.content ?? null;
+}
+
+function validatePrompt(content: unknown): string | null {
+  if (typeof content !== 'string') return 'content muss ein String sein';
+  if (content.length < MIN_LEN) return `Prompt zu kurz (min. ${MIN_LEN} Zeichen)`;
+  if (content.length > MAX_LEN) return `Prompt zu lang (max. ${MAX_LEN} Zeichen)`;
+  if (!content.includes('{{currentDate}}')) return 'Platzhalter {{currentDate}} fehlt';
+  if (!content.includes('{{recencyInstruction}}')) return 'Platzhalter {{recencyInstruction}} fehlt';
+  return null;
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
@@ -25,8 +56,41 @@ Deno.serve(async (req) => {
     const userId = requireUserId(req);
     const supabase = createServiceClient();
 
-    // GET: return the current selection prompt template (for UI display)
+    // GET: return the effective prompt (override or default) for UI display
     if (req.method === 'GET') {
+      const override = await loadPromptOverride(supabase, userId);
+      return jsonResponse({ data: { prompt: override ?? INFORMATION_SELECT_PROMPT } });
+    }
+
+    // PUT: save user's prompt override
+    if (req.method === 'PUT') {
+      const { content } = await req.json() as { content?: unknown };
+      const error = validatePrompt(content);
+      if (error) return errorResponse(error, 400, 'VALIDATION_ERROR');
+
+      const { error: upsertError } = await supabase
+        .from('user_prompts')
+        .upsert({ user_id: userId, prompt_key: PROMPT_KEY, content: content as string, updated_at: new Date().toISOString() });
+
+      if (upsertError) {
+        console.error('user_prompts upsert error:', upsertError);
+        return errorResponse('Fehler beim Speichern des Prompts', 500);
+      }
+      return jsonResponse({ data: { prompt: content } });
+    }
+
+    // DELETE: reset to hardcoded default
+    if (req.method === 'DELETE') {
+      const { error: deleteError } = await supabase
+        .from('user_prompts')
+        .delete()
+        .eq('user_id', userId)
+        .eq('prompt_key', PROMPT_KEY);
+
+      if (deleteError) {
+        console.error('user_prompts delete error:', deleteError);
+        return errorResponse('Fehler beim Zurücksetzen des Prompts', 500);
+      }
       return jsonResponse({ data: { prompt: INFORMATION_SELECT_PROMPT } });
     }
 
@@ -35,8 +99,9 @@ Deno.serve(async (req) => {
     }
 
     const body: SelectUnitsRequest = await req.json();
-    const { village_id, scout_id, recency_days, selection_prompt } = body;
+    const { village_id, scout_id, recency_days, selection_hint } = body;
     const recencyDays = recency_days ?? null;
+    const hint = selection_hint?.trim();
 
     // Validate input
     if (!village_id || typeof village_id !== 'string') {
@@ -81,14 +146,18 @@ Deno.serve(async (req) => {
 
     const currentDate = new Date().toISOString().split('T')[0];
 
-    // Call LLM for selection
+    // System prompt template: DB override > hardcoded default. The per-run user `hint`
+    // is appended to the user message below, NOT injected into the system prompt.
+    const template = (await loadPromptOverride(supabase, userId)) ?? INFORMATION_SELECT_PROMPT;
+
+    const userMessage = hint
+      ? `Zusätzlicher Hinweis vom Redakteur für diese Auswahl: ${hint}\n\nHier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus. Berücksichtige den Hinweis oben.`
+      : `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`;
+
     const response = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildInformationSelectPrompt(currentDate, recencyDays, selection_prompt) },
-        {
-          role: 'user',
-          content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`,
-        },
+        { role: 'system', content: buildInformationSelectPrompt(currentDate, recencyDays, template) },
+        { role: 'user', content: userMessage },
       ],
       temperature: 0.2,
       max_tokens: 1000,

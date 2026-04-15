@@ -1,8 +1,13 @@
 /**
  * @module compose
  * Article draft generation from selected information units.
- * POST: generates a structured draft using a 3-layer German SMART BREVITY prompt
- * with optional Firecrawl source enrichment and custom system prompt.
+ *
+ * POST /compose/generate: generates a structured draft using a 3-layer German SMART BREVITY prompt
+ *   with optional Firecrawl source enrichment and custom system prompt.
+ * GET/PUT/DELETE /compose/prompt: manage the per-user override of DRAFT_COMPOSE_PROMPT (Layer 2)
+ *   stored in user_prompts.
+ * GET/PUT/DELETE /compose/max-units: manage the per-user cap on units per draft,
+ *   stored in user_settings.
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
@@ -18,6 +23,43 @@ interface GenerateRequest {
   max_words?: number;
   include_sources?: boolean;
   custom_system_prompt?: string;
+}
+
+const PROMPT_KEY = 'draft_compose_layer2';
+const MAX_UNITS_KEY = 'max_units_per_compose';
+const MIN_LEN = 20;
+const MAX_LEN = 8000;
+
+// Hard bounds on the user-configurable max_units_per_compose setting.
+// Lower bound keeps drafts minimally useful; upper bound keeps us under OpenRouter context limits.
+const MAX_UNITS_MIN = 3;
+const MAX_UNITS_MAX = 50;
+
+async function loadLayer2Override(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('user_prompts')
+    .select('content')
+    .eq('user_id', userId)
+    .eq('prompt_key', PROMPT_KEY)
+    .maybeSingle();
+  return data?.content ?? null;
+}
+
+async function loadMaxUnits(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from('user_settings')
+    .select('value')
+    .eq('user_id', userId)
+    .eq('key', MAX_UNITS_KEY)
+    .maybeSingle();
+  const raw = data?.value;
+  return typeof raw === 'number' && Number.isInteger(raw) ? raw : MAX_UNITS_PER_COMPOSE;
 }
 
 // --- SSRF protection ---
@@ -127,6 +169,89 @@ Deno.serve(async (req) => {
     // pathParts: ['compose', '{endpoint}']
     const endpoint = pathParts.length > 1 ? pathParts[1] : null;
 
+    // /compose/max-units — manage per-user unit cap
+    if (endpoint === 'max-units') {
+      if (req.method === 'GET') {
+        const value = await loadMaxUnits(supabase, userId);
+        return jsonResponse({ data: { value } });
+      }
+      if (req.method === 'PUT') {
+        const { value } = await req.json() as { value?: unknown };
+        if (typeof value !== 'number' || !Number.isInteger(value)) {
+          return errorResponse('value muss eine ganze Zahl sein', 400, 'VALIDATION_ERROR');
+        }
+        if (value < MAX_UNITS_MIN || value > MAX_UNITS_MAX) {
+          return errorResponse(
+            `Wert muss zwischen ${MAX_UNITS_MIN} und ${MAX_UNITS_MAX} liegen`,
+            400,
+            'VALIDATION_ERROR',
+          );
+        }
+        const { error: upsertError } = await supabase
+          .from('user_settings')
+          .upsert({ user_id: userId, key: MAX_UNITS_KEY, value, updated_at: new Date().toISOString() });
+        if (upsertError) {
+          console.error('user_settings upsert error:', upsertError);
+          return errorResponse('Fehler beim Speichern der Einstellung', 500);
+        }
+        return jsonResponse({ data: { value } });
+      }
+      if (req.method === 'DELETE') {
+        const { error: deleteError } = await supabase
+          .from('user_settings')
+          .delete()
+          .eq('user_id', userId)
+          .eq('key', MAX_UNITS_KEY);
+        if (deleteError) {
+          console.error('user_settings delete error:', deleteError);
+          return errorResponse('Fehler beim Zurücksetzen der Einstellung', 500);
+        }
+        return jsonResponse({ data: { value: MAX_UNITS_PER_COMPOSE } });
+      }
+      return errorResponse('Methode nicht erlaubt', 405);
+    }
+
+    // /compose/prompt — manage Layer 2 override
+    if (endpoint === 'prompt') {
+      if (req.method === 'GET') {
+        const override = await loadLayer2Override(supabase, userId);
+        return jsonResponse({ data: { prompt: override ?? DRAFT_COMPOSE_PROMPT } });
+      }
+      if (req.method === 'PUT') {
+        const { content } = await req.json() as { content?: unknown };
+        if (typeof content !== 'string') {
+          return errorResponse('content muss ein String sein', 400, 'VALIDATION_ERROR');
+        }
+        if (content.length < MIN_LEN) {
+          return errorResponse(`Prompt zu kurz (min. ${MIN_LEN} Zeichen)`, 400, 'VALIDATION_ERROR');
+        }
+        if (content.length > MAX_LEN) {
+          return errorResponse(`Prompt zu lang (max. ${MAX_LEN} Zeichen)`, 400, 'VALIDATION_ERROR');
+        }
+        const { error: upsertError } = await supabase
+          .from('user_prompts')
+          .upsert({ user_id: userId, prompt_key: PROMPT_KEY, content, updated_at: new Date().toISOString() });
+        if (upsertError) {
+          console.error('user_prompts upsert error:', upsertError);
+          return errorResponse('Fehler beim Speichern des Prompts', 500);
+        }
+        return jsonResponse({ data: { prompt: content } });
+      }
+      if (req.method === 'DELETE') {
+        const { error: deleteError } = await supabase
+          .from('user_prompts')
+          .delete()
+          .eq('user_id', userId)
+          .eq('prompt_key', PROMPT_KEY);
+        if (deleteError) {
+          console.error('user_prompts delete error:', deleteError);
+          return errorResponse('Fehler beim Zurücksetzen des Prompts', 500);
+        }
+        return jsonResponse({ data: { prompt: DRAFT_COMPOSE_PROMPT } });
+      }
+      return errorResponse('Methode nicht erlaubt', 405);
+    }
+
     if (req.method !== 'POST') {
       return errorResponse('Methode nicht erlaubt', 405);
     }
@@ -162,8 +287,9 @@ async function generateDraft(
   if (!Array.isArray(unit_ids) || unit_ids.length === 0) {
     return errorResponse('unit_ids Array erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (unit_ids.length > MAX_UNITS_PER_COMPOSE) {
-    return errorResponse('Maximal 20 Einheiten erlaubt', 400, 'VALIDATION_ERROR');
+  const maxUnits = await loadMaxUnits(supabase, userId);
+  if (unit_ids.length > maxUnits) {
+    return errorResponse(`Maximal ${maxUnits} Einheiten erlaubt`, 400, 'VALIDATION_ERROR');
   }
 
   // Fetch units
@@ -207,8 +333,10 @@ async function generateDraft(
 
   // --- Build 3-layer system prompt ---
 
-  // Layer 2: use custom prompt if provided, otherwise default guidelines
-  const layer2 = custom_system_prompt || LAYER_2_DEFAULT_GUIDELINES;
+  // Layer 2 fallback: per-request override > user's saved DB override > hardcoded default
+  const layer2 = custom_system_prompt
+    ?? (await loadLayer2Override(supabase, userId))
+    ?? LAYER_2_DEFAULT_GUIDELINES;
 
   const systemPrompt = `${LAYER_1_GROUNDING}
 

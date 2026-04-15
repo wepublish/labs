@@ -97,7 +97,7 @@ export const api = {
   /**
    * DELETE request
    */
-  delete: (endpoint: string) => request<void>(endpoint, { method: 'DELETE' }),
+  delete: <T = void>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 
 // Type-safe API helpers
@@ -201,6 +201,21 @@ export const composeApi = {
     include_sources?: boolean;
     custom_system_prompt?: string;
   }) => api.post<import('./types').Draft>('compose/generate', params),
+};
+
+export const settingsApi = {
+  getSelectPrompt: () => api.get<{ prompt: string }>('bajour-select-units'),
+  putSelectPrompt: (content: string) =>
+    api.put<{ prompt: string }>('bajour-select-units', { content }),
+  resetSelectPrompt: () => api.delete<{ prompt: string }>('bajour-select-units'),
+  getComposePrompt: () => api.get<{ prompt: string }>('compose/prompt'),
+  putComposePrompt: (content: string) =>
+    api.put<{ prompt: string }>('compose/prompt', { content }),
+  resetComposePrompt: () => api.delete<{ prompt: string }>('compose/prompt'),
+  getMaxUnits: () => api.get<{ value: number }>('compose/max-units'),
+  putMaxUnits: (value: number) =>
+    api.put<{ value: number }>('compose/max-units', { value }),
+  resetMaxUnits: () => api.delete<{ value: number }>('compose/max-units'),
 };
 
 export const civicApi = {

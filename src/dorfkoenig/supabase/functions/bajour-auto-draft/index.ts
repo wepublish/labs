@@ -9,7 +9,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
+import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
 import { getCorrespondentsForVillage } from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 
@@ -111,16 +111,37 @@ Deno.serve(async (req) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RECENCY_DAYS);
 
-    const { data: units, error: unitsError } = await supabase
-      .from('information_units')
-      .select('id, statement, unit_type, event_date, created_at')
-      .eq('scout_id', scout_id)
-      .eq('user_id', user_id)
-      .eq('used_in_article', false)
-      .gte('created_at', cutoffDate.toISOString())
-      .order('event_date', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .limit(100);
+    // Kick off per-user override queries in parallel with the units query (both land in the
+    // single `await Promise.all` below, so an early return can't leak a pending promise).
+    const [
+      { data: units, error: unitsError },
+      { data: selectRow },
+      { data: composeRow },
+      { data: maxUnitsRow },
+    ] = await Promise.all([
+      supabase
+        .from('information_units')
+        .select('id, statement, unit_type, event_date, created_at')
+        .eq('scout_id', scout_id)
+        .eq('user_id', user_id)
+        .eq('used_in_article', false)
+        .gte('created_at', cutoffDate.toISOString())
+        .order('event_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase.from('user_prompts').select('content')
+        .eq('user_id', user_id).eq('prompt_key', 'information_select').maybeSingle(),
+      supabase.from('user_prompts').select('content')
+        .eq('user_id', user_id).eq('prompt_key', 'draft_compose_layer2').maybeSingle(),
+      supabase.from('user_settings').select('value')
+        .eq('user_id', user_id).eq('key', 'max_units_per_compose').maybeSingle(),
+    ]);
+
+    const selectTemplate = selectRow?.content ?? INFORMATION_SELECT_PROMPT;
+    const composeLayer2 = composeRow?.content ?? DRAFT_COMPOSE_PROMPT;
+    const maxUnits = typeof maxUnitsRow?.value === 'number' && Number.isInteger(maxUnitsRow.value)
+      ? maxUnitsRow.value
+      : MAX_UNITS_PER_COMPOSE;
 
     if (unitsError) throw new Error(`Unit query failed: ${unitsError.message}`);
 
@@ -140,7 +161,7 @@ Deno.serve(async (req) => {
     // Call LLM to select units
     const selectResponse = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildInformationSelectPrompt(today, RECENCY_DAYS) },
+        { role: 'system', content: buildInformationSelectPrompt(today, RECENCY_DAYS, selectTemplate) },
         { role: 'user', content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.` },
       ],
       temperature: 0.2,
@@ -158,14 +179,14 @@ Deno.serve(async (req) => {
       selectedIds = [];
     }
 
-    // Fallback: if empty, use first MAX_UNITS_PER_COMPOSE units
+    // Fallback: if empty, use first `maxUnits` units
     if (selectedIds.length === 0) {
-      selectedIds = units.slice(0, MAX_UNITS_PER_COMPOSE).map(u => u.id);
+      selectedIds = units.slice(0, maxUnits).map(u => u.id);
     }
 
-    // Cap at MAX_UNITS_PER_COMPOSE
-    if (selectedIds.length > MAX_UNITS_PER_COMPOSE) {
-      selectedIds = selectedIds.slice(0, MAX_UNITS_PER_COMPOSE);
+    // Cap at per-user `maxUnits`
+    if (selectedIds.length > maxUnits) {
+      selectedIds = selectedIds.slice(0, maxUnits);
     }
 
     // --- 4. Generate draft ---
@@ -200,7 +221,7 @@ Ausgabeformat (JSON):
   "sign_off": "Abschlussgruss"
 }`;
 
-    const systemPrompt = `${layer1}\n\n${DRAFT_COMPOSE_PROMPT}\n\n${layer3}`;
+    const systemPrompt = `${layer1}\n\n${composeLayer2}\n\n${layer3}`;
 
     const draftResponse = await openrouter.chat({
       messages: [

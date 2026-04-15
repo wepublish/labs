@@ -11,7 +11,6 @@
   import { composeApi } from '../../lib/api';
   import { bajourApi } from '../../bajour/api';
   import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
-  import { CUSTOM_PROMPT_TTL_MS } from '../../lib/constants';
 
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
@@ -63,17 +62,6 @@
     bajourDrafts.load().then(() => {
       bajourDrafts.startPolling();
     });
-    const stored = localStorage.getItem('dk_custom_draft_prompt');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.timestamp && Date.now() - parsed.timestamp < CUSTOM_PROMPT_TTL_MS) {
-          customPrompt = parsed.value;
-        } else {
-          localStorage.removeItem('dk_custom_draft_prompt');
-        }
-      } catch { /* ignore invalid data */ }
-    }
 
     // Admin email deep-link: ?draft=<id>&sig=<hex>&exp=<unix>
     const params = new URLSearchParams(window.location.search);
@@ -207,15 +195,6 @@
     selectedUnitIds = new Set();
   }
 
-  function handlePromptChange(prompt: string | null) {
-    customPrompt = prompt;
-    if (prompt) {
-      localStorage.setItem('dk_custom_draft_prompt', JSON.stringify({ value: prompt, timestamp: Date.now() }));
-    } else {
-      localStorage.removeItem('dk_custom_draft_prompt');
-    }
-  }
-
   async function handleDeleteSelected() {
     if (selectedUnitIds.size === 0) return;
     await units.markUsed(Array.from(selectedUnitIds));
@@ -253,7 +232,7 @@
     }
   }
 
-  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string, systemPromptOverride?: string) {
+  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
     showAISelectDropdown = false;
     retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
 
@@ -283,7 +262,7 @@
         village_id: village.id,
         scout_id: scoutId,
         ...(recencyDays !== null && { recency_days: recencyDays }),
-        selection_prompt: systemPromptOverride || selectionPrompt.trim() || undefined,
+        selection_hint: selectionPrompt.trim() || undefined,
       });
 
       const selectedIds = selectResult.selected_unit_ids;
@@ -320,7 +299,7 @@
     generating = true;
     error = '';
     aiPhase = 'generating';
-    handlePromptChange(regenPrompt);
+    customPrompt = regenPrompt;
     try {
       const result = await composeApi.generate({
         unit_ids: unitsUsedForDraft,
