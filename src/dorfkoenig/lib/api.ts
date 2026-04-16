@@ -160,6 +160,9 @@ export const manualUploadApi = {
   getJob: (jobId: string) =>
     api.get<import('./types').NewspaperJob>(`manual-upload?job=${encodeURIComponent(jobId)}`),
 
+  recentPdfs: (limit = 5) =>
+    api.get<import('./types').RecentPdfUpload[]>(`manual-upload?recent=${limit}`),
+
   finalizePdf: (jobId: string, selectedUids: string[]) =>
     api.post<{ units_created: number; already_finalized?: boolean }>('manual-upload', {
       content_type: 'pdf_finalize',

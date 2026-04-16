@@ -226,6 +226,16 @@ export interface NewspaperProcessingResult {
   storage_path: string;
 }
 
+/** Condensed `newspaper_jobs` row shown on the PDF upload tab so a journalist
+ *  can spot a re-upload of the same file before triggering another full parse. */
+export interface RecentPdfUpload {
+  id: string;
+  label: string | null;
+  created_at: string;
+  status: 'processing' | 'review_pending' | 'completed' | 'failed' | 'storing';
+  units_created: number;
+}
+
 export interface Draft {
   title: string;
   headline: string;

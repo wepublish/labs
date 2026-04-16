@@ -47,6 +47,22 @@ Deno.serve(async (req) => {
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const jobId = url.searchParams.get('job');
+      const recentParam = url.searchParams.get('recent');
+
+      // Recent uploads: the PDF tab shows these so a journalist can spot a
+      // re-upload of the same file before triggering another full parse.
+      if (recentParam !== null) {
+        const limit = Math.min(Math.max(parseInt(recentParam, 10) || 5, 1), 20);
+        const { data, error } = await supabase
+          .from('newspaper_jobs')
+          .select('id, label, created_at, status, units_created')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (error) return errorResponse('Upload-Historie nicht verfügbar', 500);
+        return jsonResponse({ data: data ?? [] });
+      }
+
       if (!jobId) return errorResponse('job parameter required', 400, 'VALIDATION_ERROR');
 
       const { data, error } = await supabase
@@ -611,13 +627,17 @@ async function handlePdfFinalize(
         const u = chosen[i];
         if (!u.location?.city) return { index: i, isDuplicate: false };
 
-        const { data: similar } = await supabase.rpc('search_units_semantic', {
-          user_id: userId,
-          embedding: unitEmbeddings[i],
-          location_city: u.location.city,
-          min_similarity: UNIT_DEDUP_THRESHOLD,
-          limit: 1,
+        const { data: similar, error: rpcErr } = await supabase.rpc('search_units_semantic', {
+          p_user_id: userId,
+          p_query_embedding: unitEmbeddings[i],
+          p_location_city: u.location.city,
+          p_min_similarity: UNIT_DEDUP_THRESHOLD,
+          p_limit: 1,
         });
+        if (rpcErr) {
+          console.warn(`[pdf_finalize] dedup rpc failed for unit ${u.uid}:`, rpcErr);
+          return { index: i, isDuplicate: false };
+        }
 
         return { index: i, isDuplicate: Array.isArray(similar) && similar.length > 0 };
       }),
@@ -655,7 +675,17 @@ async function handlePdfFinalize(
         .from('information_units')
         .insert(rows, { count: 'exact' });
 
-      if (insErr) throw insErr;
+      if (insErr) {
+        console.error('[pdf_finalize] insert rejected by postgres:', {
+          code: insErr.code,
+          message: insErr.message,
+          details: insErr.details,
+          hint: insErr.hint,
+          row_count: rows.length,
+          first_row_keys: Object.keys(rows[0] ?? {}),
+        });
+        throw insErr;
+      }
       storedCount = count ?? rows.length;
     }
 
@@ -671,7 +701,15 @@ async function handlePdfFinalize(
 
     return jsonResponse({ data: { units_created: storedCount } });
   } catch (error) {
-    console.error('[pdf_finalize] pipeline error:', error);
+    const e = error as { code?: string; message?: string; details?: string; hint?: string };
+    console.error('[pdf_finalize] pipeline error:', {
+      job_id: jobId,
+      selected_count: selectedUids.length,
+      code: e.code,
+      message: e.message ?? String(error),
+      details: e.details,
+      hint: e.hint,
+    });
     // Revert the 'storing' claim so the user can retry from the review panel.
     await supabase
       .from('newspaper_jobs')
