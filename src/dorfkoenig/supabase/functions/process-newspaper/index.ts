@@ -165,9 +165,12 @@ Deno.serve(async (req) => {
 
     // ── Step 7: Post-process ──
 
-    // 7a. Require eventDate. Resolve each unit's village through assignVillage
-    //     (or the legacy VILLAGE_ID_MAP filter on the rollback path).
-    const dated = allUnits.filter((u) => u.eventDate);
+    // 7a. Require eventDate in the present or future. Past-dated events are
+    //     noise for the forward-looking newsletter; drop them here. Resolve
+    //     each remaining unit's village through assignVillage (or the legacy
+    //     VILLAGE_ID_MAP filter on the rollback path).
+    const today = new Date().toISOString().slice(0, 10);
+    const dated = allUnits.filter((u) => u.eventDate && u.eventDate >= today);
     interface ResolvedUnit {
       unit: ExtractionUnit;
       villageId: string | null;

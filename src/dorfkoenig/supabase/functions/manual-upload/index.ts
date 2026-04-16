@@ -30,7 +30,7 @@ const MAGIC_BYTES: Record<string, { bytes: number[]; offset?: number; extraBytes
 
 // Rate limits per hour
 const RATE_LIMITS = { text: 20, file: 10 };
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -292,7 +292,7 @@ async function handleFileUploadRequest(
     return errorResponse('Ungültige Dateigrösse', 400, 'VALIDATION_ERROR');
   }
   if (fileSize > MAX_FILE_SIZE) {
-    return errorResponse('Datei darf maximal 50 MB gross sein', 400, 'VALIDATION_ERROR');
+    return errorResponse('Datei darf maximal 100 MB gross sein', 400, 'VALIDATION_ERROR');
   }
   if (!ALLOWED_MIME_TYPES.has(mimeType)) {
     return errorResponse('Nicht unterstützter Dateityp. Erlaubt: JPEG, PNG, WebP, PDF', 400, 'VALIDATION_ERROR');
@@ -368,8 +368,9 @@ async function handleFileConfirm(
     return errorResponse('Datei nicht gefunden. Bitte erneut hochladen.', 404, 'NOT_FOUND');
   }
 
-  // Validate magic bytes
-  const buffer = new Uint8Array(await fileData.arrayBuffer());
+  // Validate magic bytes — only the first 16 bytes are needed, so avoid
+  // loading a 100 MB file fully into the edge function's heap.
+  const buffer = new Uint8Array(await fileData.slice(0, 16).arrayBuffer());
   const expectedMimeTypes = isPhoto
     ? ['image/jpeg', 'image/png', 'image/webp']
     : ['application/pdf'];

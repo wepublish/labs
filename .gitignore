@@ -46,3 +46,6 @@ node_modules/.vite/
 
 # Supabase CLI temp files
 src/dorfkoenig/supabase/.temp/
+
+# Benchmark script output (may contain private content from source PDFs)
+scripts/out/

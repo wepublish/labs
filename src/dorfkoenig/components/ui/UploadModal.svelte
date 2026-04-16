@@ -167,7 +167,7 @@
   let uploadHint = $derived.by(() => {
     if (!processingJobId) return 'Dies kann einen Moment dauern';
     if (chunksTotal === 0) {
-      return 'Dies kann einen Moment dauern. Du kannst das Fenster schliessen — die Verarbeitung läuft im Hintergrund weiter.';
+      return 'Bitte Fenster offen lassen, bis die Verarbeitung abgeschlossen ist.';
     }
     const minsLeft = Math.max(1, Math.round((chunksTotal - chunksProcessed) * SECONDS_PER_CHUNK / 60));
     return `Abschnitt ${chunksProcessed} von ${chunksTotal} — ca. ${minsLeft} Min. verbleibend`;
