@@ -16,7 +16,6 @@ import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 interface AutoDraftRequest {
   village_id: string;
   village_name: string;
-  scout_id: string;
   user_id: string;
 }
 
@@ -40,10 +39,10 @@ Deno.serve(async (req) => {
 
   const supabase = createServiceClient();
   const body: AutoDraftRequest = await req.json();
-  const { village_id, village_name, scout_id, user_id } = body;
+  const { village_id, village_name, user_id } = body;
 
-  if (!village_id || !village_name || !scout_id || !user_id) {
-    return errorResponse('village_id, village_name, scout_id, user_id erforderlich', 400);
+  if (!village_id || !village_name || !user_id) {
+    return errorResponse('village_id, village_name, user_id erforderlich', 400);
   }
 
   const today = zurichToday();
@@ -94,7 +93,7 @@ Deno.serve(async (req) => {
       supabase
         .from('information_units')
         .select('id, statement, unit_type, event_date, created_at')
-        .eq('scout_id', scout_id)
+        .ilike('location->>city', village_name)
         .eq('user_id', user_id)
         .eq('used_in_article', false)
         .gte('created_at', cutoffDate.toISOString())
@@ -258,6 +257,15 @@ Ausgabeformat (JSON):
         for (const correspondent of correspondents) {
           const phoneWithPlus = '+' + correspondent.phone;
 
+          // Draft body first so it renders above the verification buttons in
+          // the WhatsApp chat (WhatsApp shows newest messages at the bottom).
+          const textResult = await sendWhatsAppMessage({
+            to: phoneWithPlus,
+            type: 'text',
+            text: { body: body_md.trim() },
+          });
+          allMessageIds.push(textResult.message_id);
+
           const templateResult = await sendWhatsAppMessage({
             to: phoneWithPlus,
             type: 'template',
@@ -270,13 +278,6 @@ Ausgabeformat (JSON):
             },
           });
           allMessageIds.push(templateResult.message_id);
-
-          const textResult = await sendWhatsAppMessage({
-            to: phoneWithPlus,
-            type: 'text',
-            text: { body: body_md.trim() },
-          });
-          allMessageIds.push(textResult.message_id);
         }
 
         // Update draft with verification metadata
