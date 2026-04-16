@@ -14,11 +14,12 @@ import { openrouter } from '../_shared/openrouter.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
 import {
   buildNewspaperExtractionPrompt,
-  preprocessMarkdown,
   chunkNewspaperMarkdown,
-  isLikelyJunkChunk,
+  classifyEventDate,
   type ExtractionResult,
   type ExtractionUnit,
+  isLikelyJunkChunk,
+  preprocessMarkdown,
 } from '../_shared/zeitung-extraction-prompt.ts';
 import { assignVillage } from '../_shared/village-assignment.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
@@ -133,7 +134,13 @@ Deno.serve(async (req) => {
     // ── Step 6: LLM extraction (parallel with concurrency limit) ──
     const { system, buildUserMessage } = buildNewspaperExtractionPrompt(VILLAGES, publicationDate);
 
-    const allUnits: ExtractionUnit[] = [];
+    // Keep the source chunk per unit so we can later classify whether the
+    // LLM's eventDate is actually anchored in the text it was given.
+    interface UnitWithSource {
+      unit: ExtractionUnit;
+      chunk: string;
+    }
+    const allUnits: UnitWithSource[] = [];
     const allSkipped: string[] = [];
 
     await processWithConcurrency(validChunks, async (chunk, index) => {
@@ -149,7 +156,9 @@ Deno.serve(async (req) => {
         });
 
         const result: ExtractionResult = JSON.parse(response.choices[0].message.content);
-        if (result.units) allUnits.push(...result.units);
+        if (result.units) {
+          for (const unit of result.units) allUnits.push({ unit, chunk });
+        }
         if (result.skipped) allSkipped.push(...result.skipped);
       } catch (err) {
         console.error(`[process-newspaper] Chunk ${index + 1} extraction failed:`, err);
@@ -170,9 +179,10 @@ Deno.serve(async (req) => {
     //     each remaining unit's village through assignVillage (or the legacy
     //     VILLAGE_ID_MAP filter on the rollback path).
     const today = new Date().toISOString().slice(0, 10);
-    const dated = allUnits.filter((u) => u.eventDate && u.eventDate >= today);
+    const dated = allUnits.filter((u) => u.unit.eventDate && u.unit.eventDate >= today);
     interface ResolvedUnit {
       unit: ExtractionUnit;
+      chunk: string;
       villageId: string | null;
       confidence: 'high' | 'medium' | 'low' | null;
       assignmentPath: string | null;
@@ -182,24 +192,26 @@ Deno.serve(async (req) => {
     let resolved: ResolvedUnit[];
     if (USE_LEGACY_VILLAGE_MAP) {
       resolved = dated
-        .filter((u) => u.village && VILLAGE_ID_MAP[u.village])
-        .map((u) => ({
-          unit: u,
-          villageId: VILLAGE_ID_MAP[u.village!],
+        .filter((w) => w.unit.village && VILLAGE_ID_MAP[w.unit.village])
+        .map((w) => ({
+          unit: w.unit,
+          chunk: w.chunk,
+          villageId: VILLAGE_ID_MAP[w.unit.village!],
           confidence: null,
           assignmentPath: null,
           reviewRequired: false,
         }));
     } else {
-      resolved = dated.map((u) => {
+      resolved = dated.map((w) => {
         const a = assignVillage({
-          village: u.village,
-          villageConfidence: u.villageConfidence,
-          villageEvidence: u.villageEvidence,
-          statement: u.statement,
+          village: w.unit.village,
+          villageConfidence: w.unit.villageConfidence,
+          villageEvidence: w.unit.villageEvidence,
+          statement: w.unit.statement,
         });
         return {
-          unit: u,
+          unit: w.unit,
+          chunk: w.chunk,
           villageId: a.villageId,
           confidence: a.confidence,
           assignmentPath: a.assignmentPath,
@@ -224,6 +236,7 @@ Deno.serve(async (req) => {
       unit_type: r.unit.unitType || 'fact',
       entities: r.unit.entities || [],
       event_date: r.unit.eventDate || null,
+      date_confidence: r.unit.eventDate ? classifyEventDate(r.unit.eventDate, r.chunk) : null,
       location: r.villageId ? { city: r.villageId, country: 'Schweiz' } : null,
       village_confidence: r.confidence,
       assignment_path: r.assignmentPath,

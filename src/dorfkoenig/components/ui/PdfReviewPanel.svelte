@@ -82,6 +82,9 @@
               {#if unit.review_required}
                 <span class="review-pill" title="Gemeinde-Zuordnung unsicher">prüfen</span>
               {/if}
+              {#if unit.date_confidence === 'unanchored'}
+                <span class="review-pill date-pill" title="Datum nicht in der Quelle gefunden">📅 prüfen</span>
+              {/if}
             </div>
           </div>
         </label>

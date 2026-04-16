@@ -12,6 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import {
   buildNewspaperExtractionPrompt,
   chunkNewspaperMarkdown,
+  classifyEventDate,
   type ExtractionResult,
   type ExtractionUnit,
   isLikelyJunkChunk,
@@ -150,45 +151,6 @@ try {
   }
 
   const allUnits: UnitWithSource[] = [];
-  const monthNames = [
-    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-  ];
-
-  type DateMatch = 'exact' | 'day_month_only' | 'none';
-
-  function eventDateMatch(eventDate: string, rawChunk: string): DateMatch {
-    // Firecrawl markdown escapes dots as `\.` (e.g. `6\. Mai`). Normalize
-    // before searching so the regexes below don't miss escaped dates.
-    const chunk = rawChunk.replace(/\\\./g, '.');
-
-    // exact = full date (including year) appears in chunk in any supported form.
-    if (chunk.includes(eventDate)) return 'exact';
-    const m = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return 'none';
-    const [, y, mm, dd] = m;
-    const dayNoPad = parseInt(dd, 10).toString();
-    const month = parseInt(mm, 10);
-    const monthName = monthNames[month - 1];
-
-    // Exact matches with year.
-    if (chunk.includes(`${dayNoPad}. ${monthName} ${y}`)) return 'exact';
-    if (chunk.includes(`${dd}. ${monthName} ${y}`)) return 'exact';
-    if (chunk.match(new RegExp(`\\b${dayNoPad}\\.0?${month}\\.${y}\\b`))) return 'exact';
-    if (chunk.match(new RegExp(`\\b${dd}\\.0?${month}\\.${y}\\b`))) return 'exact';
-
-    // Day + month only (year inferred — legitimate per the prompt's rules).
-    const dayMonthPatterns = [
-      new RegExp(`\\b${dayNoPad}\\.\\s*${monthName}\\b`, 'i'),
-      new RegExp(`\\b${dd}\\.\\s*${monthName}\\b`, 'i'),
-      new RegExp(`\\b${dayNoPad}\\.0?${month}\\.\\b`),
-      new RegExp(`\\b${dd}\\.0?${month}\\.\\b`),
-    ];
-    for (const p of dayMonthPatterns) {
-      if (chunk.match(p)) return 'day_month_only';
-    }
-    return 'none';
-  }
 
   let exactMatchCount = 0;
   let inferredYearCount = 0;
@@ -205,9 +167,9 @@ try {
       for (const unit of result.units ?? []) {
         allUnits.push({ unit, chunkIndex: i, chunkSnippet: chunk });
         if (unit.eventDate) {
-          const match = eventDateMatch(unit.eventDate, chunk);
+          const match = classifyEventDate(unit.eventDate, chunk);
           if (match === 'exact') exactMatchCount++;
-          else if (match === 'day_month_only') inferredYearCount++;
+          else if (match === 'inferred') inferredYearCount++;
           else hallucinationCount++;
         }
       }
@@ -238,7 +200,7 @@ try {
   lines.push('## Units');
   lines.push('');
   for (const { unit, chunkIndex, chunkSnippet } of allUnits) {
-    const provenance = unit.eventDate ? eventDateMatch(unit.eventDate, chunkSnippet) : 'n/a';
+    const provenance = unit.eventDate ? classifyEventDate(unit.eventDate, chunkSnippet) : 'n/a';
     lines.push(`### Chunk ${chunkIndex} — event_date: \`${unit.eventDate ?? '(null)'}\` — match: \`${provenance}\``);
     lines.push('');
     lines.push(`**Statement:** ${(unit.statement ?? '').slice(0, 240)}`);

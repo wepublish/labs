@@ -243,3 +243,49 @@ export function isLikelyJunkChunk(chunk: string): boolean {
 
   return signalLines.length / lines.length > JUNK_THRESHOLD;
 }
+
+// ── Date confidence classifier ───────────────────────────────
+// Given an LLM-extracted ISO date and the source chunk it came from, return:
+//   'exact'      — full date (with year) appears verbatim in the chunk
+//   'inferred'   — day + month in the chunk, year filled in by the LLM
+//                  (legal per the extraction prompt: publication-date fallback)
+//   'unanchored' — neither the full date nor a matching day+month pair is
+//                  in the chunk. The LLM wrote a date the text doesn't
+//                  support → journalist must confirm or drop.
+
+export type DateConfidence = 'exact' | 'inferred' | 'unanchored';
+
+const GERMAN_MONTHS = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+];
+
+export function classifyEventDate(eventDate: string, rawChunk: string): DateConfidence {
+  // Firecrawl markdown escapes periods as `\.`; normalise so the patterns
+  // below don't miss escaped dates like "6\. Mai".
+  const chunk = rawChunk.replace(/\\\./g, '.');
+
+  if (chunk.includes(eventDate)) return 'exact';
+  const m = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return 'unanchored';
+  const [, y, mm, dd] = m;
+  const dayNoPad = parseInt(dd, 10).toString();
+  const month = parseInt(mm, 10);
+  const monthName = GERMAN_MONTHS[month - 1];
+
+  if (chunk.includes(`${dayNoPad}. ${monthName} ${y}`)) return 'exact';
+  if (chunk.includes(`${dd}. ${monthName} ${y}`)) return 'exact';
+  if (chunk.match(new RegExp(`\\b${dayNoPad}\\.0?${month}\\.${y}\\b`))) return 'exact';
+  if (chunk.match(new RegExp(`\\b${dd}\\.0?${month}\\.${y}\\b`))) return 'exact';
+
+  const dayMonthPatterns = [
+    new RegExp(`\\b${dayNoPad}\\.\\s*${monthName}\\b`, 'i'),
+    new RegExp(`\\b${dd}\\.\\s*${monthName}\\b`, 'i'),
+    new RegExp(`\\b${dayNoPad}\\.0?${month}\\.\\b`),
+    new RegExp(`\\b${dd}\\.0?${month}\\.\\b`),
+  ];
+  for (const p of dayMonthPatterns) {
+    if (chunk.match(p)) return 'inferred';
+  }
+  return 'unanchored';
+}

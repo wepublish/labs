@@ -235,7 +235,14 @@
     if (job.status === 'review_pending' && job.extracted_units) {
       teardownJobWatchers();
       reviewUnits = job.extracted_units;
-      selectedUids = new Set(reviewUnits.map((u) => u.uid));
+      // Default-select only the units whose date is anchored in the source
+      // (exact or year-inferred). Units with date_confidence === 'unanchored'
+      // start unchecked — the journalist must tick them back in to save.
+      selectedUids = new Set(
+        reviewUnits
+          .filter((u) => u.date_confidence !== 'unanchored')
+          .map((u) => u.uid)
+      );
       uploadState = 'review';
       return;
     }

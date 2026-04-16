@@ -191,6 +191,10 @@ export interface NewspaperExtractedUnit {
   unit_type: 'fact' | 'event' | 'entity_update';
   entities: string[];
   event_date: string | null;
+  /** 'exact' = full date in source; 'inferred' = day+month in source, year
+   *  filled in from publication; 'unanchored' = LLM wrote a date the text
+   *  doesn't support (review required). `null` when the unit has no date. */
+  date_confidence: 'exact' | 'inferred' | 'unanchored' | null;
   location: { city: string; country?: string } | null;
   village_confidence: VillageConfidence | null;
   assignment_path: string | null;
