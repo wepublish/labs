@@ -56,16 +56,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Send WhatsApp messages to each correspondent.
-    // Template is sent first to ensure atomicity: if the template is not
-    // approved or fails, no text message is sent either. This prevents
-    // correspondents from receiving draft text without verification buttons.
+    // Draft body sent first so it renders above the verification buttons
+    // in the WhatsApp chat (WhatsApp shows newest messages at the bottom).
     const allMessageIds: string[] = [];
 
     for (const correspondent of correspondents) {
-      // Message 1: Template with verification buttons (sent first — fails
-      // early if template not approved, before any text is delivered)
       const phoneWithPlus = '+' + correspondent.phone;
+
+      const textResult = await sendWhatsAppMessage({
+        to: phoneWithPlus,
+        type: 'text',
+        text: { body: draft.body },
+      });
+      allMessageIds.push(textResult.message_id);
 
       const templateResult = await sendWhatsAppMessage({
         to: phoneWithPlus,
@@ -82,14 +85,6 @@ Deno.serve(async (req) => {
         },
       });
       allMessageIds.push(templateResult.message_id);
-
-      // Message 2: Full draft text (only sent if template succeeded)
-      const textResult = await sendWhatsAppMessage({
-        to: phoneWithPlus,
-        type: 'text',
-        text: { body: draft.body },
-      });
-      allMessageIds.push(textResult.message_id);
     }
 
     // Update the draft with verification metadata

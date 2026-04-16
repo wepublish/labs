@@ -8,7 +8,7 @@ Single source of truth for the WhatsApp Business API integration used in the Baj
 Frontend (StepPreviewSend.svelte)
   → bajourApi.sendVerification(draftId)
     → bajour-send-verification Edge Function
-      → WhatsApp Cloud API: send template (buttons) + text (draft body)
+      → WhatsApp Cloud API: send text (draft body) + template (buttons)
       → Update bajour_drafts: verification_sent_at, timeout_at, message_ids
 
 Correspondent taps "Bestätigt" or "Abgelehnt" on WhatsApp
@@ -38,7 +38,7 @@ URL format: `<PUBLIC_APP_URL>/?draft=<uuid>&sig=<hex>&exp=<unix>#/feed`
 - The `bajour-get-draft-admin` edge function verifies the signature, then reads the draft via the service role, bypassing the per-user RLS on `bajour_drafts`.
 - Rotating `ADMIN_LINK_SECRET` invalidates every outstanding admin link.
 
-Message order per correspondent: template (with verification buttons) is sent first, then the full draft text. This ensures atomicity — if the template fails, no text is sent.
+Message order per correspondent: the full draft text is sent first, then the template with verification buttons. This puts the draft body above the buttons in the WhatsApp chat (newest messages render at the bottom). If the template send fails after the text, the draft silent-times-out to `abgelehnt` via `resolve_bajour_timeouts` — no manual cleanup.
 
 ## 2. Meta Configuration
 
@@ -125,11 +125,11 @@ bajour_correspondents (
 
 ### `bajour-send-verification` (v9)
 
-Sends the template message (with buttons) followed by the draft text to all correspondents for the draft's village.
+Sends the full draft text followed by the template message (with buttons) to all correspondents for the draft's village. Order is deliberate: the draft body renders above the buttons in the chat.
 
 - **Path:** `supabase/functions/bajour-send-verification/index.ts`
 - **Auth:** `verify_jwt = false`, reads `x-user-id` header
-- **Flow:** Load correspondents → for each: send template via Cloud API → send draft text → update `bajour_drafts` (set `verification_sent_at`, `verification_timeout_at`, `whatsapp_message_ids`)
+- **Flow:** Load correspondents → for each: send draft text via Cloud API → send template with buttons → update `bajour_drafts` (set `verification_sent_at`, `verification_timeout_at`, `whatsapp_message_ids`)
 - **Deploy:** `supabase functions deploy bajour-send-verification --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig`
 
 ### `bajour-whatsapp-webhook` (v17)
@@ -165,7 +165,7 @@ The frontend (`StepPreviewSend.svelte`) further simplifies these for the journal
 
 ### Local dev flow
 
-1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Feed, open the Bajour draft slide-over, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the template (with buttons) followed by the draft text.
+1. **End-to-end send** — Open `https://localhost:3200/dorfkoenig/?token=493c6d51531c7444365b0ec094bc2d67`, go to Feed, open the Bajour draft slide-over, select a village, generate a draft, click "An Dorfkönige senden". Dev numbers should receive the draft text followed by the template (with buttons).
 
 2. **Webhook response** — Tap "Bestätigt" or "Abgelehnt" on a dev phone. The draft's `verification_status` should update in the UI within 30 seconds (polling interval). Check Supabase logs for webhook processing.
 

@@ -161,6 +161,20 @@
         {/if}
         Erneut senden
       </button>
+    {:else if savedDraft}
+      <button
+        class="step-btn step-btn-whatsapp"
+        onclick={onresendverification}
+        disabled={sendLoading}
+        type="button"
+      >
+        {#if sendLoading}
+          <Loader2 size={14} class="spin" />
+        {:else}
+          <MessageCircle size={14} />
+        {/if}
+        An Dorfkönige senden
+      </button>
     {:else}
       <button
         class="step-btn step-btn-whatsapp"
