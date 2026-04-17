@@ -10,6 +10,12 @@
 -- 3. Pin search_path on every public function (14 overloads) to close the
 --    search-path-hijack vector on SECURITY DEFINER functions.
 
+-- The ALTER FUNCTION statements below reference the `vector` type (pgvector,
+-- in the extensions schema), so the migration session itself needs extensions
+-- on its search_path to resolve the type in the function signatures. Plain
+-- SET (not SET LOCAL) because the CLI runs migrations outside a transaction.
+SET search_path = public, extensions;
+
 ALTER TABLE extraction_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE upload_rate_limits ENABLE ROW LEVEL SECURITY;
 

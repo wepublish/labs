@@ -339,7 +339,11 @@
         uploadProgress = 50;
         const uploadResponse = await manualUploadApi.uploadFile(presigned.upload_url, file!);
         if (!uploadResponse.ok) {
-          throw new Error('Datei-Upload fehlgeschlagen');
+          throw new Error(
+            uploadResponse.status === 413
+              ? 'PDF zu gross (max 100 MB).'
+              : `Datei-Upload fehlgeschlagen (HTTP ${uploadResponse.status}).`
+          );
         }
 
         uploadProgress = 80;
