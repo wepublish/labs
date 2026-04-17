@@ -339,8 +339,12 @@
         uploadProgress = 50;
         const uploadResponse = await manualUploadApi.uploadFile(presigned.upload_url, file!);
         if (!uploadResponse.ok) {
+          // Supabase storage returns HTTP 400 with body `{"statusCode":"413",...}`
+          // for size-limit violations — not a raw HTTP 413. Check both.
+          const body = await uploadResponse.text().catch(() => '');
+          const tooLarge = uploadResponse.status === 413 || body.includes('"413"');
           throw new Error(
-            uploadResponse.status === 413
+            tooLarge
               ? 'PDF zu gross (max 100 MB).'
               : `Datei-Upload fehlgeschlagen (HTTP ${uploadResponse.status}).`
           );
