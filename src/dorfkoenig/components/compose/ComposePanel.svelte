@@ -10,7 +10,7 @@
   import { scouts } from '../../stores/scouts';
   import { composeApi } from '../../lib/api';
   import { bajourApi } from '../../bajour/api';
-  import { villages, getScoutIdForVillage, getVillageByName } from '../../lib/villages';
+  import { villages, getVillageByName, loadPilotVillages } from '../../lib/villages';
 
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
@@ -59,6 +59,7 @@
     units.loadLocations();
     units.load();
     scouts.load();
+    loadPilotVillages(); // gates AI Select village buttons; feed filter stays unrestricted
     bajourDrafts.load().then(() => {
       bajourDrafts.startPolling();
     });
@@ -242,12 +243,6 @@
       return;
     }
 
-    const scoutId = getScoutIdForVillage(village.id);
-    if (!scoutId) {
-      error = 'Kein Scout für diesen Ort konfiguriert.';
-      return;
-    }
-
     draftVillageName = village.name;
     draftVillageId = village.id;
 
@@ -260,7 +255,6 @@
     try {
       const selectResult = await bajourApi.selectUnits({
         village_id: village.id,
-        scout_id: scoutId,
         ...(recencyDays !== null && { recency_days: recencyDays }),
         selection_hint: selectionPrompt.trim() || undefined,
       });

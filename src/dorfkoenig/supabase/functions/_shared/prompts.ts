@@ -66,9 +66,17 @@ interface UnitForCompose {
   statement: string;
   unit_type: string;
   source_domain: string;
+  source_url: string;
   event_date?: string | null;
   created_at?: string | null;
 }
+
+/**
+ * Canonical SELECT list for unit rows consumed by the compose/auto-draft/select
+ * pipeline. Keep aligned with `UnitForCompose` above.
+ */
+export const UNIT_FOR_COMPOSE_COLUMNS =
+  'id, statement, unit_type, event_date, created_at, source_domain, source_url';
 
 /**
  * Format units grouped by type (FAKTEN / EREIGNISSE / AKTUALISIERUNGEN).
@@ -89,7 +97,10 @@ export function formatUnitsByType(units: UnitForCompose[], includeDates = false)
         const prefix = includeDates
           ? `[${u.event_date || u.created_at?.split('T')[0] || 'unbekannt'}] `
           : '';
-        return `- ${prefix}${u.statement} [${u.source_domain}]`;
+        const citation = u.source_url
+          ? `[${u.source_domain}](${u.source_url})`
+          : `[${u.source_domain}]`;
+        return `- ${prefix}${u.statement} ${citation}`;
       });
       return `${label}:\n${lines.join('\n')}`;
     })
@@ -104,8 +115,9 @@ export const DRAFT_COMPOSE_PROMPT = `SCHREIBRICHTLINIEN:
 - Sätze: KURZ und PRÄGNANT. Maximal 15-20 Wörter pro Satz.
 - Absätze: Maximal 2-3 Sätze. Eine Idee pro Absatz.
 - Beginne Aufzählungszeichen IMMER mit Emojis: 📊 (Daten) 📅 (Termine) 👤 (Personen) 🏢 (Organisationen) ⚠️ (Bedenken) ✅ (Fortschritt) 📍 (Orte)
-- Beispiel: '📊 **42%** Anstieg der Wohnkosten [srf.ch]'
-- Zitiere Quellen inline im Format [quelle.ch]
+- Beispiel: '📊 **42%** Anstieg der Wohnkosten [srf.ch](https://www.srf.ch/artikel)'
+- Zitiere Quellen inline als Markdown-Link [quelle.ch](https://url) mit der
+  exakten Artikel-URL aus der Einheit — keine Abkürzungen, keine Änderungen.
 - Fakten aus mehreren Quellen sind glaubwürdiger — erwähne wenn verfügbar
 - Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen, welche Daten verifizieren
 - Priorisiere: Zahlen > Daten > Zitate > allgemeine Aussagen`;

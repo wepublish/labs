@@ -54,7 +54,7 @@ describe('bajourApi', () => {
 
   it('selectUnits() calls POST /bajour-select-units', async () => {
     mockFetch.mockResolvedValue(createMockResponse({ data: { selected_unit_ids: ['u-1', 'u-2'] } }));
-    const result = await bajourApi.selectUnits({ village_id: 'riehen', scout_id: 'ba000000-0001-4000-a000-000000000001' });
+    const result = await bajourApi.selectUnits({ village_id: 'riehen' });
     expect(result).toEqual({ selected_unit_ids: ['u-1', 'u-2'] });
   });
 

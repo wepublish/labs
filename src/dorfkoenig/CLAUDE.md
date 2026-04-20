@@ -235,29 +235,35 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 ### Vault Secrets (SQL `vault.create_secret`)
 - `project_url` -- Supabase project URL (for pg_cron → pg_net calls)
 - `service_role_key` -- Service role key (bypasses RLS for scheduled jobs)
-- `bajour_pilot_villages` -- Optional comma-separated village IDs (lowercase). Gates `dispatch_auto_drafts()`. Unset = all villages dispatch.
+- `auto_draft_user_id` -- Owner user_id the 18:00 auto-draft cron runs as
+
+> The `bajour_pilot_villages` Vault secret was retired on 2026-04-21. The pilot list now lives in the `bajour_pilot_villages_list` table; both `dispatch_auto_drafts()` and the UI's KI Entwurf dropdown read it. Delete the old secret once after deploying migration `20260421000001`: `SELECT vault.delete_secret(id) FROM vault.secrets WHERE name = 'bajour_pilot_villages';`
 
 ### Bajour pilot allow-list (weekly expansion runbook)
 
-During launch we restrict the daily auto-draft cron to a subset of villages while extraction keeps running for all 10. The list is a single Vault secret you edit in the Supabase SQL editor. Only the daily 18:00 CET draft pipeline is affected; web/civic scouts and manual upload are not.
+During launch we restrict the daily auto-draft cron AND the UI's KI Entwurf dropdown to a subset of villages; extraction keeps running for all 10. Only the daily 18:00 CET draft pipeline and the manual KI Entwurf trigger are gated — scout creation, manual upload, and the feed filter stay unrestricted.
 
 **Valid village IDs** (lowercase, ASCII): `aesch, allschwil, arlesheim, binningen, bottmingen, muenchenstein, muttenz, pratteln, reinach, riehen`.
 
-**First-time pilot start** (one-shot — only if the secret does not exist yet):
+**First-time pilot start** (one-shot — only if the table is empty):
 ```sql
-SELECT vault.create_secret('arlesheim,muenchenstein', 'bajour_pilot_villages');
+INSERT INTO bajour_pilot_villages_list (village_id) VALUES
+  ('arlesheim'), ('muenchenstein');
 ```
 
-**Weekly: add a village to the pilot.** Edit the comma-separated list — no spaces required, but allowed:
+**Weekly: add a village to the pilot.** One-line INSERT:
 ```sql
-UPDATE vault.secrets
-   SET secret = 'arlesheim,muenchenstein,aesch'
- WHERE name = 'bajour_pilot_villages';
+INSERT INTO bajour_pilot_villages_list (village_id) VALUES ('aesch');
+```
+
+**Remove a village from the pilot:**
+```sql
+DELETE FROM bajour_pilot_villages_list WHERE village_id = 'aesch';
 ```
 
 **Verify the active list immediately:**
 ```sql
-SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'bajour_pilot_villages';
+SELECT village_id, added_at FROM bajour_pilot_villages_list ORDER BY added_at;
 ```
 
 **Verify the next dispatch will fan out as expected** (safe to run any time; bypasses the DST-safe wrapper, so it runs even outside 18:00 Zurich):
@@ -267,12 +273,12 @@ SELECT village_id, status, started_at FROM auto_draft_runs
  WHERE started_at::date = current_date ORDER BY started_at DESC;
 ```
 
-**End the pilot** (deletes the secret → all 10 villages dispatch from the next cron tick):
+**End the pilot** (empties the table — after this the cron dispatches zero villages; the UI disables every KI Entwurf button):
 ```sql
-SELECT vault.delete_secret(id) FROM vault.secrets WHERE name = 'bajour_pilot_villages';
+DELETE FROM bajour_pilot_villages_list;
 ```
 
-If a village is misspelled in the secret, `dispatch_auto_drafts()` silently dispatches one fewer than expected — confirm via the `auto_draft_runs` query above; the count must match the number of comma-separated entries.
+A misspelled `village_id` silently drops the village from both the cron fan-out and the UI (the village button stays greyed). Confirm with the `SELECT ... FROM bajour_pilot_villages_list` query before relying on a scheduled run.
 
 ## Documentation Index
 

@@ -9,11 +9,10 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT, formatUnitsForSelection } from '../_shared/prompts.ts';
+import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, UNIT_FOR_COMPOSE_COLUMNS } from '../_shared/prompts.ts';
 
 interface SelectUnitsRequest {
   village_id: string;
-  scout_id: string;
   recency_days?: number;
   /**
    * Per-run hint from the user (free text, e.g. "Bevorzuge kulturelle Veranstaltungen").
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     const body: SelectUnitsRequest = await req.json();
-    const { village_id, scout_id, recency_days, selection_hint } = body;
+    const { village_id, recency_days, selection_hint } = body;
     const recencyDays = recency_days ?? null;
     const hint = selection_hint?.trim();
 
@@ -107,16 +106,15 @@ Deno.serve(async (req) => {
     if (!village_id || typeof village_id !== 'string') {
       return errorResponse('village_id erforderlich', 400, 'VALIDATION_ERROR');
     }
-    if (!scout_id || typeof scout_id !== 'string') {
-      return errorResponse('scout_id erforderlich', 400, 'VALIDATION_ERROR');
-    }
 
-    // Query unused information units for this scout (owned by user), ordered by recency
-    // When recencyDays is set, filter by created_at; otherwise fetch all unused units
+    // Query unused information units for this village (owned by user), ordered by recency.
+    // Filter by location->>city = village_id — matches the bajour-auto-draft cron after
+    // the 2026-04-21 normalization migration, so manual KI Entwurf and the 18:00 fan-out
+    // see the same candidate pool regardless of which scout or ingest path produced them.
     let query = supabase
       .from('information_units')
-      .select('id, statement, unit_type, event_date, created_at')
-      .eq('scout_id', scout_id)
+      .select(UNIT_FOR_COMPOSE_COLUMNS)
+      .eq('location->>city', village_id)
       .eq('user_id', userId)
       .eq('used_in_article', false);
 
@@ -137,7 +135,7 @@ Deno.serve(async (req) => {
     }
 
     if (!units || units.length === 0) {
-      console.warn('No units found', { userId, scout_id, recencyDays });
+      console.warn('No units found', { userId, village_id, recencyDays });
       return jsonResponse({ data: { selected_unit_ids: [] } });
     }
 
@@ -174,7 +172,7 @@ Deno.serve(async (req) => {
     }
 
     // Validate that returned IDs exist in the original set
-    const validIds = new Set(units.map((u) => u.id));
+    const validIds = new Set(units.map((u: { id: string }) => u.id));
     const selectedIds: string[] = (parsed.selected_unit_ids || []).filter(
       (id: string) => validIds.has(id)
     );
@@ -183,9 +181,9 @@ Deno.serve(async (req) => {
     if (selectedIds.length === 0 && units.length > 0) {
       console.warn('LLM returned empty selection, falling back to all candidates', {
         candidateCount: units.length,
-        scout_id,
+        village_id,
       });
-      return jsonResponse({ data: { selected_unit_ids: units.map((u) => u.id) } });
+      return jsonResponse({ data: { selected_unit_ids: units.map((u: { id: string }) => u.id) } });
     }
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });

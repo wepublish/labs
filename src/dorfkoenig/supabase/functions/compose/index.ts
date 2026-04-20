@@ -147,7 +147,7 @@ Ausgabeformat (JSON):
   "sections": [
     {
       "heading": "Abschnittsüberschrift, die verwandte Fakten gruppiert",
-      "content": "📊 **Schlüsselzahl** erklärt die Nachricht [quelle.ch]. 📅 Die Frist ist..."
+      "content": "📊 **Schlüsselzahl** erklärt die Nachricht [quelle.ch](https://quelle.ch/artikel). 📅 Die Frist ist..."
     }
   ],
   "gaps": ["Was fehlt oder verifiziert werden muss", "Wer interviewt werden sollte", "Noch benötigte Daten"]

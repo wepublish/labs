@@ -9,7 +9,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
+import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType, UNIT_FOR_COMPOSE_COLUMNS } from '../_shared/prompts.ts';
 import { getCorrespondentsForVillage, sendWhatsAppMessage, truncateForTemplateParam } from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       supabase
         .from('information_units')
         .select('id, statement, unit_type, event_date, created_at')
-        .ilike('location->>city', village_name)
+        .eq('location->>city', village_id)
         .eq('user_id', user_id)
         .eq('used_in_article', false)
         .gte('created_at', cutoffDate.toISOString())
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     // --- 4. Generate draft ---
     const { data: selectedUnits, error: selectedError } = await supabase
       .from('information_units')
-      .select('id, statement, unit_type, event_date, created_at, source_domain')
+      .select(UNIT_FOR_COMPOSE_COLUMNS)
       .in('id', selectedIds);
 
     if (selectedError) throw new Error(`Selected units fetch failed: ${selectedError.message}`);
