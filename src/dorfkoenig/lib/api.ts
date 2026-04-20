@@ -184,6 +184,10 @@ export const composeApi = {
     max_words?: number;
     include_sources?: boolean;
     custom_system_prompt?: string;
+    /** When set, the server drops units not matching and tells the LLM to stay
+     *  on-topic for this village. */
+    village_id?: string;
+    village_name?: string;
   }) => api.post<import('./types').Draft>('compose/generate', params),
 };
 

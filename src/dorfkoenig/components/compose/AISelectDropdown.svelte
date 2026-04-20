@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { Loader2, Sparkles, MapPin, ArrowRight } from 'lucide-svelte';
   import type { Village } from '../../bajour/types';
+  import { pilotVillages, isVillageActive } from '../../lib/villages';
 
   interface Props {
     loading: boolean;
@@ -79,10 +80,13 @@
     </div>
     <div class="village-grid">
       {#each villages as village}
+        {@const active = isVillageActive(village.id, $pilotVillages)}
         <button
           class="village-btn"
           class:selected={selectedVillage === village.name}
-          onclick={() => handleSelectVillage(village.name)}
+          disabled={!active}
+          title={active ? village.name : 'Nicht im Pilotprogramm'}
+          onclick={() => active && handleSelectVillage(village.name)}
           type="button"
         >
           {village.name}
@@ -245,6 +249,17 @@
     border-color: var(--color-primary);
     color: white;
     background: var(--color-primary);
+  }
+
+  .village-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .village-btn:disabled:hover {
+    border-color: var(--color-border);
+    color: var(--color-text-muted);
+    background: var(--color-background);
   }
 
   /* Recency section */

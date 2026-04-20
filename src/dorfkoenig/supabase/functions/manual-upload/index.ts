@@ -11,6 +11,7 @@ import { createServiceClient, requireUserId } from '../_shared/supabase-client.t
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
+import { normalizeCity } from '../_shared/village-id.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -244,6 +245,10 @@ AUSGABEFORMAT (JSON):
   // Store unique units
   const unitIds: string[] = [];
 
+  const normalizedTextLocation = location?.city
+    ? { ...location, city: normalizeCity(location.city) }
+    : location;
+
   for (const i of uniqueIndices) {
     const unit = units[i];
     const { data, error } = await supabase
@@ -258,7 +263,7 @@ AUSGABEFORMAT (JSON):
         source_url: 'manual://text',
         source_domain: 'manual',
         source_title: sourceTitle,
-        location: location,
+        location: normalizedTextLocation,
         topic: topic,
         source_type: 'manual_text',
         file_path: null,
@@ -487,6 +492,10 @@ async function handleFileConfirm(
     return errorResponse('Verarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
 
+  const normalizedPhotoLocation = location?.city
+    ? { ...location, city: normalizeCity(location.city) }
+    : location;
+
   const { data, error } = await supabase
     .from('information_units')
     .insert({
@@ -499,7 +508,7 @@ async function handleFileConfirm(
       source_url: 'manual://photo',
       source_domain: 'manual',
       source_title: sourceTitle,
-      location: location,
+      location: normalizedPhotoLocation,
       topic: topic,
       source_type: 'manual_photo',
       file_path: storagePath,
@@ -649,6 +658,9 @@ async function handlePdfFinalize(
     if (finalIndices.length > 0) {
       const rows = finalIndices.map((i) => {
         const u = chosen[i];
+        const normalizedLocation = u.location?.city
+          ? { ...u.location, city: normalizeCity(u.location.city) }
+          : u.location;
         return {
           user_id: userId,
           scout_id: null,
@@ -659,7 +671,7 @@ async function handlePdfFinalize(
           source_url: 'manual://pdf',
           source_domain: 'manual',
           source_title: claimed.label,
-          location: u.location,
+          location: normalizedLocation,
           topic: 'Wochenblatt',
           source_type: 'manual_pdf',
           file_path: claimed.storage_path,

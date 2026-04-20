@@ -85,6 +85,7 @@ EXTRAKTIONSREGELN:
 3. Maximal 10 Einheiten pro Textabschnitt. Bei mehr als 10 möglichen Einheiten: bevorzuge höhere Priorität (high > medium > low).
 4. Nur überprüfbare Fakten. Keine Meinungen, keine Spekulation.
 5. Wenn ein Textabschnitt mitten in einem Artikel beginnt oder endet, extrahiere trotzdem alle erkennbaren Fakten.
+6. Die genaue Quellen-URL jedes Artikels oder Abschnitts ist für die spätere manuelle Nachverifikation zwingend zu erhalten und darf nicht gekürzt oder umformuliert werden.
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache

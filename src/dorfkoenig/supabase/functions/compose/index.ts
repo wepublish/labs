@@ -23,6 +23,15 @@ interface GenerateRequest {
   max_words?: number;
   include_sources?: boolean;
   custom_system_prompt?: string;
+  /**
+   * Optional village scope. When set, the server drops any requested unit
+   * whose `location.city` does not match, and injects a village-exclusivity
+   * constraint into the LLM prompt. Belt-and-suspenders against the UI
+   * surfacing a cross-village unit from stale client-side state.
+   */
+  village_id?: string;
+  /** Display form of the target village, used verbatim in the prompt. */
+  village_name?: string;
 }
 
 const PROMPT_KEY = 'draft_compose_layer2';
@@ -147,7 +156,7 @@ Ausgabeformat (JSON):
   "sections": [
     {
       "heading": "Abschnittsüberschrift, die verwandte Fakten gruppiert",
-      "content": "📊 **Schlüsselzahl** erklärt die Nachricht [quelle.ch]. 📅 Die Frist ist..."
+      "content": "📊 **Schlüsselzahl** erklärt die Nachricht [quelle.ch](https://quelle.ch/artikel). 📅 Die Frist ist..."
     }
   ],
   "gaps": ["Was fehlt oder verifiziert werden muss", "Wer interviewt werden sollte", "Noch benötigte Daten"]
@@ -281,6 +290,8 @@ async function generateDraft(
     unit_ids,
     include_sources = true,
     custom_system_prompt,
+    village_id,
+    village_name,
   } = body;
 
   // Validate
@@ -293,7 +304,7 @@ async function generateDraft(
   }
 
   // Fetch units
-  const { data: units, error } = await supabase
+  const { data: rawUnits, error } = await supabase
     .from('information_units')
     .select('*')
     .eq('user_id', userId)
@@ -303,6 +314,17 @@ async function generateDraft(
     console.error('Fetch units error:', error);
     return errorResponse('Fehler beim Laden der Einheiten', 500);
   }
+
+  // Server-side village scope filter (defense-in-depth — stops cross-village
+  // leaks even if the UI submits stale IDs after a location-filter change).
+  const units = village_id
+    ? (rawUnits || []).filter((u) => {
+        const city = u.location?.city;
+        if (city === village_id) return true;
+        console.warn(`compose: dropping unit ${u.id} with location.city=${city} from ${village_id} draft`);
+        return false;
+      })
+    : rawUnits;
 
   if (!units || units.length === 0) {
     return errorResponse('Keine Einheiten gefunden', 404);
@@ -338,7 +360,14 @@ async function generateDraft(
     ?? (await loadLayer2Override(supabase, userId))
     ?? LAYER_2_DEFAULT_GUIDELINES;
 
-  const systemPrompt = `${LAYER_1_GROUNDING}
+  // Village-exclusivity constraint appended to Layer 1 when caller supplies one.
+  // The server-side filter above already dropped mismatches; this tells the LLM
+  // not to invent cross-village links between the units it does receive.
+  const villageConstraint = village_name
+    ? `\n\nGEMEINDE-EXKLUSIVITÄT: Dieser Entwurf ist ausschliesslich für die Gemeinde ${village_name}. Einheiten oder Erwähnungen, die primär eine andere Gemeinde betreffen, dürfen NICHT als eigenständige Meldungen auftauchen — selbst wenn ${village_name} beiläufig genannt wird.`
+    : '';
+
+  const systemPrompt = `${LAYER_1_GROUNDING}${villageConstraint}
 
 ${layer2}
 

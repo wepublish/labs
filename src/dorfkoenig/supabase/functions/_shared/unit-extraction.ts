@@ -27,6 +27,7 @@ import {
 } from './web-extraction-prompt.ts';
 import { assignVillage, type AssignmentPath } from './village-assignment.ts';
 import type { Village } from './village-matcher.ts';
+import { normalizeCity } from './village-id.ts';
 import {
   getCachedExtraction,
   setCachedExtraction,
@@ -249,6 +250,9 @@ async function dedupAndStore(
 
   for (const i of uniqueIndices) {
     const unit = units[i];
+    const normalizedLocation = unit.location?.city
+      ? { ...unit.location, city: normalizeCity(unit.location.city) }
+      : unit.location;
     const { error } = await supabase.from('information_units').insert({
       user_id: params.userId,
       scout_id: params.scoutId,
@@ -259,7 +263,7 @@ async function dedupAndStore(
       source_url: params.sourceUrl,
       source_domain: domain,
       source_title: null,
-      location: unit.location,
+      location: normalizedLocation,
       topic: params.topic || null,
       embedding: unitEmbeddings[i],
       event_date: unit.eventDate,

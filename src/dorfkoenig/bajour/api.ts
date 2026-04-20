@@ -60,8 +60,9 @@ export const bajourApi = {
   deleteDraft: (draftId: string) => api.delete(`bajour-drafts/${draftId}`),
 
   /** LLM-powered selection of relevant units for a village newsletter.
-   *  `selection_hint` is a per-run free-text hint prepended to the user message. */
-  selectUnits: (data: { village_id: string; scout_id: string; recency_days?: number; selection_hint?: string }) =>
+   *  Server filters candidates by `location->>city = village_id`, matching the
+   *  18:00 auto-draft cron. `selection_hint` is a per-run free-text hint. */
+  selectUnits: (data: { village_id: string; recency_days?: number; selection_hint?: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
 
   /** Send draft to village correspondents via WhatsApp for verification. */

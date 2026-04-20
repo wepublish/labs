@@ -22,6 +22,7 @@ import {
   preprocessMarkdown,
 } from '../_shared/zeitung-extraction-prompt.ts';
 import { assignVillage } from '../_shared/village-assignment.ts';
+import { normalizeCity } from '../_shared/village-id.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
 // Display names used in the extraction prompt.
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
       entities: r.unit.entities || [],
       event_date: r.unit.eventDate || null,
       date_confidence: r.unit.eventDate ? classifyEventDate(r.unit.eventDate, r.chunk) : null,
-      location: r.villageId ? { city: r.villageId, country: 'Schweiz' } : null,
+      location: r.villageId ? { city: normalizeCity(r.villageId), country: 'Schweiz' } : null,
       village_confidence: r.confidence,
       assignment_path: r.assignmentPath,
       review_required: r.reviewRequired,

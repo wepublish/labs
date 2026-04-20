@@ -13,7 +13,7 @@
  * — the content-hash cache uses it to invalidate stale entries.
  */
 
-export const WEB_EXTRACTION_PROMPT_VERSION = 1;
+export const WEB_EXTRACTION_PROMPT_VERSION = 2;
 
 export interface WebExtractionUnit {
   statement: string;
@@ -60,6 +60,7 @@ EXTRAKTIONSREGELN:
 2. Maximal 10 Einheiten pro Artikel.
 3. Nur überprüfbare Fakten. Keine Meinungen, keine Spekulation.
 4. Wenn der Artikel keine extrahierbaren Einheiten enthält, gib "units": [] zurück.
+5. Die genaue Quellen-URL des Artikels ist für die spätere manuelle Nachverifikation zwingend zu erhalten und darf nicht gekürzt oder umformuliert werden.
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
