@@ -3,10 +3,52 @@
 // Falls back to BAJOUR_CORRESPONDENTS env secret with a logged warning.
 
 import { createServiceClient } from './supabase-client.ts';
+import { signAdminDraftLink, buildAdminDraftUrl } from './admin-link.ts';
 
 export interface Correspondent {
   name: string;
   phone: string; // without '+' prefix
+}
+
+// Meta's body component cap is 1024 characters (template text + expanded
+// params). For bajour_draft_verification_v2 the fixed frame is:
+//   "Entwurf für {{1}} ({{2}}):\n\n{{3}}\n\nBitte bestätigen oder ablehnen."
+// With {{1}}/{{2}} at reasonable lengths, the frame rounds to ~70 chars, so
+// {{3}} max ≈ 954. We set 800 to leave generous headroom for unicode accounting
+// differences between Meta and V8 (.length in UTF-16 code units).
+// https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes#error-132005
+export const TEMPLATE_PARAM_BODY_MAX = 800;
+
+// Meta error 132018: template text params cannot contain newlines, tabs, or
+// more than 4 consecutive spaces. Flatten paragraph breaks to a visible
+// separator so WhatsApp still shows structure.
+function flattenForTemplate(s: string): string {
+  return s
+    .replace(/\t/g, ' ')
+    .replace(/\r?\n+/g, ' · ')
+    .replace(/ {5,}/g, '    ');
+}
+
+export async function truncateForTemplateParam(
+  body: string,
+  publicAppUrl: string,
+  draftId: string
+): Promise<string> {
+  const flat = flattenForTemplate(body);
+  let result: string;
+  if (flat.length <= TEMPLATE_PARAM_BODY_MAX) {
+    result = flat;
+  } else {
+    const signed = await signAdminDraftLink(draftId);
+    const link = buildAdminDraftUrl(publicAppUrl, signed);
+    const reserve = ` · … vollständiger Entwurf: ${link}`;
+    const budget = TEMPLATE_PARAM_BODY_MAX - reserve.length;
+    result = flat.slice(0, budget).replace(/\s+\S*$/, '') + reserve;
+  }
+  console.log(
+    `truncateForTemplateParam: body.len=${body.length} flat.len=${flat.length} result.len=${result.length}`
+  );
+  return result;
 }
 
 // --- WhatsApp Business API send helper ---
