@@ -6,7 +6,10 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
-import { getCorrespondentsForVillage, sendWhatsAppMessage } from '../_shared/correspondents.ts';
+import { getCorrespondentsForVillage, sendWhatsAppMessage, truncateForTemplateParam } from '../_shared/correspondents.ts';
+
+const PUBLIC_APP_URL =
+  Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
 
 // --- Main handler ---
 
@@ -56,30 +59,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Draft body sent first so it renders above the verification buttons
-    // in the WhatsApp chat (WhatsApp shows newest messages at the bottom).
     const allMessageIds: string[] = [];
+    const bodyParam = await truncateForTemplateParam(
+      draft.body,
+      PUBLIC_APP_URL,
+      draft_id
+    );
 
     for (const correspondent of correspondents) {
       const phoneWithPlus = '+' + correspondent.phone;
-
-      const textResult = await sendWhatsAppMessage({
-        to: phoneWithPlus,
-        type: 'text',
-        text: { body: draft.body },
-      });
-      allMessageIds.push(textResult.message_id);
 
       const templateResult = await sendWhatsAppMessage({
         to: phoneWithPlus,
         type: 'template',
         template: {
-          name: 'bajour_draft_verification',
+          name: 'bajour_draft_verification_v2',
           language: { code: 'de' },
           components: [
             {
               type: 'body',
-              parameters: [{ type: 'text', text: draft.village_name }],
+              parameters: [
+                { type: 'text', text: draft.village_name },
+                { type: 'text', text: draft.publication_date },
+                { type: 'text', text: bodyParam },
+              ],
             },
           ],
         },

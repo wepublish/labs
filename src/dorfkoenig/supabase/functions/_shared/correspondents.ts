@@ -3,10 +3,29 @@
 // Falls back to BAJOUR_CORRESPONDENTS env secret with a logged warning.
 
 import { createServiceClient } from './supabase-client.ts';
+import { signAdminDraftLink, buildAdminDraftUrl } from './admin-link.ts';
 
 export interface Correspondent {
   name: string;
   phone: string; // without '+' prefix
+}
+
+// Max length for the `{{3}}` body parameter in bajour_draft_verification_v2.
+// Meta's hard body cap is 1024 chars incl. the fixed frame + rendered variables;
+// we reserve ~70 for the frame and signed-link suffix.
+export const TEMPLATE_PARAM_BODY_MAX = 950;
+
+export async function truncateForTemplateParam(
+  body: string,
+  publicAppUrl: string,
+  draftId: string
+): Promise<string> {
+  if (body.length <= TEMPLATE_PARAM_BODY_MAX) return body;
+  const signed = await signAdminDraftLink(draftId);
+  const link = buildAdminDraftUrl(publicAppUrl, signed);
+  const reserve = `\n\n… vollständiger Entwurf: ${link}`;
+  const budget = TEMPLATE_PARAM_BODY_MAX - reserve.length;
+  return body.slice(0, budget).replace(/\s+\S*$/, '') + reserve;
 }
 
 // --- WhatsApp Business API send helper ---

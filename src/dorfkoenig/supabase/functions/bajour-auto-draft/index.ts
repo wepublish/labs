@@ -10,8 +10,11 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType } from '../_shared/prompts.ts';
-import { getCorrespondentsForVillage, sendWhatsAppMessage } from '../_shared/correspondents.ts';
+import { getCorrespondentsForVillage, sendWhatsAppMessage, truncateForTemplateParam } from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
+
+const PUBLIC_APP_URL =
+  Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
 
 interface AutoDraftRequest {
   village_id: string;
@@ -254,26 +257,30 @@ Ausgabeformat (JSON):
       if (correspondents.length > 0) {
         const allMessageIds: string[] = [];
 
+        const bodyParam = await truncateForTemplateParam(
+          body_md.trim(),
+          PUBLIC_APP_URL,
+          draftId
+        );
+
         for (const correspondent of correspondents) {
           const phoneWithPlus = '+' + correspondent.phone;
-
-          // Draft body first so it renders above the verification buttons in
-          // the WhatsApp chat (WhatsApp shows newest messages at the bottom).
-          const textResult = await sendWhatsAppMessage({
-            to: phoneWithPlus,
-            type: 'text',
-            text: { body: body_md.trim() },
-          });
-          allMessageIds.push(textResult.message_id);
 
           const templateResult = await sendWhatsAppMessage({
             to: phoneWithPlus,
             type: 'template',
             template: {
-              name: 'bajour_draft_verification',
+              name: 'bajour_draft_verification_v2',
               language: { code: 'de' },
               components: [
-                { type: 'body', parameters: [{ type: 'text', text: village_name }] },
+                {
+                  type: 'body',
+                  parameters: [
+                    { type: 'text', text: village_name },
+                    { type: 'text', text: today },
+                    { type: 'text', text: bodyParam },
+                  ],
+                },
               ],
             },
           });

@@ -146,6 +146,31 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   const entry = body.entry?.[0];
   const change = entry?.changes?.[0];
   const value = change?.value;
+
+  // Delivery status events (sent/delivered/read/failed). Persist for forensics
+  // and return early — these payloads carry no `messages[]`.
+  const statuses = value?.statuses;
+  if (Array.isArray(statuses) && statuses.length > 0) {
+    try {
+      const supabase = createServiceClient();
+      await supabase.from('bajour_whatsapp_status_events').insert(
+        statuses.map((s: { id: string; status: string; recipient_id?: string; errors?: Array<{ code: number; title: string; error_data?: { details?: string } }> }) => ({
+          wamid: s.id,
+          status: s.status,
+          recipient: s.recipient_id ?? '',
+          error_code: s.errors?.[0]?.code ?? null,
+          error_title: s.errors?.[0]?.title ?? null,
+          error_detail: s.errors?.[0]?.error_data?.details ?? null,
+          raw: s,
+        }))
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('bajour_whatsapp_status_events insert failed:', msg);
+    }
+    return jsonResponse({ status: 'status_recorded', count: statuses.length });
+  }
+
   const message = value?.messages?.[0];
 
   if (!message) {

@@ -62,6 +62,72 @@ Message order per correspondent: the full draft text is sent first, then the tem
 
 ## 3. Message Template
 
+> **✅ `bajour_draft_verification_v2` approved by Meta on 2026-04-20.** v1 remains live for ~1 week as a fallback. Code migration (§3.2) and observability (§3.3) shipped together. CTO-facing submission runbook archived at `src/dorfkoenig/docs/meta-template-submission.md`.
+
+### 3.0 Meta UI runbook — creating `bajour_draft_verification_v2`
+
+Meta's template editor is spread across Business Manager + WhatsApp Manager and the URLs change occasionally. The steps below target the WABA `948766194384937` (`bajour-system`). If a URL 404s, start from [business.facebook.com](https://business.facebook.com/) → left rail → **WhatsApp Manager** → **Message templates**.
+
+1. **Log in as the `bajour-system` admin** at https://business.facebook.com/. If you have multiple Business Manager portfolios, switch to the one that owns WABA `948766194384937` via the top-left portfolio dropdown.
+
+2. **Open the templates list**:
+   - Direct URL: https://business.facebook.com/wa/manage/message-templates/?waba_id=948766194384937
+   - Alt path if the above bounces you: top-left menu → **WhatsApp Manager** → left sidebar **Message templates**. Make sure the WABA selector in the top bar reads **Bajour** / `948766194384937`, not a different account.
+
+3. **Click "Create template"** (top-right, blue button). This opens the template editor.
+
+4. **Category step** — select **Utility**. Do NOT pick Marketing or Authentication. If Meta offers "Let Meta choose a category for me," uncheck it — we want Utility locked so it doesn't get auto-reclassified to Marketing (which changes pricing and adds per-user daily caps).
+
+5. **Name and language step**:
+   - Name: `bajour_draft_verification_v2` (lowercase, underscores; Meta enforces this format)
+   - Language: scroll/search for **German** (code `de`). Only add one language; multi-language templates complicate the code.
+
+6. **Content step** — four sub-sections in order:
+
+   - **Header**: leave unset ("None"). We don't need a media or text header.
+
+   - **Body**: paste this verbatim into the body textbox (the `{{1}}`, `{{2}}`, `{{3}}` placeholders will auto-highlight as parameters):
+     ```
+     Entwurf für {{1}} ({{2}}):
+
+     {{3}}
+
+     Bitte bestätigen oder ablehnen.
+     ```
+     Meta will show three "Sample content for body" input fields below. Fill them with the values from §3.1's "Sample values" subsection:
+     - `{{1}}` sample: `Arlesheim`
+     - `{{2}}` sample: `2026-04-17`
+     - `{{3}}` sample: the multi-line `Willkommen zum aktuellen Wochenüberblick…` text from §3.1. Paste it even if it wraps oddly in the field; the reviewer just needs a realistic example.
+
+     Watch the **character counter** under the body. It should show around 60–90 characters for the frame alone (before samples expand). Meta's hard limit is 1024 chars **including rendered parameter values**, so our code caps `{{3}}` at 950 chars.
+
+   - **Footer** (optional but recommended): `Automatisch generiert — Dorfkönig / Bajour`. Keep it under 60 chars.
+
+   - **Buttons**: click **Add button** → **Quick reply**. Create two:
+     - Button 1 text: `Bestätigt`
+     - Button 2 text: `Abgelehnt`
+
+     Confirm both are **Quick reply**, not **Call-to-action** or **URL**. The webhook parser at `bajour-whatsapp-webhook/index.ts` matches on button text, so the spelling (capital-B `Bestätigt`, capital-A `Abgelehnt`) must be exact.
+
+7. **Preview pane (right side)** — scroll through it and visually confirm: the body shows `Entwurf für Arlesheim (2026-04-17):` followed by the sample newsletter text, then `Bitte bestätigen oder ablehnen.`, then a footer, then two buttons `Bestätigt` / `Abgelehnt`. If any placeholder still reads `{{1}}`, you forgot to fill a sample — reviewer will reject.
+
+8. **Click "Submit"** at the bottom-right. The template goes into `In review` state.
+
+9. **Bookmark the review status page**:
+   - Direct URL: https://business.facebook.com/wa/manage/message-templates/?waba_id=948766194384937 (same list as step 2; the new template appears at the top with a yellow **In review** pill).
+   - Status will flip to **Approved** (green) or **Rejected** (red) within 1–24 hours for Utility. You also get an email to the system user's email and a notification in Business Manager's bell icon.
+   - If rejected: click the template to see Meta's reason. Most common rejections for this shape are (a) sample content too short / doesn't match the template's apparent use, (b) category mismatch (Meta thinks it's Marketing), (c) parameter ordering. Fix and resubmit — the template name stays reserved for you.
+
+10. **After Approved**: click into the template, copy the **Template ID** (15-digit number near the top), paste it into the §3.1 table in this file under the `Template ID` row for v2, commit, then proceed with §3.2 code migration.
+
+**Common Meta UI gotchas:**
+- The WABA selector in the top bar sometimes silently switches to a different WABA when you come back from another tab. Before hitting Submit, verify the breadcrumb still reads your Bajour account.
+- Sample values with WhatsApp markdown (`*bold*`, `_italic_`) will confuse the reviewer — keep the sample plaintext even though the real `{{3}}` will include them in production.
+- Meta auto-saves drafts every ~30s. If the UI hangs, refresh — your draft appears under "Drafts" tab in the templates list and you can resume.
+- If you don't see "Create template" at all, your account is missing the **manage templates** permission on WABA `948766194384937`. Business Manager → Settings → System Users → `bajour-system` → Assigned assets → WhatsApp accounts → grant **Manage templates**.
+
+### Current template — `bajour_draft_verification` (in production, being retired)
+
 | Field | Value |
 |-------|-------|
 | Template name | `bajour_draft_verification` |
@@ -84,6 +150,207 @@ Parameter `{{1}}`: Village name (e.g., "Riehen", "Allschwil")
 |------|------|
 | Quick Reply | `Bestätigt` |
 | Quick Reply | `Abgelehnt` |
+
+**Why it's being replaced:** The template carries only the village name, so the current flow sends a separate free-form `type:text` message with the draft body **before** the template. Free-form text is only deliverable inside Meta's 24-hour customer-service window. The 18:00 daily cron almost always fires outside that window (scouts rarely message the business number spontaneously), so the body silently fails with error `131047` while the template goes through. The scout sees only the two buttons and has no context to confirm against. See §3.1 below — this is the active blocker on the cron-triggered pipeline.
+
+### 3.1 Next template — `bajour_draft_verification_v2` (to submit)
+
+Folding the draft body into a template parameter is the only durable fix: template messages are exempt from the 24-hour window. Until this template is **Approved** by Meta, the daily cron will keep producing scout messages that have buttons but no visible body. **There is no server-side hotfix.** Submit this template, then ship the code changes in §3.2.
+
+**Approved template config (live in Meta Business Manager as of 2026-04-20):**
+
+| Field | Value |
+|-------|-------|
+| Template name | `bajour_draft_verification_v2` |
+| Template ID | `TODO (paste 15-digit ID from Meta Manager — runtime uses name, ID is record-keeping only)` |
+| Category | **Utility** |
+| Language | German (`de`) |
+| Status | **Approved** (2026-04-20) |
+| Allow category change | Off |
+
+**Header:** none.
+
+**Body** (copy-paste verbatim, `\n` renders as actual line breaks in the Meta editor):
+
+```
+Entwurf für {{1}} ({{2}}):
+
+{{3}}
+
+Bitte bestätigen oder ablehnen.
+```
+
+| Param | Meaning | Example | Source in code |
+|-------|---------|---------|----------------|
+| `{{1}}` | Village display name | `Arlesheim` | `draft.village_name` |
+| `{{2}}` | Publication date (ISO `YYYY-MM-DD`) | `2026-04-17` | `draft.publication_date` |
+| `{{3}}` | Draft body, **plain text, ≤ 1024 chars** | first ~950 chars of `draft.body` + `…` + admin link | `truncateForTemplateParam(draft.body, PUBLIC_APP_URL, draft.id)` — helper to add in `_shared/correspondents.ts` |
+
+**Sample values (required by Meta template reviewer):**
+
+- `{{1}}`: `Arlesheim`
+- `{{2}}`: `2026-04-17`
+- `{{3}}`: `Willkommen zum aktuellen Wochenüberblick aus Arlesheim.\n\n## Veranstaltungen\n\nAm 19. April 2026 findet die Veranstaltung "Us em alte Arlese" statt (15:00–17:00 und 19:30–21:00).\n\nDer Gemeinderat beschliesst Budget 2026 mit CHF 92 Mio. Ausgaben.\n\n… vollständiger Entwurf: https://wepublish.github.io/labs/dorfkoenig/?draft=<id>&sig=<sig>&exp=<unix>#/feed`
+
+**Footer** (optional, recommended): `Automatisch generiert — Dorfkönig / Bajour`
+
+**Buttons** (same as v1):
+
+| Type | Text |
+|------|------|
+| Quick Reply | `Bestätigt` |
+| Quick Reply | `Abgelehnt` |
+
+**Meta review constraints to be aware of:**
+
+- Body max 1024 chars **including** the rendered values of `{{1}} {{2}} {{3}}`. Reserve ~60 chars for the fixed frame (`"Entwurf für  (): \n\nBitte bestätigen oder ablehnen."` + the formatting newlines). That leaves ~950 chars for `{{3}}`. The truncation helper should enforce this hard.
+- Body cannot start or end with a parameter, cannot have two parameters side-by-side — the `Entwurf für {{1}} ({{2}}):` framing satisfies this.
+- No URLs in Utility template bodies are tolerated as long as they're inside a parameter (`{{3}}`), not in fixed text. Putting the signed admin link inside `{{3}}` is fine.
+- Utility category approval is usually 1–24 hours. Marketing is slower. Do **not** let Meta auto-recategorize to Marketing — it caps to per-user per-day marketing limits and changes pricing.
+
+**After "Approved" status shows in Meta Manager:**
+
+1. Capture the new **Template ID** and paste it into the table above.
+2. Proceed with §3.2 code migration.
+3. Keep `bajour_draft_verification` v1 in Meta for one week as a fallback, then pause it.
+
+### 3.2 Code migration (only after §3.1 is Approved)
+
+Both edge functions currently send two messages per correspondent (text body then template); after migration they send exactly one message (template v2 with the body as a parameter).
+
+**Files to change:**
+
+1. `supabase/functions/_shared/correspondents.ts` — add a helper:
+   ```ts
+   const TEMPLATE_PARAM_BODY_MAX = 950; // under Meta's 1024 after frame chars
+
+   export function truncateForTemplateParam(
+     body: string,
+     publicAppUrl: string,
+     draftId: string,
+   ): string {
+     const link = `${publicAppUrl}/?draft=${draftId}#/feed`;
+     const reserve = `\n\n… vollständiger Entwurf: ${link}`;
+     const budget = TEMPLATE_PARAM_BODY_MAX - reserve.length;
+     if (body.length <= TEMPLATE_PARAM_BODY_MAX) return body;
+     return body.slice(0, budget).replace(/\s+\S*$/, '') + reserve;
+   }
+   ```
+   Note: if you want the deep-link signed (so admins can open the draft without being the draft's owner), reuse `signAdminDraftLink` from `_shared/admin-link.ts` — but that forces `truncateForTemplateParam` to be async.
+
+2. `supabase/functions/bajour-auto-draft/index.ts` — replace the per-correspondent send block (currently L257-281, text then template) with a single template call:
+   ```ts
+   for (const correspondent of correspondents) {
+     const phoneWithPlus = '+' + correspondent.phone;
+     const templateResult = await sendWhatsAppMessage({
+       to: phoneWithPlus,
+       type: 'template',
+       template: {
+         name: 'bajour_draft_verification_v2',
+         language: { code: 'de' },
+         components: [
+           {
+             type: 'body',
+             parameters: [
+               { type: 'text', text: village_name },
+               { type: 'text', text: today },
+               { type: 'text', text: truncateForTemplateParam(body_md.trim(), PUBLIC_APP_URL, draftId) },
+             ],
+           },
+         ],
+       },
+     });
+     allMessageIds.push(templateResult.message_id);
+   }
+   ```
+   Read `PUBLIC_APP_URL` from `Deno.env.get('PUBLIC_APP_URL')` with the same default as the webhook does.
+
+3. `supabase/functions/bajour-send-verification/index.ts` — mirror the same change at L59-88. The body here is `draft.body`; the date is `draft.publication_date`; the draftId is `draft_id`.
+
+4. `supabase/functions/_shared/constants.ts` — add `TEMPLATE_PARAM_BODY_MAX = 950` if you want it colocated with other constants instead of in `correspondents.ts`.
+
+5. Remove the orientation comment at L260-261 in `bajour-auto-draft/index.ts` and the matching comment at L59-60 in `bajour-send-verification/index.ts` — they describe a send-order workaround that no longer exists.
+
+6. `verification_timeout_at` stays the same (4h in send-verification, 2h in auto-draft). No change.
+
+### 3.3 Defense-in-depth: persist Meta delivery `statuses[]`
+
+Today we learn about 131047 and other delivery failures only because a one-line `console.log` in `bajour-whatsapp-webhook` exposed Meta's status webhooks. That log is temporary. Replace it with a real table so failures are queryable forever.
+
+1. New migration `20260418000000_whatsapp_status_events.sql`:
+   ```sql
+   CREATE TABLE bajour_whatsapp_status_events (
+     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+     wamid       TEXT NOT NULL,
+     status      TEXT NOT NULL,           -- 'sent' | 'delivered' | 'read' | 'failed'
+     recipient   TEXT NOT NULL,
+     error_code  INTEGER,
+     error_title TEXT,
+     error_detail TEXT,
+     raw         JSONB NOT NULL,
+     received_at TIMESTAMPTZ DEFAULT now() NOT NULL
+   );
+   CREATE INDEX ON bajour_whatsapp_status_events (wamid);
+   CREATE INDEX ON bajour_whatsapp_status_events (status, received_at DESC);
+   ALTER TABLE bajour_whatsapp_status_events ENABLE ROW LEVEL SECURITY;
+   CREATE POLICY "service_role_all" ON bajour_whatsapp_status_events
+     FOR ALL TO service_role USING (true) WITH CHECK (true);
+   ```
+
+2. In `bajour-whatsapp-webhook/index.ts`, after `const body = JSON.parse(rawBody);` and before the `messages` branch, handle the `statuses` path:
+   ```ts
+   const statuses = value?.statuses;
+   if (Array.isArray(statuses) && statuses.length > 0) {
+     await supabase.from('bajour_whatsapp_status_events').insert(
+       statuses.map((s: any) => ({
+         wamid: s.id,
+         status: s.status,
+         recipient: s.recipient_id ?? '',
+         error_code: s.errors?.[0]?.code ?? null,
+         error_title: s.errors?.[0]?.title ?? null,
+         error_detail: s.errors?.[0]?.error_data?.details ?? null,
+         raw: s,
+       })),
+     );
+     return jsonResponse({ status: 'status_recorded', count: statuses.length });
+   }
+   ```
+
+3. Remove the temporary `console.log('webhook body:', rawBody.slice(0, 4000));` line (inserted 2026-04-17) from the same file.
+
+4. Deploy: `supabase db push --workdir ./src/dorfkoenig` then `supabase functions deploy bajour-whatsapp-webhook --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig`.
+
+Query for failures going forward:
+```sql
+SELECT wamid, error_code, error_detail, received_at
+FROM bajour_whatsapp_status_events
+WHERE status = 'failed' AND received_at > NOW() - INTERVAL '24 hours'
+ORDER BY received_at DESC;
+```
+
+### 3.4 Rollout checklist
+
+- [x] Submit `bajour_draft_verification_v2` via Meta Business Manager (§3.1). *(2026-04-20)*
+- [x] Wait for Approved status. Note the template ID. *(2026-04-20 — ID to paste as TODO above)*
+- [x] Ship `bajour_whatsapp_status_events` table + webhook patch (§3.3). *(2026-04-20, bundled with §3.2)*
+- [x] Once v2 is Approved: update the template name in both edge functions (§3.2), deploy, invoke via `SELECT dispatch_auto_drafts();` for a village whose scout has **not** messaged in 24+ hours (this is the reproduction condition for today's bug), and verify both Samuel and Ernst receive a single template message whose body starts with the village name and contains the draft text. *(deploy + end-to-end verification pending in PR)*
+- [ ] After a week of green runs, pause the old `bajour_draft_verification` template in Meta Manager.
+- [ ] Remove `BAJOUR_CORRESPONDENTS` env secret once unrelated DB migration is also validated.
+
+### 3.5 Evidence trail for the 24h-window root cause
+
+Captured 2026-04-17 after a manual `SELECT dispatch_auto_drafts();` at 19:48 UTC. Scouts Samuel and Ernst last replied > 24h prior. Logged via `console.log` in `bajour-whatsapp-webhook`:
+
+```
+statuses[] for text-body wamid to +41786651827: status=failed, code=131047,
+  detail="Message failed to send because more than 24 hours have passed since
+          the customer last replied to this number."
+statuses[] for text-body wamid to +41796169078: same, code=131047.
+statuses[] for template wamid to +41786651827: status=sent (category=utility).
+statuses[] for template wamid to +41796169078: status=sent → delivered.
+```
+
+All four `sendWhatsAppMessage` POSTs returned `200 OK` with a `wamid` at send-time — the failure is asynchronous, reported only via the `statuses[]` webhook we previously ignored. This is why the symptom is silent and why `verificationSent = true` in `auto_draft_runs` even though scouts saw buttons only.
 
 ## 4. Supabase Secrets
 
