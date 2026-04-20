@@ -62,7 +62,11 @@ Message order per correspondent: the full draft text is sent first, then the tem
 
 ## 3. Message Template
 
-> **✅ `bajour_draft_verification_v2` approved by Meta on 2026-04-20.** v1 remains live for ~1 week as a fallback. Code migration (§3.2) and observability (§3.3) shipped together. CTO-facing submission runbook archived at `src/dorfkoenig/docs/meta-template-submission.md`.
+> **✅ `bajour_draft_verification_v2` approved by Meta on 2026-04-20 and verified end-to-end at 11:58 UTC the same day.** A one-off cron fired `bajour-send-verification` with a 1292-char dummy Arlesheim draft; both correspondents received the template with body rendered above the buttons, `sent → delivered → read` status events landed in `bajour_whatsapp_status_events`, **zero `131047`**. v1 remains live for ~1 week as a fallback. CTO-facing submission runbook archived at `src/dorfkoenig/docs/meta-template-submission.md`.
+>
+> Two parameter constraints surfaced during the end-to-end test and are encoded in `_shared/correspondents.ts`:
+> - **Meta 132018** — template text params cannot contain newlines, tabs, or runs of >4 consecutive spaces. `flattenForTemplate()` replaces `\n+` with ` · ` and caps space runs at 4.
+> - **Meta 132005** — body component (fixed text + expanded params) is capped at 1024 characters. `TEMPLATE_PARAM_BODY_MAX` is set to 800 (below the theoretical ~954 ceiling) to absorb unicode accounting differences between V8 `.length` and Meta's server-side count.
 
 ### 3.0 Meta UI runbook — creating `bajour_draft_verification_v2`
 
@@ -333,7 +337,7 @@ ORDER BY received_at DESC;
 - [x] Submit `bajour_draft_verification_v2` via Meta Business Manager (§3.1). *(2026-04-20)*
 - [x] Wait for Approved status. Note the template ID. *(2026-04-20 — ID to paste as TODO above)*
 - [x] Ship `bajour_whatsapp_status_events` table + webhook patch (§3.3). *(2026-04-20, bundled with §3.2)*
-- [x] Once v2 is Approved: update the template name in both edge functions (§3.2), deploy, invoke via `SELECT dispatch_auto_drafts();` for a village whose scout has **not** messaged in 24+ hours (this is the reproduction condition for today's bug), and verify both Samuel and Ernst receive a single template message whose body starts with the village name and contains the draft text. *(deploy + end-to-end verification pending in PR)*
+- [x] Once v2 is Approved: update the template name in both edge functions (§3.2), deploy, invoke via `SELECT dispatch_auto_drafts();` for a village whose scout has **not** messaged in 24+ hours (this is the reproduction condition for today's bug), and verify both Samuel and Ernst receive a single template message whose body starts with the village name and contains the draft text. *(verified 2026-04-20 11:58 UTC via one-off cron on dummy Arlesheim draft `aeeaa5d3…` — both correspondents received v2 template, zero 131047)*
 - [ ] After a week of green runs, pause the old `bajour_draft_verification` template in Meta Manager.
 - [ ] Remove `BAJOUR_CORRESPONDENTS` env secret once unrelated DB migration is also validated.
 
