@@ -220,6 +220,7 @@
         style: 'news',
         max_words: 500,
         include_sources: true,
+        ...(village && { village_id: village.id, village_name: village.name }),
         ...(customPrompt && { custom_system_prompt: customPrompt }),
       });
       draft = result;
@@ -274,6 +275,8 @@
         style: 'news',
         max_words: 500,
         include_sources: true,
+        village_id: village.id,
+        village_name: village.name,
         ...(customPrompt && { custom_system_prompt: customPrompt }),
       });
 
@@ -300,6 +303,10 @@
         style: 'news',
         max_words: 500,
         include_sources: true,
+        ...(draftVillageId && draftVillageName && {
+          village_id: draftVillageId,
+          village_name: draftVillageName,
+        }),
         ...(regenPrompt && { custom_system_prompt: regenPrompt }),
       });
       draft = result;

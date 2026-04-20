@@ -164,20 +164,32 @@ Deno.serve(async (req) => {
     }
 
     // --- 4. Generate draft ---
-    const { data: selectedUnits, error: selectedError } = await supabase
+    const { data: selectedUnitsRaw, error: selectedError } = await supabase
       .from('information_units')
-      .select(UNIT_FOR_COMPOSE_COLUMNS)
+      .select(UNIT_FOR_COMPOSE_COLUMNS + ', location')
       .in('id', selectedIds);
 
     if (selectedError) throw new Error(`Selected units fetch failed: ${selectedError.message}`);
 
+    // Server-side village re-check: defense-in-depth against extraction-time
+    // mislabels (unit stored with location.city = village_id but statement
+    // actually about a different Gemeinde). Drop mismatches before the LLM
+    // sees them so cross-village leaks can't land in the final draft.
+    const selectedUnits = (selectedUnitsRaw || []).filter((u: { location?: { city?: string } | null }) => {
+      const city = u.location?.city;
+      if (city === village_id) return true;
+      console.warn(`auto-draft: dropping unit with location.city=${city} from ${village_id} draft`);
+      return false;
+    });
+
     // Format units grouped by type for draft generation
-    const formattedSelected = formatUnitsByType(selectedUnits || [], true);
+    const formattedSelected = formatUnitsByType(selectedUnits, true);
 
     // Build 3-layer newsletter prompt
     const layer1 = `Du bist ein KI-Assistent für den Newsletter "${village_name} — Wochenüberblick".
-Du schreibst AUSSCHLIEßLICH basierend auf den bereitgestellten Informationseinheiten.
-ERFINDE KEINE Informationen. Wenn etwas unklar ist, kennzeichne es als "nicht bestätigt".`;
+Du schreibst AUSSCHLIEßLICH basierend auf den bereitgestellten Informationseinheiten und AUSSCHLIESSLICH für die Gemeinde ${village_name}.
+ERFINDE KEINE Informationen. Wenn etwas unklar ist, kennzeichne es als "nicht bestätigt".
+Einheiten, die primär eine andere Gemeinde als ${village_name} betreffen, dürfen NICHT als eigenständige Meldungen auftauchen — auch dann nicht, wenn ${village_name} beiläufig erwähnt wird.`;
 
     const layer3 = `Schreibe den gesamten Newsletter auf Deutsch.
 

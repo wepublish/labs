@@ -118,6 +118,13 @@ export const DRAFT_COMPOSE_PROMPT = `SCHREIBRICHTLINIEN:
 - Beispiel: '📊 **42%** Anstieg der Wohnkosten [srf.ch](https://www.srf.ch/artikel)'
 - Zitiere Quellen inline als Markdown-Link [quelle.ch](https://url) mit der
   exakten Artikel-URL aus der Einheit — keine Abkürzungen, keine Änderungen.
+- Beginne jede Meldung mit einem passenden Emoji und referenziere die Quelle
+  sprachlich im Text (z.B. "wie die bz Basel schreibt").
+- GEMEINDE-EXKLUSIVITÄT: Dieser Entwurf ist ausschliesslich für die benannte
+  Ziel-Gemeinde. Einheiten, die primär eine andere Gemeinde betreffen, dürfen
+  NICHT als eigenständige Meldung auftauchen. Beiläufige Erwähnungen anderer
+  Orte (Regionales, Kantonales) sind nur zulässig, wenn sie klaren Bezug zur
+  Ziel-Gemeinde haben.
 - Fakten aus mehreren Quellen sind glaubwürdiger — erwähne wenn verfügbar
 - Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen, welche Daten verifizieren
 - Priorisiere: Zahlen > Daten > Zitate > allgemeine Aussagen`;
