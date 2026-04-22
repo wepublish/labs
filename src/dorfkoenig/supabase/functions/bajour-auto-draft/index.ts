@@ -322,6 +322,7 @@ Deno.serve(async (req) => {
         village_name,
         selected_units: selectedUnits,
         compose_layer2: composeLayer2,
+        ctx: { village_id, run_id: runId ?? undefined },
       });
       draftTitle = v2.title;
       bulletsJson = v2;
@@ -335,6 +336,7 @@ Deno.serve(async (req) => {
         village_name,
         selected_units: selectedUnits,
         compose_layer2: composeLayer2,
+        ctx: { village_id, run_id: runId ?? undefined },
       });
       draftTitle = v1.title || `${village_name} — ${today}`;
       bodyMd = body_md;

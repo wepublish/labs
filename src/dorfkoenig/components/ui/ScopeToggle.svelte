@@ -8,6 +8,9 @@
     existingTopics?: string[];
     /** Hide the Ort (location) section when the parent uses auto-mode Gemeinde assignment. */
     hideLocation?: boolean;
+    /** Forwarded to LocationAutocomplete. Set by the manual-upload modal so
+     *  editors can only pick pilot villages; scout creation leaves it off. */
+    restrictToPilot?: boolean;
     onlocationchange: (loc: Location | null) => void;
     ontopicchange: (topic: string) => void;
   }
@@ -17,6 +20,7 @@
     topic,
     existingTopics = [],
     hideLocation = false,
+    restrictToPilot = false,
     onlocationchange,
     ontopicchange,
   }: Props = $props();
@@ -115,7 +119,8 @@
       <LocationAutocomplete
         value={loc?.city || ''}
         onselect={handleLocationSelect}
-        placeholder="z.B. Riehen"
+        placeholder="z.B. Arlesheim"
+        {restrictToPilot}
       />
     </div>
   {/if}

@@ -8,12 +8,35 @@ interface ChatMessage {
   content: string;
 }
 
+export interface ChatTool {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export type ChatToolChoice =
+  | 'auto'
+  | 'none'
+  | 'required'
+  | { type: 'function'; function: { name: string } };
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
 interface ChatOptions {
   model?: string;
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
   response_format?: { type: 'json_object' };
+  tools?: ChatTool[];
+  tool_choice?: ChatToolChoice;
 }
 
 interface ChatResponse {
@@ -22,7 +45,8 @@ interface ChatResponse {
     index: number;
     message: {
       role: string;
-      content: string;
+      content: string | null;
+      tool_calls?: ToolCall[];
     };
     finish_reason: string;
   }[];
@@ -43,6 +67,8 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
     temperature = 0.2,
     max_tokens = 2000,
     response_format,
+    tools,
+    tool_choice,
   } = options;
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -59,6 +85,8 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
       temperature,
       max_tokens,
       ...(response_format && { response_format }),
+      ...(tools && { tools }),
+      ...(tool_choice && { tool_choice }),
     }),
   });
 

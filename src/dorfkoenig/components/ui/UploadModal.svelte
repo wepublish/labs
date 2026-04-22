@@ -18,6 +18,7 @@
     NewspaperExtractedUnit,
   } from '../../lib/types';
   import { supabase } from '../../lib/supabase';
+  import { loadPilotVillages } from '../../lib/villages';
 
   const JOB_POLL_INTERVAL_MS = 10_000;
   const SECONDS_PER_CHUNK = 15;
@@ -87,6 +88,13 @@
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
       teardownJobWatchers();
     };
+  });
+
+  // Pilot allow-list drives the Ort picker in manual upload. Call eagerly
+  // whenever the modal opens so the first-time user doesn't see an empty
+  // dropdown while the list resolves.
+  $effect(() => {
+    if (open) loadPilotVillages();
   });
 
   function resetState(): void {
@@ -176,6 +184,7 @@
   let isValid = $derived.by(() => {
     if (activeTab === 'text') {
       if (location === null) return false;
+      if (publicationDate === '') return false;
       return text.trim().length >= MIN_TEXT_LENGTH;
     } else {
       // PDF: file required, publication date required, no location needed
@@ -193,6 +202,10 @@
       }
       if (text.trim().length < MIN_TEXT_LENGTH) {
         validationError = `Text muss mindestens ${MIN_TEXT_LENGTH} Zeichen lang sein`;
+        return false;
+      }
+      if (!publicationDate) {
+        validationError = 'Publikationsdatum ist erforderlich';
         return false;
       }
     } else {
@@ -321,11 +334,44 @@
           location,
           topic: topic.trim() || null,
           source_title: sourceTitle.trim() || null,
+          publication_date: publicationDate,
         });
-        uploadProgress = 100;
-        unitsCreated = result.units_created;
-        uploadState = 'success';
-        autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+        uploadProgress = 60;
+        if (result.status === 'completed') {
+          uploadProgress = 100;
+          unitsCreated = result.units_created ?? 0;
+          uploadState = 'success';
+          autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+        } else {
+          // Hop onto the same job-watching path used for PDFs (review_pending →
+          // PdfReviewPanel → pdf_finalize). Server already staged units in
+          // extracted_units, so even without polling the first getJob call returns
+          // the review payload immediately.
+          processingJobId = result.job_id;
+          uploadState = 'uploading';
+          uploadProgress = 100;
+          const job = await manualUploadApi.getJob(result.job_id);
+          applyJobUpdate(job);
+          if (uploadState === 'uploading') {
+            // Fallback: subscribe via realtime + poll like PDF in case the
+            // stage update landed between the insert and our read.
+            realtimeChannel = supabase
+              .channel(`newspaper-job-${result.job_id}`)
+              .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'newspaper_jobs', filter: `id=eq.${result.job_id}` },
+                (payload) => applyJobUpdate(payload.new as NewspaperJob),
+              )
+              .subscribe();
+            pollInterval = setInterval(async () => {
+              if (!processingJobId) return;
+              try {
+                const j = await manualUploadApi.getJob(processingJobId);
+                applyJobUpdate(j);
+              } catch { /* benign */ }
+            }, JOB_POLL_INTERVAL_MS);
+          }
+        }
       } else {
         // PDF upload: 3-step process
         uploadProgress = 20;
@@ -395,7 +441,7 @@
           }, JOB_POLL_INTERVAL_MS);
         } else {
           uploadProgress = 100;
-          if ('units_created' in result) {
+          if ('units_created' in result && typeof result.units_created === 'number') {
             unitsCreated = result.units_created;
           }
           uploadState = 'success';
@@ -530,7 +576,12 @@
           {/if}
 
           {#if activeTab === 'text'}
-            <UploadTextTab {text} ontextchange={(v) => { text = v; }} />
+            <UploadTextTab
+              {text}
+              {publicationDate}
+              ontextchange={(v) => { text = v; }}
+              onpublicationdatechange={(v) => { publicationDate = v; }}
+            />
           {:else if activeTab === 'pdf'}
             <UploadPdfTab
               {file}
@@ -551,6 +602,7 @@
                 {location}
                 {topic}
                 {existingTopics}
+                restrictToPilot={true}
                 onlocationchange={(loc) => { location = loc; }}
                 ontopicchange={(t) => { topic = t; }}
               />

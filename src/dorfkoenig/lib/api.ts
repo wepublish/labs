@@ -125,9 +125,10 @@ export const manualUploadApi = {
     location?: import('./types').Location | null;
     topic?: string | null;
     source_title?: string | null;
+    publication_date: string;
   }) =>
-    api.post<import('./types').ManualUploadResult>('manual-upload', {
-      content_type: 'text',
+    api.post<import('./types').NewspaperProcessingResult>('manual-upload', {
+      content_type: 'text_extract',
       ...data,
     }),
 

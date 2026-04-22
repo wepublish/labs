@@ -1,10 +1,12 @@
 <script lang="ts">
   interface Props {
     text: string;
+    publicationDate: string;
     ontextchange: (text: string) => void;
+    onpublicationdatechange: (date: string) => void;
   }
 
-  let { text, ontextchange }: Props = $props();
+  let { text, publicationDate, ontextchange, onpublicationdatechange }: Props = $props();
 </script>
 
 <div class="form-group">
@@ -17,6 +19,18 @@
     rows="5"
   ></textarea>
   <p class="hint-text">KI extrahiert automatisch Fakten aus dem Text</p>
+</div>
+
+<div class="form-group">
+  <label for="upload-text-pubdate">Publikationsdatum</label>
+  <input
+    id="upload-text-pubdate"
+    type="date"
+    value={publicationDate}
+    oninput={(e) => onpublicationdatechange(e.currentTarget.value)}
+    required
+  />
+  <p class="hint-text">Wird als Anker für Einheiten ohne eigenes Datum verwendet</p>
 </div>
 
 <style>
@@ -32,7 +46,8 @@
     color: var(--color-text);
   }
 
-  .form-group textarea {
+  .form-group textarea,
+  .form-group input[type="date"] {
     width: 100%;
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
@@ -44,7 +59,8 @@
     resize: vertical;
   }
 
-  .form-group textarea:focus {
+  .form-group textarea:focus,
+  .form-group input[type="date"]:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);

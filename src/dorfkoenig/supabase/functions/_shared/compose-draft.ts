@@ -60,7 +60,107 @@ export interface ComposeInput {
   temperature?: number;
   /** Max output tokens. */
   max_tokens?: number;
+  /** Optional diagnostic context — surfaces in parse-failure logs + thrown error. */
+  ctx?: { village_id?: string; run_id?: string | number };
 }
+
+/**
+ * Tolerant JSON extractor for text-mode LLM responses. Fallback only — the
+ * happy path for v2 is Anthropic tool_use via OpenRouter (see SUBMIT_DIGEST_TOOL),
+ * which returns a schema-validated JSON arguments blob and never falls into
+ * this parser. Kept for the v1 path and for providers that ignore tool_choice.
+ */
+export function parseLlmJson(
+  content: string,
+  variant: 'v1' | 'v2',
+  ctx?: { village_id?: string; run_id?: string | number },
+): unknown {
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // fall through
+  }
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fence) {
+    try {
+      return JSON.parse(fence[1].trim());
+    } catch {
+      // fall through
+    }
+  }
+  const first = trimmed.indexOf('{');
+  const last = trimmed.lastIndexOf('}');
+  if (first !== -1 && last > first) {
+    try {
+      return JSON.parse(trimmed.slice(first, last + 1));
+    } catch {
+      // fall through
+    }
+  }
+  const preview = content.slice(0, 300).replace(/\s+/g, ' ');
+  console.error(
+    `compose ${variant} parse failed` +
+      (ctx?.village_id ? ` village=${ctx.village_id}` : '') +
+      (ctx?.run_id != null ? ` run=${ctx.run_id}` : '') +
+      `; raw (2k):`,
+    content.slice(0, 2000),
+  );
+  const legacy =
+    variant === 'v2'
+      ? 'Failed to parse compose LLM response (v2)'
+      : 'Failed to parse draft generation LLM response';
+  throw new Error(`${legacy} [len=${content.length}] ${preview}`);
+}
+
+/**
+ * Tool schema for v2 compose. Claude (via OpenRouter) is forced to invoke this
+ * tool instead of free-form text, guaranteeing well-formed JSON arguments.
+ * The schema mirrors DraftV2 from draft-quality.ts — keep in sync.
+ */
+const SUBMIT_DIGEST_TOOL: import('./openrouter.ts').ChatTool = {
+  type: 'function',
+  function: {
+    name: 'submit_digest',
+    description:
+      'Submit the weekly village digest. Call this exactly once with the final draft.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'bullets', 'notes_for_editor'],
+      properties: {
+        title: { type: 'string', description: 'Wochentitel für die Gemeinde.' },
+        bullets: {
+          type: 'array',
+          description: 'Bullets des Digests (max. 4).',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['emoji', 'kind', 'text', 'article_url', 'source_domain', 'source_unit_ids'],
+            properties: {
+              emoji: { type: 'string' },
+              kind: {
+                type: 'string',
+                enum: ['lead', 'secondary', 'event', 'good_news'],
+              },
+              text: { type: 'string' },
+              article_url: { type: ['string', 'null'] },
+              source_domain: { type: ['string', 'null'] },
+              source_unit_ids: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+        },
+        notes_for_editor: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    },
+  },
+};
 
 // ── v1 (legacy) ──────────────────────────────────────────────────────────
 
@@ -95,6 +195,7 @@ export async function composeDraftFromUnits(input: ComposeInput): Promise<Compos
     model = COMPOSE_MODEL,
     temperature = 0.2,
     max_tokens = 2500,
+    ctx,
   } = input;
 
   if (!village_id || !village_name) {
@@ -142,12 +243,11 @@ Ausgabeformat (JSON):
     response_format: { type: 'json_object' },
   });
 
-  let draft: ComposedDraftV1;
-  try {
-    draft = JSON.parse(response.choices[0].message.content) as ComposedDraftV1;
-  } catch {
-    throw new Error('Failed to parse draft generation LLM response');
-  }
+  const draft = parseLlmJson(
+    response.choices[0].message.content ?? '',
+    'v1',
+    ctx,
+  ) as ComposedDraftV1;
 
   const body_md = renderDraftToMarkdown(draft);
 
@@ -193,6 +293,7 @@ export async function composeDraftFromUnitsV2(input: ComposeInput): Promise<Comp
     model = COMPOSE_MODEL,
     temperature = 0.2,
     max_tokens = 2500,
+    ctx,
   } = input;
 
   if (!village_id || !village_name) {
@@ -220,19 +321,32 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
         role: 'user',
         content:
           `Einheiten für ${village_name} (${new Date().toISOString().slice(0, 10)}):\n\n${formattedUnits}\n\n` +
-          `Erstelle den Digest gemäss den Regeln.`,
+          `Erstelle den Digest gemäss den Regeln und rufe das Tool "submit_digest" mit dem Ergebnis auf.`,
       },
     ],
     temperature,
     max_tokens,
-    response_format: { type: 'json_object' },
+    tools: [SUBMIT_DIGEST_TOOL],
+    tool_choice: { type: 'function', function: { name: 'submit_digest' } },
   });
 
+  // Happy path: Claude/OpenRouter returns a tool_call whose `arguments` are
+  // a JSON string already validated against the tool schema.
+  const toolCall = response.choices[0].message.tool_calls?.find(
+    (c) => c.function?.name === 'submit_digest',
+  );
   let raw: unknown;
-  try {
-    raw = JSON.parse(response.choices[0].message.content);
-  } catch {
-    throw new Error('Failed to parse compose LLM response (v2)');
+  if (toolCall) {
+    try {
+      raw = JSON.parse(toolCall.function.arguments);
+    } catch {
+      // extremely rare — OpenRouter handed us malformed tool arguments. Try the
+      // tolerant parser so we at least salvage partial output.
+      raw = parseLlmJson(toolCall.function.arguments, 'v2', ctx);
+    }
+  } else {
+    // Fallback: some providers ignore tool_choice and emit text content.
+    raw = parseLlmJson(response.choices[0].message.content ?? '', 'v2', ctx);
   }
 
   const draft = normaliseDraftV2(raw, village_name);

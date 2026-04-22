@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MapPin } from 'lucide-svelte';
   import gemeindenData from '../../lib/gemeinden.json';
+  import { pilotVillages } from '../../lib/villages';
 
   interface Gemeinde {
     id: string;
@@ -21,9 +22,13 @@
     value: string;
     onselect: (location: LocationResult) => void;
     placeholder?: string;
+    /** When true, only pilot villages are shown (pilot allow-list from
+     *  `bajour_pilot_villages_list`). Used by the manual-upload modal to
+     *  enforce the pilot boundary. Scout creation leaves this off. */
+    restrictToPilot?: boolean;
   }
 
-  let { value, onselect, placeholder = 'z.B. Riehen' }: Props = $props();
+  let { value, onselect, placeholder = 'z.B. Arlesheim', restrictToPilot = false }: Props = $props();
 
   const gemeinden = gemeindenData as Gemeinde[];
 
@@ -36,12 +41,24 @@
     inputValue = value;
   });
 
+  // Pilot scoping (opt-in via restrictToPilot): manual upload must not let
+  // editors assign units to villages outside the active pilot. Strict null
+  // handling — while the pilot list is loading we show nothing, so we can't
+  // accidentally leak the full pool during the async resolve.
+  let allowedGemeinden = $derived.by(() => {
+    if (!restrictToPilot) return gemeinden;
+    const pilot = $pilotVillages;
+    if (pilot === null) return [];
+    return gemeinden.filter((g) => pilot.includes(g.id));
+  });
+
   function updateResults(query: string) {
+    const pool = allowedGemeinden;
     if (!query.trim()) {
-      results = gemeinden;
+      results = pool;
     } else {
       const lower = query.trim().toLowerCase();
-      results = gemeinden.filter(
+      results = pool.filter(
         (g) => g.name.toLowerCase().startsWith(lower)
       );
     }

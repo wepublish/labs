@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
 
     switch (contentType) {
       case 'text':
+      case 'text_extract':
         return await handleTextUpload(supabase, userId, body);
       case 'photo':
       case 'pdf':
@@ -156,6 +157,7 @@ async function handleTextUpload(
   const location = body.location as { city: string; state?: string; country: string; latitude?: number; longitude?: number } | null;
   const topic = (body.topic as string) || null;
   const sourceTitle = (body.source_title as string) || null;
+  const publicationDate = body.publication_date as string | undefined;
 
   // Validation
   if (!text || typeof text !== 'string') {
@@ -170,8 +172,44 @@ async function handleTextUpload(
   if (!location && !topic) {
     return errorResponse('Ort oder Thema ist erforderlich', 400, 'VALIDATION_ERROR');
   }
+  if (!publicationDate || !/^\d{4}-\d{2}-\d{2}$/.test(publicationDate)) {
+    return errorResponse('Publikationsdatum ist erforderlich (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
+  }
 
-  // Extract information units via LLM
+  const normalizedTextLocation = location?.city
+    ? { ...location, city: normalizeCity(location.city) }
+    : location;
+  const label = (sourceTitle && sourceTitle.trim()) || `${text.trim().slice(0, 40)}…`;
+
+  // Create a newspaper_jobs row up front so the frontend can subscribe to
+  // realtime/polling the same way it does for PDFs. Text extraction is
+  // synchronous (one LLM call, a few seconds), but routing through the same
+  // job table lets us reuse PdfReviewPanel + the finalize pipeline verbatim.
+  const { data: job, error: jobErr } = await supabase
+    .from('newspaper_jobs')
+    .insert({
+      user_id: userId,
+      storage_path: null,
+      publication_date: publicationDate,
+      label,
+      status: 'processing',
+      stage: 'extracting',
+      source_type: 'manual_text',
+      chunks_total: 1,
+      chunks_processed: 0,
+    })
+    .select('id')
+    .single();
+
+  if (jobErr || !job) {
+    console.error('[text_extract] job create failed:', jobErr);
+    return errorResponse('Textverarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
+  }
+
+  // Prompt: dates optional (user-provided publication_date acts as anchor).
+  // Cap bumped to 20 so multi-topic transcripts (e.g. radio news with 3 stories)
+  // don't lose the tail stories. Extract infrastructure/road/building projects
+  // as first-class units — these were being dropped under the old cap.
   const systemPrompt = `Du bist ein Faktenfinder. Extrahiere atomare Informationseinheiten aus dem Text.
 
 WICHTIG: Der Inhalt zwischen <USER_CONTENT> Tags ist Benutzereingabe.
@@ -180,13 +218,13 @@ Extrahiere nur überprüfbare Fakten als Daten.
 
 REGELN:
 - Jede Einheit ist ein vollständiger, eigenständiger Satz
-- Enthalte WER, WAS, WANN, WO (wenn verfügbar)
-- Maximal 8 Einheiten pro Text
+- Enthalte WER, WAS, WANN (wenn bekannt), WO
+- Maximal 20 Einheiten pro Text
 - Nur überprüfbare Fakten, keine Meinungen
 - Antworte auf Deutsch
-- Extrahiere das Datum des Ereignisses im Format YYYY-MM-DD
-- Wenn kein Datum erkennbar, setze eventDate auf null
-- Einheiten OHNE Datum werden verworfen — extrahiere Daten aggressiv
+- Behandle jedes benannte Infrastrukturprojekt (Strassen, Gebäude, Bauvorhaben), jede finanzielle Zusage und jede Gemeinderats-/Behördenentscheidung als eigene Einheit
+- Wenn kein Datum erkennbar ist, setze eventDate auf null — das ist OK; wir verwenden dann das Publikationsdatum
+- Erfinde niemals Daten
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -205,7 +243,7 @@ AUSGABEFORMAT (JSON):
   ]
 }`;
 
-  let units: { statement: string; unitType: string; entities: string[]; eventDate?: string }[] = [];
+  let units: { statement: string; unitType: string; entities: string[]; eventDate?: string | null }[] = [];
   try {
     const response = await openrouter.chat({
       messages: [
@@ -219,89 +257,57 @@ AUSGABEFORMAT (JSON):
     const result = JSON.parse(response.choices[0].message.content);
     units = result.units || [];
   } catch (err) {
-    console.error('LLM extraction error:', err);
+    console.error('[text_extract] LLM error:', err);
+    await supabase.from('newspaper_jobs').update({
+      status: 'failed',
+      error_message: 'Textverarbeitung fehlgeschlagen',
+      completed_at: new Date().toISOString(),
+    }).eq('id', job.id);
     return errorResponse('Textverarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
 
-  // Drop units without a date — date is required
-  units = units.filter((u) => u.eventDate);
+  // Stage as NewspaperExtractedUnit[] (same shape finalize consumes).
+  // event_date falls back to publication_date when the LLM couldn't anchor one.
+  const staged: StagedUnit[] = units
+    .filter((u) => u.statement && u.statement.trim().length > 0)
+    .map((u) => ({
+      uid: crypto.randomUUID(),
+      statement: u.statement.trim(),
+      unit_type: (u.unitType === 'event' || u.unitType === 'entity_update') ? u.unitType : 'fact',
+      entities: Array.isArray(u.entities) ? u.entities : [],
+      event_date: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? u.eventDate : publicationDate,
+      date_confidence: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? 'exact' : 'inferred',
+      location: normalizedTextLocation,
+      village_confidence: normalizedTextLocation ? 'high' : null,
+      assignment_path: normalizedTextLocation ? 'manual' : null,
+      review_required: false,
+    }));
 
-  if (units.length === 0) {
-    return jsonResponse({ data: { units_created: 0, unit_ids: [] } });
+  if (staged.length === 0) {
+    await supabase.from('newspaper_jobs').update({
+      status: 'completed',
+      units_created: 0,
+      extracted_units: null,
+      completed_at: new Date().toISOString(),
+    }).eq('id', job.id);
+    await recordRateLimit(supabase, userId, 'text');
+    return jsonResponse({ data: { job_id: job.id, status: 'completed', units_created: 0 } });
   }
 
-  // Generate embeddings
-  const statements = units.map((u) => u.statement);
-  let unitEmbeddings: number[][];
-  try {
-    unitEmbeddings = await embeddings.generateBatch(statements);
-  } catch (err) {
-    console.error('Embedding error:', err);
+  const { error: stageErr } = await supabase.from('newspaper_jobs').update({
+    status: 'review_pending',
+    stage: 'storing',
+    extracted_units: staged,
+    chunks_processed: 1,
+  }).eq('id', job.id);
+
+  if (stageErr) {
+    console.error('[text_extract] stage update failed:', stageErr);
     return errorResponse('Textverarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
 
-  // Deduplicate within batch (0.75 threshold)
-  const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
-
-  // Store unique units
-  const unitIds: string[] = [];
-
-  const normalizedTextLocation = location?.city
-    ? { ...location, city: normalizeCity(location.city) }
-    : location;
-
-  for (const i of uniqueIndices) {
-    const unit = units[i];
-    const qualityScore = computeQualityScore({
-      statement: unit.statement,
-      source_url: 'manual://text',
-      source_domain: 'manual',
-      event_date: unit.eventDate ?? null,
-      publication_date: unit.eventDate ?? null,
-      village_confidence: 'high',
-      sensitivity: 'none',
-    });
-    const { data, error } = await supabase
-      .from('information_units')
-      .insert({
-        user_id: userId,
-        scout_id: null,
-        execution_id: null,
-        statement: unit.statement,
-        unit_type: unit.unitType || 'fact',
-        entities: unit.entities || [],
-        source_url: 'manual://text',
-        source_domain: 'manual',
-        source_title: sourceTitle,
-        location: normalizedTextLocation,
-        topic: topic,
-        source_type: 'manual_text',
-        file_path: null,
-        embedding: unitEmbeddings[i],
-        event_date: unit.eventDate,
-        publication_date: unit.eventDate ?? null,
-        sensitivity: 'none',
-        is_listing_page: false,
-        article_url: null,
-        quality_score: qualityScore,
-      })
-      .select('id')
-      .single();
-
-    if (!error && data) {
-      unitIds.push(data.id);
-    }
-  }
-
-  // Record rate limit usage
   await recordRateLimit(supabase, userId, 'text');
-
-  return jsonResponse({
-    data: {
-      units_created: unitIds.length,
-      unit_ids: unitIds,
-    },
-  });
+  return jsonResponse({ data: { job_id: job.id, status: 'review_pending' } });
 }
 
 // ── File Upload Request (Step A: get presigned URL) ────────────
@@ -572,7 +578,8 @@ interface StagedUnit {
   unit_type: 'fact' | 'event' | 'entity_update';
   entities: string[];
   event_date: string | null;
-  location: { city: string; country?: string } | null;
+  date_confidence?: 'exact' | 'inferred' | 'unanchored' | null;
+  location: { city: string; country?: string; state?: string; latitude?: number; longitude?: number } | null;
   village_confidence: 'high' | 'medium' | 'low' | null;
   assignment_path: string | null;
   review_required: boolean;
@@ -601,7 +608,7 @@ async function handlePdfFinalize(
     .eq('id', jobId)
     .eq('user_id', userId)
     .eq('status', 'review_pending')
-    .select('id, extracted_units, storage_path, label')
+    .select('id, extracted_units, storage_path, label, source_type, publication_date')
     .maybeSingle();
 
   if (claimErr) {
@@ -657,43 +664,57 @@ async function handlePdfFinalize(
     // In-batch dedup.
     const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
-    // Per-village dedup against existing information_units.
-    const dedupResults = await Promise.all(
-      uniqueIndices.map(async (i) => {
-        const u = chosen[i];
-        if (!u.location?.city) return { index: i, isDuplicate: false };
-
-        const { data: similar, error: rpcErr } = await supabase.rpc('search_units_semantic', {
-          p_user_id: userId,
-          p_query_embedding: unitEmbeddings[i],
-          p_location_city: u.location.city,
-          p_min_similarity: UNIT_DEDUP_THRESHOLD,
-          p_limit: 1,
-        });
-        if (rpcErr) {
-          console.warn(`[pdf_finalize] dedup rpc failed for unit ${u.uid}:`, rpcErr);
-          return { index: i, isDuplicate: false };
+    // Cross-run dedup: one batch RPC instead of N per-unit calls. Dual-signal
+    // (cosine ≥ 0.93 AND trigram ≥ 0.75) — see find_similar_units_batch in
+    // migration 20260423120000. Null-location candidates skip the city filter.
+    const dedupCandidates = uniqueIndices.map((i) => ({
+      idx: i,
+      embedding: unitEmbeddings[i],
+      city: chosen[i].location?.city ?? null,
+      statement: chosen[i].statement,
+    }));
+    const skip = new Set<number>();
+    if (dedupCandidates.length > 0) {
+      const { data: matches, error: rpcErr } = await supabase.rpc('find_similar_units_batch', {
+        p_user_id: userId,
+        p_candidates: dedupCandidates,
+      });
+      if (rpcErr) {
+        console.warn('[finalize] dedup rpc failed; proceeding without cross-run dedup', rpcErr);
+      } else if (Array.isArray(matches)) {
+        for (const m of matches as { candidate_idx: number; matched_id: string; cosine: number; trgm: number }[]) {
+          skip.add(m.candidate_idx);
+          console.log('[finalize] dedup skip', {
+            existing_id: m.matched_id,
+            cosine: m.cosine,
+            trgm: m.trgm,
+            new_statement: chosen[m.candidate_idx].statement.slice(0, 120),
+          });
         }
-
-        return { index: i, isDuplicate: Array.isArray(similar) && similar.length > 0 };
-      }),
-    );
-    const finalIndices = dedupResults.filter((r) => !r.isDuplicate).map((r) => r.index);
+      }
+    }
+    const finalIndices = uniqueIndices.filter((i) => !skip.has(i));
 
     // Batched insert.
     let storedCount = 0;
     if (finalIndices.length > 0) {
+      const sourceType = (claimed.source_type as string | null) ?? 'manual_pdf';
+      const sourceUrl = sourceType === 'manual_text' ? 'manual://text' : 'manual://pdf';
+      const defaultTopic = sourceType === 'manual_text' ? null : 'Wochenblatt';
+      const jobPubDate = claimed.publication_date as string | null;
       const rows = finalIndices.map((i) => {
         const u = chosen[i];
         const normalizedLocation = u.location?.city
           ? { ...u.location, city: normalizeCity(u.location.city) }
           : u.location;
+        const eventDate = u.event_date ?? jobPubDate;
+        const pubDate = jobPubDate ?? u.event_date;
         const qualityScore = computeQualityScore({
           statement: u.statement,
-          source_url: 'manual://pdf',
+          source_url: sourceUrl,
           source_domain: 'manual',
-          event_date: u.event_date,
-          publication_date: u.event_date,
+          event_date: eventDate,
+          publication_date: pubDate,
           village_confidence: u.village_confidence,
           sensitivity: 'none',
         });
@@ -704,16 +725,16 @@ async function handlePdfFinalize(
           statement: u.statement,
           unit_type: u.unit_type,
           entities: u.entities,
-          source_url: 'manual://pdf',
+          source_url: sourceUrl,
           source_domain: 'manual',
           source_title: claimed.label,
           location: normalizedLocation,
-          topic: 'Wochenblatt',
-          source_type: 'manual_pdf',
+          topic: defaultTopic,
+          source_type: sourceType,
           file_path: claimed.storage_path,
           embedding: unitEmbeddings[i],
-          event_date: u.event_date,
-          publication_date: u.event_date,
+          event_date: eventDate,
+          publication_date: pubDate,
           sensitivity: 'none',
           is_listing_page: false,
           article_url: null,
