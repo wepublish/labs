@@ -81,6 +81,12 @@ src/dorfkoenig/
 │   ├── _shared/
 │   │   ├── zeitung-extraction-prompt.ts  # Newspaper extraction prompt + ranking table
 │   │   ├── ... (other shared modules)
+├── docs/                  # Editor-facing docs
+│   └── feedback/          # Markdown feedback intake (ingest-feedback.ts reads here)
+│       ├── README.md
+│       └── {village}/{YYYY-MM-DD}.md
+├── scripts/               # Local CLI tooling
+│   └── ingest-feedback.ts # `npm run ingest:feedback -- --file ...`
 ├── specs/                 # Detailed specifications
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md
@@ -90,7 +96,9 @@ src/dorfkoenig/
 │   ├── AUTH.md
 │   ├── DEPLOYMENT.md
 │   ├── MAILCHIMP.md
-│   └── WHATSAPP.md
+│   ├── WHATSAPP.md
+│   ├── DRAFT_QUALITY.md   # Source of truth for in-flight draft-quality work
+│   └── followups/         # Deferred follow-ups referenced from DRAFT_QUALITY.md §8
 ```
 
 ## Monorepo Integration

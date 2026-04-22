@@ -4,6 +4,8 @@
 
 The execute-scout pipeline is the core of Dorfkoenig. It performs web scraping, change detection, criteria analysis, deduplication, information extraction, and notification delivery.
 
+> **DRAFT_QUALITY overhaul shipped 2026-04-23** (see `specs/DRAFT_QUALITY.md`). The `bajour-auto-draft` pipeline gained: compound date filter + quality gate (§3.2), v2 bullet-only schema (§3.1), deterministic post-validation chain (§3.5), empty-path admin notifications (§3.1.4), inline metric capture (§5.1). Extraction paths (Step 6 below, plus `manual-upload` and `process-newspaper`) gained `publication_date`, `sensitivity`, `is_listing_page`, `article_url` + `quality_score`. All gated by `FEATURE_*` env vars (default off). Feature-flag reference in `specs/DATABASE.md § DRAFT_QUALITY overhaul`.
+
 ## Execute Scout Pipeline (9 Steps)
 
 ```
