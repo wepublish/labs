@@ -2,6 +2,8 @@
 
 PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared modules. All functions have `verify_jwt = false` and authenticate via `x-user-id` header or service role key.
 
+> **Active overhaul:** `specs/DRAFT_QUALITY.md` is the source of truth for in-flight changes to `bajour-auto-draft`, `compose`, extraction prompts, and the `bajour_drafts` / `information_units` schemas. Any PR touching these must link the spec and bump prompt versions per §3.6. Deferred follow-ups in `specs/followups/`.
+
 ## Edge Functions
 
 | Function | Purpose | Auth | Trigger |

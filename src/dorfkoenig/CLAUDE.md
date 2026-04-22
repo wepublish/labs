@@ -294,6 +294,8 @@ A misspelled `village_id` silently drops the village from both the cron fan-out 
 | `specs/DEPLOYMENT.md` | CI/CD, GitHub Pages, Supabase deployment |
 | `specs/MAILCHIMP.md` | Mailchimp integration: template, edge function flow, known limitations |
 | `specs/WHATSAPP.md` | WhatsApp Business API: template, webhook, verification pipeline |
+| `specs/DRAFT_QUALITY.md` | **Active work:** draft quality overhaul — bullet schema, quality scoring, extraction enrichments, compose prompt hardening, validators, feedback capture, benchmarks, production metrics. Source of truth for all in-flight changes to `bajour-auto-draft` and `compose`. |
+| `specs/followups/` | Deferred work that reference-points from `DRAFT_QUALITY.md §8` — currently only `self-learning-system.md` is written. |
 | `supabase/CLAUDE.md` | Backend-specific agent guide |
 
 ## Testing

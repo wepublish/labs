@@ -1,0 +1,128 @@
+{
+  "fixture_id": "arlesheim-2026-04-20",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-20",
+  "notes": "Source: Feedback Dorfkönig.md row 1 — stale news (6-week-old Gemeinderat) + cross-village leaks (Münchenstein Spitex, Pratteln Strafanzeige, Straumann). Gold has 2 editor-selected bullets.",
+  "units": [
+    {
+      "id": "11111111-1111-1111-1111-111111111001",
+      "statement": "Der Gemeinderat Arlesheim ist wieder vollzählig besetzt.",
+      "unit_type": "entity_update",
+      "entities": ["Gemeinderat Arlesheim"],
+      "event_date": null,
+      "publication_date": "2026-03-12",
+      "created_at": "2026-03-12T09:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.wochenblatt.ch/wob/aktuell/arlesheim/artikelseite-arlesheim/der-gemeinderat-ist-wieder-komplett",
+      "source_domain": "Wochenblatt",
+      "article_url": "https://www.wochenblatt.ch/wob/aktuell/arlesheim/artikelseite-arlesheim/der-gemeinderat-ist-wieder-komplett",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 55
+    },
+    {
+      "id": "11111111-1111-1111-1111-111111111002",
+      "statement": "Die Villa Kaelin in Arlesheim, erbaut 1930 von einem Schüler Rudolf Steiners, darf nach Bundesgerichtsentscheid abgerissen werden.",
+      "unit_type": "fact",
+      "entities": ["Villa Kaelin", "Bundesgericht"],
+      "event_date": null,
+      "publication_date": "2026-04-19",
+      "created_at": "2026-04-19T11:30:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.bzbasel.ch/basel/baselland/trotz-historischem-wert-gericht-gibt-gruenes-licht-fuer-abriss-in-arlesheim-ld.4135667",
+      "source_domain": "bz Basel",
+      "article_url": "https://www.bzbasel.ch/basel/baselland/trotz-historischem-wert-gericht-gibt-gruenes-licht-fuer-abriss-in-arlesheim-ld.4135667",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 90
+    },
+    {
+      "id": "11111111-1111-1111-1111-111111111003",
+      "statement": "Die Bauarbeiten am Kindergarten «Im Lee» in Arlesheim liegen gut im Zeitplan; lärmintensive Abbrucharbeiten sind im Gang.",
+      "unit_type": "entity_update",
+      "entities": ["Kindergarten Im Lee", "Gemeinde Arlesheim"],
+      "event_date": null,
+      "publication_date": "2026-04-18",
+      "created_at": "2026-04-18T14:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Aktuelles-zum-Kindergarten-Im-Lee.php",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": "https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Aktuelles-zum-Kindergarten-Im-Lee.php",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 85
+    },
+    {
+      "id": "11111111-1111-1111-1111-111111111004",
+      "statement": "Am 22. April 2026 findet um 18:30 Uhr das Gesundheitsforum zum Thema «Musik und Medizin» im Kulturhaus Setzwerk statt.",
+      "unit_type": "event",
+      "entities": ["Kulturhaus Setzwerk", "Gesundheitsforum"],
+      "event_date": "2026-04-22",
+      "publication_date": "2026-04-15",
+      "created_at": "2026-04-15T08:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 35
+    },
+    {
+      "id": "11111111-1111-1111-1111-111111111005",
+      "statement": "Die Spitex Birseck wurde von der Gemeinde Münchenstein wegen mutmasslicher Geldveruntreuung angezeigt.",
+      "unit_type": "entity_update",
+      "entities": ["Spitex Birseck", "Gemeinde Münchenstein"],
+      "event_date": null,
+      "publication_date": "2026-04-19",
+      "created_at": "2026-04-19T10:00:00Z",
+      "location": { "city": "muenchenstein", "country": "CH" },
+      "source_url": "https://www.bzbasel.ch/basel/baselland/muenchenstein-spitex-birseck-ld.4140000",
+      "source_domain": "bz Basel",
+      "article_url": "https://www.bzbasel.ch/basel/baselland/muenchenstein-spitex-birseck-ld.4140000",
+      "is_listing_page": false,
+      "sensitivity": "crime",
+      "village_confidence": "high",
+      "quality_score": 80
+    }
+  ],
+  "gold": {
+    "bullets": [
+      {
+        "emoji": "🏠",
+        "kind": "lead",
+        "text": "Die Villa Kaelin, erbaut 1930 von einem Schüler Rudolf Steiners, darf abgerissen werden, wie die [bz Basel](https://www.bzbasel.ch/basel/baselland/trotz-historischem-wert-gericht-gibt-gruenes-licht-fuer-abriss-in-arlesheim-ld.4135667) berichtet. Das Bundesgericht wies die Beschwerde der Nachbarinnen und Nachbarn ab.",
+        "article_url": "https://www.bzbasel.ch/basel/baselland/trotz-historischem-wert-gericht-gibt-gruenes-licht-fuer-abriss-in-arlesheim-ld.4135667",
+        "source_domain": "bz Basel",
+        "source_unit_ids": ["11111111-1111-1111-1111-111111111002"]
+      },
+      {
+        "emoji": "🏗️",
+        "kind": "secondary",
+        "text": "Die Bauarbeiten am Kindergarten «Im Lee» liegen gut im Zeitplan, [meldet die Gemeinde](https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Aktuelles-zum-Kindergarten-Im-Lee.php). Momentan laufen lärmintensive Abbrucharbeiten.",
+        "article_url": "https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Aktuelles-zum-Kindergarten-Im-Lee.php",
+        "source_domain": "Gemeinde Arlesheim",
+        "source_unit_ids": ["11111111-1111-1111-1111-111111111003"]
+      }
+    ],
+    "rejected_units": [
+      {
+        "unit_id": "11111111-1111-1111-1111-111111111001",
+        "reason": "6 Wochen alt; keine aktuelle Meldung."
+      },
+      {
+        "unit_id": "11111111-1111-1111-1111-111111111004",
+        "reason": "Veranstaltungshinweis zu früh — besser im Ausgabefenster näher am Termin."
+      },
+      {
+        "unit_id": "11111111-1111-1111-1111-111111111005",
+        "reason": "Cross-village — Münchenstein ist Nachbar, aber keine eigenständige Meldung in Arlesheim-Ausgabe."
+      }
+    ]
+  }
+}

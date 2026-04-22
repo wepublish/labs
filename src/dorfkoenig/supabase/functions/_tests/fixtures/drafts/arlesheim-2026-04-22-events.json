@@ -1,0 +1,132 @@
+{
+  "fixture_id": "arlesheim-2026-04-22-events",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-22",
+  "notes": "Source: Feedback Dorfkönig.md row 3 — pool skewed toward events + stale death note. Gold focuses on today-relevant Baustelle + 2 events + Gesundheitsforum.",
+  "units": [
+    {
+      "id": "22222222-2222-2222-2222-222222222001",
+      "statement": "Am 22. April 2026 beginnen die Belagsarbeiten am Bärenbrunnenweg in Arlesheim; die Sperrung der Zufahrten erfolgt am Freitag.",
+      "unit_type": "event",
+      "entities": ["Bärenbrunnenweg", "Gemeinde Arlesheim"],
+      "event_date": "2026-04-22",
+      "publication_date": "2026-04-22",
+      "created_at": "2026-04-22T05:30:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/aktuelles/baustelleninfo/Bauinfo-03-Baerenbrunnenweg-2026.pdf",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": "https://www.arlesheim.ch/de/aktuelles/baustelleninfo/Bauinfo-03-Baerenbrunnenweg-2026.pdf",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 95
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222002",
+      "statement": "Am 22. April 2026 findet von 14:00 bis 14:30 Uhr die Gschichtezyt für Kinder ab 4 Jahren in der Gemeindebibliothek Arlesheim statt.",
+      "unit_type": "event",
+      "entities": ["Gemeindebibliothek Arlesheim"],
+      "event_date": "2026-04-22",
+      "publication_date": "2026-04-15",
+      "created_at": "2026-04-15T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/4831_gschichtezyt-f%C3%BCr-kinder-ab-4-jahren",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": "https://www.arlesheim.ch/de/veranstaltungen/4831_gschichtezyt-f%C3%BCr-kinder-ab-4-jahren",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 80
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222003",
+      "statement": "Am 22. April 2026 um 18:30 Uhr erklärt die Klinik Arlesheim im Kulturhaus Setzwerk, wie Musik auf Psyche und Körperfunktionen wirkt.",
+      "unit_type": "event",
+      "entities": ["Klinik Arlesheim", "Kulturhaus Setzwerk"],
+      "event_date": "2026-04-22",
+      "publication_date": "2026-04-15",
+      "created_at": "2026-04-15T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/4896_gesundheitsforum",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": "https://www.arlesheim.ch/de/veranstaltungen/4896_gesundheitsforum",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 80
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222004",
+      "statement": "Patric Schläpfer, Gründungsmitglied des Kulturzirkus, ist am 21. März 2026 verstorben; die Trauerfeier fand am 27. März 2026 im Dom statt.",
+      "unit_type": "fact",
+      "entities": ["Patric Schläpfer", "Kulturzirkus"],
+      "event_date": "2026-03-27",
+      "publication_date": "2026-03-22",
+      "created_at": "2026-03-22T09:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://kulturzirkus.ch/",
+      "source_domain": "Kulturzirkus",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "death",
+      "village_confidence": "high",
+      "quality_score": 30
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222005",
+      "statement": "Am 13. Juni 2026 startet der Kulturzirkus auf der Zirkuswiese mit dem Auftakt «Elements of Floyd».",
+      "unit_type": "event",
+      "entities": ["Kulturzirkus"],
+      "event_date": "2026-06-13",
+      "publication_date": "2026-04-10",
+      "created_at": "2026-04-10T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.kulturzirkus.ch/",
+      "source_domain": "Kulturzirkus",
+      "article_url": "https://www.kulturzirkus.ch/",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 40
+    }
+  ],
+  "gold": {
+    "bullets": [
+      {
+        "emoji": "🚧",
+        "kind": "lead",
+        "text": "Endspurt am Bärenbrunnenweg: Heute beginnen erste Vorarbeiten für den Belageinbau, der am Freitag durchgeführt wird und zu einer Sperrung für private Zufahrten führt, [wie die Gemeinde mitteilt](https://www.arlesheim.ch/de/aktuelles/baustelleninfo/Bauinfo-03-Baerenbrunnenweg-2026.pdf).",
+        "article_url": "https://www.arlesheim.ch/de/aktuelles/baustelleninfo/Bauinfo-03-Baerenbrunnenweg-2026.pdf",
+        "source_domain": "Gemeinde Arlesheim",
+        "source_unit_ids": ["22222222-2222-2222-2222-222222222001"]
+      },
+      {
+        "emoji": "📚",
+        "kind": "event",
+        "text": "Ab 14 Uhr nimmt Annette Biel die Kleinen mit auf grosse Abenteuer — die «Gschichtezyt» in der Gemeindebibliothek ist kostenlos, keine Anmeldung. 👉 [mehr dazu](https://www.arlesheim.ch/de/veranstaltungen/4831_gschichtezyt-f%C3%BCr-kinder-ab-4-jahren).",
+        "article_url": "https://www.arlesheim.ch/de/veranstaltungen/4831_gschichtezyt-f%C3%BCr-kinder-ab-4-jahren",
+        "source_domain": "Gemeinde Arlesheim",
+        "source_unit_ids": ["22222222-2222-2222-2222-222222222002"]
+      },
+      {
+        "emoji": "🎶",
+        "kind": "secondary",
+        "text": "Heute Abend um 18:30 Uhr erklärt die Klinik Arlesheim im Setzwerk, wie Musik auf Gesundheit und Psyche wirkt. 👉 [mehr dazu](https://www.arlesheim.ch/de/veranstaltungen/4896_gesundheitsforum).",
+        "article_url": "https://www.arlesheim.ch/de/veranstaltungen/4896_gesundheitsforum",
+        "source_domain": "Gemeinde Arlesheim",
+        "source_unit_ids": ["22222222-2222-2222-2222-222222222003"]
+      }
+    ],
+    "rejected_units": [
+      {
+        "unit_id": "22222222-2222-2222-2222-222222222004",
+        "reason": "Death 1 Monat alt, Trauerfeier vorbei; sensitivity rule — nur frisch + mit Sorgfalt."
+      },
+      {
+        "unit_id": "22222222-2222-2222-2222-222222222005",
+        "reason": "Event erst in 2 Monaten — zu früh für diese Ausgabe."
+      }
+    ]
+  }
+}

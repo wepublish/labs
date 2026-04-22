@@ -31,7 +31,7 @@ export type ContentCategory = (typeof CONTENT_RANKING)[number]['key'];
 export type Priority = 'high' | 'medium' | 'low';
 
 /** Bump when prompt text changes so the extraction cache invalidates stale entries. */
-export const NEWSPAPER_EXTRACTION_PROMPT_VERSION = 1;
+export const NEWSPAPER_EXTRACTION_PROMPT_VERSION = 2;
 
 export interface ExtractionUnit {
   statement: string;
@@ -46,6 +46,10 @@ export interface ExtractionUnit {
   villageConfidence?: 'high' | 'medium' | 'low';
   /** Quoted span from input supporting the village choice (anti-hallucination). */
   villageEvidence?: string;
+  /** DRAFT_QUALITY.md §3.3. Nullable for backward-compat on historical rows. */
+  publicationDate?: string | null;
+  /** DRAFT_QUALITY.md §3.3.2. Sensitivity handling rules. */
+  sensitivity?: 'none' | 'death' | 'accident' | 'crime' | 'minor_safety';
 }
 
 export interface ExtractionResult {
@@ -86,6 +90,8 @@ EXTRAKTIONSREGELN:
 4. Nur überprüfbare Fakten. Keine Meinungen, keine Spekulation.
 5. Wenn ein Textabschnitt mitten in einem Artikel beginnt oder endet, extrahiere trotzdem alle erkennbaren Fakten.
 6. Die genaue Quellen-URL jedes Artikels oder Abschnitts ist für die spätere manuelle Nachverifikation zwingend zu erhalten und darf nicht gekürzt oder umformuliert werden.
+7. publicationDate: Falls das Artikel-Veröffentlichungsdatum im Text erkennbar ist (z.B. Datumszeile), als YYYY-MM-DD ausgeben; sonst das Publikationsdatum der Ausgabe.
+8. sensitivity: 'death' | 'accident' | 'crime' | 'minor_safety' | 'none'. Bei allem ausser 'none' neutrale Formulierung verwenden (keine Wertung, nur was im Text steht).
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -143,7 +149,9 @@ AUSGABEFORMAT (ausschliesslich valides JSON):
       "villageConfidence": "high",
       "villageEvidence": "Musikschule Reinach veranstaltet",
       "priority": "high",
-      "category": "community_events"
+      "category": "community_events",
+      "publicationDate": "${publicationDate}",
+      "sensitivity": "none"
     },
     {
       "statement": "Der Einwohnerrat Reinach tagt am 23. März 2026 um 19:30 Uhr im Gemeindesaal.",
@@ -154,7 +162,9 @@ AUSGABEFORMAT (ausschliesslich valides JSON):
       "villageConfidence": "high",
       "villageEvidence": "Einwohnerrat Reinach tagt",
       "priority": "medium",
-      "category": "council"
+      "category": "council",
+      "publicationDate": "${publicationDate}",
+      "sensitivity": "none"
     }
   ],
   "skipped": ["Inserat Stocker AG Sanitär", "Sudoku Nr. 12"]

@@ -12,6 +12,7 @@ import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
+import { computeQualityScore } from '../_shared/quality-scoring.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -251,6 +252,15 @@ AUSGABEFORMAT (JSON):
 
   for (const i of uniqueIndices) {
     const unit = units[i];
+    const qualityScore = computeQualityScore({
+      statement: unit.statement,
+      source_url: 'manual://text',
+      source_domain: 'manual',
+      event_date: unit.eventDate ?? null,
+      publication_date: unit.eventDate ?? null,
+      village_confidence: 'high',
+      sensitivity: 'none',
+    });
     const { data, error } = await supabase
       .from('information_units')
       .insert({
@@ -269,6 +279,11 @@ AUSGABEFORMAT (JSON):
         file_path: null,
         embedding: unitEmbeddings[i],
         event_date: unit.eventDate,
+        publication_date: unit.eventDate ?? null,
+        sensitivity: 'none',
+        is_listing_page: false,
+        article_url: null,
+        quality_score: qualityScore,
       })
       .select('id')
       .single();
@@ -496,6 +511,14 @@ async function handleFileConfirm(
     ? { ...location, city: normalizeCity(location.city) }
     : location;
 
+  const photoQualityScore = computeQualityScore({
+    statement: description!.trim(),
+    source_url: 'manual://photo',
+    source_domain: 'manual',
+    village_confidence: 'high',
+    sensitivity: 'none',
+  });
+
   const { data, error } = await supabase
     .from('information_units')
     .insert({
@@ -513,6 +536,10 @@ async function handleFileConfirm(
       source_type: 'manual_photo',
       file_path: storagePath,
       embedding: descriptionEmbedding,
+      sensitivity: 'none',
+      is_listing_page: false,
+      article_url: null,
+      quality_score: photoQualityScore,
     })
     .select('id')
     .single();
@@ -661,6 +688,15 @@ async function handlePdfFinalize(
         const normalizedLocation = u.location?.city
           ? { ...u.location, city: normalizeCity(u.location.city) }
           : u.location;
+        const qualityScore = computeQualityScore({
+          statement: u.statement,
+          source_url: 'manual://pdf',
+          source_domain: 'manual',
+          event_date: u.event_date,
+          publication_date: u.event_date,
+          village_confidence: u.village_confidence,
+          sensitivity: 'none',
+        });
         return {
           user_id: userId,
           scout_id: null,
@@ -677,6 +713,11 @@ async function handlePdfFinalize(
           file_path: claimed.storage_path,
           embedding: unitEmbeddings[i],
           event_date: u.event_date,
+          publication_date: u.event_date,
+          sensitivity: 'none',
+          is_listing_page: false,
+          article_url: null,
+          quality_score: qualityScore,
           village_confidence: u.village_confidence,
           review_required: u.review_required,
           assignment_path: u.assignment_path,

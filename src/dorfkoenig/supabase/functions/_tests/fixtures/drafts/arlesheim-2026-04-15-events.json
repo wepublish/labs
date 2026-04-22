@@ -1,0 +1,132 @@
+{
+  "fixture_id": "arlesheim-2026-04-15-events",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-15",
+  "notes": "Source: Feedback Dorfkönig.md row 2 — pool heavy on events + far-future Kulturzirkus + missing Straumann (scout gap). Gold is 3 short bullets (Straumann, Ochsen-Leserbrief, vermisster Kater Good-News).",
+  "units": [
+    {
+      "id": "33333333-3333-3333-3333-333333333001",
+      "statement": "Der neue Straumann-Hauptsitz in Uptown Basel bringt ab 2027 rund 700 zusätzliche Mitarbeitende und erhöht den Druck auf Strasse und Schiene im Birseck.",
+      "unit_type": "fact",
+      "entities": ["Straumann Group", "Uptown Basel"],
+      "event_date": null,
+      "publication_date": "2026-04-14",
+      "created_at": "2026-04-14T09:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.bzbasel.ch/basel/baselland/birsstadt-mehr-pendler-durch-neuen-straumann-sitz-ld.4152854",
+      "source_domain": "bz Basel",
+      "article_url": "https://www.bzbasel.ch/basel/baselland/birsstadt-mehr-pendler-durch-neuen-straumann-sitz-ld.4152854",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "medium",
+      "quality_score": 80
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333002",
+      "statement": "«Ochsen»-Wirtin Barbara Jenzer warnt im Leserbrief der bz Basel vor der sogenannten «Chaos-Initiative» und sorgt sich um verlässliche Rahmenbedingungen für Traditionsbetriebe.",
+      "unit_type": "fact",
+      "entities": ["Barbara Jenzer", "Gasthof zum Ochsen"],
+      "event_date": null,
+      "publication_date": "2026-04-14",
+      "created_at": "2026-04-14T18:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "manual://pdf",
+      "source_domain": "bz Basel",
+      "article_url": null,
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 55
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333003",
+      "statement": "Der seit dem 5. April 2026 vermisste 2-jährige Kater Silvester aus Arlesheim ist wieder Zuhause — leicht abgemagert und sehr hungrig.",
+      "unit_type": "fact",
+      "entities": ["Kater Silvester"],
+      "event_date": null,
+      "publication_date": "2026-04-14",
+      "created_at": "2026-04-14T20:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.facebook.com/groups/222184897987345/permalink/2940081492864325/",
+      "source_domain": "Facebook-Gruppe «Arlesheim»",
+      "article_url": "https://www.facebook.com/groups/222184897987345/permalink/2940081492864325/",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 65
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333004",
+      "statement": "Am 24. April 2026 findet die Industrienacht Regio Basel von 17:00 bis 23:59 Uhr in Arlesheim statt.",
+      "unit_type": "event",
+      "entities": ["Industrienacht Regio Basel"],
+      "event_date": "2026-04-24",
+      "publication_date": "2026-04-10",
+      "created_at": "2026-04-10T08:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 30
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333005",
+      "statement": "Der Kulturzirkus 2026 findet vom 13. Juni bis 8. August 2026 auf der Zirkuswiese statt; Auftakt «Elements of Floyd» am 13. Juni 2026.",
+      "unit_type": "event",
+      "entities": ["Kulturzirkus"],
+      "event_date": "2026-06-13",
+      "publication_date": "2026-04-10",
+      "created_at": "2026-04-10T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.kulturzirkus.ch/",
+      "source_domain": "Kulturzirkus",
+      "article_url": "https://www.kulturzirkus.ch/",
+      "is_listing_page": false,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 35
+    }
+  ],
+  "gold": {
+    "bullets": [
+      {
+        "emoji": "🚗",
+        "kind": "lead",
+        "text": "Der neue Straumann-Hauptsitz in Uptown Basel bringt ab 2027 rund 700 zusätzliche Mitarbeitende — und damit neuen Druck auf Strasse und Schiene, [wie die bz Basel berichtet (Paywall)](https://www.bzbasel.ch/basel/baselland/birsstadt-mehr-pendler-durch-neuen-straumann-sitz-ld.4152854).",
+        "article_url": "https://www.bzbasel.ch/basel/baselland/birsstadt-mehr-pendler-durch-neuen-straumann-sitz-ld.4152854",
+        "source_domain": "bz Basel",
+        "source_unit_ids": ["33333333-3333-3333-3333-333333333001"]
+      },
+      {
+        "emoji": "🗳️",
+        "kind": "secondary",
+        "text": "«Ochsen»-Wirtin Barbara Jenzer meldet sich mit einem deutlichen Appell zur aktuellen Abstimmungsdebatte zu Wort und warnt vor der sogenannten «Chaos-Initiative» — nachzulesen im Leserbrief in der gedruckten bz Basel.",
+        "article_url": null,
+        "source_domain": "bz Basel",
+        "source_unit_ids": ["33333333-3333-3333-3333-333333333002"]
+      },
+      {
+        "emoji": "🐈",
+        "kind": "good_news",
+        "text": "Der vermisste 2-jährige Kater Silvester aus Arlesheim, der seit dem 5. April fehlte, ist wieder Zuhause — leicht abgemagert und sehr hungrig. Gefunden in der [Facebook-Gruppe «Arlesheim»](https://www.facebook.com/groups/222184897987345/permalink/2940081492864325/).",
+        "article_url": "https://www.facebook.com/groups/222184897987345/permalink/2940081492864325/",
+        "source_domain": "Facebook-Gruppe Arlesheim",
+        "source_unit_ids": ["33333333-3333-3333-3333-333333333003"]
+      }
+    ],
+    "rejected_units": [
+      {
+        "unit_id": "33333333-3333-3333-3333-333333333004",
+        "reason": "Industrienacht ist eine Woche weg; in Freitagsbriefing besser platziert. Listing-page-URL ohne Artikel."
+      },
+      {
+        "unit_id": "33333333-3333-3333-3333-333333333005",
+        "reason": "Event in 2 Monaten — zu weit in der Zukunft."
+      }
+    ]
+  }
+}
