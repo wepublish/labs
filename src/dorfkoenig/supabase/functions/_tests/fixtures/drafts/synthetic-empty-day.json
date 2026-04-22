@@ -1,0 +1,12 @@
+{
+  "fixture_id": "synthetic-empty-day",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-22",
+  "notes": "Synthetic — pool is empty. Expect empty draft (bullets=[]) with a note, no hallucination.",
+  "units": [],
+  "gold": {
+    "bullets": [],
+    "rejected_units": []
+  }
+}

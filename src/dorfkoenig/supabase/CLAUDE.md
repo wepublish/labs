@@ -2,6 +2,8 @@
 
 PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared modules. All functions have `verify_jwt = false` and authenticate via `x-user-id` header or service role key.
 
+> **Active overhaul:** `specs/DRAFT_QUALITY.md` is the source of truth for in-flight changes to `bajour-auto-draft`, `compose`, extraction prompts, and the `bajour_drafts` / `information_units` schemas. Any PR touching these must link the spec and bump prompt versions per §3.6. Deferred follow-ups in `specs/followups/`.
+
 ## Edge Functions
 
 | Function | Purpose | Auth | Trigger |
@@ -13,9 +15,9 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
 | `bajour-drafts` | CRUD for Bajour village newsletter drafts (GET list, POST create, PATCH update) | x-user-id header | Frontend API calls |
 | `bajour-select-units` | AI-powered selection of relevant information units for a village | x-user-id header | Frontend API calls |
-| `bajour-auto-draft` | Automated daily draft pipeline per village (select → generate → save → verify) | Service role (pg_cron) | pg_cron dispatch |
+| `bajour-auto-draft` | Automated daily draft pipeline per village (select → compose → validate → save → verify). Compose routed through `_shared/compose-draft.ts`. Feature flags: `FEATURE_BULLET_SCHEMA`, `FEATURE_QUALITY_GATING`, `FEATURE_EMPTY_PATH_EMAIL`, `FEATURE_METRICS_CAPTURE`. Empty paths (no_units / all_below_quality_threshold / llm_under_produced) email `ADMIN_EMAILS` via `buildDraftFailureEmail`. | Service role (pg_cron) | pg_cron dispatch |
 | `bajour-send-verification` | Send draft to village correspondents via WhatsApp for verification | x-user-id header | Frontend API calls |
-| `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks. Calls `append_bajour_response` RPC (any-reject-wins) and emails `ADMIN_EMAILS` on every `abgelehnt` with a signed deep-link. | None (webhook) | Meta WhatsApp API |
+| `bajour-whatsapp-webhook` | Receive WhatsApp quick-reply callbacks. Calls `append_bajour_response` RPC (any-reject-wins) and emails `ADMIN_EMAILS` on every `abgelehnt` with a signed deep-link. `FEATURE_FEEDBACK_CAPTURE=true` additionally harvests rejected bullets from `bullets_json`, sanitises each via `feedback-sanitise.ts`, and inserts them into `bajour_feedback_examples` (idempotent by `draft_id`). | None (webhook) | Meta WhatsApp API |
 | `bajour-get-draft-admin` | Service-role read of a single draft, authorized by HMAC-signed URL (`ADMIN_LINK_SECRET`). Used by the admin deep-link in rejection emails. | Signed URL params | Frontend (admin email link) |
 | `bajour-send-mailchimp` | Aggregate verified drafts into a Mailchimp campaign. Uses embedded template HTML (not `getContent` API). Replaces `text:\w+` placeholders with combined village content via regex. Sibling file `template.ts` holds the 23k template. | x-user-id header | Frontend API calls |
 | `news` | Public GET endpoint returning confirmed drafts grouped by village within a date range. Auth via `?auth=` or `Authorization: Bearer` (`NEWS_API_TOKEN`). Params: `?date=YYYY-MM-DD&range=N` (default: today ±3 days). | Shared secret | WePublish overview page |
@@ -30,9 +32,15 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `openrouter.ts` | `chat()` (LLM), `generateEmbedding()`, `generateEmbeddings()`, `cosineSimilarity()` | OpenRouter API |
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
 | `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
-| `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()` | Resend API |
-| `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT` | - |
-| `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter | OpenRouter API |
+| `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()`, `buildDraftFailureEmail()` (empty-path admin notifications) | Resend API |
+| `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT`, `DRAFT_COMPOSE_PROMPT_V2`, `buildDraftComposePromptV2()`, `formatUnitsForCompose()`, `DEFAULT_PROMPT_VERSIONS` | - |
+| `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter. v2 (bumped 2026-04-23) adds `publicationDate`, `sensitivity`. | OpenRouter API |
+| `web-extraction-prompt.ts` | Web scout extraction. v3 (bumped 2026-04-23) adds `publicationDate`, `sensitivity`, `articleUrl`, `isListingPage`; listing-page refusal rule. | OpenRouter API |
+| `unit-extraction.ts` | Shared extract+insert path (execute-scout, execute-civic-scout). Computes `quality_score` via `quality-scoring.ts` on every insert. | - |
+| `compose-draft.ts` | Pure `composeDraftFromUnits` (v1 markdown) + `composeDraftFromUnitsV2` (bullet schema, with post-validation chain). | OpenRouter API |
+| `draft-quality.ts` | DRAFT_QUALITY.md §3 enforcement: emoji palette, forbidden-phrase banlist, anti-pattern table, `AGNOSTIC_POSITIVE_SEEDS`, `KIND_CAPS`, 4 validators (`validateUrlWhitelist`, `validateForbiddenPhrases`, `validateEmojiPalette`, `validateKindCounts`), `runValidatorChain`. | - |
+| `quality-scoring.ts` | Deterministic 0–100 `computeQualityScore` + `explainQualityScore` (reasons re-computed on read). | - |
+| `feedback-sanitise.ts` | `sanitiseBulletForFeedback` — 5-step sanitiser for captured rejections (length, code fences, HTML, instruction markers, non-Latin, URL allowlist). | - |
 
 ## 9-Step Execution Pipeline (`execute-scout/index.ts`)
 
@@ -60,6 +68,22 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 
 **`information_units`** -- Atomic facts for Compose panel
 - PK: `id` (UUID), FK: `scout_id` → scouts (CASCADE), `execution_id` → scout_executions (CASCADE), `user_id`, `statement`, `unit_type` (fact/event/entity_update), `entities` TEXT[], `source_url`, `source_domain`, `location` (JSONB), `embedding` vector(1536) NOT NULL, `used_in_article`, `expires_at` (90 days default, extended 60 days on use)
+- **DRAFT_QUALITY.md §3.2–3.3 enrichments (added 2026-04-23):** `quality_score` (INT 0–100), `publication_date` (DATE), `sensitivity` (none|death|accident|crime|minor_safety), `is_listing_page` (BOOL), `article_url` (TEXT). Index `idx_units_village_quality_dates` supports the compound filter.
+
+**`bajour_feedback_examples`** -- Rejected-bullet capture (DRAFT_QUALITY.md §3.7, added 2026-04-23)
+- PK: `id` BIGINT IDENTITY, FK: `draft_id` → `bajour_drafts` (SET NULL), `village_id`, `kind` ('positive' | 'negative'), `bullet_text`, `editor_reason`, `source_unit_ids` UUID[], `edition_date` DATE, `created_at`.
+- Capture-only in current scope; retrieval deferred (`specs/followups/self-learning-system.md`).
+- RLS: service_role ALL; `authenticated` SELECT scoped to `bajour_pilot_villages_list`.
+
+**`draft_quality_metrics`** -- Per-draft score snapshot (DRAFT_QUALITY.md §5.1, added 2026-04-23)
+- PK: `id` BIGINT IDENTITY, FK: `draft_id` → `bajour_drafts` (CASCADE), `village_id`, `computed_at`, `metrics` JSONB, `aggregate_score` INT, `warnings` TEXT[], `schema_version` INT.
+- Written inline at end of `bajour-auto-draft` and `compose` when `FEATURE_METRICS_CAPTURE=true`.
+- Consumed by `weekly_quality_summary()` SQL function.
+- RLS: service_role ALL; `authenticated` SELECT scoped to `bajour_pilot_villages_list`.
+
+**`bajour_drafts`** -- (existing) gained `schema_version` (INT DEFAULT 1) and `bullets_json` (JSONB) on 2026-04-23. `schema_version=2` drafts render via `renderDraftV2ToMarkdown` and the `DraftContent.svelte` v2 branch.
+
+**`user_prompts`** -- (existing) gained `based_on_version` (INT DEFAULT 1) on 2026-04-23 per DRAFT_QUALITY.md §3.6 — tracks which `DEFAULT_PROMPT_VERSIONS[*]` a per-user override derived from.
 
 ### Key Database Functions
 
@@ -75,6 +99,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 22, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 20:00 and 21:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
+| `weekly_quality_summary()` | Advisory metrics per village over last 7d vs rolling 28d baseline. Returns `drafts_last_7d`, `drafts_last_28d`, `empty_drafts_last_7d`, `mean_score_7d/28d`, `stddev_score_28d`, `delta_sigma` (NULL when `drafts_last_28d < 10`), `top_warning`, `pilot_fixture_missing`. Alert threshold: `abs(delta_sigma) > 2 AND drafts_last_28d >= 10`. Run manually (e.g. weekly into Obsidian). |
 
 ### Active pg_cron Jobs (7 total)
 

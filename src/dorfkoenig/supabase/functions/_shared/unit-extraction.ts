@@ -33,6 +33,7 @@ import {
   setCachedExtraction,
   computeCriteriaHash,
 } from './extraction-cache.ts';
+import { computeQualityScore, type Sensitivity } from './quality-scoring.ts';
 import gemeindenJson from './gemeinden.json' with { type: 'json' };
 
 const villages = gemeindenJson as Village[];
@@ -62,6 +63,11 @@ interface ProcessedUnit {
   villageConfidence: 'high' | 'medium' | 'low' | null;
   reviewRequired: boolean;
   assignmentPath: AssignmentPath | null;
+  /** DRAFT_QUALITY.md §3.3 enrichments; nullable for pre-v3 prompt outputs. */
+  publicationDate?: string | null;
+  sensitivity?: Sensitivity | null;
+  articleUrl?: string | null;
+  isListingPage?: boolean;
 }
 
 export async function extractInformationUnits(
@@ -209,6 +215,12 @@ async function extractUnitsAuto(
   }
 
   const raw = extraction?.units ?? [];
+
+  // §3.3.1: when the whole input was a listing page, the extractor emits
+  // units:[] + isListingPage:true. Propagate the flag so downstream filters can
+  // tag individual units if the LLM ever emits both together on a mixed page.
+  const inputIsListingPage = Boolean(extraction?.isListingPage);
+
   if (raw.length === 0) return [];
 
   return raw.map((u) => {
@@ -219,6 +231,10 @@ async function extractUnitsAuto(
       statement: u.statement,
     });
 
+    const sensitivity = (u.sensitivity ?? 'none') as Sensitivity;
+    // Sensitive items always require review regardless of village-assignment signal.
+    const reviewRequired = assignment.reviewRequired || sensitivity !== 'none';
+
     return {
       statement: u.statement,
       unitType: (u.unitType as ProcessedUnit['unitType']) || 'fact',
@@ -228,8 +244,12 @@ async function extractUnitsAuto(
         ? { city: assignment.villageId, country: 'Schweiz' }
         : null,
       villageConfidence: assignment.confidence,
-      reviewRequired: assignment.reviewRequired,
+      reviewRequired,
       assignmentPath: assignment.assignmentPath,
+      publicationDate: u.publicationDate ?? null,
+      sensitivity,
+      articleUrl: u.articleUrl ?? null,
+      isListingPage: inputIsListingPage,
     };
   });
 }
@@ -253,6 +273,18 @@ async function dedupAndStore(
     const normalizedLocation = unit.location?.city
       ? { ...unit.location, city: normalizeCity(unit.location.city) }
       : unit.location;
+    const qualityScore = computeQualityScore({
+      statement: unit.statement,
+      source_url: params.sourceUrl,
+      source_domain: domain,
+      article_url: unit.articleUrl ?? null,
+      is_listing_page: unit.isListingPage ?? false,
+      event_date: unit.eventDate,
+      publication_date: unit.publicationDate ?? null,
+      village_confidence: unit.villageConfidence,
+      sensitivity: unit.sensitivity ?? null,
+    });
+
     const { error } = await supabase.from('information_units').insert({
       user_id: params.userId,
       scout_id: params.scoutId,
@@ -270,6 +302,11 @@ async function dedupAndStore(
       village_confidence: unit.villageConfidence,
       review_required: unit.reviewRequired,
       assignment_path: unit.assignmentPath,
+      publication_date: unit.publicationDate ?? null,
+      sensitivity: unit.sensitivity ?? null,
+      is_listing_page: unit.isListingPage ?? false,
+      article_url: unit.articleUrl ?? null,
+      quality_score: qualityScore,
     });
 
     if (!error) {

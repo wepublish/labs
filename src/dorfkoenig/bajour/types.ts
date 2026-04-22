@@ -18,6 +18,24 @@ export interface VerificationResponse {
   responded_at: string;
 }
 
+/** DRAFT_QUALITY.md §3.1 bullet-only schema (v2). */
+export type BulletKind = 'lead' | 'secondary' | 'event' | 'good_news';
+
+export interface DraftBullet {
+  emoji: string;
+  kind: BulletKind;
+  text: string;
+  article_url: string | null;
+  source_domain: string | null;
+  source_unit_ids: string[];
+}
+
+export interface DraftBulletsJson {
+  title: string;
+  bullets: DraftBullet[];
+  notes_for_editor: string[];
+}
+
 export interface BajourDraft {
   id: string;
   user_id: string;
@@ -36,5 +54,8 @@ export interface BajourDraft {
   whatsapp_message_ids: string[];
   created_at: string;
   updated_at: string;
+  /** DRAFT_QUALITY.md §3.1 — 1 = legacy markdown, 2 = bullets_json. */
+  schema_version?: number;
+  bullets_json?: DraftBulletsJson | null;
 }
 

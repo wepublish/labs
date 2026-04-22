@@ -13,6 +13,9 @@ import { findCorrespondentByPhone } from '../_shared/correspondents.ts';
 import { resend } from '../_shared/resend.ts';
 import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
 import { hmacHex, constantTimeEqual } from '../_shared/admin-link-core.ts';
+import { sanitiseBulletForFeedback } from '../_shared/feedback-sanitise.ts';
+
+const FLAG_FEEDBACK_CAPTURE = Deno.env.get('FEATURE_FEEDBACK_CAPTURE') === 'true';
 
 // Environment secrets
 const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET')!;
@@ -57,6 +60,11 @@ interface MatchingDraft {
   title: string | null;
   village_id: string;
   village_name: string;
+  publication_date: string | null;
+  schema_version: number | null;
+  bullets_json: unknown | null;
+  body: string | null;
+  selected_unit_ids: string[] | null;
 }
 
 function maskPhone(phone: string): string {
@@ -210,7 +218,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   if (contextMessageId) {
     const { data, error } = await supabase
       .from('bajour_drafts')
-      .select('id, title, village_id, village_name')
+      .select('id, title, village_id, village_name, publication_date, schema_version, bullets_json, body, selected_unit_ids')
       .contains('whatsapp_message_ids', JSON.stringify([contextMessageId]))
       .eq('verification_status', 'ausstehend')
       .not('verification_sent_at', 'is', null)
@@ -234,7 +242,7 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
 
     const { data: pendingDrafts, error: fetchError } = await supabase
       .from('bajour_drafts')
-      .select('id, title, village_id, village_name')
+      .select('id, title, village_id, village_name, publication_date, schema_version, bullets_json, body, selected_unit_ids')
       .eq('verification_status', 'ausstehend')
       .not('verification_sent_at', 'is', null)
       .is('verification_resolved_at', null)
@@ -306,6 +314,21 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
       respondedAt: newResponse.responded_at,
       priorResponses,
     });
+
+    // §3.7 capture-only feedback harvest. Data sits dormant; retrieval is deferred
+    // to specs/followups/self-learning-system.md. Sanitisation runs NOW so the
+    // backlog is clean when activation happens.
+    if (FLAG_FEEDBACK_CAPTURE) {
+      try {
+        await captureRejectionAsFeedback({
+          supabase,
+          draft: matchingDraft,
+          editorReason: newResponse.response,
+        });
+      } catch (captureErr) {
+        console.error('[whatsapp-webhook] feedback capture failed (non-fatal):', captureErr);
+      }
+    }
   }
 
   // Best-effort cleanup of stale ausstehend drafts (non-critical).
@@ -318,6 +341,100 @@ async function handleIncomingMessage(req: Request): Promise<Response> {
   }
 
   return jsonResponse({ status: 'processed', verification_status: newStatus });
+}
+
+/**
+ * §3.7 — harvest rejected bullets from bullets_json into bajour_feedback_examples.
+ * Skips (with a logged counter) when the draft is v1 markdown only.
+ * Idempotent on draft_id: re-firing on the same draft is a no-op.
+ */
+async function captureRejectionAsFeedback(args: {
+  supabase: ReturnType<typeof createServiceClient>;
+  draft: {
+    id: string;
+    village_id: string | null;
+    publication_date: string | null;
+    schema_version: number | null;
+    bullets_json: unknown | null;
+    body: string | null;
+    selected_unit_ids?: string[] | null;
+  };
+  editorReason: string;
+}): Promise<void> {
+  const { supabase, draft, editorReason } = args;
+
+  if (draft.schema_version !== 2 || !draft.bullets_json) {
+    console.log(`[feedback-capture] capture_skipped_legacy_schema draft=${draft.id}`);
+    return;
+  }
+
+  const { data: existing } = await supabase
+    .from('bajour_feedback_examples')
+    .select('id')
+    .eq('draft_id', draft.id)
+    .limit(1)
+    .maybeSingle();
+  if (existing) {
+    console.log(`[feedback-capture] already_captured draft=${draft.id}`);
+    return;
+  }
+
+  const { data: unitRows } = await supabase
+    .from('information_units')
+    .select('source_url, article_url')
+    .in('id', (draft.selected_unit_ids ?? []) as string[]);
+  const allowedUrls = (unitRows ?? []).flatMap((u: { source_url?: string | null; article_url?: string | null }) =>
+    [u.source_url, u.article_url].filter((x): x is string => typeof x === 'string' && x.length > 0),
+  );
+
+  const bullets = Array.isArray(
+    (draft.bullets_json as { bullets?: unknown[] }).bullets,
+  )
+    ? ((draft.bullets_json as { bullets: Array<{ text?: string; article_url?: string | null; source_unit_ids?: string[] }> }).bullets)
+    : [];
+
+  const rows: Array<{
+    draft_id: string;
+    village_id: string;
+    kind: 'negative';
+    bullet_text: string;
+    editor_reason: string | null;
+    source_unit_ids: string[];
+    edition_date: string | null;
+  }> = [];
+
+  for (const b of bullets) {
+    const result = sanitiseBulletForFeedback({
+      bullet_text: b.text ?? '',
+      article_url: b.article_url ?? null,
+      allowed_urls: allowedUrls,
+    });
+    if (!result.ok) {
+      console.log(`[feedback-capture] rejected bullet: ${result.reason}`);
+      continue;
+    }
+    rows.push({
+      draft_id: draft.id,
+      village_id: draft.village_id ?? '',
+      kind: 'negative',
+      bullet_text: result.text,
+      editor_reason: editorReason,
+      source_unit_ids: b.source_unit_ids ?? [],
+      edition_date: draft.publication_date,
+    });
+  }
+
+  if (rows.length === 0) {
+    console.log(`[feedback-capture] no_bullets_after_sanitisation draft=${draft.id}`);
+    return;
+  }
+
+  const { error: insertErr } = await supabase.from('bajour_feedback_examples').insert(rows);
+  if (insertErr) {
+    console.error(`[feedback-capture] insert failed draft=${draft.id}:`, insertErr);
+    return;
+  }
+  console.log(`[feedback-capture] captured ${rows.length} bullets from draft=${draft.id}`);
 }
 
 // --- Deno.serve Haupthandler ---

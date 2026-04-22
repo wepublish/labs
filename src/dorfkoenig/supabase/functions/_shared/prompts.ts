@@ -2,6 +2,17 @@
 // Two prompts, two jobs:
 //   INFORMATION_SELECT_PROMPT — which units to pick
 //   DRAFT_COMPOSE_PROMPT      — how to write the draft
+//
+// Version stamps for DRAFT_QUALITY.md §3.6 hygiene. Bump when prompt text changes
+// in the same PR; benchmarks (§4) gate the change. user_prompts.based_on_version
+// persists the version an override was derived from so `specs/DATABASE.md`
+// stale-override query can flag drift.
+export const DEFAULT_PROMPT_VERSIONS = {
+  information_select: 1,
+  draft_compose: 2,
+  // web_extraction and zeitung_extraction mirror the prompt-version constants
+  // exported from their respective modules.
+} as const;
 
 /** System prompt for AI-powered unit selection. Used by bajour-select-units and bajour-auto-draft. */
 export const INFORMATION_SELECT_PROMPT = `Du bist ein erfahrener Redakteur für einen wöchentlichen lokalen Newsletter.
@@ -63,12 +74,17 @@ export function formatUnitsForSelection(units: UnitForSelect[]): string {
 }
 
 interface UnitForCompose {
+  id?: string;
   statement: string;
   unit_type: string;
   source_domain: string;
   source_url: string;
   event_date?: string | null;
   created_at?: string | null;
+  article_url?: string | null;
+  is_listing_page?: boolean | null;
+  quality_score?: number | null;
+  sensitivity?: string | null;
 }
 
 /**
@@ -76,11 +92,12 @@ interface UnitForCompose {
  * pipeline. Keep aligned with `UnitForCompose` above.
  */
 export const UNIT_FOR_COMPOSE_COLUMNS =
-  'id, statement, unit_type, event_date, created_at, source_domain, source_url';
+  'id, statement, unit_type, event_date, created_at, source_domain, source_url, article_url, is_listing_page, quality_score, sensitivity';
 
 /**
  * Format units grouped by type (FAKTEN / EREIGNISSE / AKTUALISIERUNGEN).
- * Used by compose and bajour-auto-draft for draft generation prompts.
+ * Legacy v1 format — retained for back-compat with compose/index.ts until it
+ * migrates to the bullet schema. New code should use `formatUnitsForCompose`.
  * When `includeDates` is true, each line is prefixed with `[date]`.
  */
 export function formatUnitsByType(units: UnitForCompose[], includeDates = false): string {
@@ -107,7 +124,39 @@ export function formatUnitsByType(units: UnitForCompose[], includeDates = false)
     .join('\n\n');
 }
 
-/** Writing guidelines for draft composition. Used by compose and bajour-auto-draft. */
+/**
+ * DRAFT_QUALITY.md §3.4.2. Plain-data format for the v2 bullet schema.
+ * The LLM receives raw fields as pipe-separated columns, NOT pre-formatted
+ * Markdown. This prevents the "[domain](homepage)(real-url)" double-link bug
+ * caused by the LLM treating already-formatted input as data and re-formatting.
+ *
+ * §3.4.3 listing-page guard is applied here: units with is_listing_page=true
+ * or article_url=null are marked NO_LINK so the prompt can skip citation.
+ */
+export function formatUnitsForCompose(units: UnitForCompose[]): string {
+  if (units.length === 0) return '(keine Einheiten)';
+
+  const typeLabel: Record<string, string> = {
+    fact: 'FAKT',
+    event: 'EREIGNIS',
+    entity_update: 'UPDATE',
+  };
+
+  return units
+    .map((u, i) => {
+      const type = typeLabel[u.unit_type] ?? u.unit_type.toUpperCase();
+      const date = u.event_date ?? u.created_at?.split('T')[0] ?? 'unbekannt';
+      const url = u.article_url && !u.is_listing_page ? u.article_url : 'NO_LINK';
+      const domain = u.source_domain || 'unbekannt';
+      const quality = u.quality_score ?? '-';
+      const sens = u.sensitivity && u.sensitivity !== 'none' ? ` | SENSITIV:${u.sensitivity}` : '';
+      const idPart = u.id ? ` | ID:${u.id}` : '';
+      return `[${i + 1}] ${type} | ${date} | ${u.statement} | URL:${url} | DOMAIN:${domain} | QUALITY:${quality}${sens}${idPart}`;
+    })
+    .join('\n');
+}
+
+/** Writing guidelines for draft composition. v1 (legacy markdown schema). */
 export const DRAFT_COMPOSE_PROMPT = `SCHREIBRICHTLINIEN:
 - Beginne JEDEN Abschnitt mit der wichtigsten Tatsache — kein Vorgeplänkel
 - Erster Satz jedes Abschnitts = die Nachricht. Kontext kommt danach.
@@ -128,3 +177,104 @@ export const DRAFT_COMPOSE_PROMPT = `SCHREIBRICHTLINIEN:
 - Fakten aus mehreren Quellen sind glaubwürdiger — erwähne wenn verfügbar
 - Füge eine "gaps"-Liste hinzu: was fehlt, wen interviewen, welche Daten verifizieren
 - Priorisiere: Zahlen > Daten > Zitate > allgemeine Aussagen`;
+
+/**
+ * DRAFT_QUALITY.md §3.4. Bullet-only compose prompt (v2).
+ *
+ * Under-produce clause appears top AND bottom — negative constraints stick
+ * better when repeated. Anti-pattern table comes from §2.4 and is inlined
+ * deterministically by buildDraftComposePromptV2().
+ */
+export const DRAFT_COMPOSE_PROMPT_V2 = `QUALITÄTSSCHWELLE:
+Wenn du weniger als 2 Meldungen findest, die den Regeln entsprechen, gib
+"bullets": [] zurück und erkläre in "notes_for_editor" warum. Ein leerer
+Entwurf ist besser als erfundener Inhalt. NIEMALS Füllsätze, NIEMALS eine
+Begrüssung oder einen Ausblick, NIEMALS eine Grussformel.
+
+AUFGABE:
+Schreibe einen kompakten Nachrichten-Digest als JSON-Array von Bullets.
+Keine Einleitung, keine Überschriften, kein Ausblick, keine Abschlussformel.
+Jedes Bullet ist eine eigenständige Meldung.
+
+AUSGABEFORMAT (JSON):
+{
+  "title": "Ortsname — Wochentag, TT. Monat JJJJ",
+  "bullets": [
+    {
+      "emoji": "🏠",
+      "kind": "lead" | "secondary" | "event" | "good_news",
+      "text": "1–2 kurze Sätze auf Deutsch, ohne führendes Emoji im Text.",
+      "article_url": "URL aus der Einheit oder null",
+      "source_domain": "Anzeigename der Quelle, z. B. 'bz Basel'",
+      "source_unit_ids": ["UUID der verwendeten Einheit(en)"]
+    }
+  ],
+  "notes_for_editor": ["kurze Hinweise zur Redaktion, leer erlaubt"]
+}
+
+BULLET-REGELN:
+- Maximal 4 Bullets gesamt. 0 Bullets sind ausdrücklich erlaubt (siehe QUALITÄTSSCHWELLE).
+- kind-Obergrenzen: lead max 1 · secondary max 2 · event max 1 · good_news max 1.
+- 1–2 kurze Sätze pro Bullet (insgesamt < 200 Zeichen).
+- emoji kommt aus der festen Palette (Redaktion wählt bei Unklarheit einen passenden Kandidaten).
+- text enthält KEIN führendes Emoji — das fügt das Rendering hinzu.
+
+ZITATION:
+- Jedes Bullet enthält höchstens EINEN Markdown-Link. Muster:
+  "wie die [DOMAIN](URL) berichtet", "meldet die [DOMAIN](URL)", "laut [DOMAIN](URL)".
+- Wenn die Einheit URL:NO_LINK hat (Listenseite oder fehlende Artikel-URL):
+  KEIN Link, stattdessen "laut Gemeindemitteilung", "aus der Facebook-Gruppe XY"
+  (ohne URL in runden Klammern).
+- NIEMALS zwei Links hintereinander. NIEMALS eine URL in runden Klammern nach
+  einem Markdown-Link. Nur URLs verwenden, die im Input unter "URL:" stehen.
+
+GEMEINDE-EXKLUSIVITÄT:
+Dieser Entwurf ist ausschliesslich für die benannte Ziel-Gemeinde. Einheiten,
+die primär eine andere Gemeinde betreffen, dürfen NICHT als eigenständiges
+Bullet auftauchen. Beiläufige regionale/kantonale Erwähnungen sind nur zulässig,
+wenn sie klaren Bezug zur Ziel-Gemeinde haben.
+
+SENSIBLE THEMEN (Todesfall, Unfall, Straftat):
+- Nur aufnehmen, wenn die Einheit SENSITIV:... markiert ist UND publication_date
+  nicht älter als 3 Tage. Niemals als good_news. Kein Emoji als Vorwärmer.
+  Quelle vollständig im Satz nennen.
+
+WIEDERHOLUNG (WICHTIG):
+Wenn weniger als 2 Meldungen die Regeln erfüllen, gib "bullets": [] zurück und
+erkläre in "notes_for_editor" warum. Schreibe NIEMALS Füllsätze.`;
+
+/**
+ * Assemble the full v2 compose prompt: layer 2 (compose rules) + anti-pattern
+ * block + layer 3 (output schema reminder). The anti-pattern block is rendered
+ * with explicit fenced boundary markers; capture-time sanitisation
+ * (_shared/feedback-sanitise.ts) rejects bullets containing those markers so
+ * an injected example can't break out of the block.
+ */
+export function buildDraftComposePromptV2(opts: {
+  composeLayer2?: string;
+  antiPatterns?: ReadonlyArray<{ bullet: string; reason: string }>;
+  positiveExamples?: ReadonlyArray<{ bullet: string; source_domain: string }>;
+}): string {
+  const composeLayer2 = opts.composeLayer2 ?? DRAFT_COMPOSE_PROMPT_V2;
+  const antiPatterns = opts.antiPatterns ?? [];
+  const positives = opts.positiveExamples ?? [];
+
+  const examples: string[] = [];
+  if (positives.length > 0 || antiPatterns.length > 0) {
+    examples.push('========== BEISPIELE-ANFANG ==========');
+    if (positives.length > 0) {
+      examples.push('\nGUTE BEISPIELE (Redaktion hat so publiziert):');
+      for (const p of positives) examples.push(`- ${p.bullet}`);
+    }
+    if (antiPatterns.length > 0) {
+      examples.push('\nSCHLECHTE BEISPIELE (so NICHT — Grund in der Zeile darunter):');
+      for (const ap of antiPatterns) {
+        examples.push(`- ❌ ${ap.bullet}`);
+        examples.push(`     → ${ap.reason}`);
+      }
+    }
+    examples.push('\n========== BEISPIELE-ENDE ==========');
+  }
+
+  return [composeLayer2, examples.join('\n')].filter(Boolean).join('\n\n');
+}

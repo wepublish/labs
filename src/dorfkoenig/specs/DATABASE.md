@@ -792,6 +792,109 @@ REVOKE EXECUTE ON FUNCTION resolve_bajour_timeouts FROM public, anon, authentica
 GRANT EXECUTE ON FUNCTION resolve_bajour_timeouts TO service_role;
 ```
 
+## DRAFT_QUALITY overhaul (2026-04-23, migration `20260423000000_draft_quality_phase1`)
+
+All changes additive; feature flags gate runtime use. See `specs/DRAFT_QUALITY.md` for the full design and `supabase/CLAUDE.md` for module-level notes.
+
+### New columns on `information_units`
+
+```sql
+ALTER TABLE information_units
+  ADD COLUMN quality_score      INT,
+  ADD COLUMN publication_date   DATE,
+  ADD COLUMN sensitivity        TEXT CHECK (sensitivity IN ('none','death','accident','crime','minor_safety')),
+  ADD COLUMN is_listing_page    BOOLEAN DEFAULT FALSE,
+  ADD COLUMN article_url        TEXT;
+
+CREATE INDEX idx_units_village_quality_dates
+  ON information_units (((location->>'city')), quality_score DESC, event_date, created_at DESC)
+  WHERE used_in_article = FALSE;
+```
+
+`quality_score` is computed at ingest via `_shared/quality-scoring.ts`. Historical rows remain NULL; they're filtered out when `FEATURE_QUALITY_GATING=true` (NULL < 40 threshold).
+
+### New columns on `bajour_drafts`
+
+```sql
+ALTER TABLE bajour_drafts
+  ADD COLUMN schema_version INT NOT NULL DEFAULT 1,
+  ADD COLUMN bullets_json   JSONB;
+```
+
+`schema_version=2` drafts carry bullet-only structure in `bullets_json`; legacy markdown remains in `body`.
+
+### New column on `user_prompts`
+
+```sql
+ALTER TABLE user_prompts
+  ADD COLUMN based_on_version INT NOT NULL DEFAULT 1;
+```
+
+Tracks which `_shared/prompts.ts` `DEFAULT_PROMPT_VERSIONS[*]` a user override was authored against. Spot-check stale overrides:
+
+```sql
+SELECT up.user_id, up.prompt_key, up.based_on_version, up.updated_at
+FROM user_prompts up
+ORDER BY up.prompt_key, up.based_on_version;
+```
+
+### `bajour_feedback_examples` (new)
+
+```sql
+CREATE TABLE bajour_feedback_examples (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  draft_id        UUID REFERENCES bajour_drafts(id) ON DELETE SET NULL,
+  village_id      TEXT NOT NULL,
+  kind            TEXT NOT NULL CHECK (kind IN ('positive','negative')),
+  bullet_text     TEXT NOT NULL,
+  editor_reason   TEXT,
+  source_unit_ids UUID[] NOT NULL DEFAULT '{}',
+  edition_date    DATE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_feedback_village_kind
+  ON bajour_feedback_examples (village_id, kind, created_at DESC);
+```
+
+Capture-only. 8 seed rows inserted on migration (positive examples from `Feedback Dorfkönig.md`). RLS: service_role ALL; `authenticated` SELECT scoped to `bajour_pilot_villages_list`.
+
+### `draft_quality_metrics` (new)
+
+```sql
+CREATE TABLE draft_quality_metrics (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  draft_id        UUID NOT NULL REFERENCES bajour_drafts(id) ON DELETE CASCADE,
+  village_id      TEXT NOT NULL,
+  computed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metrics         JSONB NOT NULL,
+  aggregate_score INT NOT NULL,
+  warnings        TEXT[] NOT NULL DEFAULT '{}',
+  schema_version  INT NOT NULL
+);
+
+CREATE INDEX idx_quality_village_date
+  ON draft_quality_metrics (village_id, computed_at DESC);
+```
+
+Inline write at end of `bajour-auto-draft` / `compose` when `FEATURE_METRICS_CAPTURE=true`. RLS: service_role ALL; `authenticated` SELECT scoped to `bajour_pilot_villages_list`.
+
+### `weekly_quality_summary()` function (new)
+
+Returns one row per village with rolling 7d / 28d aggregates and a `delta_sigma` advisory value (NULL if `drafts_last_28d < 10`). Designed to be run manually (CLI → Obsidian weekly). See function body in the migration for the full signature.
+
+### Feature flags (Edge Function env vars)
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `FEATURE_BULLET_SCHEMA` | `false` | `bajour-auto-draft` writes `schema_version=2` + `bullets_json` |
+| `FEATURE_QUALITY_GATING` | `false` | Compound date filter + `quality_score >= 40` + low village-confidence drop |
+| `FEATURE_EMPTY_PATH_EMAIL` | `false` | Admin emails on the 3 empty-path branches |
+| `FEATURE_METRICS_CAPTURE` | `false` | Inline `draft_quality_metrics` writes |
+| `FEATURE_FEEDBACK_CAPTURE` | `false` | Webhook harvests rejected bullets into `bajour_feedback_examples` |
+
+---
+
 ## Additional Tables
 
 ### upload_rate_limits

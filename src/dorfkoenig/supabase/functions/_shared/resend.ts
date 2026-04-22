@@ -386,10 +386,70 @@ export function buildDraftRejectionEmail(params: {
 </html>`;
 }
 
+export type EmptyDraftCase = 'no_units' | 'all_below_quality_threshold' | 'llm_under_produced';
+
+/**
+ * DRAFT_QUALITY.md §3.1.4 — admin notification when bajour-auto-draft exits
+ * without publishing a draft. No WhatsApp is sent to correspondents on empty days.
+ */
+export function buildDraftFailureEmail(params: {
+  villageName: string;
+  villageId: string;
+  date: string;
+  caseLabel: EmptyDraftCase;
+  reasons: string[];
+  feedUrl: string;
+}): { subject: string; html: string } {
+  const { villageName, villageId, date, caseLabel, reasons, feedUrl } = params;
+
+  const caseText: Record<EmptyDraftCase, string> = {
+    no_units:
+      'Im Zeitfenster wurden keine passenden Einheiten gefunden. Prüfe Scouts, Kriterien und Upload-Historie.',
+    all_below_quality_threshold:
+      'Einheiten sind vorhanden, aber alle liegen unter der Qualitätsschwelle. Häufigste Gründe unten.',
+    llm_under_produced:
+      'Das Modell hat absichtlich keinen Entwurf erstellt — weniger als 2 starke Meldungen verfügbar.',
+  };
+
+  const subject = `[Dorfkönig] Kein Entwurf für ${villageName} am ${date} — ${caseLabel}`;
+
+  const reasonsHtml = reasons.length
+    ? `<ul>${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`
+    : '<p><em>(keine Details verfügbar)</em></p>';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.5; color: #1c1917; margin: 0; padding: 24px; background: #fafaf9;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+    <h1 style="margin: 0 0 12px; font-size: 20px; color: #78716c;">Kein Entwurf: ${escapeHtml(villageName)}</h1>
+    <p style="color: #57534e; margin: 0 0 16px; font-size: 14px;">
+      <strong>Datum:</strong> ${escapeHtml(date)} &nbsp;·&nbsp; <strong>Village-ID:</strong> ${escapeHtml(villageId)} &nbsp;·&nbsp; <strong>Fall:</strong> ${escapeHtml(caseLabel)}
+    </p>
+    <p style="background: #fafaf9; padding: 12px; border-radius: 6px; margin: 16px 0; color: #1c1917;">
+      ${escapeHtml(caseText[caseLabel])}
+    </p>
+    <h3 style="font-size: 14px; color: #57534e; text-transform: uppercase; letter-spacing: 0.5px;">Gründe</h3>
+    ${reasonsHtml}
+    <p style="margin-top: 24px;">
+      <a href="${sanitizeUrl(feedUrl)}" style="display: inline-block; background: #78716c; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Feed-Panel öffnen</a>
+    </p>
+    <p style="color: #a8a29e; font-size: 12px; margin-top: 24px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
+      Automatische Meldung aus bajour-auto-draft. Korrespondenten erhalten an leeren Tagen keine WhatsApp-Nachricht.
+    </p>
+  </div>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
 // Export as module
 export const resend = {
   sendEmail,
   buildScoutAlertEmail,
   buildCivicPromiseDigestEmail,
   buildDraftRejectionEmail,
+  buildDraftFailureEmail,
 };

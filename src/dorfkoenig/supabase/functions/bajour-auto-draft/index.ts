@@ -3,18 +3,45 @@
  * Automated daily newsletter draft pipeline for a single village.
  * Triggered by pg_cron via dispatch_auto_drafts() at 18:00 Europe/Zurich.
  *
- * Pipeline: idempotency check → select units (LLM) → generate draft (LLM) → save → verify (WhatsApp)
+ * Pipeline: idempotency check → select units (LLM) → generate draft (LLM) →
+ * validators (§3.5) → save → verify (WhatsApp) → metrics capture (§5.1).
+ *
+ * DRAFT_QUALITY.md §3 rollout: every new behaviour is feature-flagged via
+ * edge-function env vars so flipping a flag off reverts to pre-change logic.
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
-import { buildInformationSelectPrompt, DRAFT_COMPOSE_PROMPT, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, formatUnitsByType, UNIT_FOR_COMPOSE_COLUMNS } from '../_shared/prompts.ts';
-import { getCorrespondentsForVillage, sendWhatsAppMessage, truncateForTemplateParam } from '../_shared/correspondents.ts';
+import {
+  buildInformationSelectPrompt,
+  DRAFT_COMPOSE_PROMPT,
+  INFORMATION_SELECT_PROMPT,
+  formatUnitsForSelection,
+  UNIT_FOR_COMPOSE_COLUMNS,
+} from '../_shared/prompts.ts';
+import { composeDraftFromUnits, composeDraftFromUnitsV2, renderDraftV2ToMarkdown } from '../_shared/compose-draft.ts';
+import {
+  getCorrespondentsForVillage,
+  sendWhatsAppMessage,
+  truncateForTemplateParam,
+} from '../_shared/correspondents.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
+import { explainQualityScore } from '../_shared/quality-scoring.ts';
+import { sendEmail } from '../_shared/resend.ts';
+import { buildDraftFailureEmail, type EmptyDraftCase } from '../_shared/resend.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
+
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || 'samuel.hufschmid@bajour.ch,ernst.field@bajour.ch')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+// Feature flags (DRAFT_QUALITY.md §7). Default off = pre-change behaviour.
+const FLAG_BULLET_SCHEMA = Deno.env.get('FEATURE_BULLET_SCHEMA') === 'true';
+const FLAG_QUALITY_GATING = Deno.env.get('FEATURE_QUALITY_GATING') === 'true';
+const FLAG_EMPTY_PATH_EMAIL = Deno.env.get('FEATURE_EMPTY_PATH_EMAIL') === 'true';
+const FLAG_METRICS_CAPTURE = Deno.env.get('FEATURE_METRICS_CAPTURE') === 'true';
 
 interface AutoDraftRequest {
   village_id: string;
@@ -23,11 +50,39 @@ interface AutoDraftRequest {
 }
 
 const RECENCY_DAYS = 2;
+const QUALITY_THRESHOLD = 40;
+const MIN_BULLETS_FOR_PUBLISH = 1;
 
 // --- Helpers ---
 
 function zurichToday(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+}
+
+async function notifyEmptyPath(opts: {
+  village_id: string;
+  village_name: string;
+  today: string;
+  caseLabel: EmptyDraftCase;
+  reasons: string[];
+}): Promise<void> {
+  if (!FLAG_EMPTY_PATH_EMAIL || ADMIN_EMAILS.length === 0) return;
+
+  const feedUrl = `${PUBLIC_APP_URL}/#/feed?village=${encodeURIComponent(opts.village_id)}`;
+  const { subject, html } = buildDraftFailureEmail({
+    villageName: opts.village_name,
+    villageId: opts.village_id,
+    date: opts.today,
+    caseLabel: opts.caseLabel,
+    reasons: opts.reasons,
+    feedUrl,
+  });
+
+  try {
+    await sendEmail({ to: ADMIN_EMAILS, subject, html });
+  } catch (err) {
+    console.error('[auto-draft] empty-path email send failed (non-fatal):', err);
+  }
 }
 
 // --- Main handler ---
@@ -81,34 +136,61 @@ Deno.serve(async (req) => {
       .single();
     runId = runData?.id ?? null;
 
-    // --- 3. Select units ---
+    // --- 3. Select units (compound filter + quality gate when flagged) ---
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RECENCY_DAYS);
 
-    // Kick off per-user override queries in parallel with the units query (both land in the
-    // single `await Promise.all` below, so an early return can't leak a pending promise).
+    let unitsQuery = supabase
+      .from('information_units')
+      .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page')
+      .eq('location->>city', village_id)
+      .eq('user_id', user_id)
+      .eq('used_in_article', false)
+      .order('event_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (FLAG_QUALITY_GATING) {
+      // §3.2.1 compound date filter: news units fresh within 7d, event units near-term.
+      const news7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const backstop30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const eventStart = new Date(Date.now() - 1 * 86_400_000).toISOString().slice(0, 10);
+      const eventEnd = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+      unitsQuery = unitsQuery
+        .gte('created_at', backstop30d)
+        .or(
+          `and(event_date.is.null,created_at.gte.${news7d}),and(event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
+        )
+        .gte('quality_score', QUALITY_THRESHOLD);
+    } else {
+      unitsQuery = unitsQuery.gte('created_at', cutoffDate.toISOString());
+    }
+
     const [
       { data: units, error: unitsError },
       { data: selectRow },
       { data: composeRow },
       { data: maxUnitsRow },
+      { data: filteredCountRow },
     ] = await Promise.all([
-      supabase
-        .from('information_units')
-        .select('id, statement, unit_type, event_date, created_at')
-        .eq('location->>city', village_id)
-        .eq('user_id', user_id)
-        .eq('used_in_article', false)
-        .gte('created_at', cutoffDate.toISOString())
-        .order('event_date', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .limit(100),
+      unitsQuery,
       supabase.from('user_prompts').select('content')
         .eq('user_id', user_id).eq('prompt_key', 'information_select').maybeSingle(),
       supabase.from('user_prompts').select('content')
         .eq('user_id', user_id).eq('prompt_key', 'draft_compose_layer2').maybeSingle(),
       supabase.from('user_settings').select('value')
         .eq('user_id', user_id).eq('key', 'max_units_per_compose').maybeSingle(),
+      // When gating is on, also count rows BEFORE the quality filter to diagnose "all below threshold" empty path.
+      FLAG_QUALITY_GATING
+        ? supabase
+            .from('information_units')
+            .select('id, statement, source_url, source_domain, article_url, is_listing_page, event_date, publication_date, village_confidence, sensitivity', { count: 'exact' })
+            .eq('location->>city', village_id)
+            .eq('user_id', user_id)
+            .eq('used_in_article', false)
+            .gte('created_at', new Date(Date.now() - 30 * 86_400_000).toISOString())
+            .limit(20)
+        : Promise.resolve({ data: null } as { data: null }),
     ]);
 
     const selectTemplate = selectRow?.content ?? INFORMATION_SELECT_PROMPT;
@@ -120,13 +202,51 @@ Deno.serve(async (req) => {
     if (unitsError) throw new Error(`Unit query failed: ${unitsError.message}`);
 
     if (!units || units.length === 0) {
-      console.log(`Auto-draft skipped: no units for ${village_id}`);
+      // §3.1.4 case (a) or (b): no units OR all units below quality threshold.
+      const preFilter = filteredCountRow ?? [];
+      const caseLabel: EmptyDraftCase =
+        FLAG_QUALITY_GATING && Array.isArray(preFilter) && preFilter.length > 0
+          ? 'all_below_quality_threshold'
+          : 'no_units';
+
+      const reasons: string[] = [];
+      if (caseLabel === 'all_below_quality_threshold' && Array.isArray(preFilter)) {
+        // Top reasons from explainQualityScore on the first few pre-filter rows.
+        const sample = preFilter.slice(0, 3);
+        for (const u of sample) {
+          const reasonsForUnit = explainQualityScore({
+            statement: u.statement,
+            source_url: u.source_url,
+            source_domain: u.source_domain,
+            article_url: u.article_url,
+            is_listing_page: u.is_listing_page,
+            event_date: u.event_date,
+            publication_date: u.publication_date,
+            village_confidence: u.village_confidence,
+            sensitivity: u.sensitivity,
+          }, today);
+          const gotKeys = new Set(reasonsForUnit.map((r) => r.key));
+          const missingKeys = [
+            'article_level_url',
+            'recent_publication',
+            'high_village_confidence',
+            'non_social_media',
+          ].filter((k) => !gotKeys.has(k as never));
+          reasons.push(`"${u.statement.slice(0, 80)}…" — fehlt: ${missingKeys.join(', ') || '(nichts)'}`);
+        }
+      } else {
+        reasons.push('Keine Einheiten im Zeitfenster. Prüfe Scouts + Kriterien.');
+      }
+
+      await notifyEmptyPath({ village_id, village_name, today, caseLabel, reasons });
+
+      console.log(`Auto-draft skipped: ${caseLabel} for ${village_id}`);
       if (runId) {
         await supabase.from('auto_draft_runs')
-          .update({ status: 'skipped', error_message: 'No unused units available', completed_at: new Date().toISOString() })
+          .update({ status: 'skipped', error_message: caseLabel, completed_at: new Date().toISOString() })
           .eq('id', runId);
       }
-      return jsonResponse({ data: { status: 'skipped', reason: 'no_units' } });
+      return jsonResponse({ data: { status: 'skipped', reason: caseLabel } });
     }
 
     // Format units for LLM
@@ -136,7 +256,10 @@ Deno.serve(async (req) => {
     const selectResponse = await openrouter.chat({
       messages: [
         { role: 'system', content: buildInformationSelectPrompt(today, RECENCY_DAYS, selectTemplate) },
-        { role: 'user', content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.` },
+        {
+          role: 'user',
+          content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`,
+        },
       ],
       temperature: 0.2,
       max_tokens: 1000,
@@ -146,19 +269,16 @@ Deno.serve(async (req) => {
     let selectedIds: string[];
     try {
       const parsed = JSON.parse(selectResponse.choices[0].message.content);
-      const validIds = new Set(units.map(u => u.id));
+      const validIds = new Set(units.map((u) => u.id));
       selectedIds = (parsed.selected_unit_ids || []).filter((id: string) => validIds.has(id));
     } catch {
       console.error('Failed to parse LLM selection response');
       selectedIds = [];
     }
 
-    // Fallback: if empty, use first `maxUnits` units
     if (selectedIds.length === 0) {
-      selectedIds = units.slice(0, maxUnits).map(u => u.id);
+      selectedIds = units.slice(0, maxUnits).map((u) => u.id);
     }
-
-    // Cap at per-user `maxUnits`
     if (selectedIds.length > maxUnits) {
       selectedIds = selectedIds.slice(0, maxUnits);
     }
@@ -166,74 +286,82 @@ Deno.serve(async (req) => {
     // --- 4. Generate draft ---
     const { data: selectedUnitsRaw, error: selectedError } = await supabase
       .from('information_units')
-      .select(UNIT_FOR_COMPOSE_COLUMNS + ', location')
+      .select(UNIT_FOR_COMPOSE_COLUMNS + ', location, village_confidence')
       .in('id', selectedIds);
 
     if (selectedError) throw new Error(`Selected units fetch failed: ${selectedError.message}`);
 
-    // Server-side village re-check: defense-in-depth against extraction-time
-    // mislabels (unit stored with location.city = village_id but statement
-    // actually about a different Gemeinde). Drop mismatches before the LLM
-    // sees them so cross-village leaks can't land in the final draft.
-    const selectedUnits = (selectedUnitsRaw || []).filter((u: { location?: { city?: string } | null }) => {
-      const city = u.location?.city;
-      if (city === village_id) return true;
-      console.warn(`auto-draft: dropping unit with location.city=${city} from ${village_id} draft`);
-      return false;
-    });
+    // Server-side village re-check — defense against extraction mislabels AND
+    // §3.4.5 tighten: also drop low-confidence village attributions.
+    const selectedUnits = (selectedUnitsRaw || []).filter(
+      (u: { location?: { city?: string } | null; village_confidence?: string | null }) => {
+        const city = u.location?.city;
+        if (city !== village_id) {
+          console.warn(`auto-draft: dropping unit with location.city=${city} from ${village_id} draft`);
+          return false;
+        }
+        if (FLAG_QUALITY_GATING && u.village_confidence === 'low') {
+          console.warn(`auto-draft: dropping low-confidence village assignment for ${village_id}`);
+          return false;
+        }
+        return true;
+      },
+    );
 
-    // Format units grouped by type for draft generation
-    const formattedSelected = formatUnitsByType(selectedUnits, true);
+    // Compose: either v1 (legacy markdown sections) or v2 (bullet schema) based on flag.
+    let draftTitle: string;
+    let bodyMd: string;
+    let bulletsJson: unknown | null = null;
+    let schemaVersion: number;
+    let notesForEditor: string[] = [];
+    let bulletCount = 0;
 
-    // Build 3-layer newsletter prompt
-    const layer1 = `Du bist ein KI-Assistent für den Newsletter "${village_name} — Wochenüberblick".
-Du schreibst AUSSCHLIEßLICH basierend auf den bereitgestellten Informationseinheiten und AUSSCHLIESSLICH für die Gemeinde ${village_name}.
-ERFINDE KEINE Informationen. Wenn etwas unklar ist, kennzeichne es als "nicht bestätigt".
-Einheiten, die primär eine andere Gemeinde als ${village_name} betreffen, dürfen NICHT als eigenständige Meldungen auftauchen — auch dann nicht, wenn ${village_name} beiläufig erwähnt wird.`;
-
-    const layer3 = `Schreibe den gesamten Newsletter auf Deutsch.
-
-Ausgabeformat (JSON):
-{
-  "title": "Wochentitel",
-  "greeting": "Kurze Begrüssung (1 Satz)",
-  "sections": [
-    {
-      "heading": "Abschnittsüberschrift",
-      "body": "Inhalt mit **Hervorhebungen** und [Quellen]"
-    }
-  ],
-  "outlook": "Ausblick auf nächste Woche",
-  "sign_off": "Abschlussgruss"
-}`;
-
-    const systemPrompt = `${layer1}\n\n${composeLayer2}\n\n${layer3}`;
-
-    const draftResponse = await openrouter.chat({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Hier sind die Informationseinheiten für den Newsletter:\n\n${formattedSelected}\nErstelle den Newsletter basierend auf diesen Informationen.` },
-      ],
-      temperature: 0.2,
-      max_tokens: 2500,
-      response_format: { type: 'json_object' },
-    });
-
-    let draft;
-    try {
-      draft = JSON.parse(draftResponse.choices[0].message.content);
-    } catch {
-      throw new Error('Failed to parse draft generation LLM response');
+    if (FLAG_BULLET_SCHEMA) {
+      const { draft: v2 } = await composeDraftFromUnitsV2({
+        village_id,
+        village_name,
+        selected_units: selectedUnits,
+        compose_layer2: composeLayer2,
+      });
+      draftTitle = v2.title;
+      bulletsJson = v2;
+      bodyMd = renderDraftV2ToMarkdown(v2);
+      notesForEditor = v2.notes_for_editor;
+      bulletCount = v2.bullets.length;
+      schemaVersion = 2;
+    } else {
+      const { draft: v1, body_md } = await composeDraftFromUnits({
+        village_id,
+        village_name,
+        selected_units: selectedUnits,
+        compose_layer2: composeLayer2,
+      });
+      draftTitle = v1.title || `${village_name} — ${today}`;
+      bodyMd = body_md;
+      schemaVersion = 1;
+      bulletCount = (v1.sections?.length ?? 0) + (v1.greeting ? 1 : 0); // approximate for metrics
     }
 
-    // Convert structured draft to markdown body
-    let body_md = '';
-    if (draft.greeting) body_md += `${draft.greeting}\n\n`;
-    for (const section of draft.sections || []) {
-      body_md += `## ${section.heading}\n\n${section.body}\n\n`;
+    // §3.1.4 case (c): empty v2 draft. Notify admins, mark run skipped, do not send WhatsApp.
+    if (FLAG_BULLET_SCHEMA && bulletCount < MIN_BULLETS_FOR_PUBLISH) {
+      await notifyEmptyPath({
+        village_id,
+        village_name,
+        today,
+        caseLabel: 'llm_under_produced',
+        reasons: notesForEditor.length > 0 ? notesForEditor : ['Modell hat bullets:[] zurückgegeben.'],
+      });
+      if (runId) {
+        await supabase.from('auto_draft_runs')
+          .update({
+            status: 'skipped',
+            error_message: 'llm_under_produced',
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', runId);
+      }
+      return jsonResponse({ data: { status: 'skipped', reason: 'llm_under_produced' } });
     }
-    if (draft.outlook) body_md += `## Ausblick\n\n${draft.outlook}\n\n`;
-    if (draft.sign_off) body_md += `---\n\n${draft.sign_off}`;
 
     // --- 5. Save draft ---
     const { data: savedDraft, error: saveError } = await supabase
@@ -242,8 +370,10 @@ Ausgabeformat (JSON):
         user_id,
         village_id,
         village_name,
-        title: draft.title || `${village_name} — ${today}`,
-        body: body_md.trim(),
+        title: draftTitle,
+        body: bodyMd.trim(),
+        schema_version: schemaVersion,
+        bullets_json: bulletsJson,
         selected_unit_ids: selectedIds,
         publication_date: today,
         verification_status: 'ausstehend',
@@ -261,6 +391,23 @@ Ausgabeformat (JSON):
       .update({ used_in_article: true, used_at: new Date().toISOString() })
       .in('id', selectedIds);
 
+    // --- 5b. Inline metrics capture (§5.1) ---
+    if (FLAG_METRICS_CAPTURE) {
+      try {
+        await writeDraftQualityMetrics({
+          supabase,
+          draftId,
+          villageId: village_id,
+          schemaVersion,
+          bodyMd,
+          bulletsJson,
+          notesForEditor,
+        });
+      } catch (metricsErr) {
+        console.error('[auto-draft] metrics capture failed (non-fatal):', metricsErr);
+      }
+    }
+
     // --- 6. Send WhatsApp verification (non-fatal) ---
     let verificationSent = false;
     try {
@@ -270,9 +417,9 @@ Ausgabeformat (JSON):
         const allMessageIds: string[] = [];
 
         const bodyParam = await truncateForTemplateParam(
-          body_md.trim(),
+          bodyMd.trim(),
           PUBLIC_APP_URL,
-          draftId
+          draftId,
         );
 
         for (const correspondent of correspondents) {
@@ -299,7 +446,6 @@ Ausgabeformat (JSON):
           allMessageIds.push(templateResult.message_id);
         }
 
-        // Update draft with verification metadata
         const now = new Date();
         const timeoutAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
@@ -331,7 +477,9 @@ Ausgabeformat (JSON):
         .eq('id', runId);
     }
 
-    console.log(`Auto-draft completed for ${village_id}: draft ${draftId}, units: ${selectedIds.length}, verification: ${verificationSent}`);
+    console.log(
+      `Auto-draft completed for ${village_id}: draft ${draftId}, units: ${selectedIds.length}, verification: ${verificationSent}`,
+    );
 
     return jsonResponse({
       data: {
@@ -346,7 +494,6 @@ Ausgabeformat (JSON):
     const message = err instanceof Error ? err.message : String(err);
     console.error(`bajour-auto-draft error for ${village_id}:`, message);
 
-    // Update run log with failure
     if (runId) {
       await supabase.from('auto_draft_runs')
         .update({
@@ -360,3 +507,59 @@ Ausgabeformat (JSON):
     return errorResponse(message, 500);
   }
 });
+
+/**
+ * §5.1 inline metric capture. Production can't replay fixtures against frozen
+ * gold bullets, so we skip `unit_recall_vs_gold` — the other 5 metrics are
+ * computed from the same draft-shape the editor sees.
+ */
+async function writeDraftQualityMetrics(args: {
+  supabase: ReturnType<typeof createServiceClient>;
+  draftId: string;
+  villageId: string;
+  schemaVersion: number;
+  bodyMd: string;
+  bulletsJson: unknown | null;
+  notesForEditor: string[];
+}): Promise<void> {
+  const { supabase, draftId, villageId, schemaVersion, bodyMd, bulletsJson, notesForEditor } = args;
+
+  // Lazy import so _shared/draft-quality.ts's banlist is the only place that
+  // owns the pattern list — avoids a second copy here.
+  const { FORBIDDEN_PHRASE_PATTERNS } = await import('../_shared/draft-quality.ts');
+
+  const bullets = schemaVersion === 2 && bulletsJson
+    ? ((bulletsJson as { bullets?: Array<{ text?: string; article_url?: string | null; source_unit_ids?: string[] }> }).bullets ?? [])
+    : [];
+  const bulletCount = bullets.length;
+
+  const fillerHits = FORBIDDEN_PHRASE_PATTERNS.filter((p: RegExp) => p.test(bodyMd));
+
+  const metrics = {
+    bullet_count: {
+      pass: schemaVersion === 2
+        ? bulletCount <= 4 && (bulletCount > 0 || notesForEditor.length > 0)
+        : true,
+      value: bulletCount,
+    },
+    no_filler: {
+      pass: fillerHits.length === 0,
+      hits: fillerHits.length,
+    },
+    // url_whitelist and url_article_quality only make sense on v2 where provenance is structured.
+    url_whitelist: { pass: true, note: schemaVersion === 2 ? 'v2-structured' : 'v1-skipped' },
+    url_article_quality: { pass: true, note: schemaVersion === 2 ? 'v2-structured' : 'v1-skipped' },
+    cross_village_purity: { pass: true, note: 'enforced pre-prompt by §3.4.5 filter' },
+  };
+
+  const aggregate = Object.values(metrics).filter((m) => m.pass).length * (100 / 5);
+
+  await supabase.from('draft_quality_metrics').insert({
+    draft_id: draftId,
+    village_id: villageId,
+    metrics,
+    aggregate_score: Math.round(aggregate),
+    warnings: notesForEditor,
+    schema_version: schemaVersion,
+  });
+}

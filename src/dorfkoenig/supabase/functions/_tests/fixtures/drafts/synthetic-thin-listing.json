@@ -1,0 +1,35 @@
+{
+  "fixture_id": "synthetic-thin-listing",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-22",
+  "notes": "Synthetic — 1 weak unit with a listing-page URL and low quality_score. Expect empty draft with a note; no citation, no hallucinated link.",
+  "units": [
+    {
+      "id": "44444444-4444-4444-4444-444444444001",
+      "statement": "Kommende Veranstaltungen in Arlesheim.",
+      "unit_type": "event",
+      "entities": [],
+      "event_date": null,
+      "publication_date": "2026-04-20",
+      "created_at": "2026-04-20T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "none",
+      "village_confidence": "low",
+      "quality_score": 15
+    }
+  ],
+  "gold": {
+    "bullets": [],
+    "rejected_units": [
+      {
+        "unit_id": "44444444-4444-4444-4444-444444444001",
+        "reason": "Listing-page-URL, keine Substanz, quality_score unter Schwelle."
+      }
+    ]
+  }
+}
