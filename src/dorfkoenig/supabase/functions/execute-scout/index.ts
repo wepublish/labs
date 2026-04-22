@@ -15,6 +15,11 @@ import { extractInformationUnits } from '../_shared/unit-extraction.ts';
 import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
 import { analyzeCriteria, summarizeContent } from '../_shared/criteria-analysis.ts';
 
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 interface ExecuteRequest {
   scoutId: string;
   executionId?: string;
@@ -326,7 +331,7 @@ Deno.serve(async (req) => {
       analysis.matches &&
       !isDuplicate &&
       !skipNotification &&
-      scout.notification_email
+      ADMIN_EMAILS.length > 0
     ) {
       const emailHtml = resend.buildScoutAlertEmail({
         scoutName: scout.name,
@@ -337,7 +342,7 @@ Deno.serve(async (req) => {
       });
 
       const emailResult = await resend.sendEmail({
-        to: scout.notification_email,
+        to: ADMIN_EMAILS,
         subject: `Scout-Alarm: ${scout.name}${scout.location?.city ? ` (${scout.location.city})` : ''}`,
         html: emailHtml,
       });

@@ -35,9 +35,6 @@ CREATE TABLE IF NOT EXISTS scouts (
     last_run_at TIMESTAMPTZ,
     consecutive_failures INTEGER NOT NULL DEFAULT 0,
 
-    -- Email notification
-    notification_email TEXT,
-
     -- Timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -542,7 +539,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Uncomment to insert test data:
 --
--- INSERT INTO scouts (user_id, name, url, criteria, location, frequency, notification_email)
+-- INSERT INTO scouts (user_id, name, url, criteria, location, frequency)
 -- VALUES (
 --     '493c6d51531c7444365b0ec094bc2d67',
 --     'Berlin News Monitor',

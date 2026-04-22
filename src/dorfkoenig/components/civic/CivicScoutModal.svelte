@@ -38,7 +38,6 @@
   let location = $state<Location | null>(null);
   let topic = $state('');
   let locationMode = $state<LocationMode>('manual');
-  let notificationEmail = $state('');
   let submitting = $state(false);
   let submitError = $state('');
 
@@ -62,7 +61,6 @@
     location = null;
     topic = '';
     locationMode = 'manual';
-    notificationEmail = '';
     submitting = false;
     submitError = '';
   }
@@ -153,7 +151,6 @@
         location: locationMode === 'auto' ? null : location,
         topic: topic.trim() || undefined,
         location_mode: locationMode,
-        notification_email: notificationEmail.trim() || undefined,
         is_active: true,
       });
 
@@ -411,20 +408,6 @@
               unsichere Zuordnungen kannst Du dort pr&uuml;fen.
             </p>
           {/if}
-
-          <div class="field-group">
-            <label for="civic-email" class="field-label">
-              Benachrichtigungs-E-Mail
-              <span class="field-hint">(optional)</span>
-            </label>
-            <input
-              id="civic-email"
-              type="email"
-              bind:value={notificationEmail}
-              placeholder="redaktion@example.ch"
-              class="form-input"
-            />
-          </div>
 
           {#if submitError}
             <p class="error-text">{submitError}</p>

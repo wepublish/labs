@@ -28,7 +28,7 @@ $$ LANGUAGE sql IMMUTABLE;
 -- 6 active, 2 inactive. Real Swiss institutional URLs.
 -- ============================================================================
 
-INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency, is_active, last_run_at, consecutive_failures, notification_email, created_at, updated_at) VALUES
+INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency, is_active, last_run_at, consecutive_failures, created_at, updated_at) VALUES
 
 -- s1: Zürich / Stadtentwicklung / daily / active
 ('aa000000-0001-4000-a000-000000000001', '493c6d51531c7444365b0ec094bc2d67',
@@ -47,7 +47,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Politische Entscheide des Bundesrats und Parlamentsdebatten in Bern',
  '{"city":"Bern","state":"Bern","country":"Schweiz","latitude":46.9480,"longitude":7.4474}'::jsonb,
  'Politik', 'weekly', true,
- NOW() - INTERVAL '3 days', 0, NULL,
+ NOW() - INTERVAL '3 days', 0,
  NOW() - INTERVAL '21 days', NOW() - INTERVAL '3 days'),
 
 -- s3: Basel / Gesundheit / daily / active
@@ -67,7 +67,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Internationale Diplomatie, UNO-Aktivitäten und multilaterale Verhandlungen in Genf',
  '{"city":"Genf","state":"Genève","country":"Schweiz","latitude":46.2044,"longitude":6.1432}'::jsonb,
  'Politik', 'monthly', true,
- NOW() - INTERVAL '10 days', 0, NULL,
+ NOW() - INTERVAL '10 days', 0,
  NOW() - INTERVAL '21 days', NOW() - INTERVAL '10 days'),
 
 -- s5: Luzern / Stadtentwicklung / weekly / active
@@ -77,7 +77,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Tourismuszahlen, Hotellerie und Freizeitangebote in der Region Luzern',
  '{"city":"Luzern","state":"Luzern","country":"Schweiz","latitude":47.0502,"longitude":8.3093}'::jsonb,
  'Stadtentwicklung', 'weekly', true,
- NOW() - INTERVAL '5 minutes', 0, NULL,
+ NOW() - INTERVAL '5 minutes', 0,
  NOW() - INTERVAL '21 days', NOW() - INTERVAL '5 minutes'),
 
 -- s6: Lausanne / Technologie / daily / active / 2 consecutive failures
@@ -97,7 +97,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Bildungspolitik, Hochschulentwicklung und Schulreformen im Kanton St. Gallen',
  '{"city":"St. Gallen","state":"St. Gallen","country":"Schweiz","latitude":47.4245,"longitude":9.3767}'::jsonb,
  'Bildung', 'monthly', false,
- NOW() - INTERVAL '7 days', 0, NULL,
+ NOW() - INTERVAL '7 days', 0,
  NOW() - INTERVAL '21 days', NOW() - INTERVAL '7 days'),
 
 -- s8: Winterthur / Kultur / weekly / INACTIVE
@@ -107,7 +107,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Kulturveranstaltungen, Museen und Theaterprogramme in Winterthur',
  '{"city":"Winterthur","state":"Zürich","country":"Schweiz","latitude":47.5001,"longitude":8.7240}'::jsonb,
  'Kultur', 'weekly', false,
- NOW() - INTERVAL '12 days', 0, NULL,
+ NOW() - INTERVAL '12 days', 0,
  NOW() - INTERVAL '21 days', NOW() - INTERVAL '12 days');
 
 -- ============================================================================
@@ -226,7 +226,7 @@ INSERT INTO scout_executions (id, scout_id, user_id, status, started_at, complet
 ('bb000000-000d-4000-a000-00000000000d',
  'aa000000-0005-4000-a000-000000000005', '493c6d51531c7444365b0ec094bc2d67', 'completed',
  NOW() - INTERVAL '5 minutes', NOW() - INTERVAL '4 minutes',
- 'changed', true, 'Neue Bauvorhaben im Luzerner Stadtzentrum geplant.', NULL, false, NULL, false, NULL, NULL, 0, NULL,
+ 'changed', true, 'Neue Bauvorhaben im Luzerner Stadtzentrum geplant.', NULL, false, NULL, false, NULL, NULL, 0,
  NOW() - INTERVAL '5 minutes'),
 
 -- e14: Scout 6 (Lausanne), 8 days ago, completed, first_run, matched

@@ -26,7 +26,6 @@ export interface Scout {
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
-  notification_email: string | null;
   provider?: string | null;
   content_hash?: string | null;
   scout_type: ScoutType;
@@ -49,7 +48,6 @@ export interface ScoutCreateInput {
   location_mode?: LocationMode;
   topic?: string | null;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
-  notification_email?: string | null;
   is_active?: boolean;
   scout_type?: ScoutType;
   root_domain?: string;
@@ -64,7 +62,6 @@ export interface ScoutUpdateInput {
   location_mode?: LocationMode;
   topic?: string | null;
   frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
-  notification_email?: string | null;
   is_active?: boolean;
   provider?: string | null;
   content_hash?: string | null;

@@ -71,7 +71,6 @@ export interface Scout {
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
-  notification_email: string | null;
   topic: string | null;
   provider: string | null;
   content_hash: string | null;
