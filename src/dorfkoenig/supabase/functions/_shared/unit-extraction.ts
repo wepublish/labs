@@ -266,9 +266,41 @@ async function dedupAndStore(
   const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
   const domain = firecrawl.getDomain(params.sourceUrl);
+
+  // Cross-run dedup: batch dual-signal match against the last 30 days. One RPC
+  // per extraction, not one per unit. Matches are skipped here; the UNIQUE
+  // partial index on (user_id, scout_id, md5(statement)) catches any remaining
+  // race-condition collisions with a 23505 error below.
+  const candidates = uniqueIndices.map((i) => {
+    const unit = units[i];
+    const city = unit.location?.city ? normalizeCity(unit.location.city) : null;
+    return { idx: i, embedding: unitEmbeddings[i], city, statement: unit.statement };
+  });
+  const skipIndices = new Set<number>();
+  if (candidates.length > 0) {
+    const { data: matches, error: matchErr } = await supabase.rpc('find_similar_units_batch', {
+      p_user_id: params.userId,
+      p_candidates: candidates,
+    });
+    if (matchErr) {
+      console.error('[unit-extraction] dedup rpc failed; proceeding without cross-run dedup', matchErr);
+    } else if (Array.isArray(matches)) {
+      for (const m of matches as { candidate_idx: number; matched_id: string; cosine: number; trgm: number }[]) {
+        skipIndices.add(m.candidate_idx);
+        console.log('[unit-extraction] dedup skip', {
+          existing_id: m.matched_id,
+          cosine: m.cosine,
+          trgm: m.trgm,
+          new_statement: units[m.candidate_idx].statement.slice(0, 120),
+        });
+      }
+    }
+  }
+
   let storedCount = 0;
 
   for (const i of uniqueIndices) {
+    if (skipIndices.has(i)) continue;
     const unit = units[i];
     const normalizedLocation = unit.location?.city
       ? { ...unit.location, city: normalizeCity(unit.location.city) }
@@ -318,6 +350,9 @@ async function dedupAndStore(
           villageId: unit.location?.city ?? null,
         });
       }
+    } else if (error.code === '23505') {
+      // UNIQUE partial index race guard — peer inserted this statement first.
+      console.log('[unit-extraction] dedup race lost', { statement: unit.statement.slice(0, 120) });
     }
   }
 

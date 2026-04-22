@@ -202,11 +202,12 @@ export interface NewspaperExtractedUnit {
 export interface NewspaperJob {
   id: string;
   user_id: string;
-  storage_path: string;
+  storage_path: string | null;
   publication_date: string | null;
   label: string | null;
   status: NewspaperJobStatus;
   stage: NewspaperJobStage | null;
+  source_type: 'manual_pdf' | 'manual_text';
   chunks_total: number;
   chunks_processed: number;
   units_created: number;
@@ -218,9 +219,10 @@ export interface NewspaperJob {
 }
 
 export interface NewspaperProcessingResult {
-  status: 'processing';
+  status: 'processing' | 'review_pending' | 'completed';
   job_id: string;
-  storage_path: string;
+  storage_path?: string;
+  units_created?: number;
 }
 
 /** Condensed `newspaper_jobs` row shown on the PDF upload tab so a journalist
