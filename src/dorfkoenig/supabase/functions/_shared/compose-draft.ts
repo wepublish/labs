@@ -16,6 +16,7 @@
  */
 
 import { openrouter } from './openrouter.ts';
+import { COMPOSE_MODEL } from './constants.ts';
 import {
   DRAFT_COMPOSE_PROMPT,
   DRAFT_COMPOSE_PROMPT_V2,
@@ -91,7 +92,7 @@ export async function composeDraftFromUnits(input: ComposeInput): Promise<Compos
     village_name,
     selected_units,
     compose_layer2 = DRAFT_COMPOSE_PROMPT,
-    model,
+    model = COMPOSE_MODEL,
     temperature = 0.2,
     max_tokens = 2500,
   } = input;
@@ -189,7 +190,7 @@ export async function composeDraftFromUnitsV2(input: ComposeInput): Promise<Comp
     village_name,
     selected_units,
     compose_layer2,
-    model,
+    model = COMPOSE_MODEL,
     temperature = 0.2,
     max_tokens = 2500,
   } = input;
