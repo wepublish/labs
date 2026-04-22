@@ -66,6 +66,20 @@ describe('units store', () => {
       );
     });
 
+    // Contract: the store must forward the location string verbatim (display form)
+    // so that edge functions can normalize it server-side. The scouts-list filter
+    // (ComposePanel.svelte) compares against scouts.location.city which is still
+    // stored in display form, so normalizing client-side would break that filter.
+    it('forwards location display name verbatim, without normalization', async () => {
+      vi.mocked(unitsApi.list).mockResolvedValue([]);
+
+      await units.load('Münchenstein');
+
+      expect(unitsApi.list).toHaveBeenCalledWith(
+        expect.objectContaining({ location_city: 'Münchenstein' })
+      );
+    });
+
     it('passes topic to API when provided', async () => {
       vi.mocked(unitsApi.list).mockResolvedValue([]);
 

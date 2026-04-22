@@ -95,7 +95,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
 | `dispatch_auto_drafts()` | Core dispatcher: calls `bajour-auto-draft` edge function per village. Not called directly by cron — invoked by `dispatch_auto_drafts_tz_safe()` after timezone check. |
-| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 18, then calls `dispatch_auto_drafts()`. Dual-scheduled at 16:00 and 17:00 UTC to cover both DST states. |
+| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 17, then calls `dispatch_auto_drafts()`. Dual-scheduled at 15:00 and 16:00 UTC to cover both DST states. (Moved 2026-04-23 from 18:00 Zurich.) |
 | `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 22, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 20:00 and 21:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
@@ -107,8 +107,8 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 |----------|---------------|---------|
 | `dispatch-due-scouts` | `*/15 * * * *` | Dispatch due scouts every 15 minutes |
 | `cleanup-expired-data` | `0 3 * * *` | Delete expired units, old executions, fix stuck runs |
-| `dispatch-auto-drafts-summer` | `0 16 * * *` | 18:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
-| `dispatch-auto-drafts-winter` | `0 17 * * *` | 18:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| `dispatch-auto-drafts-summer` | `0 15 * * *` | 17:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution. Moved 2026-04-23 from 18:00. |
+| `dispatch-auto-drafts-winter` | `0 16 * * *` | 17:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution. Moved 2026-04-23 from 18:00. |
 | `resolve-timeouts-summer` | `0 20 * * *` | 22:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
 | `resolve-timeouts-winter` | `0 21 * * *` | 22:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
 | *(implicit cleanup)* | — | Stuck execution timeout handled inside `cleanup_expired_data()` |
@@ -155,7 +155,8 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.
 9. **Stuck execution timeout** -- 10 minutes. `cleanup_expired_data()` marks stuck runs as failed.
 11. **JSONB `.contains()` gotcha** -- `bajour_drafts.whatsapp_message_ids` is JSONB (not TEXT[]). supabase-js `.contains(col, [val])` generates the PostgREST filter `cs.{val}` (PG array literal), which **silently returns zero rows** on JSONB columns -- no error, just an empty result set. The fix: `.contains(col, JSON.stringify([val]))` generates `cs.["val"]` (correct JSON literal for JSONB containment via the `@>` operator). This applies to any JSONB array column queried with `.contains()`.
-12. **Fire-PDF `fast` mode is mandatory** for PDF ingest (`process-newspaper`, `execute-civic-scout`). Default `auto` and `ocr` mis-classify InDesign-export newspapers and hallucinate via the vision model (wrong dates, garbled titles, looped phrases). `fast` gives 10× more section markers + zero hallucinations on embedded-text PDFs. Reproduce: `scripts/benchmark-pdf-parse-modes.sh`. Full rationale: `specs/PIPELINES.md § Fire-PDF mode decision`.
+12. **City filter normalization boundary** -- `information_units.location.city` is stored in normalized ID form (`arlesheim`, `muenchenstein`) per migration `20260421000002`, but `scouts.location.city` is stored in display form (`Arlesheim`, `Münchenstein`). The UI sends the display form for both filters. Edge functions that filter `information_units` by city **must** call `normalizeCity()` from `_shared/village-id.ts` on the `location_city` query param before `.eq('location->>city', …)` or before passing to the `search_units_semantic` RPC's `p_location_city`. See `functions/units/index.ts`. Do not normalize client-side — the scouts filter (`ComposePanel.svelte`) compares `selectedLocation` against `scouts.location.city` in display form and would break.
+13. **Fire-PDF `fast` mode is mandatory** for PDF ingest (`process-newspaper`, `execute-civic-scout`). Default `auto` and `ocr` mis-classify InDesign-export newspapers and hallucinate via the vision model (wrong dates, garbled titles, looped phrases). `fast` gives 10× more section markers + zero hallucinations on embedded-text PDFs. Reproduce: `scripts/benchmark-pdf-parse-modes.sh`. Full rationale: `specs/PIPELINES.md § Fire-PDF mode decision`.
 
 ## CLI Commands
 

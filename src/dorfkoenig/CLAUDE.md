@@ -216,6 +216,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 4. **Test mode baseline isolation** -- Test runs use separate Firecrawl tags to avoid polluting production baselines.
 5. **Unit extraction requires location or topic** -- Information units only extracted if scout has a location or topic set. Both are optional but at least one is required for scout creation.
 6. **German-only UI** -- All user-facing text, error messages, and LLM prompts are in German.
+7. **Location filter contract** -- `ComposePanel` location dropdown emits village display names (`v.name` from `gemeinden.json`). Edge functions normalize to stored ID form server-side (see `supabase/CLAUDE.md` #12); the client-side scouts filter compares display-to-display. Do not change `locationOptions` to emit `v.id` without auditing every consumer of `selectedLocation` (`getVillageByName`, scout match, `prefilledLocation`).
 
 ## Environment Variables
 
