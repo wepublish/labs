@@ -9,6 +9,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId, type Location } from '../_shared/supabase-client.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { DEFAULT_UNITS_PAGE_SIZE, DEFAULT_SEARCH_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_PAGE_SIZE, SEARCH_MIN_SIMILARITY } from '../_shared/constants.ts';
+import { normalizeCity } from '../_shared/village-id.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -81,8 +82,9 @@ async function listUnits(
     .order('event_date', { ascending: true, nullsFirst: false })
     .range(offset, offset + limit - 1);
 
-  if (locationCity) {
-    query = query.eq('location->>city', locationCity);
+  const normalizedLocationCity = locationCity ? normalizeCity(locationCity) : null;
+  if (normalizedLocationCity) {
+    query = query.eq('location->>city', normalizedLocationCity);
   }
 
   if (topic) {
@@ -194,6 +196,7 @@ async function searchUnits(
   }
 
   const locationCity = url.searchParams.get('location_city') || null;
+  const normalizedLocationCity = locationCity ? normalizeCity(locationCity) : null;
   const topic = url.searchParams.get('topic') || null;
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || String(SEARCH_MIN_SIMILARITY));
@@ -206,7 +209,7 @@ async function searchUnits(
   const { data, error } = await supabase.rpc('search_units_semantic', {
     p_user_id: userId,
     p_query_embedding: queryEmbedding,
-    p_location_city: locationCity,
+    p_location_city: normalizedLocationCity,
     p_topic: topic,
     p_unused_only: unusedOnly,
     p_min_similarity: minSimilarity,
