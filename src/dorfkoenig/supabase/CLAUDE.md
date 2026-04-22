@@ -95,7 +95,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 | `dispatch_due_scouts()` | pg_cron: find due scouts, dispatch via pg_net to execute-scout |
 | `cleanup_expired_data()` | pg_cron: delete expired units, old executions, fix stuck runs |
 | `dispatch_auto_drafts()` | Core dispatcher: calls `bajour-auto-draft` edge function per village. Not called directly by cron — invoked by `dispatch_auto_drafts_tz_safe()` after timezone check. |
-| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 18, then calls `dispatch_auto_drafts()`. Dual-scheduled at 16:00 and 17:00 UTC to cover both DST states. |
+| `dispatch_auto_drafts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 17, then calls `dispatch_auto_drafts()`. Dual-scheduled at 15:00 and 16:00 UTC to cover both DST states. (Moved 2026-04-23 from 18:00 Zurich.) |
 | `resolve_bajour_timeouts_tz_safe()` | pg_cron wrapper: checks if current hour in Europe/Zurich is 22, then calls `resolve_bajour_timeouts()`. Dual-scheduled at 20:00 and 21:00 UTC to cover both DST states. |
 | `update_updated_at()` | Trigger: auto-update `updated_at` on scouts |
 | `extend_unit_ttl()` | Trigger: extend `expires_at` when `used_in_article` set to true |
@@ -107,8 +107,8 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 |----------|---------------|---------|
 | `dispatch-due-scouts` | `*/15 * * * *` | Dispatch due scouts every 15 minutes |
 | `cleanup-expired-data` | `0 3 * * *` | Delete expired units, old executions, fix stuck runs |
-| `dispatch-auto-drafts-summer` | `0 16 * * *` | 18:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
-| `dispatch-auto-drafts-winter` | `0 17 * * *` | 18:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
+| `dispatch-auto-drafts-summer` | `0 15 * * *` | 17:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution. Moved 2026-04-23 from 18:00. |
+| `dispatch-auto-drafts-winter` | `0 16 * * *` | 17:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution. Moved 2026-04-23 from 18:00. |
 | `resolve-timeouts-summer` | `0 20 * * *` | 22:00 CEST (Apr–Oct); `_tz_safe` wrapper guards against off-season execution |
 | `resolve-timeouts-winter` | `0 21 * * *` | 22:00 CET (Nov–Mar); `_tz_safe` wrapper guards against off-season execution |
 | *(implicit cleanup)* | — | Stuck execution timeout handled inside `cleanup_expired_data()` |
