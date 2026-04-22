@@ -30,3 +30,13 @@ export const DOUBLE_PROBE_TIMEOUT_MS = 30_000;
 
 /** Lookback window for execution deduplication (days) */
 export const DEDUP_LOOKBACK_DAYS = 30;
+
+// --- LLM model routing (DRAFT_QUALITY.md §3.8) ---
+// Compose is a style + negative-constraint task; Sonnet follows it more reliably
+// than mini. Selection, extraction, embeddings keep mini — cheap and adequate.
+/** Model for the draft-compose step (bajour-auto-draft, compose edge function). */
+export const COMPOSE_MODEL = 'anthropic/claude-sonnet-4-5';
+/** Model for unit selection — kept on the cheaper default. */
+export const SELECTION_MODEL = 'openai/gpt-4o-mini';
+/** Model for information-unit extraction — kept on the cheaper default. */
+export const EXTRACTION_MODEL = 'openai/gpt-4o-mini';
