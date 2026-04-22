@@ -10,6 +10,11 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { resend } from '../_shared/resend.ts';
 
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -64,17 +69,12 @@ Deno.serve(async (req) => {
     // Send digest email per group
     let notificationsSent = 0;
 
+    if (ADMIN_EMAILS.length === 0) {
+      console.warn('[civic-notify-promises] ADMIN_EMAILS not configured, skipping sends');
+      return jsonResponse({ data: { notifications_sent: 0, promises_processed: duePromises.length } });
+    }
+
     for (const [, group] of groups) {
-      // Get notification email from the scout
-      const { data: scout } = await supabase
-        .from('scouts')
-        .select('notification_email')
-        .eq('user_id', group.userId)
-        .eq('name', group.scoutName)
-        .single();
-
-      if (!scout?.notification_email) continue;
-
       const emailHtml = resend.buildCivicPromiseDigestEmail({
         scoutName: group.scoutName,
         promises: group.promises.map((p) => ({
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       });
 
       const result = await resend.sendEmail({
-        to: scout.notification_email,
+        to: ADMIN_EMAILS,
         subject: `Versprechen-Erinnerung: ${group.scoutName}`,
         html: emailHtml,
       });

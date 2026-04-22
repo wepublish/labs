@@ -29,7 +29,7 @@ $$ LANGUAGE sql IMMUTABLE;
 -- 3. SCOUTS (10 rows) — one per village, all inactive data containers
 -- ============================================================================
 
-INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency, is_active, last_run_at, consecutive_failures, notification_email, created_at, updated_at) VALUES
+INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency, is_active, last_run_at, consecutive_failures, created_at, updated_at) VALUES
 
 ('ba000000-0001-4000-a000-000000000001', '493c6d51531c7444365b0ec094bc2d67',
  'Bajour: Riehen',
@@ -37,7 +37,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Riehen: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Riehen","state":"Basel-Stadt","country":"Schweiz","latitude":47.5789,"longitude":7.6469}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0002-4000-a000-000000000002', '493c6d51531c7444365b0ec094bc2d67',
@@ -46,7 +46,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Bettingen: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Bettingen","state":"Basel-Stadt","country":"Schweiz","latitude":47.5726,"longitude":7.6639}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0003-4000-a000-000000000003', '493c6d51531c7444365b0ec094bc2d67',
@@ -55,7 +55,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Allschwil: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Allschwil","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5508,"longitude":7.5362}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0004-4000-a000-000000000004', '493c6d51531c7444365b0ec094bc2d67',
@@ -64,7 +64,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Binningen: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Binningen","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5407,"longitude":7.5695}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0005-4000-a000-000000000005', '493c6d51531c7444365b0ec094bc2d67',
@@ -73,7 +73,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Arlesheim: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Arlesheim","state":"Basel-Landschaft","country":"Schweiz","latitude":47.4949,"longitude":7.6207}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0006-4000-a000-000000000006', '493c6d51531c7444365b0ec094bc2d67',
@@ -82,7 +82,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Muttenz: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Muttenz","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5225,"longitude":7.6451}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0007-4000-a000-000000000007', '493c6d51531c7444365b0ec094bc2d67',
@@ -91,7 +91,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Münchenstein: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Münchenstein","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5167,"longitude":7.6167}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0008-4000-a000-000000000008', '493c6d51531c7444365b0ec094bc2d67',
@@ -100,7 +100,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Reinach BL: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Reinach","state":"Basel-Landschaft","country":"Schweiz","latitude":47.4935,"longitude":7.5912}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-0009-4000-a000-000000000009', '493c6d51531c7444365b0ec094bc2d67',
@@ -109,7 +109,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Oberwil BL: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Oberwil","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5148,"longitude":7.5555}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days'),
 
 ('ba000000-000a-4000-a000-00000000000a', '493c6d51531c7444365b0ec094bc2d67',
@@ -118,7 +118,7 @@ INSERT INTO scouts (id, user_id, name, url, criteria, location, topic, frequency
  'Lokale Nachrichten aus der Gemeinde Birsfelden: Gemeinderat, Veranstaltungen, Infrastruktur, Schule und Vereine',
  '{"city":"Birsfelden","state":"Basel-Landschaft","country":"Schweiz","latitude":47.5528,"longitude":7.6222}'::jsonb,
  'Lokalnachrichten', 'weekly', false,
- NOW() - INTERVAL '2 days', 0, NULL,
+ NOW() - INTERVAL '2 days', 0,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '2 days');
 
 -- ============================================================================

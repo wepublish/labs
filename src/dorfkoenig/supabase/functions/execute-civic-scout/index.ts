@@ -21,6 +21,11 @@ import {
   type ExtractedPromise,
 } from '../_shared/civic-utils.ts';
 
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 /** Short delay between Firecrawl calls within a single execution (2s).
  *  The main rate-limit protection is the 20s pg_cron stagger between scouts. */
 const INTRA_DELAY_MS = 2000;
@@ -315,7 +320,7 @@ Deno.serve(async (req) => {
 
     let notificationSent = false;
 
-    if (filtered.length > 0 && !skipNotification && scout.notification_email) {
+    if (filtered.length > 0 && !skipNotification && ADMIN_EMAILS.length > 0) {
       const promiseLines = filtered.map((p) => {
         let line = `• ${p.promise_text}`;
         if (p.due_date) line += ` (Frist: ${p.due_date})`;
@@ -333,7 +338,7 @@ Deno.serve(async (req) => {
       });
 
       const emailResult = await resend.sendEmail({
-        to: scout.notification_email,
+        to: ADMIN_EMAILS,
         subject: `Gemeinderat-Alarm: ${scout.name}`,
         html: emailHtml,
       });

@@ -203,7 +203,6 @@ async function createScout(
     // Auto mode intentionally clears scout.location — units get location from content.
     location: locationMode === 'auto' ? null : (body.location || null),
     frequency: body.frequency,
-    notification_email: body.notification_email?.trim() || null,
     is_active: body.is_active ?? true,
     topic: body.topic?.trim() || null,
     scout_type: scoutType,
@@ -269,9 +268,6 @@ async function updateScout(
       return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
     }
     updates.frequency = body.frequency;
-  }
-  if (body.notification_email !== undefined) {
-    updates.notification_email = body.notification_email?.trim() || null;
   }
   if (body.is_active !== undefined) updates.is_active = body.is_active;
   if (body.topic !== undefined) updates.topic = body.topic?.trim() || null;
@@ -497,9 +493,7 @@ async function testScout(
         word_count: scrapeResult.markdown?.split(/\s+/).length || 0,
       },
       criteria_analysis: criteriaAnalysis,
-      would_notify: hasCriteria
-        ? (criteriaAnalysis?.matches ?? false) && !!scout.notification_email
-        : !!scout.notification_email,
+      would_notify: hasCriteria ? (criteriaAnalysis?.matches ?? false) : true,
       would_extract_units: !!(scout.location || scout.topic),
       provider,
       content_hash: contentHash,
