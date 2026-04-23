@@ -78,6 +78,7 @@ export interface Scout {
   root_domain: string | null;
   tracked_urls: string[] | null;
   processed_pdf_urls: string[] | null;
+  location_mode: 'manual' | 'auto';
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +108,7 @@ export interface ScoutExecution {
   notification_error: string | null;
   error_message: string | null;
   units_extracted: number;
+  merged_existing_count: number;
   scrape_duration_ms: number | null;
   created_at: string;
 }
@@ -117,7 +119,7 @@ export interface InformationUnit {
   scout_id: string | null;
   execution_id: string | null;
   statement: string;
-  unit_type: 'fact' | 'event' | 'entity_update';
+  unit_type: 'fact' | 'event' | 'entity_update' | 'promise';
   entities: string[];
   source_url: string;
   source_domain: string;
@@ -129,6 +131,9 @@ export interface InformationUnit {
   embedding: number[];
   used_in_article: boolean;
   used_at: string | null;
+  occurrence_count: number;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
   created_at: string;
   expires_at: string;
 }

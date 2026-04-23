@@ -6,6 +6,7 @@
  */
 
 import { openrouter } from './openrouter.ts';
+import { PRIMARY_ANALYSIS_TIMEOUT_MS, PRIMARY_EXTRACTION_TIMEOUT_MS } from './constants.ts';
 import {
   MEETING_KEYWORDS,
   DENYLIST_EXTENSIONS,
@@ -213,10 +214,12 @@ ${numberedLines.join('\n')}
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.1,
     response_format: { type: 'json_object' },
+    timeout_ms: PRIMARY_ANALYSIS_TIMEOUT_MS,
   });
 
   try {
-    const data = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content ?? '';
+    const data = JSON.parse(content);
     const rawIndices: unknown[] = data.meeting_urls || [];
     const validIndices = rawIndices
       .filter((idx): idx is number => typeof idx === 'number' && idx >= 0 && idx < capped.length);
@@ -323,9 +326,10 @@ JSON array:`;
     const response = await openrouter.chat({
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
+      timeout_ms: PRIMARY_EXTRACTION_TIMEOUT_MS,
     });
 
-    const llmText = response.choices[0].message.content;
+    const llmText = response.choices[0].message.content ?? '';
     return parsePromises(llmText, sourceUrl, sourceTitle, sourceDate);
   } catch (error) {
     console.error('extractPromises: LLM error:', error);

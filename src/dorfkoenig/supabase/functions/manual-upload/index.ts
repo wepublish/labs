@@ -10,9 +10,15 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
+import { upsertCanonicalUnit } from '../_shared/canonical-units.ts';
 import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
 import { computeQualityScore } from '../_shared/quality-scoring.ts';
+import {
+  sanitizeReviewUnit,
+  sanitizeReviewUnits,
+  type ReviewUnit,
+} from '../_shared/manual-upload-review.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -105,7 +111,7 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error('Manual upload error:', error);
-    if (error.message === 'Authentication required') {
+    if (error instanceof Error && error.message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
     return errorResponse('Ein Fehler ist aufgetreten. Bitte versuche es erneut.', 500);
@@ -254,7 +260,7 @@ AUSGABEFORMAT (JSON):
       response_format: { type: 'json_object' },
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content ?? '{}');
     units = result.units || [];
   } catch (err) {
     console.error('[text_extract] LLM error:', err);
@@ -268,20 +274,24 @@ AUSGABEFORMAT (JSON):
 
   // Stage as NewspaperExtractedUnit[] (same shape finalize consumes).
   // event_date falls back to publication_date when the LLM couldn't anchor one.
-  const staged: StagedUnit[] = units
+  const staged: ReviewUnit[] = units
     .filter((u) => u.statement && u.statement.trim().length > 0)
-    .map((u) => ({
-      uid: crypto.randomUUID(),
-      statement: u.statement.trim(),
-      unit_type: (u.unitType === 'event' || u.unitType === 'entity_update') ? u.unitType : 'fact',
-      entities: Array.isArray(u.entities) ? u.entities : [],
-      event_date: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? u.eventDate : publicationDate,
-      date_confidence: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? 'exact' : 'inferred',
-      location: normalizedTextLocation,
-      village_confidence: normalizedTextLocation ? 'high' : null,
-      assignment_path: normalizedTextLocation ? 'manual' : null,
-      review_required: false,
-    }));
+    .flatMap((u) => {
+      const sanitized = sanitizeReviewUnit({
+        uid: crypto.randomUUID(),
+        statement: u.statement.trim(),
+        unit_type: (u.unitType === 'event' || u.unitType === 'entity_update') ? u.unitType : 'fact',
+        entities: Array.isArray(u.entities) ? u.entities : [],
+        event_date: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? u.eventDate : publicationDate,
+        date_confidence: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? 'exact' : 'inferred',
+        location: normalizedTextLocation,
+        village_confidence: normalizedTextLocation ? 'high' : null,
+        assignment_path: normalizedTextLocation ? 'manual' : null,
+        review_required: false,
+      });
+
+      return sanitized ? [sanitized] : [];
+    });
 
   if (staged.length === 0) {
     await supabase.from('newspaper_jobs').update({
@@ -525,32 +535,28 @@ async function handleFileConfirm(
     sensitivity: 'none',
   });
 
-  const { data, error } = await supabase
-    .from('information_units')
-    .insert({
-      user_id: userId,
-      scout_id: null,
-      execution_id: null,
+  let photoResult;
+  try {
+    photoResult = await upsertCanonicalUnit(supabase, {
+      userId,
       statement: description!.trim(),
-      unit_type: 'fact',
+      unitType: 'fact',
       entities: [],
-      source_url: 'manual://photo',
-      source_domain: 'manual',
-      source_title: sourceTitle,
+      sourceUrl: 'manual://photo',
+      sourceDomain: 'manual',
+      sourceTitle,
       location: normalizedPhotoLocation,
-      topic: topic,
-      source_type: 'manual_photo',
-      file_path: storagePath,
+      topic,
+      sourceType: 'manual_photo',
+      filePath: storagePath,
       embedding: descriptionEmbedding,
       sensitivity: 'none',
-      is_listing_page: false,
-      article_url: null,
-      quality_score: photoQualityScore,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
+      isListingPage: false,
+      articleUrl: null,
+      qualityScore: photoQualityScore,
+      contextExcerpt: description!.trim(),
+    });
+  } catch (error) {
     console.error('Insert error:', error);
     return errorResponse('Einheit konnte nicht gespeichert werden', 500);
   }
@@ -559,8 +565,8 @@ async function handleFileConfirm(
 
   return jsonResponse({
     data: {
-      units_created: 1,
-      unit_ids: [data.id],
+      units_created: photoResult.createdNew ? 1 : 0,
+      unit_ids: [photoResult.unitId],
     },
   });
 }
@@ -571,20 +577,6 @@ async function handleFileConfirm(
 // newspaper_jobs.extracted_units and sets status='review_pending'. The modal
 // shows a checkbox list and calls back here with the selected UIDs. This
 // handler runs embed / dedup / insert on just the picked subset.
-
-interface StagedUnit {
-  uid: string;
-  statement: string;
-  unit_type: 'fact' | 'event' | 'entity_update';
-  entities: string[];
-  event_date: string | null;
-  date_confidence?: 'exact' | 'inferred' | 'unanchored' | null;
-  location: { city: string; country?: string; state?: string; latitude?: number; longitude?: number } | null;
-  village_confidence: 'high' | 'medium' | 'low' | null;
-  assignment_path: string | null;
-  review_required: boolean;
-  evidence?: string;
-}
 
 async function handlePdfFinalize(
   supabase: ReturnType<typeof createServiceClient>,
@@ -637,11 +629,27 @@ async function handlePdfFinalize(
     );
   }
 
-  const staged = (claimed.extracted_units as StagedUnit[] | null) ?? [];
-  const byUid = new Map(staged.map((u) => [u.uid, u]));
-  const chosen = selectedUids
+  const staged = Array.isArray(claimed.extracted_units)
+    ? claimed.extracted_units as Record<string, unknown>[]
+    : [];
+  const byUid = new Map(
+    staged.flatMap((u) => {
+      const uid = typeof u.uid === 'string' ? u.uid : null;
+      return uid ? [[uid, u] as const] : [];
+    }),
+  );
+  const chosenRaw = selectedUids
     .map((uid) => byUid.get(uid))
-    .filter((u): u is StagedUnit => u !== undefined);
+    .filter((u): u is Record<string, unknown> => u !== undefined);
+  const { units: chosen, dropped } = sanitizeReviewUnits(chosenRaw);
+
+  if (dropped > 0) {
+    console.warn('[pdf_finalize] dropped malformed staged units before insert', {
+      job_id: jobId,
+      selected_count: selectedUids.length,
+      dropped,
+    });
+  }
 
   if (chosen.length === 0) {
     // User sent only unknown UIDs. Treat like cancel.
@@ -663,47 +671,16 @@ async function handlePdfFinalize(
 
     // In-batch dedup.
     const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
+    const finalIndices = uniqueIndices;
 
-    // Cross-run dedup: one batch RPC instead of N per-unit calls. Dual-signal
-    // (cosine ≥ 0.93 AND trigram ≥ 0.75) — see find_similar_units_batch in
-    // migration 20260423120000. Null-location candidates skip the city filter.
-    const dedupCandidates = uniqueIndices.map((i) => ({
-      idx: i,
-      embedding: unitEmbeddings[i],
-      city: chosen[i].location?.city ?? null,
-      statement: chosen[i].statement,
-    }));
-    const skip = new Set<number>();
-    if (dedupCandidates.length > 0) {
-      const { data: matches, error: rpcErr } = await supabase.rpc('find_similar_units_batch', {
-        p_user_id: userId,
-        p_candidates: dedupCandidates,
-      });
-      if (rpcErr) {
-        console.warn('[finalize] dedup rpc failed; proceeding without cross-run dedup', rpcErr);
-      } else if (Array.isArray(matches)) {
-        for (const m of matches as { candidate_idx: number; matched_id: string; cosine: number; trgm: number }[]) {
-          skip.add(m.candidate_idx);
-          console.log('[finalize] dedup skip', {
-            existing_id: m.matched_id,
-            cosine: m.cosine,
-            trgm: m.trgm,
-            new_statement: chosen[m.candidate_idx].statement.slice(0, 120),
-          });
-        }
-      }
-    }
-    const finalIndices = uniqueIndices.filter((i) => !skip.has(i));
-
-    // Batched insert.
     let storedCount = 0;
     if (finalIndices.length > 0) {
-      const sourceType = (claimed.source_type as string | null) ?? 'manual_pdf';
+      const sourceType = ((claimed.source_type as string | null) ?? 'manual_pdf') as 'manual_pdf' | 'manual_text';
       const sourceUrl = sourceType === 'manual_text' ? 'manual://text' : 'manual://pdf';
       const defaultTopic = sourceType === 'manual_text' ? null : 'Wochenblatt';
       const jobPubDate = claimed.publication_date as string | null;
-      const rows = finalIndices.map((i) => {
-        const u = chosen[i];
+      for (const i of finalIndices) {
+        const u: ReviewUnit = chosen[i];
         const normalizedLocation = u.location?.city
           ? { ...u.location, city: normalizeCity(u.location.city) }
           : u.location;
@@ -718,49 +695,35 @@ async function handlePdfFinalize(
           village_confidence: u.village_confidence,
           sensitivity: 'none',
         });
-        return {
-          user_id: userId,
-          scout_id: null,
-          execution_id: null,
+        const result = await upsertCanonicalUnit(supabase, {
+          userId,
           statement: u.statement,
-          unit_type: u.unit_type,
+          unitType: u.unit_type,
           entities: u.entities,
-          source_url: sourceUrl,
-          source_domain: 'manual',
-          source_title: claimed.label,
+          sourceUrl,
+          sourceDomain: 'manual',
+          sourceTitle: claimed.label,
           location: normalizedLocation,
           topic: defaultTopic,
-          source_type: sourceType,
-          file_path: claimed.storage_path,
+          sourceType,
+          filePath: claimed.storage_path,
           embedding: unitEmbeddings[i],
-          event_date: eventDate,
-          publication_date: pubDate,
+          eventDate,
+          publicationDate: pubDate,
           sensitivity: 'none',
-          is_listing_page: false,
-          article_url: null,
-          quality_score: qualityScore,
-          village_confidence: u.village_confidence,
-          review_required: u.review_required,
-          assignment_path: u.assignment_path,
-        };
-      });
-
-      const { error: insErr, count } = await supabase
-        .from('information_units')
-        .insert(rows, { count: 'exact' });
-
-      if (insErr) {
-        console.error('[pdf_finalize] insert rejected by postgres:', {
-          code: insErr.code,
-          message: insErr.message,
-          details: insErr.details,
-          hint: insErr.hint,
-          row_count: rows.length,
-          first_row_keys: Object.keys(rows[0] ?? {}),
+          isListingPage: false,
+          articleUrl: null,
+          qualityScore,
+          villageConfidence: u.village_confidence,
+          reviewRequired: u.review_required,
+          assignmentPath: u.assignment_path,
+          contextExcerpt: u.evidence ?? u.statement,
         });
-        throw insErr;
+
+        if (result.createdNew) {
+          storedCount++;
+        }
       }
-      storedCount = count ?? rows.length;
     }
 
     await supabase

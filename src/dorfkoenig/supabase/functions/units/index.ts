@@ -7,6 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId, type Location } from '../_shared/supabase-client.ts';
+import { fetchUnitRollups } from '../_shared/canonical-units.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { DEFAULT_UNITS_PAGE_SIZE, DEFAULT_SEARCH_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_PAGE_SIZE, SEARCH_MIN_SIMILARITY } from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
@@ -53,10 +54,10 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error('Units error:', error);
-    if (error.message === 'Authentication required') {
+    if (error instanceof Error && error.message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(error instanceof Error ? error.message : String(error), 500);
   }
 });
 
@@ -77,7 +78,7 @@ async function listUnits(
 
   let query = supabase
     .from('information_units')
-    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, source_type, file_path, created_at, used_in_article, event_date', { count: 'exact' })
+    .select('id, statement, unit_type, entities, source_url, source_domain, source_title, location, topic, scout_id, source_type, file_path, created_at, used_in_article, event_date, occurrence_count', { count: 'exact' })
     .eq('user_id', userId)
     .order('event_date', { ascending: true, nullsFirst: false })
     .range(offset, offset + limit - 1);
@@ -97,7 +98,30 @@ async function listUnits(
   }
 
   if (scoutId) {
-    query = query.eq('scout_id', scoutId);
+    const { data: occurrenceRows, error: occurrenceError } = await supabase
+      .from('unit_occurrences')
+      .select('unit_id')
+      .eq('user_id', userId)
+      .eq('scout_id', scoutId);
+
+    if (occurrenceError) {
+      console.error('Scout occurrence filter error:', occurrenceError);
+      return errorResponse('Fehler beim Laden der Scout-Einheiten', 500);
+    }
+
+    const scopedUnitIds = [...new Set((occurrenceRows ?? []).map((row) => row.unit_id as string))];
+    if (scopedUnitIds.length === 0) {
+      return jsonResponse({
+        data: [],
+        meta: {
+          total: 0,
+          limit,
+          offset,
+        },
+      });
+    }
+
+    query = query.in('id', scopedUnitIds);
   }
 
   if (dateFrom) {
@@ -117,15 +141,30 @@ async function listUnits(
   // Generate signed URLs for units with file_path (derived per-response field;
   // not stored on the row, added to the output payload).
   const rows = data ?? [];
-  const enriched: Array<(typeof rows)[number] & { file_url?: string | null }> = [];
+  const rollups = await fetchUnitRollups(supabase, userId, rows.map((unit) => unit.id));
+  const enriched: Array<(typeof rows)[number] & {
+    file_url?: string | null;
+    sources: Array<{ title: string | null; url: string; domain: string }>;
+    linked_scouts: string[];
+  }> = [];
   for (const unit of rows) {
+    const rollup = rollups.get(unit.id);
     if (unit.file_path) {
       const { data: signedUrl } = await supabase.storage
         .from('uploads')
         .createSignedUrl(unit.file_path, 3600);
-      enriched.push({ ...unit, file_url: signedUrl?.signedUrl || null });
+      enriched.push({
+        ...unit,
+        file_url: signedUrl?.signedUrl || null,
+        sources: rollup?.sources ?? [],
+        linked_scouts: rollup?.linkedScouts ?? [],
+      });
     } else {
-      enriched.push(unit);
+      enriched.push({
+        ...unit,
+        sources: rollup?.sources ?? [],
+        linked_scouts: rollup?.linkedScouts ?? [],
+      });
     }
   }
 
@@ -198,6 +237,7 @@ async function searchUnits(
   const locationCity = url.searchParams.get('location_city') || null;
   const normalizedLocationCity = locationCity ? normalizeCity(locationCity) : null;
   const topic = url.searchParams.get('topic') || null;
+  const scoutId = url.searchParams.get('scout_id') || null;
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || String(SEARCH_MIN_SIMILARITY));
   const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_SEARCH_PAGE_SIZE)), MAX_SEARCH_PAGE_SIZE);
@@ -214,6 +254,7 @@ async function searchUnits(
     p_unused_only: unusedOnly,
     p_min_similarity: minSimilarity,
     p_limit: limit,
+    p_scout_id: scoutId,
   });
 
   if (error) {
@@ -221,7 +262,16 @@ async function searchUnits(
     return errorResponse('Fehler bei der Suche', 500);
   }
 
-  return jsonResponse({ data });
+  const rows = data ?? [];
+  const rollups = await fetchUnitRollups(supabase, userId, rows.map((unit: { id: string }) => unit.id));
+
+  return jsonResponse({
+    data: rows.map((unit: { id: string }) => ({
+      ...unit,
+      sources: rollups.get(unit.id)?.sources ?? [],
+      linked_scouts: rollups.get(unit.id)?.linkedScouts ?? [],
+    })),
+  });
 }
 
 // Delete a single unit (for removing mistaken uploads)

@@ -18,7 +18,12 @@
     "new-app": "node scripts/create-app.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:manual-upload": "deno test src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_test.ts",
+    "smoke:dorfkoenig": "bash ./src/dorfkoenig/scripts/run-live-smokes.sh",
+    "smoke:dorfkoenig:pipeline": "deno run -A ./src/dorfkoenig/supabase/functions/_tests/smoke/live_scout_pipeline_smoke.ts",
+    "smoke:dorfkoenig:dedup": "deno run -A ./src/dorfkoenig/supabase/functions/_tests/smoke/live_canonical_dedup_smoke.ts",
     "bench:dorfkoenig": "tsx src/dorfkoenig/supabase/functions/_tests/bench/run.ts",
+    "bench:manual-upload": "deno bench src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_bench.ts",
     "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
     "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
   },

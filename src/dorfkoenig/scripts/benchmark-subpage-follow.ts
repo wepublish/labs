@@ -55,8 +55,9 @@ async function main() {
   assertEnv();
 
   // Dynamic imports — the Deno shim is already installed above.
-  const [{ extractLinksFromHtml, validateDomain, firecrawlDelay }, { firecrawl }, { openrouter }, { buildWebExtractionPrompt }] = await Promise.all([
+  const [{ extractLinksFromHtml, firecrawlDelay }, { filterSubpageUrls }, { firecrawl }, { openrouter }, { buildWebExtractionPrompt }] = await Promise.all([
     import('../supabase/functions/_shared/civic-utils.ts'),
+    import('../supabase/functions/_shared/subpage-filter.ts'),
     import('../supabase/functions/_shared/firecrawl.ts'),
     import('../supabase/functions/_shared/openrouter.ts'),
     import('../supabase/functions/_shared/web-extraction-prompt.ts'),
@@ -124,21 +125,10 @@ async function main() {
 
   // ── Step 4: filter
   console.log('\n──────── Step 4: filter (host + path-prefix + traversal + domain) ────────');
-  const indexPath = new URL(TARGET_URL).pathname.replace(/\/+$/, '');
-  const filtered = links
-    .map(([url]: [string, string]) => url)
-    .filter((url: string) => {
-      try {
-        const parsed = new URL(url);
-        const cleanPath = parsed.pathname.replace(/\/+$/, '');
-        if (!cleanPath.startsWith(indexPath + '/')) return false;
-        if (cleanPath.includes('..') || cleanPath.toLowerCase().includes('%2e%2e')) return false;
-        if (!validateDomain(parsed.hostname).valid) return false;
-        return true;
-      } catch {
-        return false;
-      }
-    });
+  const filtered = filterSubpageUrls(
+    links.map(([url]: [string, string]) => url),
+    TARGET_URL,
+  );
   console.log(`  filtered count: ${filtered.length}`);
   console.log('  first 5:');
   filtered.slice(0, 5).forEach((u: string) => console.log(`    ${u}`));

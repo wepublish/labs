@@ -2,6 +2,7 @@ import {
   assertEquals,
   assertAlmostEquals,
   assertExists,
+  assertRejects,
   assertThrows,
 } from 'https://deno.land/std@0.220.0/assert/mod.ts';
 import { cosineSimilarity, chat, generateEmbedding } from '../../_shared/openrouter.ts';
@@ -51,6 +52,39 @@ Deno.test('cosineSimilarity computes correctly for known values', () => {
   const b = [1, 1];
   // cos(45 degrees) = 1 / sqrt(2) ~ 0.7071
   assertAlmostEquals(cosineSimilarity(a, b), 1 / Math.sqrt(2), 1e-10);
+});
+
+Deno.test('chat aborts when the client-side timeout is exceeded', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = Deno.env.get('OPENROUTER_API_KEY');
+
+  Deno.env.set('OPENROUTER_API_KEY', originalApiKey ?? 'test-key');
+  globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'));
+      });
+    })) as typeof fetch;
+
+  try {
+    await assertRejects(
+      async () => {
+        await chat({
+          messages: [{ role: 'user', content: 'timeout' }],
+          timeout_ms: 5,
+        });
+      },
+      Error,
+      'timed out',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) {
+      Deno.env.delete('OPENROUTER_API_KEY');
+    } else {
+      Deno.env.set('OPENROUTER_API_KEY', originalApiKey);
+    }
+  }
 });
 
 // --- Integration tests (require API key) ---

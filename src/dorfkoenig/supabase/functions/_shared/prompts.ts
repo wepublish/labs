@@ -105,6 +105,7 @@ export function formatUnitsByType(units: UnitForCompose[], includeDates = false)
     ['FAKTEN', units.filter(u => u.unit_type === 'fact')],
     ['EREIGNISSE', units.filter(u => u.unit_type === 'event')],
     ['AKTUALISIERUNGEN', units.filter(u => u.unit_type === 'entity_update')],
+    ['VERSPRECHEN', units.filter(u => u.unit_type === 'promise')],
   ];
 
   return groups
@@ -140,6 +141,7 @@ export function formatUnitsForCompose(units: UnitForCompose[]): string {
     fact: 'FAKT',
     event: 'EREIGNIS',
     entity_update: 'UPDATE',
+    promise: 'VERSPRECHEN',
   };
 
   return units

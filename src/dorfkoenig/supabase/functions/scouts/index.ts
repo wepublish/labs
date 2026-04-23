@@ -60,10 +60,10 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error('Scouts error:', error);
-    if (error.message === 'Authentication required') {
+    if (error instanceof Error && error.message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(error instanceof Error ? error.message : String(error), 500);
   }
 });
 
@@ -394,6 +394,23 @@ async function runScout(
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const executeFn = scout.scout_type === 'civic' ? 'execute-civic-scout' : 'execute-scout';
 
+  const finalizeDispatchFailure = async (message: string) => {
+    const { error: updateError } = await supabase
+      .from('scout_executions')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        change_status: 'error',
+        error_message: message,
+      })
+      .eq('id', execution.id)
+      .eq('status', 'running');
+
+    if (updateError) {
+      console.error('Failed to finalize dispatch failure:', updateError);
+    }
+  };
+
   fetch(`${projectUrl}/functions/v1/${executeFn}`, {
     method: 'POST',
     headers: {
@@ -406,8 +423,19 @@ async function runScout(
       skipNotification: options.skip_notification,
       extractUnits: options.extract_units,
     }),
-  }).catch((err) => {
-    console.error('Failed to trigger execute-scout:', err);
+  })
+    .then(async (res) => {
+      if (res.ok) return;
+
+      const bodyText = await res.text().catch(() => '');
+      const message = `Worker dispatch failed (${res.status})${bodyText ? `: ${bodyText.slice(0, 500)}` : ''}`;
+      console.error('Failed to trigger scout worker:', message);
+      await finalizeDispatchFailure(message);
+    })
+    .catch(async (err) => {
+      const message = `Worker dispatch failed: ${err instanceof Error ? err.message : String(err)}`;
+      console.error('Failed to trigger scout worker:', err);
+      await finalizeDispatchFailure(message);
   });
 
   return jsonResponse(

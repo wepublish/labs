@@ -9,7 +9,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | Function | Purpose | Auth | Trigger |
 |----------|---------|------|---------|
 | `scouts` | CRUD for scout configurations. `listScouts()` enriches each scout with latest execution data (`last_execution_status`, `last_criteria_matched`, `last_change_status`, `last_summary_text`). | x-user-id header | Frontend API calls |
-| `execute-scout` | 9-step execution pipeline | Service role (pg_cron) or x-user-id | pg_cron dispatch or manual run |
+| `execute-scout` | 9-step execution pipeline (+ Phase B subpage-follow on listing pages) | Service role (pg_cron) or x-user-id | pg_cron dispatch or manual run |
 | `units` | List, search, mark-used for information units | x-user-id header | Frontend API calls |
 | `compose` | Generate article drafts from selected units | x-user-id header | Frontend API calls |
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
@@ -31,12 +31,14 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `supabase-client.ts` | `createAnonClient()`, `createServiceClient()`, `getUserId(req)`, `requireUserId(req)`, DB types | - |
 | `openrouter.ts` | `chat()` (LLM), `generateEmbedding()`, `generateEmbeddings()`, `cosineSimilarity()` | OpenRouter API |
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
-| `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
+| `firecrawl.ts` | `scrape()` with change tracking (returns `markdown` + `rawHtml`), `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
+| `subpage-filter.ts` | `filterSubpageUrls()` — pure filter used in Phase B (path-prefix + traversal block + `validateDomain`). Tested in `_tests/shared/subpage_filter_test.ts`. | - |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()`, `buildDraftFailureEmail()` (empty-path admin notifications) | Resend API |
 | `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT`, `DRAFT_COMPOSE_PROMPT_V2`, `buildDraftComposePromptV2()`, `formatUnitsForCompose()`, `DEFAULT_PROMPT_VERSIONS` | - |
+| `canonical-units.ts` | Canonical unit write/read helpers: `upsertCanonicalUnit()` wraps the `upsert_canonical_unit` RPC, `fetchUnitRollups()` builds `sources[]` / `linked_scouts[]` from `unit_occurrences`. | PostgreSQL RPC |
 | `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter. v2 (bumped 2026-04-23) adds `publicationDate`, `sensitivity`. | OpenRouter API |
 | `web-extraction-prompt.ts` | Web scout extraction. v3 (bumped 2026-04-23) adds `publicationDate`, `sensitivity`, `articleUrl`, `isListingPage`; listing-page refusal rule. | OpenRouter API |
-| `unit-extraction.ts` | Shared extract+insert path (execute-scout, execute-civic-scout). Computes `quality_score` via `quality-scoring.ts` on every insert. | - |
+| `unit-extraction.ts` | Shared extract+insert path (execute-scout, execute-civic-scout). Computes `quality_score` via `quality-scoring.ts`, deduplicates in-memory, then routes every write through `upsertCanonicalUnit()` and returns `{ insertedCount, mergedExistingCount, isListingPage }`. | - |
 | `compose-draft.ts` | Pure `composeDraftFromUnits` (v1 markdown) + `composeDraftFromUnitsV2` (bullet schema, with post-validation chain). | OpenRouter API |
 | `draft-quality.ts` | DRAFT_QUALITY.md §3 enforcement: emoji palette, forbidden-phrase banlist, anti-pattern table, `AGNOSTIC_POSITIVE_SEEDS`, `KIND_CAPS`, 4 validators (`validateUrlWhitelist`, `validateForbiddenPhrases`, `validateEmojiPalette`, `validateKindCounts`), `runValidatorChain`. | - |
 | `quality-scoring.ts` | Deterministic 0–100 `computeQualityScore` + `explainQualityScore` (reasons re-computed on read). | - |
@@ -49,7 +51,8 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 3. **Analyze criteria** -- OpenRouter GPT-4o-mini: does content match scout's criteria? Returns `{ matches, summary, keyFindings }`. German prompts.
 4. **Check duplicates** -- Generate embedding for summary, call `check_duplicate_execution()` DB function (threshold: 0.85, lookback: 30 days).
 5. **Store execution** -- Update `scout_executions` row with results.
-6. **Extract units** -- Only if `criteria_matched && (scout.location || scout.topic)`. OpenRouter extracts atomic facts. Embed each, deduplicate within batch (threshold: 0.75). Store in `information_units`.
+6. **Extract units** -- Only if `criteria_matched && (scout.location || scout.topic)` for web/civic factual extraction. OpenRouter extracts atomic facts, embeddings deduplicate within the run, then each unit goes through `upsert_canonical_unit(...)` so reruns and other scouts attach provenance instead of inserting duplicate canonical rows. Returns `{ insertedCount, mergedExistingCount, isListingPage }`.
+6b. **Phase B — subpage-follow (listing pages only).** When step 6 returns `isListingPage: true`, extract links from the index's `rawHtml`, filter via `filterSubpageUrls()` (path-prefix + traversal block + domain validator), dedup against `unit_occurrences.source_url` for this scout, cap at 10 new URLs per run, and stop when the total Phase-B wall-clock budget is exhausted. Single-hop only — subpages that themselves return `isListingPage: true` are skipped, not recursed. See `specs/SUBPAGE_FOLLOW.md` for the portable spec.
 7. **Send notification** -- Only if `matched && !duplicate && !skipNotification && notification_email`. Resend email with German template.
 8. **Update scout** -- Set `last_run_at`, reset `consecutive_failures` to 0.
 9. **Finalize** -- Set execution status to `completed`, return results.
@@ -64,11 +67,19 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 - PK: `id` (UUID), `user_id` (TEXT), `name`, `url`, `criteria`, `location` (JSONB), `frequency` (daily/weekly/monthly), `is_active`, `last_run_at`, `consecutive_failures`, `notification_email`, `provider` (TEXT, nullable: `firecrawl` | `firecrawl_plain`), `content_hash` (TEXT, nullable: SHA-256 for hash-based change detection)
 
 **`scout_executions`** -- Execution history with dedup embeddings
-- PK: `id` (UUID), FK: `scout_id` → scouts (CASCADE), `user_id`, `status` (running/completed/failed), `change_status`, `criteria_matched`, `summary_text`, `summary_embedding` vector(1536), `is_duplicate`, `duplicate_similarity`, `notification_sent`, `units_extracted`, `scrape_duration_ms`
+- PK: `id` (UUID), FK: `scout_id` → scouts (CASCADE), `user_id`, `status` (running/completed/failed), `change_status`, `criteria_matched`, `summary_text`, `summary_embedding` vector(1536), `is_duplicate`, `duplicate_similarity`, `notification_sent`, `units_extracted`, `merged_existing_count`, `scrape_duration_ms`
 
-**`information_units`** -- Atomic facts for Compose panel
-- PK: `id` (UUID), FK: `scout_id` → scouts (CASCADE), `execution_id` → scout_executions (CASCADE), `user_id`, `statement`, `unit_type` (fact/event/entity_update), `entities` TEXT[], `source_url`, `source_domain`, `location` (JSONB), `embedding` vector(1536) NOT NULL, `used_in_article`, `expires_at` (90 days default, extended 60 days on use)
+**`information_units`** -- Canonical facts for Compose panel
+- PK: `id` (UUID), `user_id`, legacy compatibility fields `scout_id` / `execution_id` (now `ON DELETE SET NULL`, no longer authoritative for filtering), `statement`, `unit_type` (fact/event/entity_update/promise), `entities` TEXT[], `source_url`, `source_domain`, `location` (JSONB), `embedding` vector(1536) NOT NULL, `used_in_article`, `expires_at` (90 days default, extended 60 days on use)
+- Canonical rollups (2026-04-23): `first_seen_at`, `last_seen_at`, `occurrence_count`, `source_count`, `context_excerpt`
 - **DRAFT_QUALITY.md §3.2–3.3 enrichments (added 2026-04-23):** `quality_score` (INT 0–100), `publication_date` (DATE), `sensitivity` (none|death|accident|crime|minor_safety), `is_listing_page` (BOOL), `article_url` (TEXT). Index `idx_units_village_quality_dates` supports the compound filter.
+
+**`unit_occurrences`** -- Provenance rows for canonical facts
+- One row per scout/run/source hit with `unit_id`, `user_id`, optional `scout_id` / `execution_id`, normalized source URL, content hash, statement hash, entities, event date, `extracted_at`
+- Filtering by scout now goes through this table; `/units` and semantic search attach `sources[]` and `linked_scouts[]` from it.
+
+**`promises`** -- Promise workflow tracker
+- Gained `unit_id` (nullable FK → `information_units`) so civic promises live in the same canonical fact layer as web/manual discoveries. `UNIQUE (user_id, unit_id)` prevents duplicate inbox cards for repeated discoveries of the same promise.
 
 **`bajour_feedback_examples`** -- Rejected-bullet capture (DRAFT_QUALITY.md §3.7, added 2026-04-23)
 - PK: `id` BIGINT IDENTITY, FK: `draft_id` → `bajour_drafts` (SET NULL), `village_id`, `kind` ('positive' | 'negative'), `bullet_text`, `editor_reason`, `source_unit_ids` UUID[], `edition_date` DATE, `created_at`.
@@ -151,8 +162,8 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 4. **Embedding dimensions** -- 1536 (OpenAI `text-embedding-3-small` via OpenRouter). Schema enforces `vector(1536)`.
 5. **pg_cron stagger (jittered)** -- `dispatch_due_scouts()` uses `pg_sleep(10 + RANDOM()*5)` for web scouts, `pg_sleep(20 + RANDOM()*10)` for civic. Jitter breaks cross-user synchronisation at the 15-min tick boundary so Firecrawl/OpenRouter rate limits don't cascade.
 6. **CASCADE deletes** -- Deleting a scout cascades to executions and units.
-7. **Dedup thresholds** -- Execution: 0.85, Unit within batch: 0.75, Unit cross-run (via `find_similar_units_batch`): cosine ≥0.93 AND trigram ≥0.75 — both must fire to skip insert. Semantic search minimum: 0.3.
-7a. **Cross-run unit dedup** -- `_shared/unit-extraction.ts` (web scouts) and `manual-upload`'s `pdf_finalize` both call `find_similar_units_batch` once per extraction (batch RPC, not per-unit). Scoped to same user + normalized city + last 30 days. A `UNIQUE (user_id, scout_id, md5(statement)) WHERE scout_id IS NOT NULL` partial index catches races past the semantic check; 23505 collisions are logged and skipped silently. Manual uploads (scout_id IS NULL) are deliberately excluded from the UNIQUE guard so editors can re-paste identical text legitimately.
+7. **Dedup thresholds** -- Execution summaries: 0.85. Within-run unit dedup: 0.75. Canonical fact merge in `upsert_canonical_unit(...)`: exact same-scout checks first, then exact cross-scout checks, then semantic merge on canonical rows only (`>= 0.93`, or `>= 0.88` plus same domain / within 7 days / shared entity). Semantic search minimum: 0.3.
+7a. **Canonical write path** -- Web scouts, civic promise extraction, and manual-upload finalize all route through `upsert_canonical_unit(...)`. Canonical rows live in `information_units`; provenance lives in `unit_occurrences`. `GET /units` and semantic search return canonical rows, but scout/project filtering resolves through occurrences.
 7b. **newspaper_jobs hosts text and PDF** -- Despite the name, `newspaper_jobs` now stages both manual-PDF and manual-text extractions (`source_type` discriminates). Text flow: `handleTextUpload` extracts via LLM, stages as `extracted_units` JSONB with status=`review_pending`, reuses `PdfReviewPanel` in the UI and `handlePdfFinalize` on the server. Rename deferred.
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.
 9. **Stuck execution timeout** -- 10 minutes. `cleanup_expired_data()` marks stuck runs as failed.
@@ -176,6 +187,11 @@ supabase functions deploy --workdir ./src/dorfkoenig
 
 # Deploy single function (--no-verify-jwt matches config.toml)
 supabase functions deploy scouts --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig
+
+# Live smoke tests. If the npm subshell cannot read your Supabase CLI token,
+# export SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY first.
+# Set SMOKE_INCLUDE_ARTICLE=true to also run the optional stable-article probe.
+npm run smoke:dorfkoenig
 ```
 
 ## Adding a New Edge Function
@@ -188,3 +204,15 @@ supabase functions deploy scouts --no-verify-jwt --project-ref ayksajwtwyjhvpqng
 6. Add `[functions.{name}]` section to `config.toml` with `verify_jwt = false`
 7. Return responses via `jsonResponse()` / `errorResponse()`
 8. Deploy: `supabase functions deploy {name} --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig`
+
+## Manual Upload Regression Checks
+
+Run these from the repo root when touching the manual review/finalize path:
+
+```bash
+npm run test:manual-upload
+npm run bench:manual-upload
+npm run smoke:dorfkoenig
+```
+
+The coverage targets `_shared/manual-upload-review.ts`, which sanitizes staged review units before `process-newspaper` stores them on `newspaper_jobs` and before `manual-upload` finalizes selected units into `information_units`.

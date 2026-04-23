@@ -109,19 +109,16 @@ In Supabase Dashboard > Settings > Edge Functions > Secrets:
 # Deploy all functions
 supabase functions deploy --workdir ./src/dorfkoenig
 
-# Or deploy individually
+# Or deploy the scout/canonical rollout individually
 supabase functions deploy scouts --workdir ./src/dorfkoenig
 supabase functions deploy execute-scout --workdir ./src/dorfkoenig
+supabase functions deploy execute-civic-scout --workdir ./src/dorfkoenig
 supabase functions deploy units --workdir ./src/dorfkoenig
-supabase functions deploy compose --workdir ./src/dorfkoenig
 supabase functions deploy executions --workdir ./src/dorfkoenig
 supabase functions deploy manual-upload --workdir ./src/dorfkoenig
-supabase functions deploy bajour-drafts --workdir ./src/dorfkoenig
-supabase functions deploy bajour-select-units --workdir ./src/dorfkoenig
-supabase functions deploy bajour-generate-draft --workdir ./src/dorfkoenig
-supabase functions deploy bajour-send-verification --workdir ./src/dorfkoenig
-supabase functions deploy bajour-whatsapp-webhook --workdir ./src/dorfkoenig
-supabase functions deploy bajour-send-mailchimp --workdir ./src/dorfkoenig
+supabase functions deploy civic-discover --workdir ./src/dorfkoenig
+supabase functions deploy civic-test --workdir ./src/dorfkoenig
+supabase functions deploy process-newspaper --workdir ./src/dorfkoenig
 ```
 
 ### 2.3 Configure Function Settings
@@ -144,6 +141,34 @@ In Supabase Dashboard > Edge Functions:
 | `bajour-send-mailchimp` | No | 60s |
 
 **Note:** JWT verification is disabled because we use `x-user-id` header for auth.
+
+### 2.4 Post-Deploy Smoke Tests
+
+Run the live scout + canonical dedup smoke suite immediately after `db push` and the function deploy:
+
+```bash
+# Auto-fetches anon + service-role keys for ayksajwtwyjhvpqngvcb via Supabase CLI
+# If the npm subshell cannot see your CLI auth, export SUPABASE_URL,
+# SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY before running it.
+npm run smoke:dorfkoenig
+```
+
+The suite is saved in:
+
+- `src/dorfkoenig/supabase/functions/_tests/smoke/live_scout_pipeline_smoke.ts`
+- `src/dorfkoenig/supabase/functions/_tests/smoke/live_canonical_dedup_smoke.ts`
+- `src/dorfkoenig/scripts/run-live-smokes.sh`
+
+Coverage:
+
+- web scout runtime on a real official listing page with Phase B subpage follow and bounded completion
+- civic scout with discovery/validation of tracked URLs before execution
+- canonical cross-run dedup (`same scout`, multiple executions)
+- canonical cross-scout dedup (`different scouts`, same canonical fact)
+
+Optional:
+
+- set `SMOKE_INCLUDE_ARTICLE=true` to also run the stable-article probe; this is kept out of the default suite because legitimate provider baselines can return a completed no-change run on already-seen article URLs
 
 ---
 

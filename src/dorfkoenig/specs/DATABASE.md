@@ -234,6 +234,86 @@ CREATE INDEX idx_units_location_city ON information_units(
 ) WHERE location IS NOT NULL;
 ```
 
+### 3a. Canonical Fact Layer (migration `20260423150000_canonical_unit_occurrences.sql`)
+
+The original `information_units` table now acts as the canonical fact table per user.
+
+- New canonical rollup columns on `information_units`:
+  - `first_seen_at`
+  - `last_seen_at`
+  - `occurrence_count`
+  - `source_count`
+  - `context_excerpt`
+- `unit_type` now also permits `'promise'`
+- Legacy `scout_id` / `execution_id` remain for transition reads, but their foreign keys are `ON DELETE SET NULL`; scout scoping now resolves through provenance, not canonical origin.
+
+New provenance table:
+
+```sql
+CREATE TABLE unit_occurrences (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    unit_id UUID NOT NULL REFERENCES information_units(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    scout_id UUID NULL REFERENCES scouts(id) ON DELETE CASCADE,
+    execution_id UUID NULL REFERENCES scout_executions(id) ON DELETE CASCADE,
+    source_url TEXT NOT NULL,
+    normalized_source_url TEXT NOT NULL,
+    source_domain TEXT NOT NULL,
+    source_title TEXT,
+    source_type TEXT NOT NULL DEFAULT 'scout',
+    file_path TEXT,
+    article_url TEXT,
+    content_sha256 TEXT,
+    statement_hash TEXT NOT NULL,
+    context_excerpt TEXT,
+    entities TEXT[] NOT NULL DEFAULT '{}'::text[],
+    event_date DATE,
+    extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+Key indexes:
+
+- `(unit_id, extracted_at DESC)`
+- `(scout_id, extracted_at DESC)`
+- `(execution_id, extracted_at DESC)`
+- `(user_id, normalized_source_url)`
+- `(user_id, content_sha256)` partial where not null
+- `(user_id, statement_hash)`
+- unique raw-capture guard on `(user_id, scout_id, execution_id, normalized_source_url, content_sha256, statement_hash)`
+
+Canonical write path:
+
+```sql
+upsert_canonical_unit(
+  p_user_id,
+  p_statement,
+  p_unit_type,
+  p_source_url,
+  p_embedding,
+  ...
+)
+```
+
+The RPC is the only creation path for canonical facts. Matching order:
+
+1. same-scout exact checks (`normalized_source_url`, `content_sha256`, `statement_hash`)
+2. exact cross-scout checks across the user corpus
+3. semantic match against canonical `information_units` only
+
+Merge thresholds:
+
+- merge at cosine `>= 0.93`
+- or merge at cosine `>= 0.88` plus one anchor:
+  - same normalized source domain
+  - event dates within 7 days
+  - shared entity string
+
+On merge, the RPC appends a `unit_occurrences` row and updates canonical rollups without overwriting verification / usage state.
+
+`promises` also gained `unit_id UUID NULL REFERENCES information_units(id) ON DELETE SET NULL`, so civic promises no longer form a separate dedup universe.
+
 ## Row Level Security (RLS)
 
 ```sql

@@ -22,6 +22,7 @@ import {
   preprocessMarkdown,
 } from '../_shared/zeitung-extraction-prompt.ts';
 import { assignVillage } from '../_shared/village-assignment.ts';
+import { sanitizeReviewUnit } from '../_shared/manual-upload-review.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
@@ -231,19 +232,31 @@ Deno.serve(async (req) => {
     // rather than array index (keeps edit-in-place unblocked for v2).
     // No embeddings in extracted_units — regenerated at finalize time to
     // keep the JSONB payload small.
-    const stagedUnits = resolved.map((r) => ({
-      uid: crypto.randomUUID(),
-      statement: r.unit.statement,
-      unit_type: r.unit.unitType || 'fact',
-      entities: r.unit.entities || [],
-      event_date: r.unit.eventDate || null,
-      date_confidence: r.unit.eventDate ? classifyEventDate(r.unit.eventDate, r.chunk) : null,
-      location: r.villageId ? { city: normalizeCity(r.villageId), country: 'Schweiz' } : null,
-      village_confidence: r.confidence,
-      assignment_path: r.assignmentPath,
-      review_required: r.reviewRequired,
-      evidence: r.unit.villageEvidence ?? undefined,
-    }));
+    const stagedUnits = resolved.flatMap((r) => {
+      const sanitized = sanitizeReviewUnit({
+        uid: crypto.randomUUID(),
+        statement: r.unit.statement,
+        unit_type: r.unit.unitType || 'fact',
+        entities: r.unit.entities || [],
+        event_date: r.unit.eventDate || null,
+        date_confidence: r.unit.eventDate ? classifyEventDate(r.unit.eventDate, r.chunk) : null,
+        location: r.villageId ? { city: normalizeCity(r.villageId), country: 'Schweiz' } : null,
+        village_confidence: r.confidence,
+        assignment_path: r.assignmentPath,
+        review_required: r.reviewRequired,
+        evidence: r.unit.villageEvidence ?? undefined,
+      });
+
+      if (!sanitized) {
+        console.warn('[process-newspaper] dropped malformed staged unit', {
+          statement: r.unit.statement.slice(0, 120),
+          village: r.unit.village,
+        });
+        return [];
+      }
+
+      return [sanitized];
+    });
 
     if (stagedUnits.length === 0) {
       // Nothing to review — close the job immediately so the UI shows "0 Einheiten".
