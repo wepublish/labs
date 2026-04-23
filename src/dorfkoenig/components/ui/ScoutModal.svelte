@@ -199,8 +199,6 @@
         content_hash: contentHash,
       });
 
-      scouts.run(draftScoutId, { skip_notification: true }).catch(console.warn);
-
       draftScoutId = null;
 
       await scouts.load();

@@ -1,7 +1,7 @@
 /**
  * @module units
  * Information units for the Compose panel.
- * GET: list/filter units by location, topic, unused-only. GET ?search=: semantic search via pgvector.
+ * GET: list/filter units by location, topic, unused-only. GET /search: hybrid lexical + semantic search.
  * PUT: mark units as used (sets used_in_article, extends TTL).
  */
 
@@ -223,7 +223,7 @@ async function getLocations(
   return jsonResponse({ data: locations });
 }
 
-// Semantic search for units
+// Hybrid lexical + semantic search for units
 async function searchUnits(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
@@ -242,13 +242,14 @@ async function searchUnits(
   const minSimilarity = parseFloat(url.searchParams.get('min_similarity') || String(SEARCH_MIN_SIMILARITY));
   const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_SEARCH_PAGE_SIZE)), MAX_SEARCH_PAGE_SIZE);
 
-  // Generate query embedding
+  // Generate query embedding for the semantic leg of hybrid search.
   const queryEmbedding = await embeddings.generate(query);
 
-  // Use database function for semantic search
+  // Use database function for hybrid search/ranking.
   const { data, error } = await supabase.rpc('search_units_semantic', {
     p_user_id: userId,
     p_query_embedding: queryEmbedding,
+    p_query_text: query,
     p_location_city: normalizedLocationCity,
     p_topic: topic,
     p_unused_only: unusedOnly,
