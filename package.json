@@ -18,7 +18,9 @@
     "new-app": "node scripts/create-app.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:manual-upload": "deno test src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_test.ts",
     "bench:dorfkoenig": "tsx src/dorfkoenig/supabase/functions/_tests/bench/run.ts",
+    "bench:manual-upload": "deno bench src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_bench.ts",
     "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
     "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
   },

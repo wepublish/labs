@@ -13,6 +13,11 @@ import { embeddings } from '../_shared/embeddings.ts';
 import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
 import { computeQualityScore } from '../_shared/quality-scoring.ts';
+import {
+  sanitizeReviewUnit,
+  sanitizeReviewUnits,
+  type ReviewUnit,
+} from '../_shared/manual-upload-review.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -268,20 +273,24 @@ AUSGABEFORMAT (JSON):
 
   // Stage as NewspaperExtractedUnit[] (same shape finalize consumes).
   // event_date falls back to publication_date when the LLM couldn't anchor one.
-  const staged: StagedUnit[] = units
+  const staged: ReviewUnit[] = units
     .filter((u) => u.statement && u.statement.trim().length > 0)
-    .map((u) => ({
-      uid: crypto.randomUUID(),
-      statement: u.statement.trim(),
-      unit_type: (u.unitType === 'event' || u.unitType === 'entity_update') ? u.unitType : 'fact',
-      entities: Array.isArray(u.entities) ? u.entities : [],
-      event_date: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? u.eventDate : publicationDate,
-      date_confidence: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? 'exact' : 'inferred',
-      location: normalizedTextLocation,
-      village_confidence: normalizedTextLocation ? 'high' : null,
-      assignment_path: normalizedTextLocation ? 'manual' : null,
-      review_required: false,
-    }));
+    .flatMap((u) => {
+      const sanitized = sanitizeReviewUnit({
+        uid: crypto.randomUUID(),
+        statement: u.statement.trim(),
+        unit_type: (u.unitType === 'event' || u.unitType === 'entity_update') ? u.unitType : 'fact',
+        entities: Array.isArray(u.entities) ? u.entities : [],
+        event_date: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? u.eventDate : publicationDate,
+        date_confidence: u.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(u.eventDate) ? 'exact' : 'inferred',
+        location: normalizedTextLocation,
+        village_confidence: normalizedTextLocation ? 'high' : null,
+        assignment_path: normalizedTextLocation ? 'manual' : null,
+        review_required: false,
+      });
+
+      return sanitized ? [sanitized] : [];
+    });
 
   if (staged.length === 0) {
     await supabase.from('newspaper_jobs').update({
@@ -572,20 +581,6 @@ async function handleFileConfirm(
 // shows a checkbox list and calls back here with the selected UIDs. This
 // handler runs embed / dedup / insert on just the picked subset.
 
-interface StagedUnit {
-  uid: string;
-  statement: string;
-  unit_type: 'fact' | 'event' | 'entity_update';
-  entities: string[];
-  event_date: string | null;
-  date_confidence?: 'exact' | 'inferred' | 'unanchored' | null;
-  location: { city: string; country?: string; state?: string; latitude?: number; longitude?: number } | null;
-  village_confidence: 'high' | 'medium' | 'low' | null;
-  assignment_path: string | null;
-  review_required: boolean;
-  evidence?: string;
-}
-
 async function handlePdfFinalize(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
@@ -637,11 +632,27 @@ async function handlePdfFinalize(
     );
   }
 
-  const staged = (claimed.extracted_units as StagedUnit[] | null) ?? [];
-  const byUid = new Map(staged.map((u) => [u.uid, u]));
-  const chosen = selectedUids
+  const staged = Array.isArray(claimed.extracted_units)
+    ? claimed.extracted_units as Record<string, unknown>[]
+    : [];
+  const byUid = new Map(
+    staged.flatMap((u) => {
+      const uid = typeof u.uid === 'string' ? u.uid : null;
+      return uid ? [[uid, u] as const] : [];
+    }),
+  );
+  const chosenRaw = selectedUids
     .map((uid) => byUid.get(uid))
-    .filter((u): u is StagedUnit => u !== undefined);
+    .filter((u): u is Record<string, unknown> => u !== undefined);
+  const { units: chosen, dropped } = sanitizeReviewUnits(chosenRaw);
+
+  if (dropped > 0) {
+    console.warn('[pdf_finalize] dropped malformed staged units before insert', {
+      job_id: jobId,
+      selected_count: selectedUids.length,
+      dropped,
+    });
+  }
 
   if (chosen.length === 0) {
     // User sent only unknown UIDs. Treat like cancel.
@@ -703,7 +714,7 @@ async function handlePdfFinalize(
       const defaultTopic = sourceType === 'manual_text' ? null : 'Wochenblatt';
       const jobPubDate = claimed.publication_date as string | null;
       const rows = finalIndices.map((i) => {
-        const u = chosen[i];
+        const u: ReviewUnit = chosen[i];
         const normalizedLocation = u.location?.city
           ? { ...u.location, city: normalizeCity(u.location.city) }
           : u.location;

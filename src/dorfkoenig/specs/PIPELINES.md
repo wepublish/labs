@@ -855,10 +855,10 @@ Triggered by `manual-upload` (pdf_confirm) → `process-newspaper` edge function
 4. **Chunk** — Boundary-aware splitting on markdown headings, ALL CAPS section headers, horizontal rules (~15K target per chunk)
 5. **Pre-filter** — Skip chunks where >40% of lines contain ad/puzzle signals (CHF, Tel., www., Sudoku, etc.)
 6. **LLM extraction** — GPT-4o-mini via OpenRouter with `zeitung-extraction-prompt.ts` prompt. Concurrency limit of 3-4. Each chunk returns `{ units[], skipped[] }`.
-7. **Post-process** — Filter out `village: null` units, generate embeddings (batch), deduplicate within batch (0.75 threshold), per-village dedup against existing units in DB (0.75 threshold)
-8. **Store units** — Insert into `information_units` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`
-9. **Update job** — Set `newspaper_jobs` status to `completed` with `units_created` count
-10. **Error handling** — Per-chunk try/catch (partial results kept), fatal errors set `status: 'failed'`
+7. **Review sanitize + stage** — Normalize extracted units before they touch `newspaper_jobs.extracted_units`: drop malformed rows, coerce invalid `unit_type` values to `'fact'`, turn stringified null confidences back into SQL-null-compatible `null`, and discard invalid entity/location payloads. Store the surviving units on the job row with `status: 'review_pending'`.
+8. **Editor review** — The UI renders the staged units, lets the editor choose which ones to keep, and posts the selected `uid`s back to `manual-upload` (`pdf_finalize`).
+9. **Finalize insert** — `pdf_finalize` sanitizes the selected staged units again, then runs embeddings + dedup and inserts the valid survivors into `information_units` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`.
+10. **Update job / error handling** — On success set `newspaper_jobs.status = 'completed'` with `units_created`; per-chunk extraction errors remain non-fatal, while fatal finalize/extraction errors set `status: 'failed'`.
 
 ### Fire-PDF mode decision (2026-04-15)
 
@@ -885,3 +885,8 @@ See `_shared/zeitung-extraction-prompt.ts` for the editable ranking table that d
 ### Status Tracking
 
 `newspaper_jobs` table with Supabase Realtime. Frontend subscribes to `postgres_changes` on the job row for live progress updates (chunks_processed / chunks_total).
+
+### Regression Coverage
+
+- `npm run test:manual-upload` — unit coverage for review-unit sanitization and finalize edge cases
+- `npm run bench:manual-upload` — micro-benchmark for the review sanitizer used by `process-newspaper` and `manual-upload`

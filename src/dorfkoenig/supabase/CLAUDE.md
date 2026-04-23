@@ -190,3 +190,14 @@ supabase functions deploy scouts --no-verify-jwt --project-ref ayksajwtwyjhvpqng
 6. Add `[functions.{name}]` section to `config.toml` with `verify_jwt = false`
 7. Return responses via `jsonResponse()` / `errorResponse()`
 8. Deploy: `supabase functions deploy {name} --no-verify-jwt --project-ref ayksajwtwyjhvpqngvcb --workdir ./src/dorfkoenig`
+
+## Manual Upload Regression Checks
+
+Run these from the repo root when touching the manual review/finalize path:
+
+```bash
+npm run test:manual-upload
+npm run bench:manual-upload
+```
+
+The coverage targets `_shared/manual-upload-review.ts`, which sanitizes staged review units before `process-newspaper` stores them on `newspaper_jobs` and before `manual-upload` finalizes selected units into `information_units`.
