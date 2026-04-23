@@ -9,7 +9,7 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | Function | Purpose | Auth | Trigger |
 |----------|---------|------|---------|
 | `scouts` | CRUD for scout configurations. `listScouts()` enriches each scout with latest execution data (`last_execution_status`, `last_criteria_matched`, `last_change_status`, `last_summary_text`). | x-user-id header | Frontend API calls |
-| `execute-scout` | 9-step execution pipeline | Service role (pg_cron) or x-user-id | pg_cron dispatch or manual run |
+| `execute-scout` | 9-step execution pipeline (+ Phase B subpage-follow on listing pages) | Service role (pg_cron) or x-user-id | pg_cron dispatch or manual run |
 | `units` | List, search, mark-used for information units | x-user-id header | Frontend API calls |
 | `compose` | Generate article drafts from selected units | x-user-id header | Frontend API calls |
 | `executions` | List and get execution history | x-user-id header | Frontend API calls |
@@ -31,7 +31,8 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 | `supabase-client.ts` | `createAnonClient()`, `createServiceClient()`, `getUserId(req)`, `requireUserId(req)`, DB types | - |
 | `openrouter.ts` | `chat()` (LLM), `generateEmbedding()`, `generateEmbeddings()`, `cosineSimilarity()` | OpenRouter API |
 | `embeddings.ts` | Wrapper: `generate()`, `generateBatch()`, `similarity()`, `areSimilar()`, `findMostSimilar()`, `deduplicate()` | OpenRouter (via openrouter.ts) |
-| `firecrawl.ts` | `scrape()` with change tracking, `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
+| `firecrawl.ts` | `scrape()` with change tracking (returns `markdown` + `rawHtml`), `doubleProbe()` (provider detection), `computeContentHash()`, `getDomain()` | Firecrawl v2 API |
+| `subpage-filter.ts` | `filterSubpageUrls()` — pure filter used in Phase B (path-prefix + traversal block + `validateDomain`). Tested in `_tests/shared/subpage_filter_test.ts`. | - |
 | `resend.ts` | `sendEmail()`, `buildScoutAlertEmail()`, `buildDraftFailureEmail()` (empty-path admin notifications) | Resend API |
 | `prompts.ts` | `INFORMATION_SELECT_PROMPT`, `buildInformationSelectPrompt()`, `DRAFT_COMPOSE_PROMPT`, `DRAFT_COMPOSE_PROMPT_V2`, `buildDraftComposePromptV2()`, `formatUnitsForCompose()`, `DEFAULT_PROMPT_VERSIONS` | - |
 | `zeitung-extraction-prompt.ts` | Newspaper extraction: ranking table, German system prompt, markdown chunking, junk filter. v2 (bumped 2026-04-23) adds `publicationDate`, `sensitivity`. | OpenRouter API |
@@ -49,7 +50,8 @@ PostgreSQL + pgvector database with Edge Functions (Deno runtime) and 6 shared m
 3. **Analyze criteria** -- OpenRouter GPT-4o-mini: does content match scout's criteria? Returns `{ matches, summary, keyFindings }`. German prompts.
 4. **Check duplicates** -- Generate embedding for summary, call `check_duplicate_execution()` DB function (threshold: 0.85, lookback: 30 days).
 5. **Store execution** -- Update `scout_executions` row with results.
-6. **Extract units** -- Only if `criteria_matched && (scout.location || scout.topic)`. OpenRouter extracts atomic facts. Embed each, deduplicate within batch (threshold: 0.75). Store in `information_units`.
+6. **Extract units** -- Only if `criteria_matched && (scout.location || scout.topic)`. OpenRouter extracts atomic facts. Embed each, deduplicate within batch (threshold: 0.75). Store in `information_units`. Returns `{ insertedCount, isListingPage }`.
+6b. **Phase B — subpage-follow (listing pages only).** When step 6 returns `isListingPage: true`, extract links from the index's `rawHtml`, filter via `filterSubpageUrls()` (path-prefix + traversal block + domain validator), dedup against `information_units.source_url` for this scout, cap at 10 new URLs per run, scrape each subpage with `firecrawlDelay()` between, and rerun `extractInformationUnits()` on each article body. Single-hop — subpages that themselves return `isListingPage: true` are skipped, not recursed. No new DB column; seen-URL set derives from existing units. See `specs/SUBPAGE_FOLLOW.md` for the portable spec.
 7. **Send notification** -- Only if `matched && !duplicate && !skipNotification && notification_email`. Resend email with German template.
 8. **Update scout** -- Set `last_run_at`, reset `consecutive_failures` to 0.
 9. **Finalize** -- Set execution status to `completed`, return results.

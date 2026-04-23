@@ -6,7 +6,10 @@ The execute-scout pipeline is the core of Dorfkoenig. It performs web scraping, 
 
 > **DRAFT_QUALITY overhaul shipped 2026-04-23** (see `specs/DRAFT_QUALITY.md`). The `bajour-auto-draft` pipeline gained: compound date filter + quality gate (§3.2), v2 bullet-only schema (§3.1), deterministic post-validation chain (§3.5), empty-path admin notifications (§3.1.4), inline metric capture (§5.1). Extraction paths (Step 6 below, plus `manual-upload` and `process-newspaper`) gained `publication_date`, `sensitivity`, `is_listing_page`, `article_url` + `quality_score`. All gated by `FEATURE_*` env vars (default off). Feature-flag reference in `specs/DATABASE.md § DRAFT_QUALITY overhaul`.
 
-## Execute Scout Pipeline (9 Steps)
+## Execute Scout Pipeline (9 Steps + Phase B)
+
+> **Phase B listing-subpage follow** was added 2026-04-23 as Step 6b. Fires only when Phase A's LLM extraction returns `isListingPage: true` (the web-extraction prompt's "LISTENSEITEN-VERWEIGERUNG" refusal rule). Otherwise the pipeline runs exactly the prior 9 steps. See §Step 6b below and `specs/SUBPAGE_FOLLOW.md` for details.
+
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -495,6 +498,51 @@ export async function storeUnits(
   return storedCount;
 }
 ```
+
+---
+
+## Step 6b: Phase B — Subpage-Follow (Listing Pages)
+
+When the web-extraction LLM detects the index URL is a listing/overview page, it refuses extraction and returns `{ units: [], isListingPage: true, skipped: ['listing_page'] }`. Phase B then fetches each linked article individually.
+
+Gate: `extractUnits && analysis.matches && hasScope && isListingPage && rawHtml`. Otherwise skipped silently.
+
+### Algorithm
+
+```text
+1. links        ← extractLinksFromHtml(rawHtml, scout.url)   # host-lock + denylist
+2. candidates   ← filterSubpageUrls(links, scout.url)         # path-prefix + traversal + domain
+3. seen         ← SELECT DISTINCT source_url
+                  FROM information_units
+                  WHERE scout_id = $1 AND source_url IS NOT NULL
+4. fresh        ← (candidates − seen)[0 : CAP]                 # CAP = 10
+5. for url in fresh (sequential, firecrawlDelay between each):
+     md ← firecrawl.scrape(url, formats:[markdown])
+     result ← extractInformationUnits(md, { sourceUrl: url, ... })
+     if result.isListingPage: skip             # single-hop, no recursion
+     else: result.insertedCount adds to unitsExtracted
+6. console.log "Phase B: processed N/M subpages (K units, F failed)"
+```
+
+### Why no new column
+
+Seen-URL set derives from existing `information_units.source_url`. TTL (90 days) bounds the array naturally; no migration needed. Tradeoff: a subpage that produces zero units leaves no row → re-scraped next run. Acceptable for current use case.
+
+### Why single-hop
+
+Preserves bounded cost + avoids runaway recursion on pathological sites. A subpage that re-triggers `isListingPage: true` is almost always a mis-classification or a section index; we skip rather than expand.
+
+### Cost
+
+Worst case per run: 1 index scrape + 10 subpage scrapes = 11 Firecrawl credits, ~15–25s wall time. Typical steady-state after initial seed: 0–2 subpages per run as only brand-new articles remain unseen.
+
+### Files
+
+- `supabase/functions/execute-scout/index.ts` — wiring
+- `supabase/functions/_shared/subpage-filter.ts` — `filterSubpageUrls` (tested)
+- `supabase/functions/_shared/civic-utils.ts` — reused `extractLinksFromHtml`, `validateDomain`, `firecrawlDelay`
+- `scripts/benchmark-subpage-follow.ts` — end-to-end benchmark (`npm run benchmark:subpages`)
+- `specs/SUBPAGE_FOLLOW.md` — portable spec for porting the mechanism to sibling projects
 
 ---
 

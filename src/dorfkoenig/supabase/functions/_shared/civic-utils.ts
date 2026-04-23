@@ -216,7 +216,8 @@ ${numberedLines.join('\n')}
   });
 
   try {
-    const data = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content ?? '';
+    const data = JSON.parse(content);
     const rawIndices: unknown[] = data.meeting_urls || [];
     const validIndices = rawIndices
       .filter((idx): idx is number => typeof idx === 'number' && idx >= 0 && idx < capped.length);
@@ -325,7 +326,7 @@ JSON array:`;
       temperature: 0.2,
     });
 
-    const llmText = response.choices[0].message.content;
+    const llmText = response.choices[0].message.content ?? '';
     return parsePromises(llmText, sourceUrl, sourceTitle, sourceDate);
   } catch (error) {
     console.error('extractPromises: LLM error:', error);

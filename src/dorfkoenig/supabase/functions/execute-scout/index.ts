@@ -16,9 +16,9 @@ import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
 import { analyzeCriteria, summarizeContent } from '../_shared/criteria-analysis.ts';
 import {
   extractLinksFromHtml,
-  validateDomain,
   firecrawlDelay,
 } from '../_shared/civic-utils.ts';
+import { filterSubpageUrls } from '../_shared/subpage-filter.ts';
 
 const SUBPAGE_FETCH_CAP = 10;
 
@@ -339,28 +339,11 @@ Deno.serve(async (req) => {
     // extract units per article body. Single-hop only (no recursion).
     if (extractUnits && analysis.matches && hasScope && indexIsListingPage && scrapeResult.rawHtml) {
       try {
-        const indexUrl = new URL(scout.url);
-        const indexPath = indexUrl.pathname.replace(/\/+$/, '');
-
-        // 1. Extract links
+        // 1. Extract links from index rawHtml (host-lock + denylist in helper).
         const links = extractLinksFromHtml(scrapeResult.rawHtml, scout.url);
 
-        // 2. Filter: same host (already enforced by extractLinksFromHtml),
-        //    path-prefix under the index URL, no traversal, validateDomain pass.
-        const candidateUrls = links
-          .map(([url]) => url)
-          .filter((url) => {
-            try {
-              const parsed = new URL(url);
-              const cleanPath = parsed.pathname.replace(/\/+$/, '');
-              if (!cleanPath.startsWith(indexPath + '/')) return false;
-              if (cleanPath.includes('..') || cleanPath.toLowerCase().includes('%2e%2e')) return false;
-              if (!validateDomain(parsed.hostname).valid) return false;
-              return true;
-            } catch {
-              return false;
-            }
-          });
+        // 2. Subpage filter: path-prefix + traversal block + domain validator.
+        const candidateUrls = filterSubpageUrls(links.map(([url]) => url), scout.url);
 
         // 3. Dedup against already-seen subpage URLs (derived from stored units).
         const { data: seenRows } = await supabase
