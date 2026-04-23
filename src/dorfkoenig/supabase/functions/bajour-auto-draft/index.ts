@@ -30,6 +30,8 @@ import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 import { explainQualityScore } from '../_shared/quality-scoring.ts';
 import { sendEmail } from '../_shared/resend.ts';
 import { buildDraftFailureEmail, type EmptyDraftCase } from '../_shared/resend.ts';
+import { ANTI_PATTERNS, AGNOSTIC_POSITIVE_SEEDS } from '../_shared/draft-quality.ts';
+import { loadComposeFeedbackExamplesForVillage } from '../_shared/feedback-retrieval.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -42,6 +44,7 @@ const FLAG_BULLET_SCHEMA = Deno.env.get('FEATURE_BULLET_SCHEMA') === 'true';
 const FLAG_QUALITY_GATING = Deno.env.get('FEATURE_QUALITY_GATING') === 'true';
 const FLAG_EMPTY_PATH_EMAIL = Deno.env.get('FEATURE_EMPTY_PATH_EMAIL') === 'true';
 const FLAG_METRICS_CAPTURE = Deno.env.get('FEATURE_METRICS_CAPTURE') === 'true';
+const FLAG_FEEDBACK_RETRIEVAL = Deno.env.get('FEATURE_FEEDBACK_RETRIEVAL') === 'true';
 
 interface AutoDraftRequest {
   village_id: string;
@@ -111,6 +114,7 @@ Deno.serve(async (req) => {
     const { data: existingDraft } = await supabase
       .from('bajour_drafts')
       .select('id')
+      .eq('user_id', user_id)
       .eq('village_id', village_id)
       .eq('publication_date', today)
       .neq('verification_status', 'abgelehnt')
@@ -118,7 +122,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingDraft) {
-      console.log(`Auto-draft skipped: draft already exists for ${village_id} on ${today}`);
+      console.log(`Auto-draft skipped: draft already exists for user=${user_id} village=${village_id} on ${today}`);
       await supabase.from('auto_draft_runs').insert({
         village_id,
         status: 'skipped',
@@ -315,6 +319,25 @@ Deno.serve(async (req) => {
     let schemaVersion: number;
     let notesForEditor: string[] = [];
     let bulletCount = 0;
+    let retrievedExamples:
+      | Awaited<ReturnType<typeof loadComposeFeedbackExamplesForVillage>>
+      | null = null;
+
+    if (FLAG_BULLET_SCHEMA && FLAG_FEEDBACK_RETRIEVAL) {
+      try {
+        retrievedExamples = await loadComposeFeedbackExamplesForVillage(
+          supabase,
+          village_id,
+          AGNOSTIC_POSITIVE_SEEDS,
+          ANTI_PATTERNS,
+        );
+        console.log(
+          `[auto-draft] feedback examples for ${village_id}: village+ ${retrievedExamples.villagePositiveCount}/${retrievedExamples.villageNegativeCount}, prompt ${retrievedExamples.positiveExamples.length}/${retrievedExamples.antiPatterns.length}`,
+        );
+      } catch (feedbackErr) {
+        console.error('[auto-draft] feedback retrieval failed, using static defaults:', feedbackErr);
+      }
+    }
 
     if (FLAG_BULLET_SCHEMA) {
       const { draft: v2 } = await composeDraftFromUnitsV2({
@@ -322,6 +345,8 @@ Deno.serve(async (req) => {
         village_name,
         selected_units: selectedUnits,
         compose_layer2: composeLayer2,
+        antiPatterns: retrievedExamples?.antiPatterns,
+        positiveExamples: retrievedExamples?.positiveExamples,
         ctx: { village_id, run_id: runId ?? undefined },
       });
       draftTitle = v2.title;

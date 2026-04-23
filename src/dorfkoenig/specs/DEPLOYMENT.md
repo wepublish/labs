@@ -75,14 +75,11 @@ SELECT vault.create_secret(
 ### 1.4 Run Schema Migration
 
 ```bash
-# Set workdir for Supabase CLI
-export SUPABASE_WORKDIR=./src/dorfkoenig
-
 # Link to remote project
-supabase link --project-ref YOUR_PROJECT_ID
+npm run supabase:dorfkoenig -- link --project-ref YOUR_PROJECT_ID
 
-# Push schema
-supabase db push
+# Push schema only after the migration-history guard passes
+npm run deploy:dorfkoenig:schema
 ```
 
 Or paste migration SQL directly in SQL Editor.
@@ -106,19 +103,14 @@ In Supabase Dashboard > Settings > Edge Functions > Secrets:
 ### 2.2 Deploy Functions
 
 ```bash
+# Check migration state before backend changes
+npm run supabase:dorfkoenig:check
+
 # Deploy all functions
-supabase functions deploy --workdir ./src/dorfkoenig
+npm run supabase:dorfkoenig -- functions deploy
 
 # Or deploy the scout/canonical rollout individually
-supabase functions deploy scouts --workdir ./src/dorfkoenig
-supabase functions deploy execute-scout --workdir ./src/dorfkoenig
-supabase functions deploy execute-civic-scout --workdir ./src/dorfkoenig
-supabase functions deploy units --workdir ./src/dorfkoenig
-supabase functions deploy executions --workdir ./src/dorfkoenig
-supabase functions deploy manual-upload --workdir ./src/dorfkoenig
-supabase functions deploy civic-discover --workdir ./src/dorfkoenig
-supabase functions deploy civic-test --workdir ./src/dorfkoenig
-supabase functions deploy process-newspaper --workdir ./src/dorfkoenig
+npm run deploy:dorfkoenig:function -- scouts execute-scout execute-civic-scout units executions manual-upload civic-discover civic-test process-newspaper
 ```
 
 ### 2.3 Configure Function Settings

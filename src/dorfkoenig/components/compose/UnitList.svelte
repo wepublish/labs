@@ -277,6 +277,7 @@
     font-size: var(--text-md);
     line-height: 1.5;
     margin: 0;
+    line-clamp: 4;
     display: -webkit-box;
     -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;

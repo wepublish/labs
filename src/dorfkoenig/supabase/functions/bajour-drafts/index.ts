@@ -7,6 +7,16 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
+function hasOnlyUuids(values: unknown): values is string[] {
+  return Array.isArray(values) && values.every(isUuid);
+}
+
 Deno.serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -93,6 +103,15 @@ async function createDraft(
   if (!Array.isArray(body.selected_unit_ids)) {
     return errorResponse('selected_unit_ids muss ein Array sein', 400, 'VALIDATION_ERROR');
   }
+  if (!hasOnlyUuids(body.selected_unit_ids)) {
+    return errorResponse('selected_unit_ids muss nur UUIDs enthalten', 400, 'VALIDATION_ERROR');
+  }
+  if (
+    body.publication_date !== undefined &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(body.publication_date)
+  ) {
+    return errorResponse('Ungültiges Datumsformat (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
+  }
 
   const { data, error } = await supabase
     .from('bajour_drafts')
@@ -143,7 +162,12 @@ async function updateDraft(
   if (body.body !== undefined) updates.body = body.body.trim();
   if (body.village_id !== undefined) updates.village_id = body.village_id.trim();
   if (body.village_name !== undefined) updates.village_name = body.village_name.trim();
-  if (body.selected_unit_ids !== undefined) updates.selected_unit_ids = body.selected_unit_ids;
+  if (body.selected_unit_ids !== undefined) {
+    if (!hasOnlyUuids(body.selected_unit_ids)) {
+      return errorResponse('selected_unit_ids muss nur UUIDs enthalten', 400, 'VALIDATION_ERROR');
+    }
+    updates.selected_unit_ids = body.selected_unit_ids;
+  }
   if (body.custom_system_prompt !== undefined) {
     updates.custom_system_prompt = body.custom_system_prompt?.trim() || null;
   }

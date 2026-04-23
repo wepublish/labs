@@ -28,8 +28,10 @@ import {
   ANTI_PATTERNS,
   AGNOSTIC_POSITIVE_SEEDS,
   runValidatorChain,
+  type AntiPattern,
   type Bullet,
   type DraftV2,
+  type PositiveSeed,
 } from './draft-quality.ts';
 
 export interface UnitForCompose {
@@ -54,6 +56,9 @@ export interface ComposeInput {
   selected_units: UnitForCompose[];
   /** compose_layer2 override — typically DRAFT_COMPOSE_PROMPT or a per-user override. */
   compose_layer2?: string;
+  /** Optional retrieved examples; when omitted, static defaults are used. */
+  antiPatterns?: readonly AntiPattern[];
+  positiveExamples?: readonly PositiveSeed[];
   /** Override for testing; defaults to production model. */
   model?: string;
   /** Override for benchmark determinism; defaults to 0.2 (production). */
@@ -290,6 +295,8 @@ export async function composeDraftFromUnitsV2(input: ComposeInput): Promise<Comp
     village_name,
     selected_units,
     compose_layer2,
+    antiPatterns,
+    positiveExamples,
     model = COMPOSE_MODEL,
     temperature = 0.2,
     max_tokens = 2500,
@@ -306,8 +313,8 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
 
   const composePrompt = buildDraftComposePromptV2({
     composeLayer2: compose_layer2 ?? DRAFT_COMPOSE_PROMPT_V2,
-    antiPatterns: ANTI_PATTERNS,
-    positiveExamples: AGNOSTIC_POSITIVE_SEEDS,
+    antiPatterns: antiPatterns ?? ANTI_PATTERNS,
+    positiveExamples: positiveExamples ?? AGNOSTIC_POSITIVE_SEEDS,
   });
 
   const systemPrompt = `${layer1}\n\n${composePrompt}`;
