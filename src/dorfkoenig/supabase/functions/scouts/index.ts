@@ -9,6 +9,7 @@
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId, type Scout } from '../_shared/supabase-client.ts';
 import { analyzeCriteria } from '../_shared/criteria-analysis.ts';
+import { initializeScoutBaseline } from '../_shared/scout-baseline.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -161,6 +162,7 @@ async function createScout(
 ) {
   const body = await req.json();
   const scoutType = body.scout_type || 'web';
+  const requestedActive = body.is_active ?? true;
 
   // Validate required fields
   if (!body.name?.trim()) {
@@ -203,7 +205,8 @@ async function createScout(
     // Auto mode intentionally clears scout.location — units get location from content.
     location: locationMode === 'auto' ? null : (body.location || null),
     frequency: body.frequency,
-    is_active: body.is_active ?? true,
+    // Active scouts must get their baseline before they become schedulable.
+    is_active: false,
     topic: body.topic?.trim() || null,
     scout_type: scoutType,
     location_mode: locationMode,
@@ -228,7 +231,43 @@ async function createScout(
     return errorResponse('Fehler beim Erstellen des Scouts', 500);
   }
 
-  return jsonResponse({ data }, 201);
+  if (!requestedActive) {
+    return jsonResponse({ data }, 201);
+  }
+
+  try {
+    const baselineFields = await initializeScoutBaseline({
+      ...data,
+      is_active: true,
+    });
+
+    const { data: activatedScout, error: activateError } = await supabase
+      .from('scouts')
+      .update({
+        ...baselineFields,
+        is_active: true,
+      })
+      .eq('id', data.id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (activateError) {
+      console.error('Activate scout after baseline error:', activateError);
+      await supabase.from('scouts').delete().eq('id', data.id).eq('user_id', userId);
+      return errorResponse('Fehler beim Aktivieren des Scouts', 500);
+    }
+
+    return jsonResponse({ data: activatedScout }, 201);
+  } catch (baselineError) {
+    console.error('Initialize baseline on create error:', baselineError);
+    await supabase.from('scouts').delete().eq('id', data.id).eq('user_id', userId);
+    return errorResponse(
+      `Fehler beim Initialisieren der Baseline: ${baselineError instanceof Error ? baselineError.message : String(baselineError)}`,
+      500,
+    );
+  }
+
 }
 
 // Update existing scout
@@ -239,6 +278,17 @@ async function updateScout(
   req: Request
 ) {
   const body = await req.json();
+
+  const { data: existingScout, error: existingError } = await supabase
+    .from('scouts')
+    .select('*')
+    .eq('id', scoutId)
+    .eq('user_id', userId)
+    .single();
+
+  if (existingError || !existingScout) {
+    return errorResponse('Scout nicht gefunden', 404);
+  }
 
   // Build update object with only provided fields
   const updates: Partial<Scout> = {};
@@ -291,6 +341,29 @@ async function updateScout(
   if (body.url !== undefined) {
     updates.provider = null;
     updates.content_hash = null;
+  }
+
+  const nextScout: Scout = {
+    ...existingScout,
+    ...updates,
+  };
+
+  const shouldInitializeBaseline = nextScout.is_active && (
+    !existingScout.is_active ||
+    (nextScout.scout_type === 'web' && body.url !== undefined) ||
+    (nextScout.scout_type === 'civic' && body.tracked_urls !== undefined)
+  );
+
+  if (shouldInitializeBaseline) {
+    try {
+      Object.assign(updates, await initializeScoutBaseline(nextScout));
+    } catch (baselineError) {
+      console.error('Initialize baseline on update error:', baselineError);
+      return errorResponse(
+        `Fehler beim Initialisieren der Baseline: ${baselineError instanceof Error ? baselineError.message : String(baselineError)}`,
+        500,
+      );
+    }
   }
 
   const { data, error } = await supabase
