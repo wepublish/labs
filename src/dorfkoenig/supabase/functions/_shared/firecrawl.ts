@@ -44,6 +44,7 @@ interface ScrapeResponse {
 export async function scrape(options: ScrapeOptions): Promise<{
   success: boolean;
   markdown: string | null;
+  rawHtml: string | null;
   title: string | null;
   changeStatus: string | null;
   previousScrapeAt: string | null;
@@ -99,6 +100,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       return {
         success: false,
         markdown: null,
+        rawHtml: null,
         title: null,
         changeStatus: null,
         previousScrapeAt: null,
@@ -112,6 +114,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       return {
         success: false,
         markdown: null,
+        rawHtml: null,
         title: null,
         changeStatus: null,
         previousScrapeAt: null,
@@ -122,6 +125,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
     return {
       success: true,
       markdown: data.data.markdown || null,
+      rawHtml: data.data.rawHtml || null,
       title: data.data.metadata?.title || null,
       changeStatus: data.data.changeTracking?.changeStatus || null,
       previousScrapeAt: data.data.changeTracking?.previousScrapeAt || null,
@@ -133,6 +137,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       return {
         success: false,
         markdown: null,
+        rawHtml: null,
         title: null,
         changeStatus: null,
         previousScrapeAt: null,
@@ -142,6 +147,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
     return {
       success: false,
       markdown: null,
+      rawHtml: null,
       title: null,
       changeStatus: null,
       previousScrapeAt: null,

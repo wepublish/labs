@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       if (extractUnits && hasScope) {
         try {
           const docContentHash = await firecrawl.computeContentHash(scrapeResult.markdown);
-          const units = await extractInformationUnits(supabase, scrapeResult.markdown, {
+          const { insertedCount } = await extractInformationUnits(supabase, scrapeResult.markdown, {
             scoutId: scout.id,
             userId: scout.user_id,
             executionId: executionId!,
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
             criteria: scout.criteria,
             contentHash: docContentHash,
           });
-          totalUnitsExtracted += units;
+          totalUnitsExtracted += insertedCount;
         } catch (error) {
           console.error(`[${executionId}] Unit extraction failed for ${docUrl}:`, error);
         }

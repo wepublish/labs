@@ -14,6 +14,13 @@ import { DEDUP_THRESHOLD, DEDUP_LOOKBACK_DAYS } from '../_shared/constants.ts';
 import { extractInformationUnits } from '../_shared/unit-extraction.ts';
 import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
 import { analyzeCriteria, summarizeContent } from '../_shared/criteria-analysis.ts';
+import {
+  extractLinksFromHtml,
+  validateDomain,
+  firecrawlDelay,
+} from '../_shared/civic-utils.ts';
+
+const SUBPAGE_FETCH_CAP = 10;
 
 const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
   .split(',')
@@ -105,7 +112,7 @@ Deno.serve(async (req) => {
 
     const scrapeResult = await firecrawl.scrape({
       url: scout.url,
-      formats: ['markdown'],
+      formats: ['markdown', 'rawHtml'],
       timeout: 60000,
       changeTrackingTag: useChangeTracking ? `scout-${scoutId}` : undefined,
     });
@@ -290,9 +297,10 @@ Deno.serve(async (req) => {
       .eq('id', executionId);
 
     // =========================================================================
-    // STEP 6: EXTRACT UNITS
+    // STEP 6: EXTRACT UNITS (Phase A)
     // =========================================================================
     let unitsExtracted = 0;
+    let indexIsListingPage = false;
 
     const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
     // Auto-mode scouts don't need a scout.location — the LLM assigns per unit.
@@ -300,7 +308,7 @@ Deno.serve(async (req) => {
 
     if (extractUnits && analysis.matches && hasScope) {
       try {
-        unitsExtracted = await extractInformationUnits(
+        const result = await extractInformationUnits(
           supabase,
           scrapeResult.markdown!,
           {
@@ -315,9 +323,111 @@ Deno.serve(async (req) => {
             contentHash: newHash ?? undefined,
           },
         );
+        unitsExtracted = result.insertedCount;
+        indexIsListingPage = result.isListingPage;
       } catch (error) {
         console.error(`[${executionId}] Unit extraction failed:`, error);
         // Continue without units
+      }
+    }
+
+    // =========================================================================
+    // STEP 6b: PHASE B — FOLLOW LISTING SUBPAGES
+    // =========================================================================
+    // When the LLM detects the index URL is a listing page, it refuses extraction
+    // (returns units:[] + isListingPage:true). Follow-up: fetch linked subpages,
+    // extract units per article body. Single-hop only (no recursion).
+    if (extractUnits && analysis.matches && hasScope && indexIsListingPage && scrapeResult.rawHtml) {
+      try {
+        const indexUrl = new URL(scout.url);
+        const indexPath = indexUrl.pathname.replace(/\/+$/, '');
+
+        // 1. Extract links
+        const links = extractLinksFromHtml(scrapeResult.rawHtml, scout.url);
+
+        // 2. Filter: same host (already enforced by extractLinksFromHtml),
+        //    path-prefix under the index URL, no traversal, validateDomain pass.
+        const candidateUrls = links
+          .map(([url]) => url)
+          .filter((url) => {
+            try {
+              const parsed = new URL(url);
+              const cleanPath = parsed.pathname.replace(/\/+$/, '');
+              if (!cleanPath.startsWith(indexPath + '/')) return false;
+              if (cleanPath.includes('..') || cleanPath.toLowerCase().includes('%2e%2e')) return false;
+              if (!validateDomain(parsed.hostname).valid) return false;
+              return true;
+            } catch {
+              return false;
+            }
+          });
+
+        // 3. Dedup against already-seen subpage URLs (derived from stored units).
+        const { data: seenRows } = await supabase
+          .from('information_units')
+          .select('source_url')
+          .eq('scout_id', scout.id)
+          .not('source_url', 'is', null);
+        const seen = new Set<string>(
+          (seenRows ?? []).map((r) => r.source_url as string),
+        );
+
+        const fresh = candidateUrls.filter((url) => !seen.has(url)).slice(0, SUBPAGE_FETCH_CAP);
+
+        console.log(
+          `[${executionId}] Phase B: ${links.length} links, ${candidateUrls.length} candidates, ${fresh.length} new (cap ${SUBPAGE_FETCH_CAP})`,
+        );
+
+        let subpageUnits = 0;
+        let subpagesProcessed = 0;
+        let subpagesFailed = 0;
+
+        for (let i = 0; i < fresh.length; i++) {
+          const subUrl = fresh[i];
+          if (i > 0) await firecrawlDelay();
+
+          const subScrape = await firecrawl.scrape({
+            url: subUrl,
+            formats: ['markdown'],
+            timeout: 60000,
+          });
+
+          if (!subScrape.success || !subScrape.markdown) {
+            subpagesFailed++;
+            console.warn(`[${executionId}] Phase B subpage scrape failed: ${subUrl} — ${subScrape.error}`);
+            continue;
+          }
+
+          try {
+            const subResult = await extractInformationUnits(supabase, subScrape.markdown, {
+              scoutId: scout.id,
+              userId: scout.user_id,
+              executionId: executionId!,
+              sourceUrl: subUrl,
+              location: scout.location,
+              topic: scout.topic,
+              locationMode,
+              criteria: scout.criteria,
+            });
+            if (subResult.isListingPage) {
+              // Single-hop: skip nested listings, do not recurse.
+              console.log(`[${executionId}] Phase B: skipping nested listing ${subUrl}`);
+              continue;
+            }
+            subpageUnits += subResult.insertedCount;
+            subpagesProcessed++;
+          } catch (error) {
+            subpagesFailed++;
+            console.error(`[${executionId}] Phase B extraction failed for ${subUrl}:`, error);
+          }
+        }
+
+        unitsExtracted += subpageUnits;
+        console.log(
+          `[${executionId}] Phase B: processed ${subpagesProcessed}/${fresh.length} subpages (${subpageUnits} units, ${subpagesFailed} failed)`,
+        );
+      } catch (error) {
+        console.error(`[${executionId}] Phase B failed:`, error);
       }
     }
 
