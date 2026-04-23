@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench:dorfkoenig": "tsx src/dorfkoenig/supabase/functions/_tests/bench/run.ts",
-    "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts"
+    "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
+    "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.46.0",
