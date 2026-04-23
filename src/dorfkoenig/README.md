@@ -166,10 +166,10 @@ npm run dev
 
 ```bash
 # Start local Supabase
-supabase start --workdir ./src/dorfkoenig/supabase
+npm run supabase:dorfkoenig -- start
 
 # Serve Edge Functions locally
-supabase functions serve --workdir ./src/dorfkoenig/supabase
+npm run supabase:dorfkoenig -- functions serve
 ```
 
 ## Deployment
@@ -177,14 +177,23 @@ supabase functions serve --workdir ./src/dorfkoenig/supabase
 ### 1. Push Database Schema
 
 ```bash
-supabase db push --workdir ./src/dorfkoenig/supabase
+# Includes a migration-history guard. This will fail until local and remote
+# migration history are reconciled.
+npm run deploy:dorfkoenig:schema
 ```
 
 ### 2. Deploy Edge Functions
 
 ```bash
-supabase functions deploy --workdir ./src/dorfkoenig/supabase
+npm run supabase:dorfkoenig:check
+npm run supabase:dorfkoenig -- functions deploy
+
+# Single function deploys should also go through the wrapper so the CLI bundles
+# from src/dorfkoenig/supabase/functions/* instead of the repo root.
+npm run deploy:dorfkoenig:function -- manual-upload
 ```
+
+For internal releases, use the checklist in `src/dorfkoenig/RELEASE.md`.
 
 ### 3. Configure pg_cron Jobs
 

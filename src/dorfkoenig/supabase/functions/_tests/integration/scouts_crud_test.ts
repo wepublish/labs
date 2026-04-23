@@ -157,7 +157,7 @@ Deno.test({
       url: 'https://example.com',
       criteria: '',
       frequency: 'daily',
-      location: null,
+      location: { city: 'Zurich', country: 'Switzerland' },
       notification_email: null,
     };
 

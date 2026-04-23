@@ -33,7 +33,10 @@ const VALID_DRAFT = {
   village_name: 'Riehen',
   title: 'Integration Test Entwurf',
   body: 'Testinhalt für den Integrationsentwurf.',
-  selected_unit_ids: ['test-unit-1', 'test-unit-2'],
+  selected_unit_ids: [
+    '11111111-1111-4111-8111-111111111111',
+    '22222222-2222-4222-8222-222222222222',
+  ],
   custom_system_prompt: null,
 };
 

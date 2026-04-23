@@ -195,7 +195,9 @@ async function handleTextUpload(
     .from('newspaper_jobs')
     .insert({
       user_id: userId,
-      storage_path: null,
+      // Manual text jobs do not have an underlying file, but the table
+      // requires a non-null storage_path.
+      storage_path: '',
       publication_date: publicationDate,
       label,
       status: 'processing',

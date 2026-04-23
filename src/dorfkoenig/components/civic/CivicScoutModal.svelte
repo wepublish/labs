@@ -288,11 +288,12 @@
         {:else if step === 2}
           <!-- STEP 2: Test extraction -->
           <div class="field-group">
-            <label class="field-label">
+            <label class="field-label" for="civic-scout-criteria">
               Kriterien
               <span class="field-hint">(optional — leer lassen für alle Versprechen)</span>
             </label>
             <textarea
+              id="civic-scout-criteria"
               bind:value={criteria}
               placeholder="z.B. Wohnungspolitik, Infrastruktur, Budget"
               class="form-textarea"

@@ -77,8 +77,12 @@
           <ChevronDown size={12} />
         </button>
         {#if showTypePopover}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="popover-backdrop" onclick={closePopover}></div>
+          <button
+            aria-label="Auswahl schliessen"
+            class="popover-backdrop"
+            onclick={closePopover}
+            type="button"
+          ></button>
           <div class="type-popover">
             <button class="popover-option" onclick={handleNewWebScout} type="button">
               <Globe size={16} />

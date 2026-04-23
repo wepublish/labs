@@ -15,8 +15,9 @@
   let { loading, villages, prefilledLocation, onrun, onclose }: Props = $props();
 
   // Steps: 'location' | 'options'
-  let step = $state<'location' | 'options'>(prefilledLocation ? 'options' : 'location');
-  let selectedVillage = $state<string | null>(prefilledLocation);
+  let step = $state<'location' | 'options'>('location');
+  let selectedVillage = $state<string | null>(null);
+  let lastPrefilledLocation = $state<string | null>(null);
 
   let useRecencyFilter = $state(true);
   let recencyDays = $state(3);
@@ -27,11 +28,16 @@
     recencyDays === 1 ? '1 Tag' : `${recencyDays} Tage`
   );
 
-  // If prefilled changes while open, update
   $effect(() => {
+    if (prefilledLocation === lastPrefilledLocation) return;
+
+    lastPrefilledLocation = prefilledLocation;
     if (prefilledLocation) {
       selectedVillage = prefilledLocation;
       step = 'options';
+    } else {
+      selectedVillage = null;
+      step = 'location';
     }
   });
 

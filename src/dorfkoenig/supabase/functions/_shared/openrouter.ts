@@ -5,8 +5,15 @@ import {
   OPENROUTER_EMBEDDING_TIMEOUT_MS,
 } from './constants.ts';
 
-const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')!;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+function getOpenRouterApiKey(): string {
+  const key = Deno.env.get('OPENROUTER_API_KEY');
+  if (!key) {
+    throw new Error('OPENROUTER_API_KEY is not set');
+  }
+  return key;
+}
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -86,7 +93,7 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterApiKey()}`,
         'HTTP-Referer': 'https://dorfkoenig.labs.wepublish.ch',
         'X-Title': 'DorfKönig',
       },
@@ -133,7 +140,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterApiKey()}`,
       },
       body: JSON.stringify({
         model: 'openai/text-embedding-3-small',
@@ -172,7 +179,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterApiKey()}`,
       },
       body: JSON.stringify({
         model: 'openai/text-embedding-3-small',
