@@ -6,12 +6,18 @@
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
-import { createServiceClient } from '../_shared/supabase-client.ts';
+import { createServiceClient, type Scout } from '../_shared/supabase-client.ts';
+import { upsertCanonicalUnit } from '../_shared/canonical-units.ts';
+import { embeddings } from '../_shared/embeddings.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
 import { resend } from '../_shared/resend.ts';
 import { extractInformationUnits } from '../_shared/unit-extraction.ts';
 import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
 import { MAX_DOCS_PER_RUN, PROCESSED_URLS_CAP } from '../_shared/civic-constants.ts';
+import {
+  PRIMARY_EXTRACTION_TIMEOUT_MS,
+  PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
+} from '../_shared/constants.ts';
 import {
   extractLinksFromHtml,
   classifyMeetingUrls,
@@ -46,26 +52,29 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
   const supabase = createServiceClient();
+  let executionId: string | undefined;
+  let scout: Scout | null = null;
 
   try {
     const body: ExecuteRequest = await req.json();
     const { scoutId, skipNotification = false, extractUnits = true } = body;
-    let { executionId } = body;
+    executionId = body.executionId;
 
     if (!scoutId) {
       return errorResponse('Scout ID erforderlich', 400);
     }
 
     // Fetch scout
-    const { data: scout, error: scoutError } = await supabase
+    const { data: fetchedScout, error: scoutError } = await supabase
       .from('scouts')
       .select('*')
       .eq('id', scoutId)
       .single();
 
-    if (scoutError || !scout) {
+    if (scoutError || !fetchedScout) {
       return errorResponse('Scout nicht gefunden', 404);
     }
+    scout = fetchedScout;
 
     if (scout.scout_type !== 'civic') {
       return errorResponse('Kein Civic Scout', 400);
@@ -210,6 +219,7 @@ Deno.serve(async (req) => {
     const allPromises: ExtractedPromise[] = [];
     const successfulUrls: string[] = [];
     let totalUnitsExtracted = 0;
+    let mergedExistingCount = 0;
 
     for (let i = 0; i < batch.length; i++) {
       await shortDelay();
@@ -223,7 +233,7 @@ Deno.serve(async (req) => {
       const scrapeResult = await firecrawl.scrape({
         url: docUrl,
         formats: ['markdown'],
-        timeout: 60000,
+        timeout: PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
         pdfMode: 'fast',
       });
 
@@ -252,7 +262,7 @@ Deno.serve(async (req) => {
       if (extractUnits && hasScope) {
         try {
           const docContentHash = await firecrawl.computeContentHash(scrapeResult.markdown);
-          const { insertedCount } = await extractInformationUnits(supabase, scrapeResult.markdown, {
+          const { insertedCount, mergedExistingCount: extractionMerges } = await extractInformationUnits(supabase, scrapeResult.markdown, {
             scoutId: scout.id,
             userId: scout.user_id,
             executionId: executionId!,
@@ -262,8 +272,10 @@ Deno.serve(async (req) => {
             locationMode,
             criteria: scout.criteria,
             contentHash: docContentHash,
+            extractionTimeoutMs: PRIMARY_EXTRACTION_TIMEOUT_MS,
           });
           totalUnitsExtracted += insertedCount;
+          mergedExistingCount += extractionMerges;
         } catch (error) {
           console.error(`[${executionId}] Unit extraction failed for ${docUrl}:`, error);
         }
@@ -277,10 +289,42 @@ Deno.serve(async (req) => {
     const filtered = filterPromises(allPromises, !!scout.criteria);
 
     if (filtered.length > 0) {
-      for (const promise of filtered) {
-        await supabase.from('promises').insert({
+      const promiseEmbeddings = await embeddings.generateBatch(filtered.map((promise) => promise.promise_text));
+
+      for (let i = 0; i < filtered.length; i++) {
+        const promise = filtered[i];
+        const promiseResult = await upsertCanonicalUnit(supabase, {
+          userId: scout.user_id,
+          scoutId,
+          executionId: executionId!,
+          statement: promise.promise_text,
+          unitType: 'promise',
+          entities: [],
+          sourceUrl: promise.source_url,
+          sourceDomain: promise.source_url ? firecrawl.getDomain(promise.source_url) : 'manual',
+          sourceTitle: promise.source_title,
+          location: scout.location,
+          topic: scout.topic,
+          embedding: promiseEmbeddings[i],
+          eventDate: promise.due_date || promise.source_date || null,
+          publicationDate: promise.source_date || null,
+          reviewRequired: false,
+          qualityScore: null,
+          sourceType: 'scout',
+          contentSha256: contentHash,
+          contextExcerpt: promise.context,
+        });
+
+        if (promiseResult.createdNew) {
+          totalUnitsExtracted++;
+        } else if (promiseResult.mergedExisting && promiseResult.attachedOccurrence) {
+          mergedExistingCount++;
+        }
+
+        const { error: promiseInsertError } = await supabase.from('promises').insert({
           scout_id: scoutId,
           user_id: scout.user_id,
+          unit_id: promiseResult.unitId,
           promise_text: promise.promise_text,
           context: promise.context,
           source_url: promise.source_url,
@@ -290,6 +334,10 @@ Deno.serve(async (req) => {
           date_confidence: promise.date_confidence,
           status: 'new',
         });
+
+        if (promiseInsertError && promiseInsertError.code !== '23505') {
+          throw promiseInsertError;
+        }
       }
       console.log(`[${executionId}] Stored ${filtered.length} promise(s)`);
     }
@@ -365,6 +413,7 @@ Deno.serve(async (req) => {
         summary_text: summaryText,
         notification_sent: notificationSent,
         units_extracted: totalUnitsExtracted,
+        merged_existing_count: mergedExistingCount,
         scrape_duration_ms: scrapeDurationMs,
       })
       .eq('id', executionId);
@@ -387,6 +436,15 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('execute-civic-scout error:', error);
-    return errorResponse(error.message, 500);
+    if (executionId && scout) {
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        await updateExecutionFailed(supabase, executionId, scout, message);
+      } catch (finalizeError) {
+        console.error(`[${executionId}] Failed to finalize civic execution after top-level error:`, finalizeError);
+      }
+      return errorResponse(message, 500);
+    }
+    return errorResponse(error instanceof Error ? error.message : String(error), 500);
   }
 });

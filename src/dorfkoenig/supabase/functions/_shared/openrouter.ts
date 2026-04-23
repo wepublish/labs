@@ -1,5 +1,10 @@
 // OpenRouter API client for LLM operations
 
+import {
+  OPENROUTER_CHAT_TIMEOUT_MS,
+  OPENROUTER_EMBEDDING_TIMEOUT_MS,
+} from './constants.ts';
+
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')!;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -37,6 +42,7 @@ interface ChatOptions {
   response_format?: { type: 'json_object' };
   tools?: ChatTool[];
   tool_choice?: ChatToolChoice;
+  timeout_ms?: number;
 }
 
 interface ChatResponse {
@@ -69,33 +75,47 @@ export async function chat(options: ChatOptions): Promise<ChatResponse> {
     response_format,
     tools,
     tool_choice,
+    timeout_ms = OPENROUTER_CHAT_TIMEOUT_MS,
   } = options;
 
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://dorfkoenig.labs.wepublish.ch',
-      'X-Title': 'DorfKönig',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature,
-      max_tokens,
-      ...(response_format && { response_format }),
-      ...(tools && { tools }),
-      ...(tool_choice && { tool_choice }),
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://dorfkoenig.labs.wepublish.ch',
+        'X-Title': 'DorfKönig',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature,
+        max_tokens,
+        ...(response_format && { response_format }),
+        ...(tools && { tools }),
+        ...(tool_choice && { tool_choice }),
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`OpenRouter chat request timed out after ${timeout_ms}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 const MAX_EMBEDDING_CHARS = 30000;
@@ -105,25 +125,38 @@ const MAX_EMBEDDING_CHARS = 30000;
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const truncated = text.slice(0, MAX_EMBEDDING_CHARS);
-  const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'openai/text-embedding-3-small',
-      input: truncated,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENROUTER_EMBEDDING_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter Embedding API error: ${response.status} - ${error}`);
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: truncated,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter Embedding API error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.data[0].embedding;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`OpenRouter embedding request timed out after ${OPENROUTER_EMBEDDING_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return data.data[0].embedding;
 }
 
 /**
@@ -131,25 +164,38 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const truncated = texts.map(t => t.slice(0, MAX_EMBEDDING_CHARS));
-  const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'openai/text-embedding-3-small',
-      input: truncated,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENROUTER_EMBEDDING_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter Embedding API error: ${response.status} - ${error}`);
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: truncated,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter Embedding API error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.data.map((d: { embedding: number[] }) => d.embedding);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`OpenRouter embedding request timed out after ${OPENROUTER_EMBEDDING_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return data.data.map((d: { embedding: number[] }) => d.embedding);
 }
 
 /**

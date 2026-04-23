@@ -97,6 +97,7 @@ export interface CivicTestResult {
 export interface Promise {
   id: string;
   scout_id: string;
+  unit_id?: string | null;
   promise_text: string;
   context: string | null;
   source_url: string | null;
@@ -127,6 +128,7 @@ export interface Execution {
   notification_sent: boolean;
   notification_error: string | null;
   units_extracted: number;
+  merged_existing_count?: number;
   scrape_duration_ms?: number | null;
   summary_text: string | null;
   error_message: string | null;
@@ -136,7 +138,7 @@ export interface Execution {
 export interface InformationUnit {
   id: string;
   statement: string;
-  unit_type: 'fact' | 'event' | 'entity_update';
+  unit_type: 'fact' | 'event' | 'entity_update' | 'promise';
   entities: string[];
   source_url: string;
   source_domain: string;
@@ -150,6 +152,9 @@ export interface InformationUnit {
   created_at: string;
   used_in_article: boolean;
   event_date?: string | null;
+  occurrence_count?: number;
+  sources?: Array<{ title: string | null; url: string; domain: string }>;
+  linked_scouts?: string[];
   similarity?: number;
   /** Auto-mode metadata (null for manual-mode and legacy rows). */
   village_confidence?: VillageConfidence | null;
@@ -296,4 +301,3 @@ export interface ApiError {
     code: string;
   };
 }
-

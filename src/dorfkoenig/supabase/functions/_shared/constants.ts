@@ -28,6 +28,18 @@ export const MAX_UNITS_PER_COMPOSE = 20;
 /** Default timeout per Firecrawl call within double-probe (ms) */
 export const DOUBLE_PROBE_TIMEOUT_MS = 30_000;
 
+/** Explicit runtime budgets for web scout execution. */
+export const PRIMARY_PAGE_SCRAPE_TIMEOUT_MS = 60_000;
+export const PRIMARY_ANALYSIS_TIMEOUT_MS = 30_000;
+export const PRIMARY_EXTRACTION_TIMEOUT_MS = 45_000;
+export const SUBPAGE_SCRAPE_TIMEOUT_MS = 30_000;
+export const SUBPAGE_EXTRACTION_TIMEOUT_MS = 30_000;
+export const PHASE_B_TOTAL_BUDGET_MS = 90_000;
+
+/** Shared OpenRouter request budgets for scout-critical calls. */
+export const OPENROUTER_CHAT_TIMEOUT_MS = 30_000;
+export const OPENROUTER_EMBEDDING_TIMEOUT_MS = 20_000;
+
 /** Lookback window for execution deduplication (days) */
 export const DEDUP_LOOKBACK_DAYS = 30;
 

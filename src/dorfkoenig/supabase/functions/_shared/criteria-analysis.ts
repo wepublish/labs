@@ -9,6 +9,7 @@
  */
 
 import { openrouter } from './openrouter.ts';
+import { PRIMARY_ANALYSIS_TIMEOUT_MS } from './constants.ts';
 
 export interface AnalysisResult {
   matches: boolean;
@@ -68,10 +69,11 @@ Analysiere den Inhalt und antworte im JSON-Format.`;
     ],
     temperature: 0.2,
     response_format: { type: 'json_object' },
+    timeout_ms: PRIMARY_ANALYSIS_TIMEOUT_MS,
   });
 
   try {
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content ?? '{}');
     return {
       matches: result.matches ?? false,
       summary: (result.summary || '').slice(0, 150),
@@ -127,10 +129,11 @@ Fasse den Inhalt kurz zusammen und antworte im JSON-Format.`;
     ],
     temperature: 0.2,
     response_format: { type: 'json_object' },
+    timeout_ms: PRIMARY_ANALYSIS_TIMEOUT_MS,
   });
 
   try {
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content ?? '{}');
     return {
       matches: true,
       summary: (result.summary || '').slice(0, 150),

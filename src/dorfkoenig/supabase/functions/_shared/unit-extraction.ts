@@ -18,8 +18,12 @@
 import { createServiceClient } from './supabase-client.ts';
 import { openrouter } from './openrouter.ts';
 import { embeddings } from './embeddings.ts';
+import { upsertCanonicalUnit } from './canonical-units.ts';
 import { firecrawl } from './firecrawl.ts';
-import { UNIT_DEDUP_THRESHOLD } from './constants.ts';
+import {
+  PRIMARY_EXTRACTION_TIMEOUT_MS,
+  UNIT_DEDUP_THRESHOLD,
+} from './constants.ts';
 import {
   buildWebExtractionPrompt,
   WEB_EXTRACTION_PROMPT_VERSION,
@@ -52,6 +56,8 @@ interface UnitExtractionParams {
   criteria?: string | null;
   /** Content hash from firecrawl; enables extraction-cache hits in auto mode. */
   contentHash?: string;
+  /** Timeout budget for extraction LLM calls. */
+  extractionTimeoutMs?: number;
 }
 
 interface ProcessedUnit {
@@ -72,6 +78,7 @@ interface ProcessedUnit {
 
 export interface ExtractionResult {
   insertedCount: number;
+  mergedExistingCount: number;
   isListingPage: boolean;
 }
 
@@ -87,11 +94,11 @@ export async function extractInformationUnits(
       : await extractUnitsManual(content, params);
 
   if (units.length === 0) {
-    return { insertedCount: 0, isListingPage };
+    return { insertedCount: 0, mergedExistingCount: 0, isListingPage };
   }
 
-  const insertedCount = await dedupAndStore(supabase, units, params);
-  return { insertedCount, isListingPage };
+  const { insertedCount, mergedExistingCount } = await dedupAndStore(supabase, units, params);
+  return { insertedCount, mergedExistingCount, isListingPage };
 }
 
 // ── Manual mode (legacy) ──────────────────────────────────────────
@@ -143,6 +150,7 @@ AUSGABEFORMAT (JSON):
     ],
     temperature: 0.1,
     response_format: { type: 'json_object' },
+    timeout_ms: params.extractionTimeoutMs ?? PRIMARY_EXTRACTION_TIMEOUT_MS,
   });
 
   let raw: { statement: string; unitType: string; entities: string[]; eventDate?: string | null }[] = [];
@@ -204,6 +212,7 @@ async function extractUnitsAuto(
       temperature: 0.1,
       max_tokens: 4000,
       response_format: { type: 'json_object' },
+      timeout_ms: params.extractionTimeoutMs ?? PRIMARY_EXTRACTION_TIMEOUT_MS,
     });
 
     try {
@@ -270,47 +279,17 @@ async function dedupAndStore(
   supabase: ReturnType<typeof createServiceClient>,
   units: ProcessedUnit[],
   params: UnitExtractionParams,
-): Promise<number> {
+): Promise<{ insertedCount: number; mergedExistingCount: number }> {
   const statements = units.map((u) => u.statement);
   const unitEmbeddings = await embeddings.generateBatch(statements);
   const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
 
   const domain = firecrawl.getDomain(params.sourceUrl);
 
-  // Cross-run dedup: batch dual-signal match against the last 30 days. One RPC
-  // per extraction, not one per unit. Matches are skipped here; the UNIQUE
-  // partial index on (user_id, scout_id, md5(statement)) catches any remaining
-  // race-condition collisions with a 23505 error below.
-  const candidates = uniqueIndices.map((i) => {
-    const unit = units[i];
-    const city = unit.location?.city ? normalizeCity(unit.location.city) : null;
-    return { idx: i, embedding: unitEmbeddings[i], city, statement: unit.statement };
-  });
-  const skipIndices = new Set<number>();
-  if (candidates.length > 0) {
-    const { data: matches, error: matchErr } = await supabase.rpc('find_similar_units_batch', {
-      p_user_id: params.userId,
-      p_candidates: candidates,
-    });
-    if (matchErr) {
-      console.error('[unit-extraction] dedup rpc failed; proceeding without cross-run dedup', matchErr);
-    } else if (Array.isArray(matches)) {
-      for (const m of matches as { candidate_idx: number; matched_id: string; cosine: number; trgm: number }[]) {
-        skipIndices.add(m.candidate_idx);
-        console.log('[unit-extraction] dedup skip', {
-          existing_id: m.matched_id,
-          cosine: m.cosine,
-          trgm: m.trgm,
-          new_statement: units[m.candidate_idx].statement.slice(0, 120),
-        });
-      }
-    }
-  }
-
   let storedCount = 0;
+  let mergedExistingCount = 0;
 
   for (const i of uniqueIndices) {
-    if (skipIndices.has(i)) continue;
     const unit = units[i];
     const normalizedLocation = unit.location?.city
       ? { ...unit.location, city: normalizeCity(unit.location.city) }
@@ -327,44 +306,48 @@ async function dedupAndStore(
       sensitivity: unit.sensitivity ?? null,
     });
 
-    const { error } = await supabase.from('information_units').insert({
-      user_id: params.userId,
-      scout_id: params.scoutId,
-      execution_id: params.executionId,
+    const result = await upsertCanonicalUnit(supabase, {
+      userId: params.userId,
+      scoutId: params.scoutId,
+      executionId: params.executionId,
       statement: unit.statement,
-      unit_type: unit.unitType,
+      unitType: unit.unitType,
       entities: unit.entities,
-      source_url: params.sourceUrl,
-      source_domain: domain,
-      source_title: null,
+      sourceUrl: params.sourceUrl,
+      sourceDomain: domain,
+      sourceTitle: null,
       location: normalizedLocation,
       topic: params.topic || null,
       embedding: unitEmbeddings[i],
-      event_date: unit.eventDate,
-      village_confidence: unit.villageConfidence,
-      review_required: unit.reviewRequired,
-      assignment_path: unit.assignmentPath,
-      publication_date: unit.publicationDate ?? null,
+      eventDate: unit.eventDate,
+      villageConfidence: unit.villageConfidence,
+      reviewRequired: unit.reviewRequired,
+      assignmentPath: unit.assignmentPath,
+      publicationDate: unit.publicationDate ?? null,
       sensitivity: unit.sensitivity ?? null,
-      is_listing_page: unit.isListingPage ?? false,
-      article_url: unit.articleUrl ?? null,
-      quality_score: qualityScore,
+      isListingPage: unit.isListingPage ?? false,
+      articleUrl: unit.articleUrl ?? null,
+      qualityScore,
+      sourceType: 'scout',
+      contentSha256: params.contentHash ?? null,
+      contextExcerpt: unit.statement,
     });
 
-    if (!error) {
+    if (result.createdNew) {
       storedCount++;
-      if (unit.assignmentPath) {
-        console.log('[unit-extraction]', {
-          scoutId: params.scoutId,
-          assignmentPath: unit.assignmentPath,
-          villageId: unit.location?.city ?? null,
-        });
-      }
-    } else if (error.code === '23505') {
-      // UNIQUE partial index race guard — peer inserted this statement first.
-      console.log('[unit-extraction] dedup race lost', { statement: unit.statement.slice(0, 120) });
+    } else if (result.mergedExisting && result.attachedOccurrence) {
+      mergedExistingCount++;
+    }
+
+    if (unit.assignmentPath && result.attachedOccurrence) {
+      console.log('[unit-extraction]', {
+        scoutId: params.scoutId,
+        assignmentPath: unit.assignmentPath,
+        villageId: unit.location?.city ?? null,
+        mergedExisting: result.mergedExisting,
+      });
     }
   }
 
-  return storedCount;
+  return { insertedCount: storedCount, mergedExistingCount };
 }

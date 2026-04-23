@@ -6,6 +6,7 @@
  */
 
 import { openrouter } from './openrouter.ts';
+import { PRIMARY_ANALYSIS_TIMEOUT_MS, PRIMARY_EXTRACTION_TIMEOUT_MS } from './constants.ts';
 import {
   MEETING_KEYWORDS,
   DENYLIST_EXTENSIONS,
@@ -213,6 +214,7 @@ ${numberedLines.join('\n')}
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.1,
     response_format: { type: 'json_object' },
+    timeout_ms: PRIMARY_ANALYSIS_TIMEOUT_MS,
   });
 
   try {
@@ -324,6 +326,7 @@ JSON array:`;
     const response = await openrouter.chat({
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
+      timeout_ms: PRIMARY_EXTRACTION_TIMEOUT_MS,
     });
 
     const llmText = response.choices[0].message.content ?? '';

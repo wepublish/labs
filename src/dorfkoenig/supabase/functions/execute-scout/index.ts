@@ -6,11 +6,19 @@
  */
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
-import { createServiceClient } from '../_shared/supabase-client.ts';
+import { createServiceClient, type Scout } from '../_shared/supabase-client.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { resend } from '../_shared/resend.ts';
-import { DEDUP_THRESHOLD, DEDUP_LOOKBACK_DAYS } from '../_shared/constants.ts';
+import {
+  DEDUP_THRESHOLD,
+  DEDUP_LOOKBACK_DAYS,
+  PHASE_B_TOTAL_BUDGET_MS,
+  PRIMARY_EXTRACTION_TIMEOUT_MS,
+  PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
+  SUBPAGE_EXTRACTION_TIMEOUT_MS,
+  SUBPAGE_SCRAPE_TIMEOUT_MS,
+} from '../_shared/constants.ts';
 import { extractInformationUnits } from '../_shared/unit-extraction.ts';
 import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
 import { analyzeCriteria, summarizeContent } from '../_shared/criteria-analysis.ts';
@@ -41,26 +49,29 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
   const supabase = createServiceClient();
+  let executionId: string | undefined;
+  let scout: Scout | null = null;
 
   try {
     const body: ExecuteRequest = await req.json();
     const { scoutId, skipNotification = false, extractUnits = true } = body;
-    let { executionId } = body;
+    executionId = body.executionId;
 
     if (!scoutId) {
       return errorResponse('Scout ID erforderlich', 400);
     }
 
     // Fetch scout
-    const { data: scout, error: scoutError } = await supabase
+    const { data: fetchedScout, error: scoutError } = await supabase
       .from('scouts')
       .select('*')
       .eq('id', scoutId)
       .single();
 
-    if (scoutError || !scout) {
+    if (scoutError || !fetchedScout) {
       return errorResponse('Scout nicht gefunden', 404);
     }
+    scout = fetchedScout;
 
     // Only web scouts use this pipeline; civic scouts use execute-civic-scout
     if (!scout.url) {
@@ -113,7 +124,7 @@ Deno.serve(async (req) => {
     const scrapeResult = await firecrawl.scrape({
       url: scout.url,
       formats: ['markdown', 'rawHtml'],
-      timeout: 60000,
+      timeout: PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
       changeTrackingTag: useChangeTracking ? `scout-${scoutId}` : undefined,
     });
 
@@ -300,6 +311,7 @@ Deno.serve(async (req) => {
     // STEP 6: EXTRACT UNITS (Phase A)
     // =========================================================================
     let unitsExtracted = 0;
+    let mergedExistingCount = 0;
     let indexIsListingPage = false;
 
     const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
@@ -321,9 +333,11 @@ Deno.serve(async (req) => {
             locationMode,
             criteria: scout.criteria,
             contentHash: newHash ?? undefined,
+            extractionTimeoutMs: PRIMARY_EXTRACTION_TIMEOUT_MS,
           },
         );
         unitsExtracted = result.insertedCount;
+        mergedExistingCount = result.mergedExistingCount;
         indexIsListingPage = result.isListingPage;
       } catch (error) {
         console.error(`[${executionId}] Unit extraction failed:`, error);
@@ -347,7 +361,7 @@ Deno.serve(async (req) => {
 
         // 3. Dedup against already-seen subpage URLs (derived from stored units).
         const { data: seenRows } = await supabase
-          .from('information_units')
+          .from('unit_occurrences')
           .select('source_url')
           .eq('scout_id', scout.id)
           .not('source_url', 'is', null);
@@ -362,17 +376,33 @@ Deno.serve(async (req) => {
         );
 
         let subpageUnits = 0;
+        let subpageMerges = 0;
         let subpagesProcessed = 0;
         let subpagesFailed = 0;
+        const phaseBStartedAt = Date.now();
 
         for (let i = 0; i < fresh.length; i++) {
+          const phaseBElapsedMs = Date.now() - phaseBStartedAt;
+          if (phaseBElapsedMs >= PHASE_B_TOTAL_BUDGET_MS) {
+            console.log(
+              `[${executionId}] Phase B budget exhausted after ${phaseBElapsedMs}ms; stopping before remaining subpages`,
+            );
+            break;
+          }
+
           const subUrl = fresh[i];
           if (i > 0) await firecrawlDelay();
+
+          const scrapeBudgetMs = PHASE_B_TOTAL_BUDGET_MS - (Date.now() - phaseBStartedAt);
+          if (scrapeBudgetMs <= 0) {
+            console.log(`[${executionId}] Phase B budget exhausted before subpage scrape ${subUrl}`);
+            break;
+          }
 
           const subScrape = await firecrawl.scrape({
             url: subUrl,
             formats: ['markdown'],
-            timeout: 60000,
+            timeout: Math.min(SUBPAGE_SCRAPE_TIMEOUT_MS, scrapeBudgetMs),
           });
 
           if (!subScrape.success || !subScrape.markdown) {
@@ -382,6 +412,12 @@ Deno.serve(async (req) => {
           }
 
           try {
+            const extractionBudgetMs = PHASE_B_TOTAL_BUDGET_MS - (Date.now() - phaseBStartedAt);
+            if (extractionBudgetMs <= 0) {
+              console.log(`[${executionId}] Phase B budget exhausted before subpage extraction ${subUrl}`);
+              break;
+            }
+
             const subResult = await extractInformationUnits(supabase, subScrape.markdown, {
               scoutId: scout.id,
               userId: scout.user_id,
@@ -391,6 +427,7 @@ Deno.serve(async (req) => {
               topic: scout.topic,
               locationMode,
               criteria: scout.criteria,
+              extractionTimeoutMs: Math.min(SUBPAGE_EXTRACTION_TIMEOUT_MS, extractionBudgetMs),
             });
             if (subResult.isListingPage) {
               // Single-hop: skip nested listings, do not recurse.
@@ -398,6 +435,7 @@ Deno.serve(async (req) => {
               continue;
             }
             subpageUnits += subResult.insertedCount;
+            subpageMerges += subResult.mergedExistingCount;
             subpagesProcessed++;
           } catch (error) {
             subpagesFailed++;
@@ -406,8 +444,9 @@ Deno.serve(async (req) => {
         }
 
         unitsExtracted += subpageUnits;
+        mergedExistingCount += subpageMerges;
         console.log(
-          `[${executionId}] Phase B: processed ${subpagesProcessed}/${fresh.length} subpages (${subpageUnits} units, ${subpagesFailed} failed)`,
+          `[${executionId}] Phase B: processed ${subpagesProcessed}/${fresh.length} subpages (${subpageUnits} units, ${subpageMerges} merges, ${subpagesFailed} failed)`,
         );
       } catch (error) {
         console.error(`[${executionId}] Phase B failed:`, error);
@@ -480,6 +519,7 @@ Deno.serve(async (req) => {
         notification_sent: notificationSent,
         notification_error: notificationError,
         units_extracted: unitsExtracted,
+        merged_existing_count: mergedExistingCount,
       })
       .eq('id', executionId);
 
@@ -501,8 +541,15 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('Execute scout error:', error);
-    return errorResponse(error.message, 500);
+    if (executionId && scout) {
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        await updateExecutionFailed(supabase, executionId, scout, message);
+      } catch (finalizeError) {
+        console.error(`[${executionId}] Failed to finalize execution after top-level error:`, finalizeError);
+      }
+      return errorResponse(message, 500);
+    }
+    return errorResponse(error instanceof Error ? error.message : String(error), 500);
   }
 });
-
-

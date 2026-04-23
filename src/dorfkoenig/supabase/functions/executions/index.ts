@@ -68,6 +68,7 @@ async function listExecutions(
       is_duplicate,
       notification_sent,
       units_extracted,
+      merged_existing_count,
       summary_text,
       error_message,
       created_at,
@@ -109,6 +110,7 @@ async function listExecutions(
     is_duplicate: e.is_duplicate,
     notification_sent: e.notification_sent,
     units_extracted: e.units_extracted,
+    merged_existing_count: e.merged_existing_count,
     summary_text: e.summary_text,
     error_message: e.error_message,
   }));
@@ -155,11 +157,20 @@ async function getExecution(
   }
 
   // Fetch units extracted in this execution
-  const { data: units } = await supabase
-    .from('information_units')
-    .select('id, statement, unit_type, entities, created_at')
+  const { data: occurrences } = await supabase
+    .from('unit_occurrences')
+    .select(`
+      extracted_at,
+      information_units!inner (
+        id,
+        statement,
+        unit_type,
+        entities,
+        created_at
+      )
+    `)
     .eq('execution_id', executionId)
-    .order('created_at', { ascending: true });
+    .order('extracted_at', { ascending: true });
 
   return jsonResponse({
     data: {
@@ -176,10 +187,16 @@ async function getExecution(
       notification_sent: execution.notification_sent,
       notification_error: execution.notification_error,
       units_extracted: execution.units_extracted,
+      merged_existing_count: execution.merged_existing_count ?? 0,
       scrape_duration_ms: execution.scrape_duration_ms,
       summary_text: execution.summary_text,
       error_message: execution.error_message,
-      units: units || [],
+      units: [...new Map(
+        (occurrences || [])
+          .map((occurrence) => occurrence.information_units)
+          .filter(Boolean)
+          .map((unit) => [unit.id, unit] as const),
+      ).values()],
     },
   });
 }
