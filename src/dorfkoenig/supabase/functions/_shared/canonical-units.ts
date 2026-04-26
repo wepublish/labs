@@ -30,6 +30,8 @@ export interface CanonicalUnitInput {
   contentSha256?: string | null;
   contextExcerpt?: string | null;
   extractedAt?: string | null;
+  /** Set when the occurrence originates from an external published draft. */
+  draftId?: string | null;
 }
 
 export interface CanonicalUpsertResult {
@@ -94,6 +96,7 @@ export async function upsertCanonicalUnit(
     p_statement_hash: statementHash,
     p_context_excerpt: input.contextExcerpt ?? null,
     p_extracted_at: input.extractedAt ?? null,
+    p_draft_id: input.draftId ?? null,
   });
 
   if (error) {

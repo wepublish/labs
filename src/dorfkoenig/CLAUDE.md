@@ -86,7 +86,15 @@ src/dorfkoenig/
 │       ├── README.md
 │       └── {village}/{YYYY-MM-DD}.md
 ├── scripts/               # Local CLI tooling
-│   └── ingest-feedback.ts # `npm run ingest:feedback -- --file ...`
+│   ├── ingest-feedback.ts        # `npm run ingest:feedback -- --file ...`
+│   └── submit-published-draft.ts # `npm run submit:published -- --village <id> --date YYYY-MM-DD --file <md>`
+│                                  # Uploads an actually-published newsletter as a bajour_drafts row with
+│                                  # provider='external' + published_at=now(). The bajour-drafts edge function
+│                                  # extracts atomic units, routes through upsertCanonicalUnit() with draft_id
+│                                  # set, and seeds bajour_feedback_examples (kind='positive') so the dedup
+│                                  # signal + few-shot pool grow from one upload. Temporary bridge until the
+│                                  # external API webhook marks Dorfkönig drafts as published.
+│                                  # Env: SUPABASE_URL, SUPABASE_ANON_KEY, USER_ID
 ├── specs/                 # Detailed specifications
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md

@@ -31,6 +31,7 @@
     "bench:dorfkoenig": "tsx src/dorfkoenig/supabase/functions/_tests/bench/run.ts",
     "bench:manual-upload": "deno bench src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_bench.ts",
     "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
+    "submit:published": "tsx src/dorfkoenig/scripts/submit-published-draft.ts",
     "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
   },
   "dependencies": {

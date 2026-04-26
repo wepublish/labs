@@ -256,6 +256,10 @@ CREATE TABLE unit_occurrences (
     user_id TEXT NOT NULL,
     scout_id UUID NULL REFERENCES scouts(id) ON DELETE CASCADE,
     execution_id UUID NULL REFERENCES scout_executions(id) ON DELETE CASCADE,
+    -- Set when the occurrence originates from an external published draft
+    -- (migration 20260426000000); joined against bajour_drafts.published_at
+    -- for the soft-dedup signal in bajour-auto-draft selection.
+    draft_id UUID NULL REFERENCES bajour_drafts(id) ON DELETE SET NULL,
     source_url TEXT NOT NULL,
     normalized_source_url TEXT NOT NULL,
     source_domain TEXT NOT NULL,
@@ -313,6 +317,34 @@ Merge thresholds:
 On merge, the RPC appends a `unit_occurrences` row and updates canonical rollups without overwriting verification / usage state.
 
 `promises` also gained `unit_id UUID NULL REFERENCES information_units(id) ON DELETE SET NULL`, so civic promises no longer form a separate dedup universe.
+
+### 3b. External Drafts + Soft Dedup (migration `20260426000000_external_drafts_and_dedup.sql`)
+
+Layered on top of 3a. Introduces a "the draft was actually published" signal so subsequent auto-drafts can soft-suppress repetition.
+
+- `bajour_drafts.provider TEXT NOT NULL DEFAULT 'auto' CHECK (provider IN ('auto','external'))` — distinguishes auto-pipeline drafts from drafts pasted in by an editor as the actually-published version.
+- `bajour_drafts.published_at TIMESTAMPTZ NULL` — set when the draft is confirmed sent. Today the `bajour-drafts` POST handler sets this when `provider='external'`; long-term an external API webhook will set it on auto drafts too.
+- `unit_occurrences.draft_id UUID NULL REFERENCES bajour_drafts(id) ON DELETE SET NULL` — the load-bearing piece for the dedup join. Without it, the lookup falls back to array-contains scans on `bajour_drafts.selected_unit_ids`.
+- `upsert_canonical_unit` recreated with a trailing `p_draft_id UUID DEFAULT NULL` parameter that flows into the `unit_occurrences` INSERT. Existing call sites are unaffected (default NULL).
+
+Indexes:
+
+- `idx_bajour_drafts_published_village ON bajour_drafts (village_id, published_at DESC) WHERE published_at IS NOT NULL` — partial index for the per-village dedup-window scan.
+- `idx_unit_occurrences_draft_id ON unit_occurrences (draft_id) WHERE draft_id IS NOT NULL` — supports the EXISTS join.
+
+The selection-time dedup query lives in `bajour-auto-draft` and is the EXISTS-form below. It MUST go through `unit_occurrences`, not a derived flag on `information_units`, because canonical merges would silently overwrite cached state:
+
+```sql
+EXISTS (
+  SELECT 1 FROM unit_occurrences uo
+  JOIN bajour_drafts bd ON bd.id = uo.draft_id
+  WHERE uo.unit_id = $candidate_id
+    AND bd.village_id = $village_id
+    AND bd.published_at > now() - interval '14 days'
+)
+```
+
+The matched candidate gains a `PUBLISHED:YYYY-MM-DD` token in the LLM selection prompt; the prompt rule asks the model to skip unless there's a substantive update.
 
 ## Row Level Security (RLS)
 
@@ -793,6 +825,11 @@ CREATE TABLE bajour_drafts (
 
     -- WhatsApp tracking
     whatsapp_message_ids JSONB NOT NULL DEFAULT '[]',
+
+    -- External-drafts + soft-dedup signal (migration 20260426000000)
+    provider TEXT NOT NULL DEFAULT 'auto'
+      CHECK (provider IN ('auto','external')),
+    published_at TIMESTAMPTZ,
 
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()

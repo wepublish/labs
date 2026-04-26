@@ -21,8 +21,8 @@ import {
   AGNOSTIC_POSITIVE_SEEDS,
 } from '../../_shared/draft-quality.ts';
 
-Deno.test('emoji palette contains 16 approved emoji', () => {
-  assertEquals(EMOJI_PALETTE.length, 16);
+Deno.test('emoji palette contains 32 approved emoji', () => {
+  assertEquals(EMOJI_PALETTE.length, 32);
 });
 
 Deno.test('isAllowedEmoji — palette members pass', () => {
@@ -32,7 +32,7 @@ Deno.test('isAllowedEmoji — palette members pass', () => {
 });
 
 Deno.test('isAllowedEmoji — non-palette rejected', () => {
-  for (const e of ['🎉', '🚀', '💡', '🔥', '📊']) {
+  for (const e of ['🚀', '💡', '🔥', '📊', '👍']) {
     assertFalse(isAllowedEmoji(e), `${e} should not be allowed`);
   }
 });

@@ -67,6 +67,10 @@ export interface ComposeInput {
   max_tokens?: number;
   /** Optional diagnostic context — surfaces in parse-failure logs + thrown error. */
   ctx?: { village_id?: string; run_id?: string | number };
+  /** ISO date the draft is being composed on (Zurich today). Drives date framing. */
+  currentDate?: string;
+  /** ISO date the draft will be published (typically currentDate + 1). */
+  publicationDate?: string;
 }
 
 /**
@@ -301,6 +305,8 @@ export async function composeDraftFromUnitsV2(input: ComposeInput): Promise<Comp
     temperature = 0.2,
     max_tokens = 2500,
     ctx,
+    currentDate,
+    publicationDate,
   } = input;
 
   if (!village_id || !village_name) {
@@ -315,10 +321,13 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
     composeLayer2: compose_layer2 ?? DRAFT_COMPOSE_PROMPT_V2,
     antiPatterns: antiPatterns ?? ANTI_PATTERNS,
     positiveExamples: positiveExamples ?? AGNOSTIC_POSITIVE_SEEDS,
+    currentDate,
+    publicationDate,
   });
 
   const systemPrompt = `${layer1}\n\n${composePrompt}`;
   const formattedUnits = formatUnitsForCompose(selected_units);
+  const userDateLabel = publicationDate ?? currentDate ?? new Date().toISOString().slice(0, 10);
 
   const response = await openrouter.chat({
     ...(model && { model }),
@@ -327,7 +336,7 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
       {
         role: 'user',
         content:
-          `Einheiten für ${village_name} (${new Date().toISOString().slice(0, 10)}):\n\n${formattedUnits}\n\n` +
+          `Einheiten für ${village_name} (Erscheinung: ${userDateLabel}):\n\n${formattedUnits}\n\n` +
           `Erstelle den Digest gemäss den Regeln und rufe das Tool "submit_digest" mit dem Ergebnis auf.`,
       },
     ],

@@ -8,8 +8,8 @@
 // persists the version an override was derived from so `specs/DATABASE.md`
 // stale-override query can flag drift.
 export const DEFAULT_PROMPT_VERSIONS = {
-  information_select: 1,
-  draft_compose: 2,
+  information_select: 2,
+  draft_compose: 3,
   // web_extraction and zeitung_extraction mirror the prompt-version constants
   // exported from their respective modules.
 } as const;
@@ -18,14 +18,26 @@ export const DEFAULT_PROMPT_VERSIONS = {
 export const INFORMATION_SELECT_PROMPT = `Du bist ein erfahrener Redakteur für einen wöchentlichen lokalen Newsletter.
 Deine Aufgabe: Wähle die relevantesten Informationseinheiten für die nächste Ausgabe.
 
+ZEITPUNKT (WICHTIG):
+Heute ist: {{currentDate}}
+Dieser Entwurf erscheint am: {{publicationDate}} (Folgetag, morgen früh).
+Treffe Auswahl und Formulierung aus Lesersicht des Erscheinungsdatums:
+- Veranstaltungen am {{publicationDate}} = "heute"
+- Veranstaltungen am {{publicationDateP1}} = "morgen"
+- Veranstaltungen am {{currentDate}} = "gestern" (meist nicht mehr relevant)
+
 AUSWAHLKRITERIEN (nach Priorität):
 1. AKTUALITÄT: {{recencyInstruction}}
-2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes JETZT?
+2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes am Erscheinungstag?
 3. VIELFALT: Decke verschiedene Themen ab (Politik, Kultur, Infrastruktur, Gesellschaft).
 4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
 
+DEDUP — bereits publizierte Einheiten:
+Einheiten mit Marker "PUBLISHED:JJJJ-MM-TT" wurden in einem vorherigen Newsletter
+für diese Gemeinde verwendet. Nimm sie nur auf, wenn es eine neue Entwicklung gibt
+(neues Datum, neue Zahl, neuer Stand, neue Quelle). Sonst überspringen.
+
 Wähle 5-15 Einheiten. Gib die IDs als JSON-Array zurück.
-Heute ist: {{currentDate}}
 
 AUSGABEFORMAT (JSON):
 {
@@ -41,15 +53,28 @@ AUSGABEFORMAT (JSON):
 export function buildInformationSelectPrompt(
   currentDate: string,
   recencyDays: number | null,
-  template: string = INFORMATION_SELECT_PROMPT
+  template: string = INFORMATION_SELECT_PROMPT,
+  publicationDate?: string,
 ): string {
   const recencyInstruction = recencyDays !== null
     ? `Bevorzuge Informationen der letzten ${recencyDays} Tage STARK. Informationen älter als ${recencyDays * 2} Tage nur bei aussergewöhnlicher Bedeutung.`
     : `Berücksichtige alle verfügbaren Informationen unabhängig vom Alter. Neuere Informationen dürfen leicht bevorzugt werden.`;
 
+  const pubDate = publicationDate ?? addDaysIso(currentDate, 1);
+  const pubDateP1 = addDaysIso(pubDate, 1);
+
   return template
     .replace('{{recencyInstruction}}', recencyInstruction)
-    .replace('{{currentDate}}', currentDate);
+    .replace(/{{currentDate}}/g, currentDate)
+    .replace(/{{publicationDate}}/g, pubDate)
+    .replace(/{{publicationDateP1}}/g, pubDateP1);
+}
+
+/** Pure helper: ISO YYYY-MM-DD + N days. Treats input as UTC date. */
+export function addDaysIso(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 // --- Unit formatting helpers ---
@@ -63,12 +88,23 @@ interface UnitForSelect {
   created_at?: string | null;
 }
 
-/** Format units as a numbered list for LLM selection prompts. */
-export function formatUnitsForSelection(units: UnitForSelect[]): string {
+/**
+ * Format units as a numbered list for LLM selection prompts.
+ * `previouslyPublished` is an optional map of unit_id → most-recent ISO date the
+ * unit appeared in a published draft for this village. When set, the matching
+ * candidate line gains a `PUBLISHED:YYYY-MM-DD` token so the LLM can apply the
+ * dedup rule. Absence is the signal — unmatched candidates carry no token.
+ */
+export function formatUnitsForSelection(
+  units: UnitForSelect[],
+  previouslyPublished?: Map<string, string>,
+): string {
   return units
     .map((unit, i) => {
       const date = unit.event_date || unit.created_at?.split('T')[0] || 'unbekannt';
-      return `[${i + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type} | ${unit.statement}`;
+      const pubDate = previouslyPublished?.get(unit.id);
+      const pubMarker = pubDate ? ` | PUBLISHED:${pubDate}` : '';
+      return `[${i + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type}${pubMarker} | ${unit.statement}`;
     })
     .join('\n');
 }
@@ -251,15 +287,25 @@ erkläre in "notes_for_editor" warum. Schreibe NIEMALS Füllsätze.`;
  * with explicit fenced boundary markers; capture-time sanitisation
  * (_shared/feedback-sanitise.ts) rejects bullets containing those markers so
  * an injected example can't break out of the block.
+ *
+ * When `currentDate` is supplied, a deterministic date-framing block is
+ * prepended so the LLM frames event times from the reader's perspective on the
+ * publication date (newsletter goes out the next morning).
  */
 export function buildDraftComposePromptV2(opts: {
   composeLayer2?: string;
   antiPatterns?: ReadonlyArray<{ bullet: string; reason: string }>;
   positiveExamples?: ReadonlyArray<{ bullet: string; source_domain: string }>;
+  currentDate?: string;
+  publicationDate?: string;
 }): string {
   const composeLayer2 = opts.composeLayer2 ?? DRAFT_COMPOSE_PROMPT_V2;
   const antiPatterns = opts.antiPatterns ?? [];
   const positives = opts.positiveExamples ?? [];
+
+  const dateBlock = opts.currentDate
+    ? buildPublicationDateBlock(opts.currentDate, opts.publicationDate)
+    : '';
 
   const examples: string[] = [];
   if (positives.length > 0 || antiPatterns.length > 0) {
@@ -278,5 +324,24 @@ export function buildDraftComposePromptV2(opts: {
     examples.push('\n========== BEISPIELE-ENDE ==========');
   }
 
-  return [composeLayer2, examples.join('\n')].filter(Boolean).join('\n\n');
+  return [dateBlock, composeLayer2, examples.join('\n')].filter(Boolean).join('\n\n');
+}
+
+/**
+ * Build the deterministic publication-date framing block. Both prompts share
+ * the same wording so the LLM uses the same anchor at selection and compose.
+ */
+export function buildPublicationDateBlock(
+  currentDate: string,
+  publicationDate?: string,
+): string {
+  const pub = publicationDate ?? addDaysIso(currentDate, 1);
+  const pubP1 = addDaysIso(pub, 1);
+  return `ZEITPUNKT (WICHTIG):
+Heute ist: ${currentDate}
+Dieser Entwurf erscheint am: ${pub} (Folgetag, morgen früh).
+Formuliere Zeitangaben aus Lesersicht des Erscheinungsdatums:
+- Veranstaltungen am ${pub} = "heute"
+- Veranstaltungen am ${pubP1} = "morgen"
+- Veranstaltungen am ${currentDate} = "gestern" (meist nicht mehr relevant)`;
 }

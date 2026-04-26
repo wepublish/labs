@@ -9,11 +9,18 @@
 
 /**
  * Closed emoji palette (§3.1.2). Approved 2026-04-22.
- * validateEmojiPalette (Phase 1) strips anything not in this list.
+ * Expanded 2026-04-26: feedback rows 4–5 used emojis the editor reached for
+ * naturally (events, food, weather, lifestyle, transport, animals) that the
+ * original 16-glyph palette stripped. Keep additions semantically distinct;
+ * validateEmojiPalette still strips anything not in this list.
  */
 export const EMOJI_PALETTE = [
+  // Original palette (approved 2026-04-22)
   '🏠', '🏗️', '🗳️', '🚗', '🚧', '📚', '🎶', '🌿',
   '⚖️', '🏢', '👤', '📍', '📅', '🐈', '⚠️', '✅',
+  // 2026-04-26 expansion — events, lifestyle, weather, transport, food, fauna
+  '🤿', '🏆', '👗', '🎂', '🎭', '🎨', '🎉', '🎁',
+  '🌳', '🍴', '☕', '🌧️', '☀️', '🚲', '🚌', '🐾',
 ] as const;
 
 export function isAllowedEmoji(emoji: string): boolean {
