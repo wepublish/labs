@@ -14,6 +14,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import {
+  addDaysIso,
   buildInformationSelectPrompt,
   DRAFT_COMPOSE_PROMPT,
   INFORMATION_SELECT_PROMPT,
@@ -55,11 +56,53 @@ interface AutoDraftRequest {
 const RECENCY_DAYS = 2;
 const QUALITY_THRESHOLD = 40;
 const MIN_BULLETS_FOR_PUBLISH = 1;
+/** Window (days) over which a previously-published unit suppresses repetition. */
+const PUBLISHED_DEDUP_WINDOW_DAYS = 14;
 
 // --- Helpers ---
 
 function zurichToday(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+}
+
+/**
+ * For each candidate unit, find the most recent date (if any) the unit appeared
+ * in a previously-published draft for this village within the dedup window.
+ * The selection prompt uses this to soft-suppress repetition unless there's a
+ * substantive update.
+ */
+async function loadPreviouslyPublishedDates(
+  supabase: ReturnType<typeof createServiceClient>,
+  villageId: string,
+  candidateUnitIds: string[],
+): Promise<Map<string, string>> {
+  if (candidateUnitIds.length === 0) return new Map();
+  const cutoff = new Date(
+    Date.now() - PUBLISHED_DEDUP_WINDOW_DAYS * 86_400_000,
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from('unit_occurrences')
+    .select('unit_id, bajour_drafts!inner(village_id, published_at)')
+    .in('unit_id', candidateUnitIds)
+    .not('draft_id', 'is', null)
+    .eq('bajour_drafts.village_id', villageId)
+    .not('bajour_drafts.published_at', 'is', null)
+    .gte('bajour_drafts.published_at', cutoff);
+
+  if (error) {
+    console.error('[auto-draft] previously-published lookup failed (non-fatal):', error);
+    return new Map();
+  }
+
+  const map = new Map<string, string>();
+  for (const row of (data as Array<{ unit_id: string; bajour_drafts: { published_at: string } }>) ?? []) {
+    const date = row.bajour_drafts?.published_at?.slice(0, 10);
+    if (!date) continue;
+    const prev = map.get(row.unit_id);
+    if (!prev || date > prev) map.set(row.unit_id, date);
+  }
+  return map;
 }
 
 async function notifyEmptyPath(opts: {
@@ -156,10 +199,15 @@ Deno.serve(async (req) => {
 
     if (FLAG_QUALITY_GATING) {
       // §3.2.1 compound date filter: news units fresh within 7d, event units near-term.
+      // Event end-window tightened 2026-04-26 from +14d → +7d after Tom's
+      // feedback that events 3–5 days out ("Veranstaltungen vom 27./28. April")
+      // were surfaced too early in the 24. Apr. draft. A weekly newsletter that
+      // lands the next morning gets the most reader value from this-week events;
+      // farther-out items get re-surfaced on later runs as they enter the window.
       const news7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
       const backstop30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const eventStart = new Date(Date.now() - 1 * 86_400_000).toISOString().slice(0, 10);
-      const eventEnd = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+      const eventEnd = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
       unitsQuery = unitsQuery
         .gte('created_at', backstop30d)
         .or(
@@ -253,13 +301,31 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { status: 'skipped', reason: caseLabel } });
     }
 
-    // Format units for LLM
-    const formattedUnits = formatUnitsForSelection(units);
+    // Soft-dedup: look up which candidates appeared in a recently-published
+    // draft for this village. Token injected into formatted lines below; the
+    // selection prompt rule ("nur aufnehmen, wenn neue Entwicklung") drives the
+    // soft skip decision.
+    const previouslyPublished = await loadPreviouslyPublishedDates(
+      supabase,
+      village_id,
+      units.map((u) => u.id),
+    );
+    if (previouslyPublished.size > 0) {
+      console.log(
+        `[auto-draft] previously-published candidates for ${village_id}: ${previouslyPublished.size}/${units.length}`,
+      );
+    }
+
+    const formattedUnits = formatUnitsForSelection(units, previouslyPublished);
+    const publicationDate = addDaysIso(today, 1);
 
     // Call LLM to select units
     const selectResponse = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildInformationSelectPrompt(today, RECENCY_DAYS, selectTemplate) },
+        {
+          role: 'system',
+          content: buildInformationSelectPrompt(today, RECENCY_DAYS, selectTemplate, publicationDate),
+        },
         {
           role: 'user',
           content: `Hier sind die verfügbaren Informationseinheiten:\n\n${formattedUnits}\n\nWähle die relevantesten Einheiten für den Newsletter aus.`,
@@ -348,6 +414,8 @@ Deno.serve(async (req) => {
         antiPatterns: retrievedExamples?.antiPatterns,
         positiveExamples: retrievedExamples?.positiveExamples,
         ctx: { village_id, run_id: runId ?? undefined },
+        currentDate: today,
+        publicationDate,
       });
       draftTitle = v2.title;
       bulletsJson = v2;
