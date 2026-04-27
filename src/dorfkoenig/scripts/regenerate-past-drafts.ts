@@ -314,8 +314,7 @@ export function isHistoricallyRelevant(unit: CandidateUnit, publicationDate: str
   }
 
   if (unit.event_date) {
-    return unit.event_date >= addDaysIso(publicationDate, -1) &&
-      unit.event_date <= addDaysIso(publicationDate, 7);
+    return unit.event_date === publicationDate;
   }
 
   const createdDate = unit.created_at?.slice(0, 10);

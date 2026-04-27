@@ -143,26 +143,30 @@ describe('regenerate-past-drafts parseArgs', () => {
 });
 
 describe('historical candidate relevance', () => {
-  it('keeps recent news and near-term events', () => {
+  it('keeps recent news and same-day events', () => {
     expect(isHistoricallyRelevant(unit({
       event_date: null,
       created_at: '2026-04-20T09:00:00Z',
     }), '2026-04-24', 40)).toBe(true);
 
     expect(isHistoricallyRelevant(unit({
-      event_date: '2026-04-28',
+      event_date: '2026-04-24',
       created_at: '2026-04-01T09:00:00Z',
     }), '2026-04-24', 40)).toBe(true);
   });
 
-  it('drops stale news, far future events, low quality, and low confidence village matches', () => {
+  it('drops stale news, future/past events, low quality, and low confidence village matches', () => {
     expect(isHistoricallyRelevant(unit({
       event_date: null,
       created_at: '2026-04-10T09:00:00Z',
     }), '2026-04-24', 40)).toBe(false);
 
     expect(isHistoricallyRelevant(unit({
-      event_date: '2026-05-10',
+      event_date: '2026-04-25',
+    }), '2026-04-24', 40)).toBe(false);
+
+    expect(isHistoricallyRelevant(unit({
+      event_date: '2026-04-23',
     }), '2026-04-24', 40)).toBe(false);
 
     expect(isHistoricallyRelevant(unit({

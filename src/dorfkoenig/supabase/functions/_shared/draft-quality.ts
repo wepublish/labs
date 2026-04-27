@@ -21,6 +21,8 @@ export const EMOJI_PALETTE = [
   // 2026-04-26 expansion — events, lifestyle, weather, transport, food, fauna
   '🤿', '🏆', '👗', '🎂', '🎭', '🎨', '🎉', '🎁',
   '🌳', '🍴', '☕', '🌧️', '☀️', '🚲', '🚌', '🐾',
+  // 2026-04-27 expansion — common civic/event symbols seen in regenerated drafts
+  '💧', '🎵', '🚴', '💰', '🛠️', '🏭', '🏛️',
 ] as const;
 
 export function isAllowedEmoji(emoji: string): boolean {
@@ -150,7 +152,7 @@ export const AGNOSTIC_POSITIVE_SEEDS: readonly PositiveSeed[] = [
 export const KIND_CAPS = {
   lead: 1,
   secondary: 2,
-  event: 1,
+  event: 2,
   good_news: 1,
 } as const;
 
