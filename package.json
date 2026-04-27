@@ -18,7 +18,7 @@
     "new-app": "node scripts/create-app.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:manual-upload": "deno test src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_test.ts",
+    "test:manual-upload": "deno test src/dorfkoenig/supabase/functions/_tests/shared/manual_upload_review_test.ts src/dorfkoenig/supabase/functions/_tests/shared/embeddings_dedup_test.ts",
     "smoke:dorfkoenig": "bash ./src/dorfkoenig/scripts/run-live-smokes.sh",
     "smoke:dorfkoenig:pipeline": "deno run -A ./src/dorfkoenig/supabase/functions/_tests/smoke/live_scout_pipeline_smoke.ts",
     "smoke:dorfkoenig:dedup": "deno run -A ./src/dorfkoenig/supabase/functions/_tests/smoke/live_canonical_dedup_smoke.ts",
@@ -33,7 +33,8 @@
     "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
     "submit:published": "tsx src/dorfkoenig/scripts/submit-published-draft.ts",
     "regenerate:past-drafts": "tsx src/dorfkoenig/scripts/regenerate-past-drafts.ts",
-    "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
+    "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts",
+    "repair:dedup": "tsx src/dorfkoenig/scripts/repair-dedup-regression.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.46.0",

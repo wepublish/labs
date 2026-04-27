@@ -55,35 +55,44 @@ async function upsertCanonical(
   scoutId: string,
   executionId: string,
   sourceUrl: string,
+  options: {
+    statement?: string;
+    entities?: string[];
+    eventDate?: string;
+    contentSha?: string | null;
+  } = {},
 ): Promise<{ unit_id: string; occurrence_id: string | null; merged_existing: boolean }> {
   const ctx = createLiveTestContext();
+  const statement = options.statement ?? 'Der Gemeinderat Arlesheim genehmigt im April 2026 den Neubau des Werkhofs.';
+  const entities = options.entities ?? ['Gemeinderat Arlesheim', 'Werkhof'];
+  const eventDate = options.eventDate ?? '2026-04-23';
   const { data, error } = await ctx.serviceClient.rpc('upsert_canonical_unit', {
     p_user_id: ctx.testUserId,
-    p_statement: 'Der Gemeinderat Arlesheim genehmigt im April 2026 den Neubau des Werkhofs.',
+    p_statement: statement,
     p_unit_type: 'fact',
     p_source_url: sourceUrl,
     p_embedding: TEST_EMBEDDING,
     p_scout_id: scoutId,
     p_execution_id: executionId,
-    p_entities: ['Gemeinderat Arlesheim', 'Werkhof'],
+    p_entities: entities,
     p_source_domain: 'example.com',
     p_source_title: 'Smoke Test Source',
     p_location: { city: 'Arlesheim', country: 'Switzerland' },
     p_topic: 'Bau',
-    p_event_date: '2026-04-23',
+    p_event_date: eventDate,
     p_village_confidence: 'high',
     p_review_required: false,
     p_assignment_path: 'manual',
-    p_publication_date: '2026-04-23',
+    p_publication_date: eventDate,
     p_sensitivity: 'none',
     p_is_listing_page: false,
     p_article_url: sourceUrl,
     p_quality_score: 90,
     p_source_type: 'scout',
     p_file_path: null,
-    p_content_sha256: 'smoke-content-sha',
+    p_content_sha256: options.contentSha ?? null,
     p_statement_hash: null,
-    p_context_excerpt: 'Smoke test context',
+    p_context_excerpt: statement,
     p_extracted_at: new Date().toISOString(),
   });
 
@@ -118,11 +127,35 @@ try {
     scoutBExec1.executionId,
     'https://example.com/smoke/b',
   );
+  const paraphrase = await upsertCanonical(
+    scoutBExec1.scoutId,
+    scoutBExec1.executionId,
+    'https://example.com/smoke/b-paraphrase',
+    {
+      statement: 'Im April 2026 genehmigt der Gemeinderat Arlesheim den Neubau des Werkhofs.',
+      entities: ['Gemeinderat Arlesheim', 'Werkhof'],
+    },
+  );
+  const unrelated = await upsertCanonical(
+    scoutBExec1.scoutId,
+    scoutBExec1.executionId,
+    'https://example.com/smoke/b-unrelated',
+    {
+      statement: 'Der Gemeinderat Arlesheim eröffnet im April 2026 eine neue Velostation am Bahnhof.',
+      entities: ['Gemeinderat Arlesheim', 'Velostation', 'Bahnhof'],
+    },
+  );
 
   assertCondition(first.merged_existing === false, 'First canonical upsert should create a new unit');
   assertCondition(second.merged_existing === true, 'Second canonical upsert should merge as same-scout rerun');
   assertCondition(third.merged_existing === true, 'Third canonical upsert should merge across scouts');
-  assertCondition(first.unit_id === second.unit_id && second.unit_id === third.unit_id, 'All canonical upserts should target one unit');
+  assertCondition(paraphrase.merged_existing === true, 'Same-event paraphrase should merge');
+  assertCondition(unrelated.merged_existing === false, 'Unrelated same-domain/date/entity fact should not merge');
+  assertCondition(
+    first.unit_id === second.unit_id && second.unit_id === third.unit_id && third.unit_id === paraphrase.unit_id,
+    'Exact and paraphrased upserts should target one unit',
+  );
+  assertCondition(unrelated.unit_id !== first.unit_id, 'Unrelated fact should create a separate canonical unit');
 
   const { data: canonicalUnit, error: canonicalError } = await ctx.serviceClient
     .from('information_units')
@@ -134,8 +167,8 @@ try {
     throw canonicalError ?? new Error('Canonical unit not found after dedup smoke');
   }
 
-  assertCondition(canonicalUnit.occurrence_count === 3, `Expected occurrence_count=3, got ${canonicalUnit.occurrence_count}`);
-  assertCondition(canonicalUnit.source_count === 3, `Expected source_count=3, got ${canonicalUnit.source_count}`);
+  assertCondition(canonicalUnit.occurrence_count === 4, `Expected occurrence_count=4, got ${canonicalUnit.occurrence_count}`);
+  assertCondition(canonicalUnit.source_count === 4, `Expected source_count=4, got ${canonicalUnit.source_count}`);
 
   const { data: grouped, error: groupedError } = await ctx.serviceClient
     .from('unit_occurrences')

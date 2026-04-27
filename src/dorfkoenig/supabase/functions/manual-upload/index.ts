@@ -11,7 +11,10 @@ import { createServiceClient, requireUserId } from '../_shared/supabase-client.t
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { upsertCanonicalUnit } from '../_shared/canonical-units.ts';
-import { UNIT_DEDUP_THRESHOLD } from '../_shared/constants.ts';
+import {
+  UNIT_DEDUP_STRONG_COSINE_THRESHOLD,
+  UNIT_DEDUP_TEXT_THRESHOLD,
+} from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
 import { computeQualityScore } from '../_shared/quality-scoring.ts';
 import {
@@ -63,7 +66,7 @@ Deno.serve(async (req) => {
         const limit = Math.min(Math.max(parseInt(recentParam, 10) || 5, 1), 20);
         const { data, error } = await supabase
           .from('newspaper_jobs')
-          .select('id, label, created_at, status, units_created')
+          .select('id, label, created_at, status, units_created, units_merged')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(limit);
@@ -615,14 +618,23 @@ async function handlePdfFinalize(
     // current state so the client can reconcile.
     const { data: current } = await supabase
       .from('newspaper_jobs')
-      .select('status, units_created, error_message')
+      .select('status, units_created, units_merged, error_message')
       .eq('id', jobId)
       .eq('user_id', userId)
       .maybeSingle();
 
     if (!current) return errorResponse('Job nicht gefunden', 404);
     if (current.status === 'completed') {
-      return jsonResponse({ data: { units_created: current.units_created, already_finalized: true } });
+      const unitsCreated = current.units_created ?? 0;
+      const unitsMerged = current.units_merged ?? 0;
+      return jsonResponse({
+        data: {
+          units_created: unitsCreated,
+          units_merged: unitsMerged,
+          units_saved: unitsCreated + unitsMerged,
+          already_finalized: true,
+        },
+      });
     }
     return errorResponse(
       `Job ist nicht mehr zur Freigabe bereit (Status: ${current.status})`,
@@ -660,11 +672,12 @@ async function handlePdfFinalize(
       .update({
         status: 'completed',
         units_created: 0,
+        units_merged: 0,
         extracted_units: null,
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId);
-    return jsonResponse({ data: { units_created: 0 } });
+    return jsonResponse({ data: { units_created: 0, units_merged: 0, units_saved: 0 } });
   }
 
   try {
@@ -672,10 +685,18 @@ async function handlePdfFinalize(
     const unitEmbeddings = await embeddings.generateBatch(chosen.map((u) => u.statement));
 
     // In-batch dedup.
-    const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
+    const uniqueIndices = embeddings.deduplicateSimilarStatements(
+      chosen.map((u) => u.statement),
+      unitEmbeddings,
+      UNIT_DEDUP_STRONG_COSINE_THRESHOLD,
+      UNIT_DEDUP_TEXT_THRESHOLD,
+    );
     const finalIndices = uniqueIndices;
+    const inBatchDuplicateCount = Math.max(0, chosen.length - finalIndices.length);
 
-    let storedCount = 0;
+    let createdCount = 0;
+    let mergedExistingCount = 0;
+    let savedCount = 0;
     if (finalIndices.length > 0) {
       const sourceType = ((claimed.source_type as string | null) ?? 'manual_pdf') as 'manual_pdf' | 'manual_text';
       const sourceUrl = sourceType === 'manual_text' ? 'manual://text' : 'manual://pdf';
@@ -722,23 +743,36 @@ async function handlePdfFinalize(
           contextExcerpt: u.evidence ?? u.statement,
         });
 
-        if (result.createdNew) {
-          storedCount++;
+        if (result.attachedOccurrence) {
+          savedCount++;
+          if (result.createdNew) {
+            createdCount++;
+          } else if (result.mergedExisting) {
+            mergedExistingCount++;
+          }
         }
       }
     }
+    const duplicateCount = inBatchDuplicateCount + mergedExistingCount;
 
     await supabase
       .from('newspaper_jobs')
       .update({
         status: 'completed',
-        units_created: storedCount,
+        units_created: createdCount,
+        units_merged: duplicateCount,
         extracted_units: null,
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId);
 
-    return jsonResponse({ data: { units_created: storedCount } });
+    return jsonResponse({
+      data: {
+        units_created: createdCount,
+        units_merged: duplicateCount,
+        units_saved: savedCount,
+      },
+    });
   } catch (error) {
     const e = error as { code?: string; message?: string; details?: string; hint?: string };
     console.error('[pdf_finalize] pipeline error:', {

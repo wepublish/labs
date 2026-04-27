@@ -273,10 +273,31 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 {
   "data": {
     "units_created": 1,
+    "units_merged": 0,
+    "units_saved": 1,
     "unit_ids": ["uuid"]
   }
 }
 ```
+
+For staged PDF/text review finalization (`content_type: "pdf_finalize"`), the
+same endpoint returns counts only:
+
+```json
+{
+  "data": {
+    "units_created": 21,
+    "units_merged": 2,
+    "units_saved": 21
+  }
+}
+```
+
+`units_created` counts new canonical `information_units` rows. `units_merged`
+counts duplicate review selections: both in-batch duplicates and rows attached
+as new `unit_occurrences` to existing canonical units. `units_saved` counts
+selected units that produced an occurrence; in-batch duplicates are not saved as
+separate occurrences.
 
 ---
 

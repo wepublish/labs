@@ -164,6 +164,8 @@ export interface InformationUnit {
 
 export interface ManualUploadResult {
   units_created: number;
+  units_merged?: number;
+  units_saved?: number;
   unit_ids: string[];
 }
 
@@ -216,6 +218,7 @@ export interface NewspaperJob {
   chunks_total: number;
   chunks_processed: number;
   units_created: number;
+  units_merged?: number;
   skipped_items: string[];
   error_message: string | null;
   extracted_units: NewspaperExtractedUnit[] | null;
@@ -228,6 +231,8 @@ export interface NewspaperProcessingResult {
   job_id: string;
   storage_path?: string;
   units_created?: number;
+  units_merged?: number;
+  units_saved?: number;
 }
 
 /** Condensed `newspaper_jobs` row shown on the PDF upload tab so a journalist
@@ -238,6 +243,7 @@ export interface RecentPdfUpload {
   created_at: string;
   status: 'processing' | 'review_pending' | 'completed' | 'failed' | 'storing';
   units_created: number;
+  units_merged?: number;
 }
 
 export interface Draft {

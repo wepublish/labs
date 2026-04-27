@@ -337,9 +337,10 @@ export async function checkDuplicate(
 
 | Threshold | Use Case |
 |-----------|----------|
-| `0.85` | Production - strict deduplication |
-| `0.75` | Testing - allows more through |
-| `0.90` | Very strict - only exact matches |
+| `0.85` | Execution-summary deduplication in `check_duplicate_execution()` |
+| `0.93` cosine + `0.70` text | In-batch unit deduplication for extracted facts |
+| `0.96` cosine + `0.70` text | High-confidence canonical semantic merge |
+| `0.88` cosine + `0.82` text + context | Lower-cosine canonical merge only with strong text and contextual support |
 
 ---
 
@@ -446,56 +447,34 @@ Extrahiere die wichtigsten Informationseinheiten.`;
 
 ### Unit Storage with Deduplication
 
-Within-run deduplication (0.75 threshold) prevents storing near-identical units:
+Within-run deduplication uses two independent signals so unrelated short facts
+do not collapse just because their embeddings are close:
+
+- cosine similarity must be `>= 0.93`
+- trigram/text similarity must also be `>= 0.70`
+
+Canonical storage then routes each surviving unit through
+`upsert_canonical_unit(...)`, which first handles exact statement/source/content
+hash matches, then permits semantic canonical merges only when embedding and text
+similarity both agree. Context such as same domain, nearby event date, or shared
+entities can support a semantic merge, but cannot replace text similarity.
 
 ```typescript
-export async function storeUnits(
-  units: InformationUnit[],
-  userId: string,
-  scoutId: string,
-  executionId: string,
-  sourceUrl: string,
-  sourceDomain: string,
-  sourceTitle: string,
-  location: object | null
-): Promise<number> {
-  const storedUnits: { embedding: number[]; statement: string }[] = [];
-  let storedCount = 0;
+const unitEmbeddings = await embeddings.generateBatch(units.map((u) => u.statement));
+const uniqueIndices = embeddings.deduplicateSimilarStatements(
+  units.map((u) => u.statement),
+  unitEmbeddings,
+  UNIT_DEDUP_STRONG_COSINE_THRESHOLD, // 0.93
+  UNIT_DEDUP_TEXT_THRESHOLD,          // 0.70
+);
 
-  for (const unit of units) {
-    const embedding = await embeddings.generate(unit.statement);
-
-    // Within-run dedup: check against already stored units
-    const isDuplicate = storedUnits.some(stored => {
-      const similarity = cosineSimilarity(embedding, stored.embedding);
-      return similarity >= 0.75;
-    });
-
-    if (isDuplicate) continue;
-
-    const { error } = await supabase
-      .from('information_units')
-      .insert({
-        user_id: userId,
-        scout_id: scoutId,
-        execution_id: executionId,
-        statement: unit.statement,
-        unit_type: unit.unitType,
-        entities: unit.entities,
-        source_url: sourceUrl,
-        source_domain: sourceDomain,
-        source_title: sourceTitle,
-        location,
-        embedding,
-      });
-
-    if (!error) {
-      storedUnits.push({ embedding, statement: unit.statement });
-      storedCount++;
-    }
-  }
-
-  return storedCount;
+for (const i of uniqueIndices) {
+  await upsertCanonicalUnit(supabase, {
+    statement: units[i].statement,
+    embedding: unitEmbeddings[i],
+    sourceType: 'scout',
+    // scout/user/source/location metadata omitted
+  });
 }
 ```
 
@@ -513,7 +492,7 @@ Gate: `extractUnits && analysis.matches && hasScope && isListingPage && rawHtml`
 1. links        ← extractLinksFromHtml(rawHtml, scout.url)   # host-lock + denylist
 2. candidates   ← filterSubpageUrls(links, scout.url)         # path-prefix + traversal + domain
 3. seen         ← SELECT DISTINCT source_url
-                  FROM information_units
+                  FROM unit_occurrences
                   WHERE scout_id = $1 AND source_url IS NOT NULL
 4. fresh        ← (candidates − seen)[0 : CAP]                 # CAP = 10
 5. for url in fresh (sequential, firecrawlDelay between each):
@@ -526,7 +505,10 @@ Gate: `extractUnits && analysis.matches && hasScope && isListingPage && rawHtml`
 
 ### Why no new column
 
-Seen-URL set derives from existing `information_units.source_url`. TTL (90 days) bounds the array naturally; no migration needed. Tradeoff: a subpage that produces zero units leaves no row → re-scraped next run. Acceptable for current use case.
+Seen-URL set derives from existing `unit_occurrences.source_url`, because
+canonical rows may merge across scouts and sources. TTL on canonical units still
+bounds old content naturally. Tradeoff: a subpage that produces zero units leaves
+no occurrence row → re-scraped next run. Acceptable for current use case.
 
 ### Why single-hop
 
@@ -857,8 +839,8 @@ Triggered by `manual-upload` (pdf_confirm) → `process-newspaper` edge function
 6. **LLM extraction** — GPT-4o-mini via OpenRouter with `zeitung-extraction-prompt.ts` prompt. Concurrency limit of 3-4. Each chunk returns `{ units[], skipped[] }`.
 7. **Review sanitize + stage** — Normalize extracted units before they touch `newspaper_jobs.extracted_units`: drop malformed rows, coerce invalid `unit_type` values to `'fact'`, turn stringified null confidences back into SQL-null-compatible `null`, and discard invalid entity/location payloads. Store the surviving units on the job row with `status: 'review_pending'`.
 8. **Editor review** — The UI renders the staged units, lets the editor choose which ones to keep, and posts the selected `uid`s back to `manual-upload` (`pdf_finalize`).
-9. **Finalize insert** — `pdf_finalize` sanitizes the selected staged units again, then runs embeddings + dedup and inserts the valid survivors into `information_units` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`.
-10. **Update job / error handling** — On success set `newspaper_jobs.status = 'completed'` with `units_created`; per-chunk extraction errors remain non-fatal, while fatal finalize/extraction errors set `status: 'failed'`.
+9. **Finalize insert** — `pdf_finalize` sanitizes the selected staged units again, then runs dual-signal in-batch dedup and routes the valid survivors through `upsert_canonical_unit(...)` with `source_type: 'manual_pdf'`, `topic: 'Wochenblatt'`, and PDF provenance on `unit_occurrences`.
+10. **Update job / error handling** — On success set `newspaper_jobs.status = 'completed'` with `units_created` for new canonical rows and `units_merged` for in-batch duplicates plus occurrences merged into existing canonical rows. The API also returns `units_saved = units_created + canonical-merge occurrences`. Per-chunk extraction errors remain non-fatal, while fatal finalize/extraction errors set `status: 'failed'`.
 
 ### Fire-PDF mode decision (2026-04-15)
 
@@ -878,8 +860,8 @@ See `_shared/zeitung-extraction-prompt.ts` for the editable ranking table that d
 
 ### Deduplication
 
-- **Within batch:** 0.75 cosine similarity threshold
-- **Per-village against DB:** Queries `search_units_semantic()` scoped to `location_city` for each unit
+- **Within batch:** dual-signal check (`>= 0.93` cosine and `>= 0.70` trigram/text similarity)
+- **Canonical DB merge:** `upsert_canonical_unit(...)` exact-match path first, then semantic merge only when embedding and text similarity both agree
 - **Duplicate upload guard:** Checks `newspaper_jobs` for existing `processing` job with same `storage_path`
 
 ### Status Tracking
