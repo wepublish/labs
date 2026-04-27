@@ -154,6 +154,48 @@ Media should communicate through:
 
 Hermes should not expect media to write perfect prompts. Forms and channel workflows should collect the state Hermes needs.
 
+## External To Internal Support Loop
+
+Hermes should sit on both sides of the support loop.
+
+On the external side, Hermes helps media communicate clearly:
+
+- accept requests from Slack support channels, Linear-backed support channels, and forms
+- classify urgency and affected workflow
+- ask for missing non-sensitive details
+- draft human-readable replies
+- avoid storing sensitive setup data in the knowledge base
+
+On the internal side, Hermes turns the request into tracked work:
+
+- create a Linear ticket for the media request when work must be tracked
+- link the Slack thread, form submission, CMS diagnostics, and relevant KB pages
+- maintain its own follow-up checklist for missing context
+- route the ticket to support, onboarding, funding, product, or engineering
+- update the ticket as diagnostics, decisions, and PRs appear
+
+Context enrichment for internal tickets:
+
+- media profile, setup-state, `design.md`, support history, and decisions
+- relevant skill files and media/project context packs
+- CMS MCP diagnostics for live setup state
+- Developer Context MCP code, docs, GitBook, and website references
+- Context7 or equivalent current library documentation for framework/API behavior
+- Firecrawl-based docs or public-site findings when external documentation needs to be fetched or compared
+- previous Linear issues and resolved support patterns
+
+Developer-facing output:
+
+- enriched Linear issue
+- morning brief
+- reproduction plan
+- proposed support reply
+- proposed KB update
+- docs fix
+- draft PR for small scoped implementation work
+
+Hermes can handle its own tickets in the sense that it can create follow-up tasks, keep them linked, mark missing context, draft updates, and propose closure. It should not close externally meaningful support work, send client-visible replies, merge PRs, or mutate CMS state without explicit human approval.
+
 ### Support Flow
 
 1. Media reports an issue through Slack, Linear, or form.
@@ -233,4 +275,3 @@ Use local scripts for:
 - report generation
 
 Do not use local scripts for secret handling or live CMS mutations.
-

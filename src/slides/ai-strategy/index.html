@@ -263,6 +263,80 @@
       gap: 12px;
     }
 
+    .support-loop {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: 0.95fr 1.1fr 0.95fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .loop-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .loop-label {
+      color: var(--coral-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .loop-card {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 249, 0.94);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      min-height: 104px;
+    }
+
+    .loop-card.center {
+      border-color: rgba(234, 114, 110, 0.52);
+      background: rgba(234, 114, 110, 0.08);
+      min-height: 220px;
+    }
+
+    .loop-card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .loop-card p,
+    .loop-card li {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    .loop-card ul {
+      margin: 0;
+      padding-left: 17px;
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--coral-dark);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      min-height: 28px;
+      font-size: 13px;
+    }
+
+    .loop-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
     .timeline {
       margin-top: 28px;
       display: grid;
@@ -432,6 +506,7 @@
       .split,
       .path,
       .decision,
+      .support-loop,
       .timeline-card {
         grid-template-columns: 1fr;
       }
@@ -668,6 +743,55 @@
       <div class="card anim" style="--n: 4"><h3>Onboarding guide</h3><p>Collect setup state, identify missing decisions, generate checklists, and maintain each media's profile, setup-state, and <code>design.md</code>.</p></div>
       <div class="card anim" style="--n: 5"><h3>CMS aware</h3><p>Use CMS MCP for authenticated diagnostics and dry-runs; approved writes only after tenant scope, human approval, and audit log.</p></div>
       <div class="card anim" style="--n: 6"><h3>Service memory</h3><p>Merge support, onboarding, and funding context into one media history so future answers start from what We.Publish already knows.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">External to internal support</div>
+    <h2 class="anim" style="--n: 1">Hermes turns media requests into enriched internal work.</h2>
+    <p class="subtitle anim" style="--n: 2">The loop is ticket-first: Hermes creates and maintains tickets for media requests, enriches them for developers, and feeds the resolution back into support memory.</p>
+    <div class="support-loop">
+      <div class="loop-col anim" style="--n: 3">
+        <div class="loop-label">External side</div>
+        <div class="loop-card">
+          <h3>Media asks</h3>
+          <p>Slack support channel, onboarding form, Linear-backed request, screenshots, CMS URL, urgency, and affected workflow.</p>
+        </div>
+        <div class="flow-arrow">into Hermes &rarr;</div>
+        <div class="loop-card">
+          <h3>Human-visible draft</h3>
+          <p>Hermes drafts reply, asks for missing details, and keeps sensitive data out of the KB.</p>
+        </div>
+      </div>
+      <div class="loop-col anim" style="--n: 4">
+        <div class="loop-label">Hermes ticket loop</div>
+        <div class="loop-card center">
+          <h3>Create and manage tickets</h3>
+          <ul>
+            <li>creates Linear ticket for the media request</li>
+            <li>links Slack thread, form data, CMS diagnostics, and KB pages</li>
+            <li>keeps its own follow-up checklist and missing-context tasks</li>
+            <li>routes to support, onboarding, funding, or engineering</li>
+          </ul>
+          <div class="loop-tags">
+            <span class="tag coral">KB first</span>
+            <span class="tag blue">CMS MCP</span>
+            <span class="tag green">human gates</span>
+          </div>
+        </div>
+      </div>
+      <div class="loop-col anim" style="--n: 5">
+        <div class="loop-label">Internal side</div>
+        <div class="loop-card">
+          <h3>Enriched developer brief</h3>
+          <p>Linear issue plus media history, skill files, Context7 library docs, Firecrawl docs/site findings, and Developer Context MCP code references.</p>
+        </div>
+        <div class="flow-arrow">&larr; resolution loop</div>
+        <div class="loop-card">
+          <h3>Brief, patch, or PR</h3>
+          <p>Hermes proposes a brief, docs fix, support answer, or draft PR for morning review. Human approves replies, CMS writes, and merges.</p>
+        </div>
+      </div>
     </div>
   </section>
 

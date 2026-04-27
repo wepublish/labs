@@ -124,6 +124,22 @@ Linear issue template:
 ## Links
 ```
 
+## External To Internal Loop
+
+For media-facing support, Hermes should create and maintain tickets when the request becomes tracked work.
+
+Loop:
+
+1. Media asks in Slack, Linear-backed support, or a form.
+2. Hermes classifies the request and checks for sensitive data.
+3. Hermes searches KB and media history.
+4. Hermes calls CMS MCP read diagnostics if live state matters.
+5. Hermes creates or updates a Linear ticket.
+6. Hermes enriches the ticket with KB context, CMS diagnostics, relevant skill files, Context7 library docs when needed, Firecrawl-fetched docs/site findings when needed, and Developer Context MCP code/docs references.
+7. Hermes drafts a support reply, developer brief, docs fix, or draft PR proposal.
+8. Human reviews and approves external reply, CMS write, or PR merge.
+9. Hermes proposes KB and support-history updates after resolution.
+
 ## Human Gates
 
 Human approval is required before:
