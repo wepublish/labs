@@ -24,6 +24,35 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 /**
+ * Lightweight pg_trgm-style text similarity for in-batch dedup guards.
+ * This intentionally complements embeddings: two units are only collapsed when
+ * both semantic and lexical signals agree.
+ */
+export function trigramSimilarity(a: string, b: string): number {
+  const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
+  const trigrams = (value: string): Set<string> => {
+    const padded = `  ${normalize(value)} `;
+    const grams = new Set<string>();
+    for (let i = 0; i < padded.length - 2; i++) {
+      grams.add(padded.slice(i, i + 3));
+    }
+    return grams;
+  };
+
+  const aGrams = trigrams(a);
+  const bGrams = trigrams(b);
+  if (aGrams.size === 0 && bGrams.size === 0) return 1;
+  if (aGrams.size === 0 || bGrams.size === 0) return 0;
+
+  let intersection = 0;
+  for (const gram of aGrams) {
+    if (bGrams.has(gram)) intersection++;
+  }
+
+  return (2 * intersection) / (aGrams.size + bGrams.size);
+}
+
+/**
  * Check if two texts are semantically similar above threshold
  */
 export async function areSimilar(
@@ -131,13 +160,50 @@ export function deduplicateFromEmbeddings(
   return uniqueIndices;
 }
 
+/**
+ * Deduplicate using embeddings plus lexical similarity. Embeddings alone are
+ * too broad for short extracted facts; the text check prevents unrelated items
+ * from collapsing just because they share date/location/source context.
+ */
+export function deduplicateSimilarStatements(
+  statements: string[],
+  vectors: number[][],
+  cosineThreshold = 0.93,
+  textThreshold = 0.7,
+): number[] {
+  const uniqueIndices: number[] = [];
+
+  for (let i = 0; i < vectors.length; i++) {
+    let isDuplicate = false;
+
+    for (const seenIndex of uniqueIndices) {
+      const cosine = cosineSimilarity(vectors[i], vectors[seenIndex]);
+      if (cosine < cosineThreshold) continue;
+
+      const text = trigramSimilarity(statements[i], statements[seenIndex]);
+      if (text >= textThreshold) {
+        isDuplicate = true;
+        break;
+      }
+    }
+
+    if (!isDuplicate) {
+      uniqueIndices.push(i);
+    }
+  }
+
+  return uniqueIndices;
+}
+
 // Export as module
 export const embeddings = {
   generate: generateEmbedding,
   generateBatch: generateEmbeddings,
   similarity: cosineSimilarity,
+  textSimilarity: trigramSimilarity,
   areSimilar,
   findMostSimilar,
   deduplicate: deduplicateTexts,
   deduplicateFromEmbeddings,
+  deduplicateSimilarStatements,
 };

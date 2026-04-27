@@ -22,7 +22,8 @@ import { upsertCanonicalUnit } from './canonical-units.ts';
 import { firecrawl } from './firecrawl.ts';
 import {
   PRIMARY_EXTRACTION_TIMEOUT_MS,
-  UNIT_DEDUP_THRESHOLD,
+  UNIT_DEDUP_STRONG_COSINE_THRESHOLD,
+  UNIT_DEDUP_TEXT_THRESHOLD,
 } from './constants.ts';
 import {
   buildWebExtractionPrompt,
@@ -290,7 +291,12 @@ async function dedupAndStore(
 ): Promise<{ insertedCount: number; mergedExistingCount: number }> {
   const statements = units.map((u) => u.statement);
   const unitEmbeddings = await embeddings.generateBatch(statements);
-  const uniqueIndices = embeddings.deduplicateFromEmbeddings(unitEmbeddings, UNIT_DEDUP_THRESHOLD);
+  const uniqueIndices = embeddings.deduplicateSimilarStatements(
+    statements,
+    unitEmbeddings,
+    UNIT_DEDUP_STRONG_COSINE_THRESHOLD,
+    UNIT_DEDUP_TEXT_THRESHOLD,
+  );
 
   const domain = firecrawl.getDomain(params.sourceUrl);
 

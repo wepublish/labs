@@ -165,7 +165,12 @@ export const manualUploadApi = {
     api.get<import('./types').RecentPdfUpload[]>(`manual-upload?recent=${limit}`),
 
   finalizePdf: (jobId: string, selectedUids: string[]) =>
-    api.post<{ units_created: number; already_finalized?: boolean }>('manual-upload', {
+    api.post<{
+      units_created: number;
+      units_merged?: number;
+      units_saved?: number;
+      already_finalized?: boolean;
+    }>('manual-upload', {
       content_type: 'pdf_finalize',
       job_id: jobId,
       selected_uids: selectedUids,
@@ -231,4 +236,3 @@ export const executionsApi = {
   },
   get: (id: string) => api.get<import('./types').Execution>(`executions/${id}`),
 };
-

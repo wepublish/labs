@@ -139,7 +139,7 @@ On failure: set execution `status: 'failed'`, increment scout's `consecutive_fai
 - Managed via Supabase table editor or SQL. No redeployment needed.
 
 **`newspaper_jobs`** -- Async PDF processing status tracker with Realtime
-- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed), `stage` (parsing_pdf/chunking/extracting/storing, nullable), `chunks_total`, `chunks_processed`, `units_created`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
+- PK: `id` (UUID), `user_id` (TEXT), `storage_path` (TEXT), `publication_date` (DATE), `label` (TEXT), `status` (processing/completed/failed/review_pending/storing/cancelled), `stage` (parsing_pdf/chunking/extracting/storing, nullable), `chunks_total`, `chunks_processed`, `units_created`, `units_merged`, `skipped_items` (TEXT[]), `error_message`, `created_at`, `completed_at`
 - RLS: user SELECT on own rows, service_role ALL
 - Realtime enabled for live progress updates
 - Stuck jobs (8+ min in `processing`) are marked `failed` by `cleanup_expired_data()`
@@ -162,7 +162,7 @@ All tables have RLS enabled. Policies check `x-user-id` header OR `service_role`
 4. **Embedding dimensions** -- 1536 (OpenAI `text-embedding-3-small` via OpenRouter). Schema enforces `vector(1536)`.
 5. **pg_cron stagger (jittered)** -- `dispatch_due_scouts()` uses `pg_sleep(10 + RANDOM()*5)` for web scouts, `pg_sleep(20 + RANDOM()*10)` for civic. Jitter breaks cross-user synchronisation at the 15-min tick boundary so Firecrawl/OpenRouter rate limits don't cascade.
 6. **CASCADE deletes** -- Deleting a scout cascades to executions and units.
-7. **Dedup thresholds** -- Execution summaries: 0.85. Within-run unit dedup: 0.75. Canonical fact merge in `upsert_canonical_unit(...)`: exact same-scout checks first, then exact cross-scout checks, then semantic merge on canonical rows only (`>= 0.93`, or `>= 0.88` plus same domain / within 7 days / shared entity). Semantic search minimum: 0.3.
+7. **Dedup thresholds** -- Execution summaries: 0.85. Within-run unit dedup is dual-signal: cosine similarity `>= 0.93` AND trigram/text similarity `>= 0.70`. Canonical fact merge in `upsert_canonical_unit(...)`: exact statement/source/content-hash checks first, then semantic merge on canonical rows only when embedding and text similarity both agree (`cosine >= 0.96` + text `>= 0.70`, or `cosine >= 0.93` + text `>= 0.70` + contextual support, or `cosine >= 0.88` + text `>= 0.82` + contextual support). Contextual support means same domain, event dates within 7 days, or shared entities. Semantic search minimum: 0.3.
 7a. **Canonical write path** -- Web scouts, civic promise extraction, and manual-upload finalize all route through `upsert_canonical_unit(...)`. Canonical rows live in `information_units`; provenance lives in `unit_occurrences`. `GET /units` and semantic search return canonical rows, but scout/project filtering resolves through occurrences.
 7b. **newspaper_jobs hosts text and PDF** -- Despite the name, `newspaper_jobs` now stages both manual-PDF and manual-text extractions (`source_type` discriminates). Text flow: `handleTextUpload` extracts via LLM, stages as `extracted_units` JSONB with status=`review_pending`, reuses `PdfReviewPanel` in the UI and `handlePdfFinalize` on the server. Rename deferred.
 8. **Max 3 consecutive failures** -- Scouts with 3+ failures are excluded from dispatch.

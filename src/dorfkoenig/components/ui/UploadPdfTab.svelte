@@ -48,7 +48,11 @@
   }
 
   function statusLabel(r: RecentPdfUpload): string {
-    if (r.status === 'completed') return `${r.units_created} Einheiten`;
+    if (r.status === 'completed') {
+      const merged = r.units_merged ?? 0;
+      if (merged > 0) return `${r.units_created} neu, ${merged} Duplikate`;
+      return `${r.units_created} Einheiten`;
+    }
     if (r.status === 'failed') return 'Fehlgeschlagen';
     return 'In Bearbeitung';
   }

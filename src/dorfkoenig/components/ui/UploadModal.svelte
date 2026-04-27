@@ -19,6 +19,7 @@
   } from '../../lib/types';
   import { supabase } from '../../lib/supabase';
   import { loadPilotVillages } from '../../lib/villages';
+  import { formatUploadSuccessDetails } from '../../lib/upload-summary';
 
   const JOB_POLL_INTERVAL_MS = 10_000;
   const SECONDS_PER_CHUNK = 15;
@@ -61,6 +62,7 @@
   let uploadProgress = $state(0);
   let uploadError = $state('');
   let unitsCreated = $state(0);
+  let unitsMerged = $state(0);
 
   // Review state (PDF preview-and-confirm)
   let reviewUnits = $state<NewspaperExtractedUnit[]>([]);
@@ -126,6 +128,7 @@
     uploadProgress = 0;
     uploadError = '';
     unitsCreated = 0;
+    unitsMerged = 0;
     reviewUnits = [];
     selectedUids = new Set();
     validationError = '';
@@ -264,6 +267,7 @@
       processingJobId = null;
       teardownJobWatchers();
       unitsCreated = job.units_created;
+      unitsMerged = job.units_merged ?? 0;
       uploadState = 'success';
     } else if (job.status === 'failed' || job.status === 'cancelled') {
       processingJobId = null;
@@ -300,6 +304,7 @@
     try {
       const result = await manualUploadApi.finalizePdf(processingJobId, [...selectedUids]);
       unitsCreated = result.units_created;
+      unitsMerged = result.units_merged ?? 0;
       uploadState = 'success';
       autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
     } catch (err) {
@@ -340,6 +345,7 @@
         if (result.status === 'completed') {
           uploadProgress = 100;
           unitsCreated = result.units_created ?? 0;
+          unitsMerged = result.units_merged ?? 0;
           uploadState = 'success';
           autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
         } else {
@@ -444,6 +450,9 @@
           if ('units_created' in result && typeof result.units_created === 'number') {
             unitsCreated = result.units_created;
           }
+          unitsMerged = 'units_merged' in result && typeof result.units_merged === 'number'
+            ? result.units_merged
+            : 0;
           uploadState = 'success';
           autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
         }
@@ -460,6 +469,8 @@
     uploadProgress = 0;
     uploadError = '';
   }
+
+  let successDetails = $derived(formatUploadSuccessDetails(unitsCreated, unitsMerged));
 </script>
 
 {#if open}
@@ -557,9 +568,7 @@
             state="success"
             progress={100}
             successMessage="Erfolgreich verarbeitet"
-            successDetails={unitsCreated === 1
-              ? '1 Informationseinheit erstellt'
-              : `${unitsCreated} Informationseinheiten erstellt`}
+            {successDetails}
           />
 
         {:else if uploadState === 'error'}

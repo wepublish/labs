@@ -7,6 +7,12 @@ export const DEDUP_THRESHOLD = 0.85;
 /** Cosine similarity threshold for unit deduplication within a single batch */
 export const UNIT_DEDUP_THRESHOLD = 0.75;
 
+/** High-confidence cosine threshold for unit deduplication. */
+export const UNIT_DEDUP_STRONG_COSINE_THRESHOLD = 0.93;
+
+/** Text similarity required alongside embeddings for unit deduplication. */
+export const UNIT_DEDUP_TEXT_THRESHOLD = 0.7;
+
 /** Minimum cosine similarity for semantic search results */
 export const SEARCH_MIN_SIMILARITY = 0.3;
 
