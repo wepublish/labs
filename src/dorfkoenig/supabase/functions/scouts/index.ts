@@ -11,14 +11,29 @@ import { createServiceClient, requireUserId, type Scout } from '../_shared/supab
 import { analyzeCriteria } from '../_shared/criteria-analysis.ts';
 import { initializeScoutBaseline } from '../_shared/scout-baseline.ts';
 
-Deno.serve(async (req) => {
+interface ScoutsHandlerDeps {
+  createServiceClient: typeof createServiceClient;
+  requireUserId: typeof requireUserId;
+  initializeScoutBaseline: typeof initializeScoutBaseline;
+}
+
+const DEFAULT_DEPS: ScoutsHandlerDeps = {
+  createServiceClient,
+  requireUserId,
+  initializeScoutBaseline,
+};
+
+export async function handleScoutsRequest(
+  req: Request,
+  deps: ScoutsHandlerDeps = DEFAULT_DEPS,
+): Promise<Response> {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
   try {
-    const userId = requireUserId(req);
-    const supabase = createServiceClient();
+    const userId = deps.requireUserId(req);
+    const supabase = deps.createServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
@@ -42,13 +57,13 @@ Deno.serve(async (req) => {
         if (scoutId && action === 'test') {
           return await testScout(supabase, userId, scoutId);
         }
-        return await createScout(supabase, userId, req);
+        return await createScout(supabase, userId, req, deps.initializeScoutBaseline);
 
       case 'PUT':
         if (!scoutId) {
           return errorResponse('Scout ID erforderlich', 400);
         }
-        return await updateScout(supabase, userId, scoutId, req);
+        return await updateScout(supabase, userId, scoutId, req, deps.initializeScoutBaseline);
 
       case 'DELETE':
         if (!scoutId) {
@@ -66,7 +81,11 @@ Deno.serve(async (req) => {
     }
     return errorResponse(error instanceof Error ? error.message : String(error), 500);
   }
-});
+}
+
+if (import.meta.main) {
+  Deno.serve((req) => handleScoutsRequest(req));
+}
 
 // List all scouts for user (with latest execution status)
 async function listScouts(supabase: ReturnType<typeof createServiceClient>, userId: string) {
@@ -158,7 +177,8 @@ async function getScout(
 async function createScout(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
-  req: Request
+  req: Request,
+  initializeBaseline: typeof initializeScoutBaseline = initializeScoutBaseline,
 ) {
   const body = await req.json();
   const scoutType = body.scout_type || 'web';
@@ -236,7 +256,7 @@ async function createScout(
   }
 
   try {
-    const baselineFields = await initializeScoutBaseline({
+    const baselineFields = await initializeBaseline({
       ...data,
       is_active: true,
     });
@@ -275,7 +295,8 @@ async function updateScout(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
   scoutId: string,
-  req: Request
+  req: Request,
+  initializeBaseline: typeof initializeScoutBaseline = initializeScoutBaseline,
 ) {
   const body = await req.json();
 
@@ -356,7 +377,7 @@ async function updateScout(
 
   if (shouldInitializeBaseline) {
     try {
-      Object.assign(updates, await initializeScoutBaseline(nextScout));
+      Object.assign(updates, await initializeBaseline(nextScout));
     } catch (baselineError) {
       console.error('Initialize baseline on update error:', baselineError);
       return errorResponse(

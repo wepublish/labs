@@ -82,6 +82,14 @@ export interface ExtractionResult {
   isListingPage: boolean;
 }
 
+export function filterCriteriaMatchedWebUnits(
+  units: WebExtractionResult['units'],
+  criteria?: string | null,
+): WebExtractionResult['units'] {
+  if (!criteria?.trim()) return units;
+  return units.filter((unit) => unit.criteriaMatch !== false);
+}
+
 export async function extractInformationUnits(
   supabase: ReturnType<typeof createServiceClient>,
   content: string,
@@ -155,7 +163,7 @@ AUSGABEFORMAT (JSON):
 
   let raw: { statement: string; unitType: string; entities: string[]; eventDate?: string | null }[] = [];
   try {
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content ?? '{}');
     raw = result.units || [];
   } catch {
     return { units: [], isListingPage: false };
@@ -216,7 +224,7 @@ async function extractUnitsAuto(
     });
 
     try {
-      extraction = JSON.parse(response.choices[0].message.content) as WebExtractionResult;
+      extraction = JSON.parse(response.choices[0].message.content ?? '{}') as WebExtractionResult;
     } catch {
       return { units: [], isListingPage: false };
     }
@@ -232,7 +240,7 @@ async function extractUnitsAuto(
     }
   }
 
-  const raw = extraction?.units ?? [];
+  const raw = filterCriteriaMatchedWebUnits(extraction?.units ?? [], params.criteria);
 
   // §3.3.1: when the whole input was a listing page, the extractor emits
   // units:[] + isListingPage:true. Propagate the flag so downstream filters can

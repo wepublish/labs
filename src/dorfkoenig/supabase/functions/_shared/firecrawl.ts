@@ -2,8 +2,13 @@
 
 import { DOUBLE_PROBE_TIMEOUT_MS } from './constants.ts';
 
-const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY')!;
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2';
+
+function getFirecrawlApiKey(): string {
+  const key = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!key) throw new Error('FIRECRAWL_API_KEY not configured');
+  return key;
+}
 
 interface ScrapeOptions {
   url: string;
@@ -87,7 +92,7 @@ export async function scrape(options: ScrapeOptions): Promise<{
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+        'Authorization': `Bearer ${getFirecrawlApiKey()}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -259,7 +264,7 @@ export async function mapSite(url: string, limit = 200): Promise<string[]> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+        'Authorization': `Bearer ${getFirecrawlApiKey()}`,
       },
       body: JSON.stringify({ url, limit, includeSubdomains: true }),
     });
@@ -293,7 +298,7 @@ export async function scrapeRawHtml(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+        'Authorization': `Bearer ${getFirecrawlApiKey()}`,
       },
       body: JSON.stringify({ url, formats: ['rawHtml'] }),
       signal: controller.signal,

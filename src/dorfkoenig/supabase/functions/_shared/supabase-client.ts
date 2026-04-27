@@ -2,16 +2,17 @@
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-// Environment variables
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`${name} not configured`);
+  return value;
+}
 
 /**
  * Create Supabase client with anon key (respects RLS)
  */
 export function createAnonClient(): SupabaseClient {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_ANON_KEY'), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -24,7 +25,7 @@ export function createAnonClient(): SupabaseClient {
  * Use for scheduled jobs and internal operations
  */
 export function createServiceClient(): SupabaseClient {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
