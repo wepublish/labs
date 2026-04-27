@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We.Publish AI Strategy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23ea726e'/%3E%3Ctext x='16' y='22' font-family='system-ui' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3Ew.%3C/text%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --coral: #ea726e;
+      --coral-dark: #c95652;
+      --ink: #161616;
+      --muted: #686868;
+      --soft: #f7f3ef;
+      --paper: #fffdf9;
+      --line: #ded7cf;
+      --blue: #286f8f;
+      --green: #3c7a58;
+      --violet: #665a9e;
+      --font-display: "Instrument Serif", Georgia, serif;
+      --font-body: "Instrument Sans", system-ui, -apple-system, sans-serif;
+      --shadow: 0 16px 50px rgba(30, 24, 18, 0.08);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: var(--font-body);
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(22, 22, 22, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 22, 22, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 28px 28px;
+    }
+
+    .deck-brand {
+      position: fixed;
+      z-index: 30;
+      top: 26px;
+      left: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .deck-brand::before {
+      content: "";
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      background: var(--coral);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+
+    .counter {
+      position: fixed;
+      z-index: 30;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 30;
+      right: 34px;
+      bottom: 20px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav button {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 249, 0.9);
+      color: var(--ink);
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(30, 24, 18, 0.06);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.45s var(--ease), transform 0.45s var(--ease), visibility 0s linear 0.45s;
+      padding: 84px 86px 78px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: 0s;
+      z-index: 2;
+    }
+
+    .eyebrow {
+      color: var(--coral-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    h1, h2 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 72px;
+      line-height: 0.98;
+      max-width: 920px;
+    }
+
+    h2 {
+      font-size: 46px;
+      line-height: 1.03;
+      max-width: 920px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.55;
+      max-width: 760px;
+      margin-top: 24px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card {
+      background: rgba(255, 253, 249, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      min-height: 150px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .tagline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 28px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 11px;
+      border-radius: 999px;
+      background: #f0e8df;
+      color: #5d5148;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .tag.coral { background: rgba(234, 114, 110, 0.14); color: var(--coral-dark); }
+    .tag.blue { background: rgba(40, 111, 143, 0.13); color: var(--blue); }
+    .tag.green { background: rgba(60, 122, 88, 0.14); color: var(--green); }
+    .tag.violet { background: rgba(102, 90, 158, 0.13); color: var(--violet); }
+
+    .diagram {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .node {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 249, 0.94);
+      padding: 20px;
+      min-height: 116px;
+      box-shadow: var(--shadow);
+    }
+
+    .node.strong {
+      border-color: rgba(234, 114, 110, 0.5);
+      background: rgba(234, 114, 110, 0.07);
+    }
+
+    .node h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .path {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .timeline {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      max-width: 920px;
+    }
+
+    .timeline-card {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 18px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 249, 0.94);
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+      min-height: 96px;
+    }
+
+    .timeline-card .period {
+      color: var(--coral-dark);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      line-height: 1.25;
+    }
+
+    .timeline-card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .timeline-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .step {
+      position: relative;
+      min-height: 132px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 249, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .step b {
+      display: block;
+      color: var(--coral-dark);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .step h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 42px;
+      align-items: center;
+    }
+
+    .codebox {
+      margin-top: 26px;
+      background: #1d1b19;
+      color: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      padding: 22px;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      box-shadow: 0 18px 55px rgba(20, 18, 16, 0.18);
+    }
+
+    .focus {
+      color: var(--coral-dark);
+      font-weight: 700;
+    }
+
+    .quote {
+      font-family: var(--font-display);
+      font-size: 42px;
+      line-height: 1.12;
+      max-width: 950px;
+    }
+
+    .decision {
+      margin-top: 38px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .decision .card {
+      min-height: 128px;
+      border-color: rgba(234, 114, 110, 0.4);
+    }
+
+    .anim {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+      transition-delay: 0s;
+    }
+
+    .active .anim {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: calc(0.08s + var(--n, 0) * 0.075s);
+    }
+
+    .title-bg {
+      background:
+        linear-gradient(110deg, rgba(234, 114, 110, 0.16), transparent 44%),
+        linear-gradient(rgba(22, 22, 22, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 22, 22, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 28px 28px, 28px 28px, auto;
+    }
+
+    .dark {
+      background: #1a1816;
+      color: #fffaf3;
+    }
+
+    .dark .subtitle,
+    .dark .card p,
+    .dark .card li,
+    .dark .node p {
+      color: rgba(255, 250, 243, 0.7);
+    }
+
+    .dark .card,
+    .dark .node,
+    .dark .step {
+      background: rgba(255, 250, 243, 0.06);
+      border-color: rgba(255, 250, 243, 0.18);
+      box-shadow: none;
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 76px 28px 70px; overflow-y: auto; }
+      h1 { font-size: 46px; }
+      h2 { font-size: 36px; }
+      .grid.two,
+      .grid.three,
+      .grid.four,
+      .diagram,
+      .split,
+      .path,
+      .decision,
+      .timeline-card {
+        grid-template-columns: 1fr;
+      }
+      .deck-brand { left: 26px; }
+      .nav { right: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-brand" aria-label="We.Publish">We.Publish</div>
+  <div class="counter" id="counter"></div>
+  <div class="nav">
+    <button type="button" onclick="navigate(-1)" aria-label="Previous slide">&larr;</button>
+    <button type="button" onclick="navigate(1)" aria-label="Next slide">&rarr;</button>
+  </div>
+
+  <section class="slide title-bg active">
+    <div class="eyebrow anim" style="--n: 0">Internal strategy</div>
+    <h1 class="anim" style="--n: 1">We.Publish<br>AI Strategy</h1>
+    <p class="subtitle anim" style="--n: 2">A 60-day transformation for knowledge, support, onboarding, and developer assistance.</p>
+    <div class="tagline anim" style="--n: 3">
+      <span class="tag coral">Knowledge first</span>
+      <span class="tag blue">Hermes coordinated</span>
+      <span class="tag green">Human gated</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Why now</div>
+    <h2 class="anim" style="--n: 1">The work is distributed, but the context is not.</h2>
+    <div class="grid four">
+      <div class="card anim" style="--n: 2">
+        <h3>Remote coordination</h3>
+        <p>Important context stays in Slack threads, calls, and individual memory.</p>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3>Repeated support</h3>
+        <p>The same CMS and setup questions reappear without compounding into reusable answers.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Manual onboarding</h3>
+        <p>Media setup needs too many handoffs, checks, and undocumented decisions.</p>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>Developer friction</h3>
+        <p>Linear issues need richer briefs: product context, CMS state, media support history, and code pointers.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide dark">
+    <div class="eyebrow anim" style="--n: 0">Core bet</div>
+    <p class="quote anim" style="--n: 1">AI only works when organizational knowledge becomes explicit, structured, and maintained.</p>
+    <p class="subtitle anim" style="--n: 2">The first product is not a chatbot. It is an operating system for memory, work, and safe action.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Operating model</div>
+    <h2 class="anim" style="--n: 1">Four layers, one flow of truth.</h2>
+    <div class="grid four">
+      <div class="card anim" style="--n: 2">
+        <h3>Slack</h3>
+        <p>Conversation, clarification, fast coordination, and approval prompts.</p>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3>Linear</h3>
+        <p>Tracked work: support escalations, onboarding blockers, developer tasks.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Knowledge base</h3>
+        <p>Durable truth: media state, support patterns, decisions, runbooks.</p>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>Hermes</h3>
+        <p>Reads, drafts, briefs, routes, proposes updates, and coordinates agents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">System architecture</div>
+    <h2 class="anim" style="--n: 1">Separate conversation, durable truth, and live action.</h2>
+    <div class="diagram anim" style="--n: 2">
+      <div class="stack">
+        <div class="node"><h3>Slack + Linear</h3><p>Intake, discussion, approvals, tracked work.</p></div>
+        <div class="node"><h3>llms.txt</h3><p>Public context map for agents and docs.</p></div>
+      </div>
+      <div class="node strong"><h3>Git-backed Knowledge Base</h3><p>Hermes reads this first. It stores media state, strategy, support patterns, funding context, decisions, issue summaries, and runbooks.</p></div>
+      <div class="stack">
+        <div class="node"><h3>CMS MCP</h3><p>Authenticated live CMS state and approved setup actions.</p></div>
+        <div class="node"><h3>Developer Context MCP</h3><p>Internal code, docs, website, and architecture context.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Knowledge base</div>
+    <h2 class="anim" style="--n: 1">A markdown vault that humans and agents can both trust.</h2>
+    <div class="split">
+      <div class="anim" style="--n: 2">
+        <p class="subtitle">Use a private Git-backed vault as the source of truth. Tolaria is the preferred operator/developer UI; Obsidian compatibility keeps the door open for the broader team.</p>
+        <div class="tagline">
+          <span class="tag coral">Git canonical</span>
+          <span class="tag blue">Tolaria first</span>
+          <span class="tag violet">Obsidian compatible</span>
+        </div>
+      </div>
+      <div class="codebox anim" style="--n: 3">wepublish-brain/
+  skills/
+  00-inbox/
+  02-strategy/
+  03-product-cms/
+  04-developers/
+  05-media/
+    {media}/design.md
+    {media}/setup-knowledge.md
+    {media}/stakeholders.md
+    {media}/support-history.md
+  06-issues/
+  08-sources/
+  09-maintenance/</div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">What goes into it</div>
+    <h2 class="anim" style="--n: 1">The KB is not a dumping ground. It has typed pages.</h2>
+    <div class="grid three">
+      <div class="card anim" style="--n: 2">
+        <h3>Media</h3>
+        <ul>
+          <li>design.md</li>
+          <li>custom setup knowledge</li>
+          <li>stakeholders</li>
+          <li>support history</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3>Product CMS</h3>
+        <ul>
+          <li>setup</li>
+          <li>payments</li>
+          <li>subscriptions</li>
+          <li>peering</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Work</h3>
+        <ul>
+          <li>Linear issue summaries</li>
+          <li>developer briefs</li>
+          <li>support patterns</li>
+          <li>weekly audits</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Funding as a service</div>
+    <h2 class="anim" style="--n: 1">The same architecture can support every media relationship.</h2>
+    <p class="subtitle anim" style="--n: 2">Funding support already exists as a service. It should live in the same KB, Linear, Slack, and Hermes operating model instead of becoming a separate knowledge silo.</p>
+    <div class="grid three">
+      <div class="card anim" style="--n: 3">
+        <h3>Media profile</h3>
+        <p>Mission, editorial focus, stakeholders, setup state, design decisions, funding goals, and open risks.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Funding workflow</h3>
+        <p>Grant deadlines, funder requirements, application drafts, evidence, reporting obligations, and next actions.</p>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>All-in-one support</h3>
+        <p>Technical support, onboarding, funding, and strategic guidance use the same durable media context.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Two MCPs</div>
+    <h2 class="anim" style="--n: 1">One for operations. One for developer context.</h2>
+    <div class="grid two">
+      <div class="card anim" style="--n: 2">
+        <h3>CMS MCP</h3>
+        <p>Authenticated, tenant-scoped, audited access to live CMS setup state and approved setup actions.</p>
+        <div class="tagline">
+          <span class="tag coral">support</span>
+          <span class="tag coral">onboarding</span>
+          <span class="tag coral">payments</span>
+        </div>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3>Developer Context MCP</h3>
+        <p>Internal read-only access to GitHub, GitBook, website pages, architecture references, and docs drift checks.</p>
+        <div class="tagline">
+          <span class="tag blue">developers</span>
+          <span class="tag blue">briefs</span>
+          <span class="tag blue">Codex work</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Critical path</div>
+    <h2 class="anim" style="--n: 1">CMS MCP makes support and onboarding real.</h2>
+    <p class="subtitle anim" style="--n: 2">A support agent cannot reliably help a media organization personalize and set up the CMS unless it can inspect current setup state.</p>
+    <div class="grid four">
+      <div class="card anim" style="--n: 3"><h3>Site profile</h3><p>What media is this, and how is the CMS configured?</p></div>
+      <div class="card anim" style="--n: 4"><h3>Payments</h3><p>Provider status, missing details, and safe next steps.</p></div>
+      <div class="card anim" style="--n: 5"><h3>Subscriptions</h3><p>Member plans, subscription readiness, and gaps.</p></div>
+      <div class="card anim" style="--n: 6"><h3>Peering</h3><p>Network sharing status and configuration checks.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Hermes</div>
+    <h2 class="anim" style="--n: 1">Hermes coordinates work, but humans keep control.</h2>
+    <div class="path">
+      <div class="step anim" style="--n: 2"><b>01</b><h3>Read KB</h3><p>Start from durable truth, not raw chat.</p></div>
+      <div class="step anim" style="--n: 3"><b>02</b><h3>Check live state</h3><p>Call CMS MCP only when current CMS context matters.</p></div>
+      <div class="step anim" style="--n: 4"><b>03</b><h3>Draft</h3><p>Replies, Linear issues, briefs, KB updates.</p></div>
+      <div class="step anim" style="--n: 5"><b>04</b><h3>Route</h3><p>Support, onboarding, developer work, or docs maintenance.</p></div>
+      <div class="step anim" style="--n: 6"><b>05</b><h3>Ask approval</h3><p>No merges or CMS mutations without explicit human approval.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Skills</div>
+    <h2 class="anim" style="--n: 1">Skill files turn process into reusable agent behavior.</h2>
+    <p class="subtitle anim" style="--n: 2">Publish curated skills at <span class="focus">skills.wepublish.ch</span> and mirror them in the KB repo for internal use.</p>
+    <div class="grid three">
+      <div class="card anim" style="--n: 3"><h3>Support</h3><p><code>support-triage</code><br><code>kb-ingest-slack-linear</code><br><code>kb-maintenance</code></p></div>
+      <div class="card anim" style="--n: 4"><h3>Onboarding</h3><p><code>onboarding-triage</code><br><code>payment-setup</code><br><code>media-setup-preflight</code></p></div>
+      <div class="card anim" style="--n: 5"><h3>Engineering</h3><p><code>developer-briefing</code><br><code>cms-mcp-operator</code><br><code>release-notes-to-kb</code></p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Agent-ready We.Publish</div>
+    <h2 class="anim" style="--n: 1">Make We.Publish readable before making it autonomous.</h2>
+    <div class="grid three">
+      <div class="card anim" style="--n: 2">
+        <h3><code>/llms.txt</code></h3>
+        <p>Public context map: docs, repositories, product concepts, and agent entry points.</p>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3><code>/llms-full.txt</code></h3>
+        <p>Compact public knowledge pack: setup, payments, subscriptions, peering, troubleshooting.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Markdown docs</h3>
+        <p>Agent-readable docs, DESIGN.md where needed, AGENTS.md in repos, and skill files for repeatable workflows.</p>
+      </div>
+    </div>
+    <div class="tagline anim" style="--n: 5">
+      <span class="tag coral">public context</span>
+      <span class="tag blue">internal KB</span>
+      <span class="tag green">authenticated MCP</span>
+      <span class="tag violet">human approvals</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Support workflow</div>
+    <h2 class="anim" style="--n: 1">Support is a form plus a skill, not a free-form bot.</h2>
+    <p class="subtitle anim" style="--n: 2">Slack stays conversational, but Hermes should push every support thread through a structured workflow before answering.</p>
+    <div class="grid four">
+      <div class="card anim" style="--n: 3">
+        <h3>1. Intake form</h3>
+        <ul>
+          <li>media name</li>
+          <li>CMS URL / environment</li>
+          <li>problem category</li>
+          <li>urgency and screenshots</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>2. Skill preflight</h3>
+        <ul>
+          <li>classify request</li>
+          <li>check KB pattern</li>
+          <li>detect sensitive data</li>
+          <li>decide escalation path</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>3. Live check</h3>
+        <ul>
+          <li>CMS MCP read tools</li>
+          <li>no writes by default</li>
+          <li>Linear issue if engineering needed</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 6">
+        <h3>4. Human gate</h3>
+        <ul>
+          <li>draft Slack reply</li>
+          <li>draft Linear issue</li>
+          <li>propose KB update</li>
+          <li>human sends/approves</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Onboarding workflow</div>
+    <h2 class="anim" style="--n: 1">Onboarding needs gates, not one big prompt.</h2>
+    <p class="subtitle anim" style="--n: 2">The form captures state, the skill enforces gates, scripts do local deterministic setup, and CMS MCP handles authenticated checks and approved changes.</p>
+    <div class="grid four">
+      <div class="card anim" style="--n: 3">
+        <h3>Form</h3>
+        <ul>
+          <li>stakeholders</li>
+          <li>domain and branding</li>
+          <li>payment provider choice</li>
+          <li>subscriptions and plans</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Skill gates</h3>
+        <ul>
+          <li>G0 access and identity</li>
+          <li>G1 design.md</li>
+          <li>G2 CMS setup state</li>
+          <li>G3 payments approval</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>Local script</h3>
+        <ul>
+          <li>create media folder</li>
+          <li>generate templates</li>
+          <li>validate required docs</li>
+          <li>never store secrets</li>
+        </ul>
+      </div>
+      <div class="card anim" style="--n: 6">
+        <h3>CMS MCP</h3>
+        <ul>
+          <li>read setup status</li>
+          <li>dry-run proposed changes</li>
+          <li>execute only after approval</li>
+          <li>write audit log</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Sensitive data boundary</div>
+    <h2 class="anim" style="--n: 1">Sensitive setup data should not become KB content.</h2>
+    <div class="grid four">
+      <div class="card anim" style="--n: 2">
+        <h3>Allowed in KB</h3>
+        <p>Setup status, decisions, public URLs, owners, blockers, design notes, and non-secret configuration summaries.</p>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3>Allowed in form</h3>
+        <p>Structured business inputs. The form must label sensitive fields and route them to the correct system.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Allowed in CMS</h3>
+        <p>Payment details, credentials, provider setup, and live configuration belong in authenticated CMS/admin systems.</p>
+      </div>
+      <div class="card anim" style="--n: 5">
+        <h3>Allowed in scripts</h3>
+        <p>Local scaffolding and validation only. Scripts can create files and check completeness; they must not transmit secrets.</p>
+      </div>
+    </div>
+    <div class="tagline anim" style="--n: 6">
+      <span class="tag coral">form captures</span>
+      <span class="tag blue">skill gates</span>
+      <span class="tag green">MCP acts</span>
+      <span class="tag violet">KB remembers</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">60-day rollout</div>
+    <h2 class="anim" style="--n: 1">Move in four two-week increments.</h2>
+    <div class="timeline">
+      <div class="timeline-card anim" style="--n: 2">
+        <div class="period">Weeks<br>1-2</div>
+        <div>
+          <h3>Foundation</h3>
+          <ul>
+            <li>Create KB vault and media page templates.</li>
+            <li>Define <code>llms.txt</code>, Linear templates, and internal developer Slack ingestion.</li>
+            <li>Draft <code>support-triage</code>, <code>developer-briefing</code>, and <code>kb-ingest-slack-linear</code>.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="timeline-card anim" style="--n: 3">
+        <div class="period">Weeks<br>3-4</div>
+        <div>
+          <h3>First inboxes</h3>
+          <ul>
+            <li>Open one support/onboarding channel.</li>
+            <li>Hermes drafts support replies and Linear issues with human approval.</li>
+            <li>Finish CMS MCP read-only diagnostics and start weekly KB maintenance.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="timeline-card anim" style="--n: 4">
+        <div class="period">Weeks<br>5-6</div>
+        <div>
+          <h3>Media context</h3>
+          <ul>
+            <li>Add per-media setup knowledge, <code>design.md</code>, stakeholders, and funding context.</li>
+            <li>Hermes generates setup reports from CMS MCP.</li>
+            <li>Add <code>cms-mcp-operator</code> and <code>payment-setup</code> skills.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="timeline-card anim" style="--n: 5">
+        <div class="period">Weeks<br>7-8</div>
+        <div>
+          <h3>Controlled action</h3>
+          <ul>
+            <li>Add narrow human-approved CMS MCP write tools.</li>
+            <li>Pilot support/onboarding copilot with one media organization.</li>
+            <li>Review Hindsight only as optional Hermes memory, not as the shared KB.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Governance</div>
+    <h2 class="anim" style="--n: 1">Human-gated by default.</h2>
+    <div class="grid four">
+      <div class="card anim" style="--n: 2"><h3>No PR merges</h3><p>Agents can draft and prepare. Humans decide when to merge.</p></div>
+      <div class="card anim" style="--n: 3"><h3>No blind CMS writes</h3><p>Mutations require dry-run, approval, scope, and audit logs.</p></div>
+      <div class="card anim" style="--n: 4"><h3>Access boundaries</h3><p>Public docs, internal KB, restricted CMS state, human-approved actions.</p></div>
+      <div class="card anim" style="--n: 5"><h3>Support tone</h3><p>Media-facing answers stay practical and avoid implementation leakage.</p></div>
+    </div>
+  </section>
+
+  <section class="slide dark">
+    <div class="eyebrow anim" style="--n: 0">Decision</div>
+    <h2 class="anim" style="--n: 1">Approve the 60-day transformation.</h2>
+    <p class="subtitle anim" style="--n: 2">The first phase turns We.Publish into an agent-ready organization without handing control to agents.</p>
+    <div class="decision">
+      <div class="card anim" style="--n: 3"><h3>KB vault</h3><p>Create the source of truth.</p></div>
+      <div class="card anim" style="--n: 4"><h3>Two MCPs</h3><p>CMS operations and developer context.</p></div>
+      <div class="card anim" style="--n: 5"><h3>Skills</h3><p>Publish workflows at skills.wepublish.ch.</p></div>
+      <div class="card anim" style="--n: 6"><h3>Hermes pilot</h3><p>Support, onboarding, and developer briefs.</p></div>
+    </div>
+  </section>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const counter = document.getElementById('counter');
+    let current = 0;
+
+    function update() {
+      slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === current);
+      });
+      counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      window.history.replaceState(null, '', `${window.location.search}#${current + 1}`);
+    }
+
+    function navigate(delta) {
+      current = Math.max(0, Math.min(slides.length - 1, current + delta));
+      update();
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'PageDown') {
+        event.preventDefault();
+        navigate(1);
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        navigate(-1);
+      }
+      if (event.key === 'Home') {
+        current = 0;
+        update();
+      }
+      if (event.key === 'End') {
+        current = slides.length - 1;
+        update();
+      }
+    });
+
+    const initial = Number.parseInt(window.location.hash.replace('#', ''), 10);
+    if (!Number.isNaN(initial) && initial >= 1 && initial <= slides.length) {
+      current = initial - 1;
+    }
+    update();
+  </script>
+</body>
+</html>
