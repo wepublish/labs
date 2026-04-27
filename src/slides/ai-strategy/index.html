@@ -63,6 +63,10 @@
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
     }
 
+    body.dark-active .deck-brand {
+      color: #fffaf3;
+    }
+
     .counter {
       position: fixed;
       z-index: 30;
@@ -73,6 +77,10 @@
       font-size: 12px;
       letter-spacing: 0.08em;
       font-weight: 600;
+    }
+
+    body.dark-active .counter {
+      color: rgba(255, 250, 243, 0.66);
     }
 
     .nav {
@@ -94,6 +102,13 @@
       font-size: 16px;
       cursor: pointer;
       box-shadow: 0 2px 10px rgba(30, 24, 18, 0.06);
+    }
+
+    body.dark-active .nav button {
+      border-color: rgba(255, 250, 243, 0.18);
+      background: rgba(255, 250, 243, 0.1);
+      color: #fffaf3;
+      box-shadow: none;
     }
 
     .slide {
@@ -495,6 +510,45 @@
       box-shadow: none;
     }
 
+    .chapter {
+      background:
+        linear-gradient(120deg, rgba(234, 114, 110, 0.18), transparent 46%),
+        #1a1816;
+      color: #fffaf3;
+    }
+
+    .chapter .eyebrow {
+      color: #f2a09c;
+    }
+
+    .chapter h2 {
+      font-size: 62px;
+      max-width: 980px;
+    }
+
+    .chapter .subtitle {
+      color: rgba(255, 250, 243, 0.72);
+      max-width: 860px;
+    }
+
+    .chapter-list {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+      max-width: 1040px;
+    }
+
+    .chapter-list span {
+      border: 1px solid rgba(255, 250, 243, 0.18);
+      border-radius: 8px;
+      padding: 13px 14px;
+      color: rgba(255, 250, 243, 0.82);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
     @media (max-width: 900px) {
       .slide { padding: 76px 28px 70px; overflow-y: auto; }
       h1 { font-size: 46px; }
@@ -507,6 +561,7 @@
       .path,
       .decision,
       .support-loop,
+      .chapter-list,
       .timeline-card {
         grid-template-columns: 1fr;
       }
@@ -583,6 +638,18 @@
         <h3>Hermes</h3>
         <p>Reads, drafts, briefs, routes, proposes updates, and coordinates agents.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="slide chapter">
+    <div class="eyebrow anim" style="--n: 0">Chapter 01 / Foundation</div>
+    <h2 class="anim" style="--n: 1">First, build the shared memory.</h2>
+    <p class="subtitle anim" style="--n: 2">Before Hermes can coordinate work, We.Publish needs a durable context layer: architecture, knowledge base, media state, and service memory.</p>
+    <div class="chapter-list anim" style="--n: 3">
+      <span>System architecture</span>
+      <span>Knowledge base</span>
+      <span>Typed media pages</span>
+      <span>Funding as service memory</span>
     </div>
   </section>
 
@@ -685,6 +752,54 @@
     </div>
   </section>
 
+  <section class="slide chapter">
+    <div class="eyebrow anim" style="--n: 0">Chapter 02 / Interfaces</div>
+    <h2 class="anim" style="--n: 1">Then make that context usable by agents.</h2>
+    <p class="subtitle anim" style="--n: 2">This is the enabling layer: public context maps, markdown docs, skill files, and two narrowly scoped MCPs.</p>
+    <div class="chapter-list anim" style="--n: 3">
+      <span>llms.txt and docs</span>
+      <span>Reusable skills</span>
+      <span>Developer Context MCP</span>
+      <span>CMS MCP</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Agent-ready We.Publish</div>
+    <h2 class="anim" style="--n: 1">Make We.Publish readable before making it autonomous.</h2>
+    <div class="grid three">
+      <div class="card anim" style="--n: 2">
+        <h3><code>/llms.txt</code></h3>
+        <p>Public context map: docs, repositories, product concepts, and agent entry points.</p>
+      </div>
+      <div class="card anim" style="--n: 3">
+        <h3><code>/llms-full.txt</code></h3>
+        <p>Compact public knowledge pack: setup, payments, subscriptions, peering, troubleshooting.</p>
+      </div>
+      <div class="card anim" style="--n: 4">
+        <h3>Markdown docs</h3>
+        <p>Agent-readable docs, DESIGN.md where needed, AGENTS.md in repos, and skill files for repeatable workflows.</p>
+      </div>
+    </div>
+    <div class="tagline anim" style="--n: 5">
+      <span class="tag coral">public context</span>
+      <span class="tag blue">internal KB</span>
+      <span class="tag green">authenticated MCP</span>
+      <span class="tag violet">human approvals</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow anim" style="--n: 0">Skills</div>
+    <h2 class="anim" style="--n: 1">Skill files turn process into reusable agent behavior.</h2>
+    <p class="subtitle anim" style="--n: 2">Publish curated skills at <span class="focus">skills.wepublish.ch</span> and mirror them in the KB repo for internal use.</p>
+    <div class="grid three">
+      <div class="card anim" style="--n: 3"><h3>Support</h3><p><code>support-triage</code><br><code>kb-ingest-slack-linear</code><br><code>kb-maintenance</code></p></div>
+      <div class="card anim" style="--n: 4"><h3>Onboarding</h3><p><code>onboarding-triage</code><br><code>payment-setup</code><br><code>media-setup-preflight</code></p></div>
+      <div class="card anim" style="--n: 5"><h3>Engineering</h3><p><code>developer-briefing</code><br><code>cms-mcp-operator</code><br><code>release-notes-to-kb</code></p></div>
+    </div>
+  </section>
+
   <section class="slide">
     <div class="eyebrow anim" style="--n: 0">Two MCPs</div>
     <h2 class="anim" style="--n: 1">One for operations. One for developer context.</h2>
@@ -719,6 +834,18 @@
       <div class="card anim" style="--n: 4"><h3>Payments</h3><p>Provider status, missing details, and safe next steps.</p></div>
       <div class="card anim" style="--n: 5"><h3>Subscriptions</h3><p>Member plans, subscription readiness, and gaps.</p></div>
       <div class="card anim" style="--n: 6"><h3>Peering</h3><p>Network sharing status and configuration checks.</p></div>
+    </div>
+  </section>
+
+  <section class="slide chapter">
+    <div class="eyebrow anim" style="--n: 0">Chapter 03 / Hermes</div>
+    <h2 class="anim" style="--n: 1">Now put a coordinator on top.</h2>
+    <p class="subtitle anim" style="--n: 2">Hermes uses the KB, skills, Linear, MCPs, Context7, Firecrawl, and repo context to draft work. Humans keep the gates.</p>
+    <div class="chapter-list anim" style="--n: 3">
+      <span>Developer briefs</span>
+      <span>Media support</span>
+      <span>Ticket enrichment</span>
+      <span>Draft PRs for review</span>
     </div>
   </section>
 
@@ -795,39 +922,15 @@
     </div>
   </section>
 
-  <section class="slide">
-    <div class="eyebrow anim" style="--n: 0">Skills</div>
-    <h2 class="anim" style="--n: 1">Skill files turn process into reusable agent behavior.</h2>
-    <p class="subtitle anim" style="--n: 2">Publish curated skills at <span class="focus">skills.wepublish.ch</span> and mirror them in the KB repo for internal use.</p>
-    <div class="grid three">
-      <div class="card anim" style="--n: 3"><h3>Support</h3><p><code>support-triage</code><br><code>kb-ingest-slack-linear</code><br><code>kb-maintenance</code></p></div>
-      <div class="card anim" style="--n: 4"><h3>Onboarding</h3><p><code>onboarding-triage</code><br><code>payment-setup</code><br><code>media-setup-preflight</code></p></div>
-      <div class="card anim" style="--n: 5"><h3>Engineering</h3><p><code>developer-briefing</code><br><code>cms-mcp-operator</code><br><code>release-notes-to-kb</code></p></div>
-    </div>
-  </section>
-
-  <section class="slide">
-    <div class="eyebrow anim" style="--n: 0">Agent-ready We.Publish</div>
-    <h2 class="anim" style="--n: 1">Make We.Publish readable before making it autonomous.</h2>
-    <div class="grid three">
-      <div class="card anim" style="--n: 2">
-        <h3><code>/llms.txt</code></h3>
-        <p>Public context map: docs, repositories, product concepts, and agent entry points.</p>
-      </div>
-      <div class="card anim" style="--n: 3">
-        <h3><code>/llms-full.txt</code></h3>
-        <p>Compact public knowledge pack: setup, payments, subscriptions, peering, troubleshooting.</p>
-      </div>
-      <div class="card anim" style="--n: 4">
-        <h3>Markdown docs</h3>
-        <p>Agent-readable docs, DESIGN.md where needed, AGENTS.md in repos, and skill files for repeatable workflows.</p>
-      </div>
-    </div>
-    <div class="tagline anim" style="--n: 5">
-      <span class="tag coral">public context</span>
-      <span class="tag blue">internal KB</span>
-      <span class="tag green">authenticated MCP</span>
-      <span class="tag violet">human approvals</span>
+  <section class="slide chapter">
+    <div class="eyebrow anim" style="--n: 0">Chapter 04 / Workflows</div>
+    <h2 class="anim" style="--n: 1">Finally, apply the system safely.</h2>
+    <p class="subtitle anim" style="--n: 2">The operating model becomes useful through support, onboarding, sensitive-data boundaries, rollout, and governance.</p>
+    <div class="chapter-list anim" style="--n: 3">
+      <span>Support triage</span>
+      <span>Onboarding gates</span>
+      <span>Sensitive-data boundary</span>
+      <span>60-day rollout</span>
     </div>
   </section>
 
@@ -1030,6 +1133,7 @@
       slides.forEach((slide, index) => {
         slide.classList.toggle('active', index === current);
       });
+      document.body.classList.toggle('dark-active', slides[current].classList.contains('dark') || slides[current].classList.contains('chapter'));
       counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
       window.history.replaceState(null, '', `${window.location.search}#${current + 1}`);
     }

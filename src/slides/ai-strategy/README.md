@@ -26,6 +26,18 @@ It is a controlled workflow:
 
 This keeps the knowledge base useful without turning it into a store for credentials, payment secrets, or live production configuration.
 
+## Deck Structure
+
+The slide order should show the system as layers:
+
+1. Problem and operating model
+2. Foundation: system architecture, knowledge base, typed media pages, funding/service memory
+3. Interfaces: `llms.txt`, markdown docs, skills, Developer Context MCP, CMS MCP
+4. Hermes: team briefs, media support, ticket enrichment, draft PRs, documentation health
+5. Workflows: support, onboarding, sensitive-data boundaries, rollout, governance
+
+Hermes intentionally appears after skills, public context, and MCPs because it is the coordinating layer on top of those assets.
+
 ## Source Of Truth
 
 For the 60-day rollout, the Git-backed knowledge base remains the durable source of truth. Slack is conversation. Linear is tracked work. CMS MCP is live operational state. Developer Context MCP is internal code and docs context.
