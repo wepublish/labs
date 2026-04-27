@@ -7,8 +7,14 @@ import {
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
+type DenoEnv = {
+  env: {
+    get(name: string): string | undefined;
+  };
+};
+
 function getOpenRouterApiKey(): string {
-  const key = Deno.env.get('OPENROUTER_API_KEY');
+  const key = (globalThis as typeof globalThis & { Deno?: DenoEnv }).Deno?.env.get('OPENROUTER_API_KEY');
   if (!key) {
     throw new Error('OPENROUTER_API_KEY is not set');
   }
