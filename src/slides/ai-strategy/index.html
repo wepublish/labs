@@ -753,32 +753,32 @@
   </section>
 
   <section class="slide chapter">
-    <div class="eyebrow anim" style="--n: 0">Chapter 02 / Interfaces</div>
-    <h2 class="anim" style="--n: 1">Then make that context usable by agents.</h2>
-    <p class="subtitle anim" style="--n: 2">This is the enabling layer: public context maps, markdown docs, skill files, and two narrowly scoped MCPs.</p>
+    <div class="eyebrow anim" style="--n: 0">Chapter 02 / Agent interface layer</div>
+    <h2 class="anim" style="--n: 1">Expose, instruct, connect.</h2>
+    <p class="subtitle anim" style="--n: 2">The KB is the source. This layer turns it into surfaces agents can read, procedures agents can follow, and tools agents can call safely.</p>
     <div class="chapter-list anim" style="--n: 3">
-      <span>llms.txt and docs</span>
-      <span>Reusable skills</span>
-      <span>Developer Context MCP</span>
-      <span>CMS MCP</span>
+      <span>Expose stable context</span>
+      <span>Instruct repeatable workflows</span>
+      <span>Connect live tools</span>
+      <span>Gate risky actions</span>
     </div>
   </section>
 
   <section class="slide">
     <div class="eyebrow anim" style="--n: 0">Agent-ready We.Publish</div>
-    <h2 class="anim" style="--n: 1">Make We.Publish readable before making it autonomous.</h2>
+    <h2 class="anim" style="--n: 1">First expose the stable context.</h2>
     <div class="grid three">
       <div class="card anim" style="--n: 2">
         <h3><code>/llms.txt</code></h3>
-        <p>Public context map: docs, repositories, product concepts, and agent entry points.</p>
+        <p>Public index: where agents should start, which docs matter, and what is public versus authenticated.</p>
       </div>
       <div class="card anim" style="--n: 3">
         <h3><code>/llms-full.txt</code></h3>
-        <p>Compact public knowledge pack: setup, payments, subscriptions, peering, troubleshooting.</p>
+        <p>Compact public pack: product concepts, setup, payments, subscriptions, peering, and troubleshooting.</p>
       </div>
       <div class="card anim" style="--n: 4">
         <h3>Markdown docs</h3>
-        <p>Agent-readable docs, DESIGN.md where needed, AGENTS.md in repos, and skill files for repeatable workflows.</p>
+        <p>Canonical pages: public docs, repo AGENTS.md, media design.md, and knowledge-base pages with owners.</p>
       </div>
     </div>
     <div class="tagline anim" style="--n: 5">
@@ -791,12 +791,18 @@
 
   <section class="slide">
     <div class="eyebrow anim" style="--n: 0">Skills</div>
-    <h2 class="anim" style="--n: 1">Skill files turn process into reusable agent behavior.</h2>
-    <p class="subtitle anim" style="--n: 2">Publish curated skills at <span class="focus">skills.wepublish.ch</span> and mirror them in the KB repo for internal use.</p>
+    <h2 class="anim" style="--n: 1">Then give agents procedures, not just context.</h2>
+    <p class="subtitle anim" style="--n: 2">Skill files tell Hermes how to use the context: what to check, what to cite, when to escalate, and where human approval is required.</p>
     <div class="grid three">
       <div class="card anim" style="--n: 3"><h3>Support</h3><p><code>support-triage</code><br><code>kb-ingest-slack-linear</code><br><code>kb-maintenance</code></p></div>
       <div class="card anim" style="--n: 4"><h3>Onboarding</h3><p><code>onboarding-triage</code><br><code>payment-setup</code><br><code>media-setup-preflight</code></p></div>
       <div class="card anim" style="--n: 5"><h3>Engineering</h3><p><code>developer-briefing</code><br><code>cms-mcp-operator</code><br><code>release-notes-to-kb</code></p></div>
+    </div>
+    <div class="tagline anim" style="--n: 6">
+      <span class="tag coral">skills.wepublish.ch</span>
+      <span class="tag blue">internal skill repo</span>
+      <span class="tag green">media context packs</span>
+      <span class="tag violet">approval gates</span>
     </div>
   </section>
 

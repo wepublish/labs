@@ -32,11 +32,11 @@ The slide order should show the system as layers:
 
 1. Problem and operating model
 2. Foundation: system architecture, knowledge base, typed media pages, funding/service memory
-3. Interfaces: `llms.txt`, markdown docs, skills, Developer Context MCP, CMS MCP
+3. Agent interface layer: expose stable context with `llms.txt` and markdown docs, instruct repeatable workflows with skills, connect live tools with MCPs
 4. Hermes: team briefs, media support, ticket enrichment, draft PRs, documentation health
 5. Workflows: support, onboarding, sensitive-data boundaries, rollout, governance
 
-Hermes intentionally appears after skills, public context, and MCPs because it is the coordinating layer on top of those assets.
+Hermes intentionally appears after public context surfaces, skills, and MCPs because it is the coordinating layer on top of those assets. The progression is: the KB is the source, `llms.txt` and markdown docs expose stable context, skills define procedure and gates, MCPs provide live context/actions, and Hermes coordinates work across them.
 
 ## Source Of Truth
 
