@@ -28,6 +28,7 @@ if (typeof (globalThis as { Deno?: unknown }).Deno === 'undefined') {
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import gemeindenJson from '../lib/gemeinden.json' with { type: 'json' };
@@ -52,9 +53,9 @@ import {
   UNIT_FOR_COMPOSE_COLUMNS,
 } from '../supabase/functions/_shared/prompts.ts';
 
-type UnitMode = 'same' | 'better';
+export type UnitMode = 'same' | 'better';
 
-interface Args {
+export interface Args {
   from: string;
   to: string;
   villageIds: string[];
@@ -74,7 +75,7 @@ interface Village {
   name: string;
 }
 
-interface DraftRow {
+export interface DraftRow {
   id: string;
   user_id: string;
   village_id: string;
@@ -91,7 +92,7 @@ interface DraftRow {
   created_at: string;
 }
 
-interface CandidateUnit extends UnitForCompose {
+export interface CandidateUnit extends UnitForCompose {
   id: string;
   location?: { city?: string | null } | null;
   village_confidence?: string | null;
@@ -111,7 +112,7 @@ interface ComposeExamples {
   antiPatterns: AntiPattern[];
 }
 
-interface RegeneratedDraft {
+export interface RegeneratedDraft {
   title: string;
   body: string;
   draft: DraftV2;
@@ -146,7 +147,7 @@ Options:
   --help                    Show this message.`;
 }
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const args: Args = {
     from: '',
     to: '',
@@ -302,7 +303,7 @@ function belongsToVillage(unit: CandidateUnit, villageId: string): boolean {
   return unit.location?.city === villageId;
 }
 
-function isHistoricallyRelevant(unit: CandidateUnit, publicationDate: string, minQuality: number): boolean {
+export function isHistoricallyRelevant(unit: CandidateUnit, publicationDate: string, minQuality: number): boolean {
   if (unit.village_confidence === 'low') return false;
   if (unit.quality_score != null && unit.quality_score < minQuality) return false;
 
@@ -403,7 +404,7 @@ async function loadFeedbackExamples(
   return mergeFeedbackExamples((data ?? []) as FeedbackRow[]);
 }
 
-function mergeFeedbackExamples(rows: FeedbackRow[]): ComposeExamples {
+export function mergeFeedbackExamples(rows: FeedbackRow[]): ComposeExamples {
   const positiveExamples: PositiveSeed[] = [];
   const antiPatterns: AntiPattern[] = [];
   const seenPositive = new Set<string>();
@@ -504,7 +505,7 @@ function exportMarkdown(outDir: string, source: DraftRow, regenerated: Regenerat
   return file;
 }
 
-function renderExportMarkdown(source: DraftRow, regenerated: RegeneratedDraft): string {
+export function renderExportMarkdown(source: DraftRow, regenerated: RegeneratedDraft): string {
   const units = regenerated.units
     .map((u) => `- ${u.id}: ${u.statement}`)
     .join('\n');
@@ -559,7 +560,7 @@ async function replaceDraftInDb(
   if (error) throw new Error(`DB update failed for ${source.id}: ${error.message}`);
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const supabase = createSupabase();
   if (!args.dryRun) requireEnv('OPENROUTER_API_KEY');
@@ -613,7 +614,17 @@ async function main(): Promise<void> {
   if (failed > 0) process.exit(1);
 }
 
-main().catch((err) => {
-  console.error('fatal:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+export function isCliEntrypoint(
+  metaUrl = import.meta.url,
+  argv = process.argv,
+): boolean {
+  const entrypoint = argv[1];
+  return Boolean(entrypoint && metaUrl === pathToFileURL(entrypoint).href);
+}
+
+if (isCliEntrypoint()) {
+  main().catch((err) => {
+    console.error('fatal:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}
