@@ -15,7 +15,7 @@ export interface ComposeFeedbackExamples {
   villageNegativeCount: number;
 }
 
-const MAX_POSITIVE_EXAMPLES = 4;
+const MAX_POSITIVE_EXAMPLES = 6;
 const MAX_NEGATIVE_EXAMPLES = 4;
 const FETCH_LIMIT = 16;
 

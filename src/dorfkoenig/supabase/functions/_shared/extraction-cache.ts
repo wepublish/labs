@@ -7,8 +7,10 @@
  * invalidate cache entries naturally (new key, new row).
  */
 
-import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import type { createServiceClient } from './supabase-client.ts';
 import type { WebExtractionResult } from './web-extraction-prompt.ts';
+
+type SupabaseClient = ReturnType<typeof createServiceClient>;
 
 /**
  * Stable short hash of a criteria string (or empty marker for no criteria).

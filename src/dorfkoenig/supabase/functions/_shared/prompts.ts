@@ -9,7 +9,7 @@
 // stale-override query can flag drift.
 export const DEFAULT_PROMPT_VERSIONS = {
   information_select: 2,
-  draft_compose: 3,
+  draft_compose: 4,
   // web_extraction and zeitung_extraction mirror the prompt-version constants
   // exported from their respective modules.
 } as const;
@@ -31,6 +31,15 @@ AUSWAHLKRITERIEN (nach Priorität):
 2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes am Erscheinungstag?
 3. VIELFALT: Decke verschiedene Themen ab (Politik, Kultur, Infrastruktur, Gesellschaft).
 4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
+
+TERMIN- UND ALTERSGEWICHTUNG:
+- Veranstaltungen am Erscheinungstag oder in den nächsten 1-3 Tagen sind stärker
+  als fernere Termine. Termine in 4-7 Tagen nur bei hoher lokaler Bedeutung.
+- Bei kurzen Baustellen/Sperrungen ist der START wichtiger als das Ende.
+- Ältere Personenmeldungen, abgeschlossene Gemeinderatsmeldungen oder alte
+  sensible Ereignisse nur aufnehmen, wenn eine neue Entwicklung vorliegt.
+- Nachbargemeinden nur auswählen, wenn der Nutzen für die Ziel-Gemeinde explizit
+  ist; keinen generischen "Blick über die Gemeindegrenze".
 
 DEDUP — bereits publizierte Einheiten:
 Einheiten mit Marker "PUBLISHED:JJJJ-MM-TT" wurden in einem vorherigen Newsletter
@@ -252,6 +261,8 @@ AUSGABEFORMAT (JSON):
 
 BULLET-REGELN:
 - Maximal 4 Bullets gesamt. 0 Bullets sind ausdrücklich erlaubt (siehe QUALITÄTSSCHWELLE).
+- Lieber 2-3 starke Bullets als 4 schwache. Keine Pflicht, alle Themen oder
+  Kategorien zu füllen.
 - kind-Obergrenzen: lead max 1 · secondary max 2 · event max 1 · good_news max 1.
 - 1–2 kurze Sätze pro Bullet (insgesamt < 200 Zeichen).
 - emoji kommt aus der festen Palette (Redaktion wählt bei Unklarheit einen passenden Kandidaten).
@@ -260,6 +271,9 @@ BULLET-REGELN:
 ZITATION:
 - Jedes Bullet enthält höchstens EINEN Markdown-Link. Muster:
   "wie die [DOMAIN](URL) berichtet", "meldet die [DOMAIN](URL)", "laut [DOMAIN](URL)".
+- Verwende nur die exakte Artikel-/PDF-URL aus "URL:". Wenn nur eine Startseite,
+  Listenseite, ein Social-Feed oder manual:// verfügbar ist, setze article_url
+  auf null und schreibe ohne Link.
 - Wenn die Einheit URL:NO_LINK hat (Listenseite oder fehlende Artikel-URL):
   KEIN Link, stattdessen "laut Gemeindemitteilung", "aus der Facebook-Gruppe XY"
   (ohne URL in runden Klammern).
@@ -270,7 +284,16 @@ GEMEINDE-EXKLUSIVITÄT:
 Dieser Entwurf ist ausschliesslich für die benannte Ziel-Gemeinde. Einheiten,
 die primär eine andere Gemeinde betreffen, dürfen NICHT als eigenständiges
 Bullet auftauchen. Beiläufige regionale/kantonale Erwähnungen sind nur zulässig,
-wenn sie klaren Bezug zur Ziel-Gemeinde haben.
+wenn sie klaren Bezug zur Ziel-Gemeinde haben. Schreibe keinen generischen
+"Blick über die Gemeindegrenze" ohne konkreten Nutzen für die Ziel-Gemeinde.
+
+REDAKTIONSWERT:
+- Keine alten abgeschlossenen Meldungen recyceln. Wenn eine Einheit mehrere Wochen
+  alt ist, braucht sie eine neue Entwicklung im Input.
+- Für Veranstaltungen gilt: heute/morgen und sehr nahe Termine zuerst; weiter
+  entfernte Agenda-Punkte nur bei besonderer lokaler Relevanz.
+- Gute Nachrichten aus Facebook/Community-Quellen sind als letzte Meldung ok,
+  wenn sie lokal, konkret und nicht bloss Werbung sind.
 
 SENSIBLE THEMEN (Todesfall, Unfall, Straftat):
 - Nur aufnehmen, wenn die Einheit SENSITIV:... markiert ist UND publication_date
@@ -343,5 +366,7 @@ Dieser Entwurf erscheint am: ${pub} (Folgetag, morgen früh).
 Formuliere Zeitangaben aus Lesersicht des Erscheinungsdatums:
 - Veranstaltungen am ${pub} = "heute"
 - Veranstaltungen am ${pubP1} = "morgen"
-- Veranstaltungen am ${currentDate} = "gestern" (meist nicht mehr relevant)`;
+- Veranstaltungen am ${currentDate} = "gestern" (meist nicht mehr relevant)
+- Verwende "heute Abend" nur, wenn der Termin wirklich am Erscheinungstag abends ist.
+- Für vergangene Termine nicht so formulieren, als könnten Leser noch teilnehmen.`;
 }

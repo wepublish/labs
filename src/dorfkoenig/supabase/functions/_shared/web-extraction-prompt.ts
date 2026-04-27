@@ -13,7 +13,7 @@
  * — the content-hash cache uses it to invalidate stale entries.
  */
 
-export const WEB_EXTRACTION_PROMPT_VERSION = 3;
+export const WEB_EXTRACTION_PROMPT_VERSION = 4;
 
 export interface WebExtractionUnit {
   statement: string;
@@ -31,6 +31,8 @@ export interface WebExtractionUnit {
   sensitivity?: 'none' | 'death' | 'accident' | 'crime' | 'minor_safety';
   /** DRAFT_QUALITY.md §3.3. Specific article URL when the scrape target was a listing page. */
   articleUrl?: string | null;
+  /** True only when this unit satisfies every explicit scout criterion. */
+  criteriaMatch?: boolean | null;
 }
 
 export interface WebExtractionResult {
@@ -56,7 +58,7 @@ export function buildWebExtractionPrompt(opts: BuildOptions): {
   const { villageIds, criteria, scrapeDate } = opts;
   const villageEnum = villageIds.join(', ');
   const criteriaBlock = criteria
-    ? `\nKRITERIEN-FILTER:\nExtrahiere nur Einheiten, die diesen Kriterien entsprechen: "${criteria}". Andere Inhalte → in "skipped" auflisten.\n`
+    ? `\nKRITERIEN-HARTFILTER:\nExtrahiere nur Einheiten, die ALLE ausdrücklichen Kriterien erfüllen: "${criteria}". Numerische, zeitliche, örtliche, thematische und Ausschluss-Kriterien sind verbindlich. Fehlende Evidenz ist kein Treffer. Setze criteriaMatch:true nur, wenn die Einheit alle Kriterien erfüllt; sonst criteriaMatch:false und die Einheit in "skipped" erklären.\n`
     : '';
 
   const system = `Du bist ein Extraktionssystem für Schweizer Lokalnachrichten im Web. Deine Aufgabe ist es, atomare Informationseinheiten aus einem einzelnen Artikel zu extrahieren.
@@ -75,6 +77,7 @@ EXTRAKTIONSREGELN:
 6. publicationDate: Wenn das Artikel-Datum (NICHT das Ereignis-Datum) explizit angegeben ist, im Format YYYY-MM-DD ausgeben; sonst null.
 7. articleUrl: Wenn die eigentliche Artikel-URL von der Scrape-URL abweicht (z.B. weil eine Listenseite verlinkt), die Artikel-URL ausgeben; sonst null.
 8. sensitivity: 'death' | 'accident' | 'crime' | 'minor_safety' | 'none'. Bei allem ausser 'none' neutrale Formulierung verwenden (keine Wertung, keine Details die nicht im Text stehen).
+9. criteriaMatch: Wenn Kriterien angegeben sind, true nur bei vollständiger Übereinstimmung mit allen Kriterien. Ohne Kriterien true oder weglassen.
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -122,7 +125,8 @@ AUSGABEFORMAT (ausschliesslich valides JSON):
       "villageEvidence": "Gemeinderat Reinach bewilligt",
       "publicationDate": "2026-04-10",
       "sensitivity": "none",
-      "articleUrl": null
+      "articleUrl": null,
+      "criteriaMatch": true
     }
   ],
   "skipped": ["Werbeabschnitt für lokales Geschäft"],

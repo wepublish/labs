@@ -117,6 +117,31 @@ export const AGNOSTIC_POSITIVE_SEEDS: readonly PositiveSeed[] = [
       '🚧 Heute beginnen erste Vorarbeiten für den Belageinbau am Bärenbrunnenweg, [wie die Gemeinde mitteilt](https://www.arlesheim.ch/de/aktuelles/baustelleninfo/Bauinfo-03-Baerenbrunnenweg-2026.pdf).',
     source_domain: 'Gemeinde Arlesheim',
   },
+  {
+    bullet:
+      '🏢 Straumann eröffnet im Mai den neuen Hauptsitz beim Bahnhof Dornach-Arlesheim; bis zu 300 Personen sollen dort arbeiten, schreibt die [bz Basel](https://www.bzbasel.ch/basel/baselland/straumann-neuer-hauptsitz-am-bahnhof-dornach-arlesheim-ld.4136413).',
+    source_domain: 'bz Basel',
+  },
+  {
+    bullet:
+      '📚 In der Bibliothek findet heute die Gschichtezyt für Kinder bis fünf Jahre statt, [meldet die Gemeinde](https://www.arlesheim.ch/de/aktuelles/veranstaltungen/detail.php?i=1).',
+    source_domain: 'Gemeinde Arlesheim',
+  },
+  {
+    bullet:
+      '🎭 Das Neue Theater sucht Freiwillige für Gastronomie und Veranstaltungsbetreuung, [wie die Gemeinde mitteilt](https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Neue-Theater-am-Bahnhof-sucht-Freiwillige.php).',
+    source_domain: 'Gemeinde Arlesheim',
+  },
+  {
+    bullet:
+      '🤿 Wegen anhaltender Trockenheit bittet die Gemeinde, private Pools vorerst nicht zu füllen und Wasser sparsam zu nutzen.',
+    source_domain: 'Gemeinde Arlesheim',
+  },
+  {
+    bullet:
+      '🎂 Die Gemeinde gratuliert mehreren Einwohnerinnen und Einwohnern zu hohen Geburtstagen, [meldet Arlesheim](https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Wir-gratulieren-im-April.php).',
+    source_domain: 'Gemeinde Arlesheim',
+  },
 ];
 
 /**
