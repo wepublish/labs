@@ -9,7 +9,7 @@
 // stale-override query can flag drift.
 export const DEFAULT_PROMPT_VERSIONS = {
   information_select: 2,
-  draft_compose: 4,
+  draft_compose: 5,
   // web_extraction and zeitung_extraction mirror the prompt-version constants
   // exported from their respective modules.
 } as const;
@@ -33,8 +33,9 @@ AUSWAHLKRITERIEN (nach Priorität):
 4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
 
 TERMIN- UND ALTERSGEWICHTUNG:
-- Veranstaltungen am Erscheinungstag oder in den nächsten 1-3 Tagen sind stärker
-  als fernere Termine. Termine in 4-7 Tagen nur bei hoher lokaler Bedeutung.
+- Veranstaltungen am Erscheinungstag sind relevant. Zukünftige Veranstaltungen
+  gehören in ihre spätere Tagesausgabe; wähle sie nur, wenn heute eine
+  Anmeldefrist, Entscheidung oder Vorbereitung für Leser nötig ist.
 - Bei kurzen Baustellen/Sperrungen ist der START wichtiger als das Ende.
 - Ältere Personenmeldungen, abgeschlossene Gemeinderatsmeldungen oder alte
   sensible Ereignisse nur aufnehmen, wenn eine neue Entwicklung vorliegt.
@@ -233,10 +234,11 @@ export const DRAFT_COMPOSE_PROMPT = `SCHREIBRICHTLINIEN:
  * deterministically by buildDraftComposePromptV2().
  */
 export const DRAFT_COMPOSE_PROMPT_V2 = `QUALITÄTSSCHWELLE:
-Wenn du weniger als 2 Meldungen findest, die den Regeln entsprechen, gib
-"bullets": [] zurück und erkläre in "notes_for_editor" warum. Ein leerer
-Entwurf ist besser als erfundener Inhalt. NIEMALS Füllsätze, NIEMALS eine
-Begrüssung oder einen Ausblick, NIEMALS eine Grussformel.
+Wenn du keine Meldung findest, die den Regeln entspricht, gib "bullets": []
+zurück und erkläre in "notes_for_editor" warum. Ein einzelnes starkes,
+konkretes lokales Bullet ist erlaubt. Ein leerer Entwurf ist besser als
+erfundener Inhalt. NIEMALS Füllsätze, NIEMALS eine Begrüssung oder einen
+Ausblick, NIEMALS eine Grussformel.
 
 AUFGABE:
 Schreibe einen kompakten Nachrichten-Digest als JSON-Array von Bullets.
@@ -261,9 +263,9 @@ AUSGABEFORMAT (JSON):
 
 BULLET-REGELN:
 - Maximal 4 Bullets gesamt. 0 Bullets sind ausdrücklich erlaubt (siehe QUALITÄTSSCHWELLE).
-- Lieber 2-3 starke Bullets als 4 schwache. Keine Pflicht, alle Themen oder
+- Lieber 1-3 starke Bullets als 4 schwache. Keine Pflicht, alle Themen oder
   Kategorien zu füllen.
-- kind-Obergrenzen: lead max 1 · secondary max 2 · event max 1 · good_news max 1.
+- kind-Obergrenzen: lead max 1 · secondary max 2 · event max 2 · good_news max 1.
 - 1–2 kurze Sätze pro Bullet (insgesamt < 200 Zeichen).
 - emoji kommt aus der festen Palette (Redaktion wählt bei Unklarheit einen passenden Kandidaten).
 - text enthält KEIN führendes Emoji — das fügt das Rendering hinzu.
@@ -290,8 +292,8 @@ wenn sie klaren Bezug zur Ziel-Gemeinde haben. Schreibe keinen generischen
 REDAKTIONSWERT:
 - Keine alten abgeschlossenen Meldungen recyceln. Wenn eine Einheit mehrere Wochen
   alt ist, braucht sie eine neue Entwicklung im Input.
-- Für Veranstaltungen gilt: heute/morgen und sehr nahe Termine zuerst; weiter
-  entfernte Agenda-Punkte nur bei besonderer lokaler Relevanz.
+- Für Veranstaltungen gilt bei täglicher Frequenz: heute zuerst. Morgen oder
+  später nur, wenn heute eine Handlung oder Entscheidung nötig ist.
 - Gute Nachrichten aus Facebook/Community-Quellen sind als letzte Meldung ok,
   wenn sie lokal, konkret und nicht bloss Werbung sind.
 
@@ -301,8 +303,9 @@ SENSIBLE THEMEN (Todesfall, Unfall, Straftat):
   Quelle vollständig im Satz nennen.
 
 WIEDERHOLUNG (WICHTIG):
-Wenn weniger als 2 Meldungen die Regeln erfüllen, gib "bullets": [] zurück und
-erkläre in "notes_for_editor" warum. Schreibe NIEMALS Füllsätze.`;
+Wenn keine Meldung die Regeln erfüllt, gib "bullets": [] zurück und erkläre in
+"notes_for_editor" warum. Ein einzelnes starkes lokales Bullet ist erlaubt.
+Schreibe NIEMALS Füllsätze.`;
 
 /**
  * Assemble the full v2 compose prompt: layer 2 (compose rules) + anti-pattern
