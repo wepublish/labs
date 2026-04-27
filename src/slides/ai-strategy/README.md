@@ -9,6 +9,7 @@ The deck is intentionally short enough for leadership review. The markdown files
 - `index.html`: slide deck shown at `/slides/ai-strategy/`
 - `SUPPORT_WORKFLOW.md`: concrete support workflow for Slack, Linear, Hermes, the knowledge base, and CMS MCP diagnostics
 - `ONBOARDING_WORKFLOW.md`: concrete onboarding workflow for forms, skill gates, local scaffolding, CMS MCP checks, and human-approved setup actions
+- `HERMES_AGENT.md`: concrete Hermes responsibilities for developers, the team, media support, onboarding, documentation health, and internal skill packs
 
 ## Strategic Position
 
