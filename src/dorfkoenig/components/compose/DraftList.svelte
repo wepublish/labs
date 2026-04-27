@@ -105,7 +105,8 @@
   }
 
   .draft-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr) auto;
     align-items: center;
     padding: 0.625rem 1rem;
     border: none;
@@ -117,7 +118,8 @@
     width: 100%;
     text-align: left;
     font-family: inherit;
-    gap: 0;
+    gap: 0.75rem;
+    min-width: 0;
   }
 
   .draft-row:last-child {
@@ -133,12 +135,10 @@
     border-left-color: var(--color-primary);
   }
 
-  /* Fixed-width village slot for vertical alignment */
   .row-village-slot {
-    width: 5.5rem;
-    flex-shrink: 0;
     display: flex;
     align-items: center;
+    min-width: 0;
   }
 
   .row-village-pill {
@@ -152,11 +152,12 @@
     border: 1px solid var(--color-border);
     border-radius: 0.625rem;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Flex title column */
   .row-title {
-    flex: 1;
     font-size: var(--text-base);
     font-weight: 500;
     color: var(--color-text-muted);
@@ -166,12 +167,10 @@
     min-width: 0;
   }
 
-  /* Fixed-width status slot for vertical alignment */
   .row-status-slot {
-    width: 7rem;
-    flex-shrink: 0;
     display: flex;
     justify-content: flex-end;
+    min-width: 0;
   }
 
   .row-status-badge {
@@ -198,5 +197,28 @@
   .status-rejected {
     background: var(--color-status-error-bg);
     color: var(--color-status-error-text);
+  }
+
+  @media (max-width: 560px) {
+    .draft-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "village status"
+        "title title";
+      align-items: start;
+      row-gap: 0.375rem;
+    }
+
+    .row-village-slot {
+      grid-area: village;
+    }
+
+    .row-title {
+      grid-area: title;
+    }
+
+    .row-status-slot {
+      grid-area: status;
+    }
   }
 </style>
