@@ -25,10 +25,22 @@ Deno.test('buildWebExtractionPrompt includes criteriaMatch contract when criteri
     scrapeDate: '2026-04-27',
   });
 
-  assertEquals(WEB_EXTRACTION_PROMPT_VERSION, 4);
+  assertEquals(WEB_EXTRACTION_PROMPT_VERSION, 5);
   assertStringIncludes(system, 'KRITERIEN-HARTFILTER');
   assertStringIncludes(system, 'criteriaMatch:true');
   assertStringIncludes(system, '"criteriaMatch": true');
+});
+
+Deno.test('buildWebExtractionPrompt keeps body-supported local facts from cross-path articles', () => {
+  const { system } = buildWebExtractionPrompt({
+    villageIds: ['arlesheim', 'zwingen'],
+    criteria: null,
+    scrapeDate: '2026-04-28',
+  });
+
+  assertStringIncludes(system, 'konkreten, direkt überprüfbaren Fakt zu einer erlaubten Gemeinde');
+  assertStringIncludes(system, 'Übernimm dabei NICHT die fremde Überschrift als lokale Meldung');
+  assertStringIncludes(system, 'Niederlassung');
 });
 
 Deno.test('filterCriteriaMatchedWebUnits drops explicit non-matches when criteria are present', () => {

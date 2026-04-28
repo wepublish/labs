@@ -24,6 +24,10 @@ import {
 import { assignVillage } from '../_shared/village-assignment.ts';
 import { sanitizeReviewUnit } from '../_shared/manual-upload-review.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
+import {
+  incrementProcessingAttempt,
+  updateNewspaperJob,
+} from '../_shared/newspaper-job-state.ts';
 import gemeinden from '../_shared/gemeinden.json' with { type: 'json' };
 
 // Display names used in the extraction prompt.
@@ -67,6 +71,7 @@ Deno.serve(async (req) => {
     if (!jobId || !storagePath || !userId) {
       return errorResponse('Missing required fields', 400);
     }
+    await incrementProcessingAttempt(supabase, jobId);
 
     // ── Duplicate guard ──
     const { data: existingJob } = await supabase
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
 
     if (existingJob) {
       console.log(`[process-newspaper] Duplicate processing for ${storagePath}, skipping`);
-      await updateJob(supabase, jobId, { status: 'failed', error_message: 'Duplicate upload already processing' });
+      await updateNewspaperJob(supabase, jobId, { status: 'failed', error_message: 'Duplicate upload already processing' });
       return jsonResponse({ data: { skipped: true, reason: 'duplicate' } });
     }
 
@@ -100,7 +105,7 @@ Deno.serve(async (req) => {
     // Benchmark 2026-04-15 on Riehener Zeitung: fast 41 section markers vs auto 4,
     // zero hallucinations vs 6. Newspapers always have embedded text so OCR is
     // unnecessary.
-    await updateJob(supabase, jobId, { stage: 'parsing_pdf' });
+    await updateNewspaperJob(supabase, jobId, { status: 'processing', stage: 'parsing_pdf' });
     console.log(`[process-newspaper] Parsing PDF via Firecrawl (fast mode)...`);
     const scrapeResult = await firecrawl.scrape({
       url: signedUrlData.signedUrl,
@@ -116,7 +121,7 @@ Deno.serve(async (req) => {
     console.log(`[process-newspaper] Parsed ${scrapeResult.markdown.length} chars`);
 
     // ── Step 3: Preprocess ──
-    await updateJob(supabase, jobId, { stage: 'chunking' });
+    await updateNewspaperJob(supabase, jobId, { status: 'processing', stage: 'chunking' });
     const cleaned = preprocessMarkdown(scrapeResult.markdown);
 
     // ── Step 4: Chunk ──
@@ -127,7 +132,8 @@ Deno.serve(async (req) => {
     console.log(`[process-newspaper] ${allChunks.length} chunks, ${validChunks.length} after junk filter`);
 
     // Update job with chunk counts
-    await updateJob(supabase, jobId, {
+    await updateNewspaperJob(supabase, jobId, {
+      status: 'processing',
       stage: 'extracting',
       chunks_total: validChunks.length,
       chunks_processed: 0,
@@ -144,6 +150,7 @@ Deno.serve(async (req) => {
     }
     const allUnits: UnitWithSource[] = [];
     const allSkipped: string[] = [];
+    let completedChunks = 0;
 
     await processWithConcurrency(validChunks, async (chunk, index) => {
       try {
@@ -167,8 +174,12 @@ Deno.serve(async (req) => {
       }
 
       // Update progress after each chunk
-      await updateJob(supabase, jobId!, {
-        chunks_processed: index + 1,
+      completedChunks += 1;
+      await updateNewspaperJob(supabase, jobId!, {
+        status: 'processing',
+        stage: 'extracting',
+        chunks_total: validChunks.length,
+        chunks_processed: completedChunks,
       });
     }, LLM_CONCURRENCY);
 
@@ -180,8 +191,7 @@ Deno.serve(async (req) => {
     //     noise for the forward-looking newsletter; drop them here. Resolve
     //     each remaining unit's village through assignVillage (or the legacy
     //     VILLAGE_ID_MAP filter on the rollback path).
-    const today = new Date().toISOString().slice(0, 10);
-    const dated = allUnits.filter((u) => u.unit.eventDate && u.unit.eventDate >= today);
+    const dated = allUnits.filter((u) => !u.unit.eventDate || u.unit.eventDate >= publicationDate);
     interface ResolvedUnit {
       unit: ExtractionUnit;
       chunk: string;
@@ -260,19 +270,22 @@ Deno.serve(async (req) => {
 
     if (stagedUnits.length === 0) {
       // Nothing to review — close the job immediately so the UI shows "0 Einheiten".
-      await updateJob(supabase, jobId, {
+      await updateNewspaperJob(supabase, jobId, {
         status: 'completed',
         units_created: 0,
         skipped_items: allSkipped.slice(0, 50),
-        completed_at: new Date().toISOString(),
+        chunks_total: validChunks.length,
+        chunks_processed: validChunks.length,
       });
       return jsonResponse({ data: { units_created: 0 } });
     }
 
-    await updateJob(supabase, jobId, {
+    await updateNewspaperJob(supabase, jobId, {
       status: 'review_pending',
       extracted_units: stagedUnits,
       skipped_items: allSkipped.slice(0, 50),
+      chunks_total: validChunks.length,
+      chunks_processed: validChunks.length,
     });
 
     console.log(
@@ -286,10 +299,9 @@ Deno.serve(async (req) => {
     console.error('[process-newspaper] Fatal error:', error);
     if (jobId) {
       const supabase = createServiceClient();
-      await updateJob(supabase, jobId, {
+      await updateNewspaperJob(supabase, jobId, {
         status: 'failed',
         error_message: (error as Error).message || 'Unbekannter Fehler',
-        completed_at: new Date().toISOString(),
       });
     }
     return errorResponse('Processing failed', 500);
@@ -297,33 +309,6 @@ Deno.serve(async (req) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────
-
-interface NewspaperJobUpdate {
-  status?: 'processing' | 'review_pending' | 'completed' | 'failed' | 'cancelled' | 'storing';
-  stage?: 'parsing_pdf' | 'chunking' | 'extracting' | 'storing';
-  error_message?: string;
-  chunks_total?: number;
-  chunks_processed?: number;
-  units_created?: number;
-  skipped_items?: string[];
-  extracted_units?: unknown[];
-  completed_at?: string;
-}
-
-async function updateJob(
-  supabase: ReturnType<typeof createServiceClient>,
-  jobId: string,
-  updates: NewspaperJobUpdate,
-): Promise<void> {
-  const { error } = await supabase
-    .from('newspaper_jobs')
-    .update(updates)
-    .eq('id', jobId);
-
-  if (error) {
-    console.error(`[process-newspaper] Failed to update job ${jobId}:`, error);
-  }
-}
 
 async function processWithConcurrency<T>(
   items: T[],

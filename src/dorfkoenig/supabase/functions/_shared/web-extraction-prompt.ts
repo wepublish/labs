@@ -13,7 +13,7 @@
  * — the content-hash cache uses it to invalidate stale entries.
  */
 
-export const WEB_EXTRACTION_PROMPT_VERSION = 4;
+export const WEB_EXTRACTION_PROMPT_VERSION = 5;
 
 export interface WebExtractionUnit {
   statement: string;
@@ -78,6 +78,7 @@ EXTRAKTIONSREGELN:
 7. articleUrl: Wenn die eigentliche Artikel-URL von der Scrape-URL abweicht (z.B. weil eine Listenseite verlinkt), die Artikel-URL ausgeben; sonst null.
 8. sensitivity: 'death' | 'accident' | 'crime' | 'minor_safety' | 'none'. Bei allem ausser 'none' neutrale Formulierung verwenden (keine Wertung, keine Details die nicht im Text stehen).
 9. criteriaMatch: Wenn Kriterien angegeben sind, true nur bei vollständiger Übereinstimmung mit allen Kriterien. Ohne Kriterien true oder weglassen.
+10. Wenn ein gefolgter Artikel hauptsächlich einen anderen Ort behandelt, aber im Artikelkörper einen konkreten, direkt überprüfbaren Fakt zu einer erlaubten Gemeinde enthält (z.B. Standort, Filiale, Einsatzort, Schule, Infrastruktur, Behörde, Veranstaltung oder Unfallort), extrahiere diesen lokalen Fakt als eigene Einheit. Übernimm dabei NICHT die fremde Überschrift als lokale Meldung.
 
 EINHEITSTYPEN:
 - fact: Überprüfbare Tatsache
@@ -93,6 +94,7 @@ Regeln:
 2. Eine beiläufige Erwähnung eines Ortsnamens ist KEINE Zuordnung. Beispiel: "Ein Reinacher besuchte das Fest in Aesch" → village: "aesch".
 3. Kantonale oder regionale Themen ohne klaren Gemeindebezug → village: null.
 4. Wenn mehrere Gemeinden gleichermassen betroffen sind → erstelle eine Einheit pro Gemeinde.
+5. Eine Gemeinde ist direkt betroffen, wenn der Artikelkörper dort ausdrücklich einen Standort, eine Niederlassung, eine Infrastruktur, eine Behörde, eine Schule, eine Veranstaltung, einen Unfall/Einsatz oder eine konkrete lokale Auswirkung nennt. Das gilt auch dann, wenn die Artikelüberschrift eine andere Gemeinde nennt.
 
 VERTRAUENSBEWERTUNG (villageConfidence):
 - high: Die Gemeinde wird explizit als Ort des Geschehens genannt ("Der Gemeinderat Reinach beschloss…"). Kaum Zweifel.

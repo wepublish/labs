@@ -33,6 +33,12 @@ import { sendEmail } from '../_shared/resend.ts';
 import { buildDraftFailureEmail, type EmptyDraftCase } from '../_shared/resend.ts';
 import { ANTI_PATTERNS, AGNOSTIC_POSITIVE_SEEDS } from '../_shared/draft-quality.ts';
 import { loadComposeFeedbackExamplesForVillage } from '../_shared/feedback-retrieval.ts';
+import {
+  buildSelectionDiagnostics,
+  enforceMandatorySelection,
+  rankSelectionCandidates,
+  selectDeterministicFallback,
+} from '../_shared/selection-ranking.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -189,7 +195,7 @@ Deno.serve(async (req) => {
 
     let unitsQuery = supabase
       .from('information_units')
-      .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page')
+      .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page, source_domain, village_confidence')
       .eq('location->>city', village_id)
       .eq('user_id', user_id)
       .eq('used_in_article', false)
@@ -316,8 +322,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    const formattedUnits = formatUnitsForSelection(units, previouslyPublished);
     const publicationDate = addDaysIso(today, 1);
+    const rankedUnits = rankSelectionCandidates(units, {
+      currentDate: today,
+      publicationDate,
+      maxCandidates: 80,
+    });
+    const rankedUnitRows = rankedUnits.map((row) => row.unit);
+    const formattedUnits = formatUnitsForSelection(rankedUnitRows, previouslyPublished);
 
     // Call LLM to select units
     const selectResponse = await openrouter.chat({
@@ -337,20 +349,38 @@ Deno.serve(async (req) => {
     });
 
     let selectedIds: string[];
+    let selectionResponsePreview = '';
     try {
+      selectionResponsePreview = (selectResponse.choices[0].message.content ?? '').slice(0, 1000);
       const parsed = JSON.parse(selectResponse.choices[0].message.content);
-      const validIds = new Set(units.map((u) => u.id));
+      const validIds = new Set(rankedUnitRows.map((u) => u.id));
       selectedIds = (parsed.selected_unit_ids || []).filter((id: string) => validIds.has(id));
     } catch {
       console.error('Failed to parse LLM selection response');
-      selectedIds = [];
+      selectionResponsePreview = 'parse_failed';
+      selectedIds = selectDeterministicFallback(rankedUnits, maxUnits);
     }
 
     if (selectedIds.length === 0) {
-      selectedIds = units.slice(0, maxUnits).map((u) => u.id);
+      selectionResponsePreview ||= 'empty_selection_fallback';
+      selectedIds = selectDeterministicFallback(rankedUnits, maxUnits);
     }
+    selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, maxUnits);
     if (selectedIds.length > maxUnits) {
       selectedIds = selectedIds.slice(0, maxUnits);
+    }
+
+    if (runId) {
+      const diagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds);
+      await supabase.from('auto_draft_runs')
+        .update({
+          candidate_snapshot: diagnostics.candidate_snapshot,
+          selected_unit_ids: selectedIds,
+          mandatory_kept_ids: diagnostics.mandatory_kept_ids,
+          rejected_top_units: diagnostics.rejected_top_units,
+          selection_response_preview: selectionResponsePreview.slice(0, 1000),
+        })
+        .eq('id', runId);
     }
 
     // --- 4. Generate draft ---

@@ -26,7 +26,7 @@ import {
   extractLinksFromHtml,
   firecrawlDelay,
 } from '../_shared/civic-utils.ts';
-import { filterSubpageUrls } from '../_shared/subpage-filter.ts';
+import { filterSubpageUrls, looksLikeListingPage } from '../_shared/subpage-filter.ts';
 
 const SUBPAGE_FETCH_CAP = 10;
 
@@ -317,8 +317,16 @@ Deno.serve(async (req) => {
     const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
     // Auto-mode scouts don't need a scout.location — the LLM assigns per unit.
     const hasScope = locationMode === 'auto' || scout.location || scout.topic;
+    const indexLinks = scrapeResult.rawHtml
+      ? extractLinksFromHtml(scrapeResult.rawHtml, scout.url)
+      : [];
+    const candidateUrls = indexLinks.length > 0
+      ? filterSubpageUrls(indexLinks.map(([url]) => url), scout.url)
+      : [];
+    const deterministicListingPage = looksLikeListingPage(scout.url, candidateUrls);
+    const skipPrimaryExtraction = locationMode === 'manual' && deterministicListingPage;
 
-    if (extractUnits && analysis.matches && hasScope) {
+    if (extractUnits && analysis.matches && hasScope && !skipPrimaryExtraction) {
       try {
         const result = await extractInformationUnits(
           supabase,
@@ -343,6 +351,11 @@ Deno.serve(async (req) => {
         console.error(`[${executionId}] Unit extraction failed:`, error);
         // Continue without units
       }
+    } else if (extractUnits && analysis.matches && hasScope && skipPrimaryExtraction) {
+      indexIsListingPage = true;
+      console.log(
+        `[${executionId}] Primary extraction skipped: manual-location page looks like a listing (${candidateUrls.length} article candidates)`,
+      );
     }
 
     // =========================================================================
@@ -351,14 +364,14 @@ Deno.serve(async (req) => {
     // When the LLM detects the index URL is a listing page, it refuses extraction
     // (returns units:[] + isListingPage:true). Follow-up: fetch linked subpages,
     // extract units per article body. Single-hop only (no recursion).
-    if (extractUnits && analysis.matches && hasScope && indexIsListingPage && scrapeResult.rawHtml) {
+    if (
+      extractUnits &&
+      analysis.matches &&
+      hasScope &&
+      (indexIsListingPage || deterministicListingPage) &&
+      candidateUrls.length > 0
+    ) {
       try {
-        // 1. Extract links from index rawHtml (host-lock + denylist in helper).
-        const links = extractLinksFromHtml(scrapeResult.rawHtml, scout.url);
-
-        // 2. Subpage filter: path-prefix + traversal block + domain validator.
-        const candidateUrls = filterSubpageUrls(links.map(([url]) => url), scout.url);
-
         // 3. Dedup against already-seen subpage URLs (derived from stored units).
         const { data: seenRows } = await supabase
           .from('unit_occurrences')
@@ -372,7 +385,7 @@ Deno.serve(async (req) => {
         const fresh = candidateUrls.filter((url) => !seen.has(url)).slice(0, SUBPAGE_FETCH_CAP);
 
         console.log(
-          `[${executionId}] Phase B: ${links.length} links, ${candidateUrls.length} candidates, ${fresh.length} new (cap ${SUBPAGE_FETCH_CAP})`,
+          `[${executionId}] Phase B: ${indexLinks.length} links, ${candidateUrls.length} candidates, ${fresh.length} new (cap ${SUBPAGE_FETCH_CAP})`,
         );
 
         let subpageUnits = 0;
@@ -418,15 +431,21 @@ Deno.serve(async (req) => {
               break;
             }
 
+            const subLocationMode = locationMode === 'manual' && deterministicListingPage
+              ? 'auto'
+              : locationMode;
             const subResult = await extractInformationUnits(supabase, subScrape.markdown, {
               scoutId: scout.id,
               userId: scout.user_id,
               executionId: executionId!,
               sourceUrl: subUrl,
-              location: scout.location,
+              location: subLocationMode === 'auto' ? null : scout.location,
               topic: scout.topic,
-              locationMode,
+              locationMode: subLocationMode,
               criteria: scout.criteria,
+              locationFilterCity: locationMode === 'manual' && deterministicListingPage
+                ? scout.location?.city ?? null
+                : null,
               extractionTimeoutMs: Math.min(SUBPAGE_EXTRACTION_TIMEOUT_MS, extractionBudgetMs),
             });
             if (subResult.isListingPage) {

@@ -27,7 +27,7 @@ export async function scoreFixture(
     scoreBulletCount(output),
     scoreNoFiller(output),
     scoreUrlWhitelist(fixture, output),
-    scoreUrlArticleQuality(output),
+    scoreUrlArticleQuality(fixture, output),
     scoreCrossVillagePurity(fixture, output),
     await scoreUnitRecallVsGold(fixture, output, opts),
   ];
@@ -122,7 +122,7 @@ function scoreUrlWhitelist(fixture: Fixture, output: BenchOutput): MetricResult 
 
 // --- 4. url_article_quality --------------------------------------------------
 
-function scoreUrlArticleQuality(output: BenchOutput): MetricResult {
+function scoreUrlArticleQuality(fixture: Fixture, output: BenchOutput): MetricResult {
   const cited = output.bullets.flatMap((b) => b.link_urls);
   if (cited.length === 0) {
     return {
@@ -133,7 +133,14 @@ function scoreUrlArticleQuality(output: BenchOutput): MetricResult {
       detail: 'No URLs cited (trivially valid)',
     };
   }
-  const articleLevel = cited.filter(isArticleLevelUrl);
+  const knownArticleUrls = new Set(
+    fixture.units
+      .filter((u) => u.article_url && !u.is_listing_page)
+      .map((u) => normalizeUrl(u.article_url as string)),
+  );
+  const articleLevel = cited.filter((url) =>
+    knownArticleUrls.has(normalizeUrl(url)) || isArticleLevelUrl(url)
+  );
   const ratio = articleLevel.length / cited.length;
   const pass = ratio >= 0.8;
   return {

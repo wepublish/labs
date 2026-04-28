@@ -197,10 +197,9 @@ interface ExternalUnitExtractionParams {
 }
 
 /**
- * Extract atomic units from a pasted-in published newsletter body, route each
- * through the canonical-unit layer, and seed bajour_feedback_examples with one
- * positive example per unit. Mirrors the manual-upload text path but is scoped
- * tightly to the external-draft case (no newspaper_jobs row, no review queue).
+ * Extract atomic units from a pasted-in published newsletter body and route each
+ * through the canonical-unit layer. Mirrors the manual-upload text path but is
+ * scoped tightly to the external-draft case (no newspaper_jobs row, no review queue).
  */
 async function extractAndStoreExternalDraftUnits(
   supabase: ReturnType<typeof createServiceClient>,
@@ -305,27 +304,6 @@ AUSGABEFORMAT (JSON):
       persistedUnitIds.push(result.unitId);
     } catch (err) {
       console.error('[bajour-drafts] upsertCanonicalUnit failed:', err);
-    }
-  }
-
-  // Seed bajour_feedback_examples with one positive example per extracted unit.
-  // FEATURE_FEEDBACK_RETRIEVAL picks these up via existing simple SQL — no new
-  // retrieval code, no new table.
-  if (persistedUnitIds.length > 0) {
-    const feedbackRows = cleaned.slice(0, persistedUnitIds.length).map((unit, i) => ({
-      draft_id: draftId,
-      village_id: villageId,
-      kind: 'positive' as const,
-      bullet_text: unit.statement,
-      editor_reason: 'Externally published',
-      source_unit_ids: [persistedUnitIds[i]],
-      edition_date: publicationDate,
-    }));
-    const { error: feedbackErr } = await supabase
-      .from('bajour_feedback_examples')
-      .insert(feedbackRows);
-    if (feedbackErr) {
-      console.error('[bajour-drafts] feedback seed insert failed:', feedbackErr);
     }
   }
 

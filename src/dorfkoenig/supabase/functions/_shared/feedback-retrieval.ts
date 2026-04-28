@@ -34,7 +34,9 @@ export function buildComposeFeedbackExamples(opts: {
   const seenPositive = new Set<string>();
   const seenNegative = new Set<string>();
 
-  const villagePositives = opts.rows.filter((row) => row.kind === 'positive');
+  const villagePositives = opts.rows.filter((row) =>
+    row.kind === 'positive' && row.editor_reason?.trim() !== 'Externally published'
+  );
   const villageNegatives = opts.rows.filter((row) => row.kind === 'negative');
 
   for (const row of villagePositives) {

@@ -39,15 +39,16 @@ import {
   computeCriteriaHash,
 } from './extraction-cache.ts';
 import { computeQualityScore, type Sensitivity } from './quality-scoring.ts';
+import { extractBodySupportedLocationFacts } from './location-body-fallback.ts';
 import gemeindenJson from './gemeinden.json' with { type: 'json' };
 
 const villages = gemeindenJson as Village[];
 const VILLAGE_IDS = villages.map((v) => v.id);
 
 interface UnitExtractionParams {
-  scoutId: string;
+  scoutId?: string | null;
   userId: string;
-  executionId: string;
+  executionId?: string | null;
   sourceUrl: string;
   location: { city: string } | null;
   topic?: string | null;
@@ -59,6 +60,12 @@ interface UnitExtractionParams {
   contentHash?: string;
   /** Timeout budget for extraction LLM calls. */
   extractionTimeoutMs?: number;
+  /**
+   * Optional post-extraction location guard. Used when a manual-location listing
+   * scout follows article pages through auto-mode extraction: only units whose
+   * body-supported village matches the scout are stored.
+   */
+  locationFilterCity?: string | null;
 }
 
 interface ProcessedUnit {
@@ -102,12 +109,49 @@ export async function extractInformationUnits(
       ? await extractUnitsAuto(supabase, content, params)
       : await extractUnitsManual(content, params);
 
-  if (units.length === 0) {
+  let filteredUnits = filterByLocation(units, params.locationFilterCity);
+  if (
+    filteredUnits.length === 0 &&
+    mode === 'auto' &&
+    params.locationFilterCity &&
+    !isListingPage
+  ) {
+    filteredUnits = buildFallbackLocationUnits(content, params.locationFilterCity, params.sourceUrl);
+  }
+
+  if (filteredUnits.length === 0) {
     return { insertedCount: 0, mergedExistingCount: 0, isListingPage };
   }
 
-  const { insertedCount, mergedExistingCount } = await dedupAndStore(supabase, units, params);
+  const { insertedCount, mergedExistingCount } = await dedupAndStore(supabase, filteredUnits, params);
   return { insertedCount, mergedExistingCount, isListingPage };
+}
+
+function filterByLocation(units: ProcessedUnit[], city?: string | null): ProcessedUnit[] {
+  if (!city) return units;
+  const expected = normalizeCity(city);
+  return units.filter((unit) => unit.location?.city && normalizeCity(unit.location.city) === expected);
+}
+
+function buildFallbackLocationUnits(
+  content: string,
+  city: string,
+  sourceUrl: string,
+): ProcessedUnit[] {
+  return extractBodySupportedLocationFacts(content, city).map((fact) => ({
+    statement: fact.statement,
+    unitType: 'fact',
+    entities: [],
+    eventDate: null,
+    location: { city: fact.cityId, country: 'Schweiz' },
+    villageConfidence: 'medium',
+    reviewRequired: true,
+    assignmentPath: 'det_only',
+    publicationDate: null,
+    sensitivity: 'none',
+    articleUrl: sourceUrl,
+    isListingPage: false,
+  }));
 }
 
 // ── Manual mode (legacy) ──────────────────────────────────────────
@@ -275,7 +319,7 @@ async function extractUnitsAuto(
       assignmentPath: assignment.assignmentPath,
       publicationDate: u.publicationDate ?? null,
       sensitivity,
-      articleUrl: u.articleUrl ?? null,
+      articleUrl: u.articleUrl ?? (inputIsListingPage ? null : params.sourceUrl),
       isListingPage: inputIsListingPage,
     };
   });
