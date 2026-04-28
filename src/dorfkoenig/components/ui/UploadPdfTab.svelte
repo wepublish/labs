@@ -3,6 +3,8 @@
   import { manualUploadApi } from '../../lib/api';
   import type { RecentPdfUpload } from '../../lib/types';
 
+  const RECENT_REFRESH_INTERVAL_MS = 10_000;
+
   interface Props {
     file: File | null;
     description: string;
@@ -27,12 +29,20 @@
 
   let recent = $state<RecentPdfUpload[]>([]);
 
+  async function loadRecentUploads(): Promise<void> {
+    try {
+      recent = await manualUploadApi.recentPdfs(5);
+    } catch {
+      recent = [];
+    }
+  }
+
   $effect(() => {
     // Load the most recent PDF uploads so the journalist can see what's
     // already been ingested before re-uploading the same file.
-    manualUploadApi.recentPdfs(5)
-      .then((rows) => { recent = rows; })
-      .catch(() => { recent = []; });
+    void loadRecentUploads();
+    const interval = setInterval(() => { void loadRecentUploads(); }, RECENT_REFRESH_INTERVAL_MS);
+    return () => { clearInterval(interval); };
   });
 
   function formatFileSize(bytes: number): string {
