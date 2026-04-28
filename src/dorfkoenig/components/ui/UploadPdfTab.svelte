@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { X, File as FileIcon, Check, AlertTriangle, Clock } from 'lucide-svelte';
+  import { X, File as FileIcon, Check, AlertTriangle, Clock, ListChecks } from 'lucide-svelte';
   import { manualUploadApi } from '../../lib/api';
   import type { RecentPdfUpload } from '../../lib/types';
+
+  const RECENT_REFRESH_INTERVAL_MS = 10_000;
 
   interface Props {
     file: File | null;
@@ -11,6 +13,7 @@
     onfileremove: () => void;
     ondescriptionchange: (description: string) => void;
     onpublicationdatechange: (date: string) => void;
+    onresumejob?: (jobId: string) => void;
   }
 
   let {
@@ -21,16 +24,25 @@
     onfileremove,
     ondescriptionchange,
     onpublicationdatechange,
+    onresumejob,
   }: Props = $props();
 
   let recent = $state<RecentPdfUpload[]>([]);
 
+  async function loadRecentUploads(): Promise<void> {
+    try {
+      recent = await manualUploadApi.recentPdfs(5);
+    } catch {
+      recent = [];
+    }
+  }
+
   $effect(() => {
     // Load the most recent PDF uploads so the journalist can see what's
     // already been ingested before re-uploading the same file.
-    manualUploadApi.recentPdfs(5)
-      .then((rows) => { recent = rows; })
-      .catch(() => { recent = []; });
+    void loadRecentUploads();
+    const interval = setInterval(() => { void loadRecentUploads(); }, RECENT_REFRESH_INTERVAL_MS);
+    return () => { clearInterval(interval); };
   });
 
   function formatFileSize(bytes: number): string {
@@ -53,8 +65,15 @@
       if (merged > 0) return `${r.units_created} neu, ${merged} Duplikate`;
       return `${r.units_created} Einheiten`;
     }
+    if (r.status === 'review_pending') return 'Bereit zur Prüfung';
+    if (r.status === 'storing') return 'Speichert';
     if (r.status === 'failed') return 'Fehlgeschlagen';
+    if (r.status === 'cancelled') return 'Abgebrochen';
     return 'In Bearbeitung';
+  }
+
+  function canResume(r: RecentPdfUpload): boolean {
+    return r.status === 'review_pending' || r.status === 'processing' || r.status === 'storing';
   }
 </script>
 
@@ -129,6 +148,24 @@
           <span class="recent-label" title={r.label ?? ''}>{r.label ?? '(ohne Bezeichnung)'}</span>
           <span class="recent-date">{formatDate(r.created_at)}</span>
           <span class="recent-status">{statusLabel(r)}</span>
+          {#if canResume(r)}
+            <button
+              class="recent-action"
+              type="button"
+              aria-label="Upload öffnen"
+              title="Upload öffnen"
+              onclick={() => onresumejob?.(r.id)}
+            >
+              {#if r.status === 'review_pending'}
+                <ListChecks size={14} />
+              {:else}
+                <Clock size={14} />
+              {/if}
+              <span>{r.status === 'review_pending' ? 'Prüfen' : 'Öffnen'}</span>
+            </button>
+          {:else}
+            <span class="recent-action-spacer"></span>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -301,7 +338,7 @@
 
   .recent-row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     align-items: center;
     gap: 0.5rem;
     padding: 0.375rem 0.5rem;
@@ -338,5 +375,30 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
     white-space: nowrap;
+  }
+
+  .recent-action,
+  .recent-action-spacer {
+    min-width: 4.5rem;
+  }
+
+  .recent-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 1.75rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 0.375rem;
+    background: var(--color-surface, white);
+    color: var(--color-text);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .recent-action:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 </style>

@@ -15,6 +15,7 @@
 // The prompt text (below) is the natural-language version the LLM sees.
 
 export const CONTENT_RANKING = [
+  { key: 'public_safety',      priority: 'high',   include: true  },
   { key: 'community_events',   priority: 'high',   include: true  },
   { key: 'municipal_notices',  priority: 'high',   include: true  },
   { key: 'infrastructure',     priority: 'high',   include: true  },
@@ -31,7 +32,7 @@ export type ContentCategory = (typeof CONTENT_RANKING)[number]['key'];
 export type Priority = 'high' | 'medium' | 'low';
 
 /** Bump when prompt text changes so the extraction cache invalidates stale entries. */
-export const NEWSPAPER_EXTRACTION_PROMPT_VERSION = 2;
+export const NEWSPAPER_EXTRACTION_PROMPT_VERSION = 3;
 
 export interface ExtractionUnit {
   statement: string;
@@ -71,6 +72,7 @@ INHALTSFILTER:
 
 EXTRAHIEREN (relevante Inhalte):
 - Gemeindeanlässe und Veranstaltungen (Tag der offenen Tür, Feste, Konzerte, Märkte)
+- Polizei, Feuerwehr, Unfälle, Brände, Straftaten, Verkehrssicherheit und andere öffentliche Sicherheitsmeldungen
 - Amtliche Mitteilungen (Gemeindeversammlungen, offizielle Bekanntmachungen)
 - Infrastruktur und Politik (Bauprojekte, Verkehr, Zonenplanung, Budgetentscheide)
 - Gemeinderatssitzungen (Einladungen, Traktanden, Abstimmungsresultate)
@@ -130,12 +132,12 @@ Regeln:
 4. Kein erkennbares Datum → verwende das Publikationsdatum: ${publicationDate}
 
 PRIORITÄT:
-- high: Gemeindeanlässe, amtliche Mitteilungen, Infrastruktur/Politik
+- high: öffentliche Sicherheit, Gemeindeanlässe, amtliche Mitteilungen, Infrastruktur/Politik
 - medium: Gemeinderatssitzungen, Reportagen/Porträts, Natur/Umwelt
 - low: Kirche/Vereine
 
 KATEGORIE (einen der folgenden Werte zuweisen):
-community_events, municipal_notices, infrastructure, council, feature, nature_environment, church_association
+public_safety, community_events, municipal_notices, infrastructure, council, feature, nature_environment, church_association
 
 AUSGABEFORMAT (ausschliesslich valides JSON):
 {

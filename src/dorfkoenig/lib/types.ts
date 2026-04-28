@@ -241,9 +241,14 @@ export interface RecentPdfUpload {
   id: string;
   label: string | null;
   created_at: string;
-  status: 'processing' | 'review_pending' | 'completed' | 'failed' | 'storing';
+  status: NewspaperJobStatus;
+  stage: NewspaperJobStage | null;
+  chunks_total: number;
+  chunks_processed: number;
   units_created: number;
   units_merged?: number;
+  error_message: string | null;
+  source_type: 'manual_pdf' | 'manual_text';
 }
 
 export interface Draft {

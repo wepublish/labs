@@ -24,6 +24,7 @@
     "node_modules",
     "dist",
     "src/*/supabase/functions",
-    "src/dorfkoenig/scripts/benchmark-subpage-follow.ts"
+    "src/dorfkoenig/scripts/benchmark-subpage-follow.ts",
+    "src/dorfkoenig/scripts/benchmark-bz-subpage-follow.ts"
   ]
 }

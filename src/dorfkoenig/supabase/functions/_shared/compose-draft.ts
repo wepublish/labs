@@ -41,6 +41,7 @@ export interface UnitForCompose {
   source_domain: string;
   source_url: string;
   event_date?: string | null;
+  publication_date?: string | null;
   created_at?: string | null;
   article_url?: string | null;
   is_listing_page?: boolean | null;

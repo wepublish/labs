@@ -180,8 +180,9 @@
     if (chunksTotal === 0) {
       return 'Bitte Fenster offen lassen, bis die Verarbeitung abgeschlossen ist.';
     }
-    const minsLeft = Math.max(1, Math.round((chunksTotal - chunksProcessed) * SECONDS_PER_CHUNK / 60));
-    return `Abschnitt ${chunksProcessed} von ${chunksTotal} — ca. ${minsLeft} Min. verbleibend`;
+    const processed = Math.min(chunksProcessed, chunksTotal);
+    const minsLeft = Math.max(1, Math.round((chunksTotal - processed) * SECONDS_PER_CHUNK / 60));
+    return `Abschnitt ${processed} von ${chunksTotal} — ca. ${minsLeft} Min. verbleibend`;
   });
 
   let isValid = $derived.by(() => {
@@ -236,19 +237,56 @@
     }
   }
 
+  function startJobWatchers(jobId: string): void {
+    teardownJobWatchers();
+    processingJobId = jobId;
+    realtimeChannel = supabase
+      .channel(`newspaper-job-${jobId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'newspaper_jobs', filter: `id=eq.${jobId}` },
+        (payload) => applyJobUpdate(payload.new as NewspaperJob),
+      )
+      .subscribe();
+
+    pollInterval = setInterval(async () => {
+      if (!processingJobId) return;
+      try {
+        const job = await manualUploadApi.getJob(processingJobId);
+        applyJobUpdate(job);
+      } catch {
+        // Realtime remains primary; transient polling failures are retried.
+      }
+    }, JOB_POLL_INTERVAL_MS);
+
+    void refreshJob(jobId);
+  }
+
+  async function refreshJob(jobId: string): Promise<void> {
+    try {
+      const job = await manualUploadApi.getJob(jobId);
+      applyJobUpdate(job);
+    } catch (err) {
+      uploadState = 'error';
+      uploadProgress = 100;
+      uploadError = (err as Error).message || 'Job konnte nicht geladen werden';
+    }
+  }
+
   function applyJobUpdate(job: NewspaperJob): void {
-    // Guard against late callbacks firing after the modal already moved past uploading.
-    if (uploadState !== 'uploading') return;
+    if (processingJobId && job.id !== processingJobId) return;
+    if (uploadState === 'success' || uploadState === 'error') return;
 
     chunksTotal = job.chunks_total;
     chunksProcessed = job.chunks_processed;
     jobStage = job.stage ?? null;
 
     if (job.chunks_total > 0) {
-      uploadProgress = Math.round((job.chunks_processed / job.chunks_total) * 100);
+      uploadProgress = Math.round((Math.min(job.chunks_processed, job.chunks_total) / job.chunks_total) * 100);
     }
 
     if (job.status === 'review_pending' && job.extracted_units) {
+      processingJobId = job.id;
       teardownJobWatchers();
       reviewUnits = job.extracted_units;
       // Default-select only the units whose date is anchored in the source
@@ -260,6 +298,15 @@
           .map((u) => u.uid)
       );
       uploadState = 'review';
+      return;
+    }
+
+    if (job.status === 'review_pending' && !job.extracted_units) {
+      processingJobId = job.id;
+      teardownJobWatchers();
+      uploadState = 'error';
+      uploadProgress = 100;
+      uploadError = 'Keine prüfbaren Einheiten im Job gefunden';
       return;
     }
 
@@ -279,6 +326,18 @@
         uploadProgress = 100;
         uploadError = job.error_message || 'Verarbeitung fehlgeschlagen';
       }
+    }
+  }
+
+  async function resumeJob(jobId: string): Promise<void> {
+    activeTab = 'pdf';
+    uploadState = 'uploading';
+    uploadProgress = 0;
+    uploadError = '';
+    processingJobId = jobId;
+    await refreshJob(jobId);
+    if (uploadState === 'uploading') {
+      startJobWatchers(jobId);
     }
   }
 
@@ -305,6 +364,8 @@
       const result = await manualUploadApi.finalizePdf(processingJobId, [...selectedUids]);
       unitsCreated = result.units_created;
       unitsMerged = result.units_merged ?? 0;
+      processingJobId = null;
+      teardownJobWatchers();
       uploadState = 'success';
       autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
     } catch (err) {
@@ -356,26 +417,9 @@
           processingJobId = result.job_id;
           uploadState = 'uploading';
           uploadProgress = 100;
-          const job = await manualUploadApi.getJob(result.job_id);
-          applyJobUpdate(job);
+          await refreshJob(result.job_id);
           if (uploadState === 'uploading') {
-            // Fallback: subscribe via realtime + poll like PDF in case the
-            // stage update landed between the insert and our read.
-            realtimeChannel = supabase
-              .channel(`newspaper-job-${result.job_id}`)
-              .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'newspaper_jobs', filter: `id=eq.${result.job_id}` },
-                (payload) => applyJobUpdate(payload.new as NewspaperJob),
-              )
-              .subscribe();
-            pollInterval = setInterval(async () => {
-              if (!processingJobId) return;
-              try {
-                const j = await manualUploadApi.getJob(processingJobId);
-                applyJobUpdate(j);
-              } catch { /* benign */ }
-            }, JOB_POLL_INTERVAL_MS);
+            startJobWatchers(result.job_id);
           }
         }
       } else {
@@ -420,31 +464,7 @@
           processingJobId = result.job_id;
           uploadState = 'uploading';
           uploadProgress = 0;
-
-          // Realtime subscription (primary) + 10s polling fallback for dropped channels.
-          realtimeChannel = supabase
-            .channel(`newspaper-job-${result.job_id}`)
-            .on(
-              'postgres_changes',
-              {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'newspaper_jobs',
-                filter: `id=eq.${result.job_id}`,
-              },
-              (payload) => applyJobUpdate(payload.new as NewspaperJob)
-            )
-            .subscribe();
-
-          pollInterval = setInterval(async () => {
-            if (!processingJobId) return;
-            try {
-              const job = await manualUploadApi.getJob(processingJobId);
-              applyJobUpdate(job);
-            } catch {
-              // 404 mid-poll (e.g. race with completion) is benign — try again next tick.
-            }
-          }, JOB_POLL_INTERVAL_MS);
+          startJobWatchers(result.job_id);
         } else {
           uploadProgress = 100;
           if ('units_created' in result && typeof result.units_created === 'number') {
@@ -600,6 +620,7 @@
               onfileremove={() => { file = null; }}
               ondescriptionchange={(v) => { description = v; }}
               onpublicationdatechange={(v) => { publicationDate = v; }}
+              onresumejob={resumeJob}
             />
           {/if}
 

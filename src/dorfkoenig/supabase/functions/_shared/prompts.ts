@@ -27,10 +27,18 @@ Treffe Auswahl und Formulierung aus Lesersicht des Erscheinungsdatums:
 - Veranstaltungen am {{currentDate}} = "gestern" (meist nicht mehr relevant)
 
 AUSWAHLKRITERIEN (nach Priorität):
-1. AKTUALITÄT: {{recencyInstruction}}
-2. RELEVANZ: Was interessiert die Einwohner dieses Dorfes am Erscheinungstag?
-3. VIELFALT: Decke verschiedene Themen ab (Politik, Kultur, Infrastruktur, Gesellschaft).
-4. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
+1. LOKALER NACHRICHTENWERT: Sicherheit, Polizei/Feuerwehr, Unfälle,
+   Verkehrsbehinderungen, Schule, Wasser/Gesundheit, Behördenentscheide,
+   öffentliche Gelder und Infrastruktur sind wichtiger als weiche Füllmeldungen.
+2. AKTUALITÄT: {{recencyInstruction}}
+3. RELEVANZ: Was interessiert die Einwohner dieses Dorfes am Erscheinungstag?
+4. VIELFALT: Decke verschiedene Themen ab, aber nie auf Kosten einer starken
+   Sicherheits- oder Behördenmeldung.
+5. NEUIGKEITSWERT: Priorisiere Erstmeldungen über laufende Entwicklungen.
+
+FÜLLMELDUNGEN:
+Geburtstage, Hochzeiten, Vereinsnotizen und dünne Veranstaltungshinweise sind nur
+Ersatz, wenn keine harten lokalen Nachrichten verfügbar sind.
 
 TERMIN- UND ALTERSGEWICHTUNG:
 - Veranstaltungen am Erscheinungstag sind relevant. Zukünftige Veranstaltungen
@@ -96,6 +104,13 @@ interface UnitForSelect {
   unit_type: string;
   event_date?: string | null;
   created_at?: string | null;
+  publication_date?: string | null;
+  quality_score?: number | null;
+  sensitivity?: string | null;
+  article_url?: string | null;
+  is_listing_page?: boolean | null;
+  village_confidence?: string | null;
+  source_domain?: string | null;
 }
 
 /**
@@ -114,7 +129,13 @@ export function formatUnitsForSelection(
       const date = unit.event_date || unit.created_at?.split('T')[0] || 'unbekannt';
       const pubDate = previouslyPublished?.get(unit.id);
       const pubMarker = pubDate ? ` | PUBLISHED:${pubDate}` : '';
-      return `[${i + 1}] ID: ${unit.id} | Datum: ${date} | Typ: ${unit.unit_type}${pubMarker} | ${unit.statement}`;
+      const quality = unit.quality_score ?? '-';
+      const publication = unit.publication_date ?? unit.created_at?.split('T')[0] ?? 'unbekannt';
+      const sensitivity = unit.sensitivity ?? 'none';
+      const urlType = unit.article_url && !unit.is_listing_page ? 'article' : 'no_article';
+      const villageConfidence = unit.village_confidence ?? '-';
+      const source = unit.source_domain ?? '-';
+      return `[${i + 1}] ID: ${unit.id} | Datum: ${date} | Publikation: ${publication} | Typ: ${unit.unit_type} | Qualität: ${quality} | Sensitiv: ${sensitivity} | URL: ${urlType} | Ortsvertrauen: ${villageConfidence} | Quelle: ${source}${pubMarker} | ${unit.statement}`;
     })
     .join('\n');
 }
@@ -126,6 +147,7 @@ interface UnitForCompose {
   source_domain: string;
   source_url: string;
   event_date?: string | null;
+  publication_date?: string | null;
   created_at?: string | null;
   article_url?: string | null;
   is_listing_page?: boolean | null;
@@ -138,7 +160,7 @@ interface UnitForCompose {
  * pipeline. Keep aligned with `UnitForCompose` above.
  */
 export const UNIT_FOR_COMPOSE_COLUMNS =
-  'id, statement, unit_type, event_date, created_at, source_domain, source_url, article_url, is_listing_page, quality_score, sensitivity';
+  'id, statement, unit_type, event_date, publication_date, created_at, source_domain, source_url, article_url, is_listing_page, quality_score, sensitivity';
 
 /**
  * Format units grouped by type (FAKTEN / EREIGNISSE / AKTUALISIERUNGEN).
@@ -194,12 +216,13 @@ export function formatUnitsForCompose(units: UnitForCompose[]): string {
     .map((u, i) => {
       const type = typeLabel[u.unit_type] ?? u.unit_type.toUpperCase();
       const date = u.event_date ?? u.created_at?.split('T')[0] ?? 'unbekannt';
+      const publicationDate = u.publication_date ?? u.created_at?.split('T')[0] ?? 'unbekannt';
       const url = u.article_url && !u.is_listing_page ? u.article_url : 'NO_LINK';
       const domain = u.source_domain || 'unbekannt';
       const quality = u.quality_score ?? '-';
       const sens = u.sensitivity && u.sensitivity !== 'none' ? ` | SENSITIV:${u.sensitivity}` : '';
       const idPart = u.id ? ` | ID:${u.id}` : '';
-      return `[${i + 1}] ${type} | ${date} | ${u.statement} | URL:${url} | DOMAIN:${domain} | QUALITY:${quality}${sens}${idPart}`;
+      return `[${i + 1}] ${type} | EVENT:${date} | PUB:${publicationDate} | ${u.statement} | URL:${url} | DOMAIN:${domain} | QUALITY:${quality}${sens}${idPart}`;
     })
     .join('\n');
 }
@@ -296,6 +319,9 @@ REDAKTIONSWERT:
   später nur, wenn heute eine Handlung oder Entscheidung nötig ist.
 - Gute Nachrichten aus Facebook/Community-Quellen sind als letzte Meldung ok,
   wenn sie lokal, konkret und nicht bloss Werbung sind.
+- Geburtstage, Hochzeiten, Vereinsnotizen und dünne Community-Hinweise sind
+  Füllmeldungen. Verwende sie nur, wenn keine stärkere lokale Sicherheits-,
+  Behörden-, Infrastruktur- oder Schulmeldung vorhanden ist.
 
 SENSIBLE THEMEN (Todesfall, Unfall, Straftat):
 - Nur aufnehmen, wenn die Einheit SENSITIV:... markiert ist UND publication_date

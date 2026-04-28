@@ -1,0 +1,82 @@
+{
+  "fixture_id": "arlesheim-2026-04-27-police",
+  "village_id": "arlesheim",
+  "village_name": "Arlesheim",
+  "edition_date": "2026-04-28",
+  "notes": "Regression for 27 Apr 2026: fresh Arlesheim police accident must beat soft filler such as birthdays and thin events.",
+  "units": [
+    {
+      "id": "55555555-5555-5555-5555-555555555001",
+      "statement": "Bei einer Kollision zwischen Tram und Personenwagen an der Verzweigung Birseckstrasse/Baselstrasse in Arlesheim wurde die Personenwagenlenkerin verletzt.",
+      "unit_type": "fact",
+      "entities": ["Polizei Basel-Landschaft", "BLT Linie 10"],
+      "event_date": "2026-04-26",
+      "publication_date": "2026-04-27",
+      "created_at": "2026-04-27T11:13:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.baselland.ch/politik-und-behorden/direktionen/sicherheitsdirektion/polizei/polizeimeldungen/kollision-zwischen-tram-und-personenwagen-personenwagenlenkerin-verletzt",
+      "source_domain": "Polizei Basel-Landschaft",
+      "article_url": "https://www.baselland.ch/politik-und-behorden/direktionen/sicherheitsdirektion/polizei/polizeimeldungen/kollision-zwischen-tram-und-personenwagen-personenwagenlenkerin-verletzt",
+      "is_listing_page": false,
+      "sensitivity": "accident",
+      "village_confidence": "high",
+      "quality_score": 90
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555002",
+      "statement": "Margaretha und Urs Müller aus Arlesheim feiern am 29. April 2026 ihre diamantene Hochzeit.",
+      "unit_type": "event",
+      "entities": ["Margaretha Müller", "Urs Müller"],
+      "event_date": "2026-04-29",
+      "publication_date": "2026-04-27",
+      "created_at": "2026-04-27T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/aktuelles/",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 40
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555003",
+      "statement": "Am 29. April 2026 öffnet das Hol- und Bringhäuschen beim Kindertreff in Arlesheim.",
+      "unit_type": "event",
+      "entities": ["Hol- und Bringhäuschen", "Kindertreff"],
+      "event_date": "2026-04-29",
+      "publication_date": "2026-04-27",
+      "created_at": "2026-04-27T10:00:00Z",
+      "location": { "city": "arlesheim", "country": "CH" },
+      "source_url": "https://www.arlesheim.ch/de/veranstaltungen/",
+      "source_domain": "Gemeinde Arlesheim",
+      "article_url": null,
+      "is_listing_page": true,
+      "sensitivity": "none",
+      "village_confidence": "high",
+      "quality_score": 40
+    }
+  ],
+  "gold": {
+    "bullets": [
+      {
+        "emoji": "🚗",
+        "kind": "lead",
+        "text": "Bei einer Kollision zwischen Tram und Personenwagen an der Birseckstrasse/Baselstrasse in Arlesheim wurde eine Lenkerin verletzt, [meldet die Polizei Basel-Landschaft](https://www.baselland.ch/politik-und-behorden/direktionen/sicherheitsdirektion/polizei/polizeimeldungen/kollision-zwischen-tram-und-personenwagen-personenwagenlenkerin-verletzt).",
+        "article_url": "https://www.baselland.ch/politik-und-behorden/direktionen/sicherheitsdirektion/polizei/polizeimeldungen/kollision-zwischen-tram-und-personenwagen-personenwagenlenkerin-verletzt",
+        "source_domain": "Polizei Basel-Landschaft",
+        "source_unit_ids": ["55555555-5555-5555-5555-555555555001"]
+      }
+    ],
+    "rejected_units": [
+      {
+        "unit_id": "55555555-5555-5555-5555-555555555002",
+        "reason": "Soft filler; nur verwenden, wenn keine harte lokale Meldung verfügbar ist."
+      },
+      {
+        "unit_id": "55555555-5555-5555-5555-555555555003",
+        "reason": "Dünner Veranstaltungshinweis ohne Artikel-URL; Unfallmeldung hat klar höheren Nachrichtenwert."
+      }
+    ]
+  }
+}

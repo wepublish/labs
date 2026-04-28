@@ -7,6 +7,7 @@
  *   npm run bench:dorfkoenig -- --fixture arlesheim-2026-04-20
  *   npm run bench:dorfkoenig -- --model anthropic/claude-sonnet-4-5
  *   npm run bench:dorfkoenig -- --output ./report.json
+ *   npm run bench:dorfkoenig -- --schema v1      # legacy composer compatibility
  *   BENCH_CONCURRENCY=4 npm run bench:dorfkoenig   # parallel fixture execution
  *
  * Requires OPENROUTER_API_KEY in env (same as production). For CI use a low-budget key.
@@ -39,7 +40,7 @@ import type {
   MetricResult,
 } from './types.ts';
 import { aggregate, scoreFixture } from './metrics.ts';
-import { adaptV1Draft } from './adapter.ts';
+import { adaptBulletDraft, adaptV1Draft } from './adapter.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(__dirname, '..', 'fixtures', 'drafts');
@@ -53,10 +54,11 @@ interface Args {
   output?: string;
   promptOverride?: string;
   temperature: number;
+  schema: 'v1' | 'v2';
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { temperature: 0 };
+  const args: Args = { temperature: 0, schema: 'v2' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--fixture') args.fixture = argv[++i];
@@ -64,6 +66,11 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--output') args.output = argv[++i];
     else if (a === '--prompt-override') args.promptOverride = argv[++i];
     else if (a === '--temperature') args.temperature = Number(argv[++i]);
+    else if (a === '--schema') {
+      const schema = argv[++i];
+      if (schema !== 'v1' && schema !== 'v2') throw new Error('--schema must be v1 or v2');
+      args.schema = schema;
+    }
   }
   return args;
 }
@@ -90,8 +97,9 @@ function loadFixtures(filter?: string): Fixture[] {
 // --- Pipeline invocation -----------------------------------------------------
 
 /**
- * Call the pure compose function with the fixture units.
- * Phase 0 keeps the v1 schema; the adapter converts to the bullet shape metrics expect.
+ * Call the pure compose function with the fixture units. Default to the v2
+ * bullet schema because that is where production draft-quality rules and
+ * feedback few-shots live; keep v1 available for compatibility checks.
  */
 async function runFixture(fixture: Fixture, args: Args): Promise<FixtureReport> {
   const baseReport: Omit<FixtureReport, 'metrics' | 'aggregate_score' | 'pass'> = {
@@ -117,8 +125,8 @@ async function runFixture(fixture: Fixture, args: Args): Promise<FixtureReport> 
     };
   }
 
-  // Load pure compose function lazily (so empty-fixture path doesn't need it).
-  const { composeDraftFromUnits } = await import(
+  // Load pure compose functions lazily (so empty-fixture path doesn't need them).
+  const { composeDraftFromUnits, composeDraftFromUnitsV2 } = await import(
     '../../_shared/compose-draft.ts'
   );
 
@@ -128,15 +136,67 @@ async function runFixture(fixture: Fixture, args: Args): Promise<FixtureReport> 
   }
 
   try {
+    if (args.schema === 'v2') {
+      const result = await composeDraftFromUnitsV2({
+        village_id: fixture.village_id,
+        village_name: fixture.village_name,
+        selected_units: fixture.units.map((u) => ({
+          id: u.id,
+          statement: u.statement,
+          unit_type: u.unit_type,
+          source_domain: u.source_domain,
+          source_url: u.source_url,
+          article_url: u.article_url,
+          is_listing_page: u.is_listing_page,
+          quality_score: u.quality_score,
+          sensitivity: u.sensitivity,
+          event_date: u.event_date,
+          publication_date: u.publication_date,
+          created_at: u.created_at,
+          location: u.location,
+        })),
+        compose_layer2: promptOverride,
+        model: args.model,
+        temperature: args.temperature,
+        max_tokens: BENCH_MAX_TOKENS_PER_RUN,
+        currentDate: fixture.edition_date,
+        publicationDate: fixture.edition_date,
+      });
+
+      if (result.usage.total_tokens > BENCH_MAX_TOKENS_PER_RUN) {
+        throw new Error(
+          `Token cap exceeded: ${result.usage.total_tokens} > ${BENCH_MAX_TOKENS_PER_RUN}`,
+        );
+      }
+
+      const output = adaptBulletDraft(result.draft);
+      const metrics = await scoreFixture(fixture, output);
+      const aggregateScore = aggregate(metrics);
+
+      return {
+        ...baseReport,
+        metrics,
+        aggregate_score: aggregateScore,
+        pass: aggregateScore >= 70 && metrics.every((m) => m.pass),
+        usage: result.usage,
+      };
+    }
+
     const result = await composeDraftFromUnits({
       village_id: fixture.village_id,
       village_name: fixture.village_name,
       selected_units: fixture.units.map((u) => ({
+        id: u.id,
         statement: u.statement,
         unit_type: u.unit_type,
         source_domain: u.source_domain,
         source_url: u.source_url,
+        article_url: u.article_url,
+        is_listing_page: u.is_listing_page,
+        quality_score: u.quality_score,
+        sensitivity: u.sensitivity,
         event_date: u.event_date,
+        publication_date: u.publication_date,
         created_at: u.created_at,
         location: u.location,
       })),
@@ -201,7 +261,7 @@ function formatFixtureReport(r: FixtureReport): string {
 function formatBenchReport(report: BenchReport): string {
   const header =
     `Dorfkönig bench — model=${report.config.model ?? 'default'}, ` +
-    `temperature=${report.config.temperature}`;
+    `temperature=${report.config.temperature}, schema=${report.config.schema ?? 'v2'}`;
   const lines = [header, '='.repeat(header.length)];
   for (const r of report.runs) {
     lines.push('');
@@ -246,6 +306,7 @@ async function main() {
       model: args.model,
       temperature: args.temperature,
       prompt_override: args.promptOverride,
+      schema: args.schema,
     },
   };
 

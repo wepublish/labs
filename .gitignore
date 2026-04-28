@@ -38,6 +38,7 @@ pnpm-debug.log*
 .firecrawl/
 
 # Sensitive keys (temporary files)
+token.txt
 src/dorfkoenig/docs/whatsapp_keys.txt
 src/dorfkoenig/docs/news_api_token.txt
 

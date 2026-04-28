@@ -7,8 +7,8 @@
  * version, this CLI feeds it back into the system as a draft with
  * provider='external' + published_at=now(). The bajour-drafts edge function
  * extracts atomic units from the body, routes them through the canonical fact
- * layer (so they participate in the soft-dedup signal), and seeds
- * bajour_feedback_examples with one positive example per unit.
+ * layer so they participate in the soft-dedup signal. It does not seed compose
+ * few-shot examples; those must come from finished bullets.
  *
  * Long-term path: an external API webhook will mark Dorfkönig-produced drafts
  * as published, setting the same `published_at` field. This CLI dies when that

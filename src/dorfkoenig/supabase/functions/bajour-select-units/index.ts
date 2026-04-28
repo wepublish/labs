@@ -10,6 +10,12 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, UNIT_FOR_COMPOSE_COLUMNS } from '../_shared/prompts.ts';
+import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
+import {
+  enforceMandatorySelection,
+  rankSelectionCandidates,
+  selectDeterministicFallback,
+} from '../_shared/selection-ranking.ts';
 
 interface SelectUnitsRequest {
   village_id: string;
@@ -113,7 +119,7 @@ Deno.serve(async (req) => {
     // see the same candidate pool regardless of which scout or ingest path produced them.
     let query = supabase
       .from('information_units')
-      .select(UNIT_FOR_COMPOSE_COLUMNS)
+      .select(`${UNIT_FOR_COMPOSE_COLUMNS}, village_confidence`)
       .eq('location->>city', village_id)
       .eq('user_id', userId)
       .eq('used_in_article', false);
@@ -139,10 +145,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { selected_unit_ids: [] } });
     }
 
-    // Format units for LLM
-    const formattedUnits = formatUnitsForSelection(units);
-
     const currentDate = new Date().toISOString().split('T')[0];
+    const publicationDate = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
+    const rankedUnits = rankSelectionCandidates(units, {
+      currentDate,
+      publicationDate,
+      maxCandidates: 80,
+    });
+    const rankedRows = rankedUnits.map((row) => row.unit);
+
+    // Format units for LLM
+    const formattedUnits = formatUnitsForSelection(rankedRows);
 
     // System prompt template: DB override > hardcoded default. The per-run user `hint`
     // is appended to the user message below, NOT injected into the system prompt.
@@ -163,28 +176,28 @@ Deno.serve(async (req) => {
     });
 
     // Parse LLM response
-    let parsed;
+    let selectedIds: string[];
     try {
-      parsed = JSON.parse(response.choices[0].message.content);
+      const parsed = JSON.parse(response.choices[0].message.content);
+      // Validate that returned IDs exist in the ranked candidate set.
+      const validIds = new Set(rankedRows.map((u: { id: string }) => u.id));
+      selectedIds = (parsed.selected_unit_ids || []).filter(
+        (id: string) => validIds.has(id)
+      );
     } catch {
       console.error('Failed to parse LLM response:', response.choices[0].message.content);
-      return errorResponse('Fehler bei der Auswahl der Einheiten', 500);
+      selectedIds = selectDeterministicFallback(rankedUnits, MAX_UNITS_PER_COMPOSE);
     }
 
-    // Validate that returned IDs exist in the original set
-    const validIds = new Set(units.map((u: { id: string }) => u.id));
-    const selectedIds: string[] = (parsed.selected_unit_ids || []).filter(
-      (id: string) => validIds.has(id)
-    );
-
-    // Fallback: if LLM returned empty selection but candidates exist, use all candidates
-    if (selectedIds.length === 0 && units.length > 0) {
-      console.warn('LLM returned empty selection, falling back to all candidates', {
-        candidateCount: units.length,
+    // Fallback: if LLM returned empty selection but candidates exist, use deterministic ranking.
+    if (selectedIds.length === 0 && rankedRows.length > 0) {
+      console.warn('LLM returned empty selection, falling back to deterministic ranking', {
+        candidateCount: rankedRows.length,
         village_id,
       });
-      return jsonResponse({ data: { selected_unit_ids: units.map((u: { id: string }) => u.id) } });
+      selectedIds = selectDeterministicFallback(rankedUnits, MAX_UNITS_PER_COMPOSE);
     }
+    selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE);
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });
   } catch (err) {

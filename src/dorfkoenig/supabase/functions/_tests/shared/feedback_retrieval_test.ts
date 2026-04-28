@@ -74,3 +74,29 @@ Deno.test('buildComposeFeedbackExamples de-duplicates repeated bullets', () => {
   assertEquals(result.villagePositiveCount, 2);
   assertEquals(result.villageNegativeCount, 2);
 });
+
+Deno.test('buildComposeFeedbackExamples ignores atomic externally-published fragments', () => {
+  const result = buildComposeFeedbackExamples({
+    rows: [
+      {
+        kind: 'positive',
+        bullet_text: 'Tickets für das Stück gibt es im Ticket-Shop.',
+        editor_reason: 'Externally published',
+        created_at: '2026-04-26T10:00:00Z',
+      },
+      {
+        kind: 'positive',
+        bullet_text: '🚧 Fertiges redaktionelles Bullet.',
+        editor_reason: 'Goldstandard',
+        created_at: '2026-04-23T10:00:00Z',
+      },
+    ],
+    fallbackPositiveExamples: [],
+    fallbackAntiPatterns: [],
+  });
+
+  assertEquals(result.positiveExamples.map((e) => e.bullet), [
+    '🚧 Fertiges redaktionelles Bullet.',
+  ]);
+  assertEquals(result.villagePositiveCount, 1);
+});

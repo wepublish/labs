@@ -102,5 +102,6 @@ export interface BenchReport {
     model?: string;
     temperature: number;
     prompt_override?: string;
+    schema?: 'v1' | 'v2';
   };
 }

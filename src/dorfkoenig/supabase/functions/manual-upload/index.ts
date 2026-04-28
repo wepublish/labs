@@ -22,6 +22,10 @@ import {
   sanitizeReviewUnits,
   type ReviewUnit,
 } from '../_shared/manual-upload-review.ts';
+import {
+  normalizeJobUpdate,
+  updateNewspaperJob,
+} from '../_shared/newspaper-job-state.ts';
 
 // Allowed MIME types for file uploads
 const ALLOWED_MIME_TYPES = new Set([
@@ -66,8 +70,9 @@ Deno.serve(async (req) => {
         const limit = Math.min(Math.max(parseInt(recentParam, 10) || 5, 1), 20);
         const { data, error } = await supabase
           .from('newspaper_jobs')
-          .select('id, label, created_at, status, units_created, units_merged')
+          .select('id, label, created_at, status, stage, chunks_total, chunks_processed, units_created, units_merged, error_message, source_type')
           .eq('user_id', userId)
+          .eq('source_type', 'manual_pdf')
           .order('created_at', { ascending: false })
           .limit(limit);
         if (error) return errorResponse('Upload-Historie nicht verfügbar', 500);
@@ -208,6 +213,7 @@ async function handleTextUpload(
       source_type: 'manual_text',
       chunks_total: 1,
       chunks_processed: 0,
+      last_heartbeat_at: new Date().toISOString(),
     })
     .select('id')
     .single();
@@ -269,11 +275,10 @@ AUSGABEFORMAT (JSON):
     units = result.units || [];
   } catch (err) {
     console.error('[text_extract] LLM error:', err);
-    await supabase.from('newspaper_jobs').update({
+    await updateNewspaperJob(supabase, job.id, {
       status: 'failed',
       error_message: 'Textverarbeitung fehlgeschlagen',
-      completed_at: new Date().toISOString(),
-    }).eq('id', job.id);
+    });
     return errorResponse('Textverarbeitung fehlgeschlagen. Bitte versuche es erneut.', 500);
   }
 
@@ -299,22 +304,23 @@ AUSGABEFORMAT (JSON):
     });
 
   if (staged.length === 0) {
-    await supabase.from('newspaper_jobs').update({
+    await updateNewspaperJob(supabase, job.id, {
       status: 'completed',
       units_created: 0,
       extracted_units: null,
-      completed_at: new Date().toISOString(),
-    }).eq('id', job.id);
+    });
     await recordRateLimit(supabase, userId, 'text');
     return jsonResponse({ data: { job_id: job.id, status: 'completed', units_created: 0 } });
   }
 
-  const { error: stageErr } = await supabase.from('newspaper_jobs').update({
-    status: 'review_pending',
-    stage: 'storing',
-    extracted_units: staged,
-    chunks_processed: 1,
-  }).eq('id', job.id);
+  const { error: stageErr } = await supabase.from('newspaper_jobs').update(
+    normalizeJobUpdate({
+      status: 'review_pending',
+      extracted_units: staged,
+      chunks_total: 1,
+      chunks_processed: 1,
+    }),
+  ).eq('id', job.id);
 
   if (stageErr) {
     console.error('[text_extract] stage update failed:', stageErr);
@@ -476,6 +482,7 @@ async function handleFileConfirm(
         storage_path: storagePath,
         publication_date: publicationDate,
         label: description?.trim() || null,
+        last_heartbeat_at: new Date().toISOString(),
       })
       .select('id')
       .single();
@@ -489,20 +496,24 @@ async function handleFileConfirm(
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    fetch(`${supabaseUrl}/functions/v1/process-newspaper`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serviceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        job_id: job.id,
-        storage_path: storagePath,
-        user_id: userId,
-        publication_date: publicationDate,
-        label: description?.trim() || null,
-      }),
-    }).catch((err) => console.error('Failed to trigger process-newspaper:', err));
+    const triggerPromise = triggerProcessNewspaper({
+      supabase,
+      supabaseUrl,
+      serviceKey,
+      jobId: job.id,
+      storagePath,
+      userId,
+      publicationDate,
+      label: description?.trim() || null,
+    });
+    const edgeRuntime = (globalThis as {
+      EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
+    }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(triggerPromise);
+    } else {
+      triggerPromise.catch((err) => console.error('Failed to trigger process-newspaper:', err));
+    }
 
     // 50ms flush delay to ensure request is dispatched
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -601,7 +612,7 @@ async function handlePdfFinalize(
   // existing result instead of re-inserting.
   const { data: claimed, error: claimErr } = await supabase
     .from('newspaper_jobs')
-    .update({ status: 'storing' })
+    .update(normalizeJobUpdate({ status: 'storing', stage: 'storing' }))
     .eq('id', jobId)
     .eq('user_id', userId)
     .eq('status', 'review_pending')
@@ -667,16 +678,12 @@ async function handlePdfFinalize(
 
   if (chosen.length === 0) {
     // User sent only unknown UIDs. Treat like cancel.
-    await supabase
-      .from('newspaper_jobs')
-      .update({
+    await updateNewspaperJob(supabase, jobId, {
         status: 'completed',
         units_created: 0,
         units_merged: 0,
         extracted_units: null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
+      });
     return jsonResponse({ data: { units_created: 0, units_merged: 0, units_saved: 0 } });
   }
 
@@ -755,16 +762,12 @@ async function handlePdfFinalize(
     }
     const duplicateCount = inBatchDuplicateCount + mergedExistingCount;
 
-    await supabase
-      .from('newspaper_jobs')
-      .update({
+    await updateNewspaperJob(supabase, jobId, {
         status: 'completed',
         units_created: createdCount,
         units_merged: duplicateCount,
         extracted_units: null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
+      });
 
     return jsonResponse({
       data: {
@@ -784,10 +787,7 @@ async function handlePdfFinalize(
       hint: e.hint,
     });
     // Revert the 'storing' claim so the user can retry from the review panel.
-    await supabase
-      .from('newspaper_jobs')
-      .update({ status: 'review_pending' })
-      .eq('id', jobId);
+    await updateNewspaperJob(supabase, jobId, { status: 'review_pending' });
     return errorResponse('Speichern fehlgeschlagen. Bitte erneut versuchen.', 500);
   }
 }
@@ -802,11 +802,10 @@ async function handlePdfCancel(
 
   const { error } = await supabase
     .from('newspaper_jobs')
-    .update({
+    .update(normalizeJobUpdate({
       status: 'cancelled',
       extracted_units: null,
-      completed_at: new Date().toISOString(),
-    })
+    }))
     .eq('id', jobId)
     .eq('user_id', userId)
     .in('status', ['review_pending', 'storing']);
@@ -817,4 +816,45 @@ async function handlePdfCancel(
   }
 
   return jsonResponse({ data: { status: 'cancelled' } });
+}
+
+async function triggerProcessNewspaper(args: {
+  supabase: ReturnType<typeof createServiceClient>;
+  supabaseUrl: string;
+  serviceKey: string;
+  jobId: string;
+  storagePath: string;
+  userId: string;
+  publicationDate: string | null;
+  label: string | null;
+}): Promise<void> {
+  try {
+    const response = await fetch(`${args.supabaseUrl}/functions/v1/process-newspaper`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${args.serviceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        job_id: args.jobId,
+        storage_path: args.storagePath,
+        user_id: args.userId,
+        publication_date: args.publicationDate,
+        label: args.label,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      await updateNewspaperJob(args.supabase, args.jobId, {
+        status: 'failed',
+        error_message: `Verarbeitung konnte nicht gestartet werden (HTTP ${response.status})${text ? `: ${text.slice(0, 200)}` : ''}`,
+      });
+    }
+  } catch (err) {
+    await updateNewspaperJob(args.supabase, args.jobId, {
+      status: 'failed',
+      error_message: `Verarbeitung konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`,
+    });
+  }
 }
