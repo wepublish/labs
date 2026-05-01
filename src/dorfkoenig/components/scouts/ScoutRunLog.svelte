@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { History } from 'lucide-svelte';
+  import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-svelte';
   import { executionsApi } from '../../lib/api';
-  import { formatRelativeTime } from '../../lib/constants';
-  import type { Execution } from '../../lib/types';
+  import type { Execution, InformationUnit } from '../../lib/types';
 
   interface Props {
     scoutId: string;
@@ -11,17 +10,28 @@
 
   let { scoutId, refreshKey = 0 }: Props = $props();
 
-  let latestExecutions = $state<Execution[]>([]);
+  let executions = $state<Execution[]>([]);
   let loading = $state(false);
   let error = $state('');
+  let expandedId = $state<string | null>(null);
+  let detailLoading = $state<Set<string>>(new Set());
+  let detailById = $state<Map<string, Execution>>(new Map());
+  let detailErrorById = $state<Map<string, string>>(new Map());
 
-  async function loadLatestExecutions(id: string): Promise<void> {
+  const DATE_TIME = new Intl.DateTimeFormat('de-CH', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  async function loadExecutions(id: string): Promise<void> {
     loading = true;
     error = '';
     try {
-      latestExecutions = await executionsApi.list({ scout_id: id, limit: 3 });
+      executions = await executionsApi.list({ scout_id: id, limit: 10 });
     } catch (err) {
-      latestExecutions = [];
+      executions = [];
       error = (err as Error).message || 'Läufe konnten nicht geladen werden';
     } finally {
       loading = false;
@@ -30,12 +40,41 @@
 
   $effect(() => {
     void refreshKey;
-    void loadLatestExecutions(scoutId);
+    expandedId = null;
+    detailById = new Map();
+    detailErrorById = new Map();
+    void loadExecutions(scoutId);
   });
 
+  function formatTime(value: string | null): string {
+    if (!value) return '—';
+    try {
+      return DATE_TIME.format(new Date(value));
+    } catch {
+      return value;
+    }
+  }
+
+  function durationLabel(execution: Execution): string {
+    if (execution.scrape_duration_ms) return `${Math.round(execution.scrape_duration_ms / 1000)}s scrape`;
+    if (!execution.completed_at) return 'offen';
+    const durationMs = new Date(execution.completed_at).getTime() - new Date(execution.started_at).getTime();
+    if (!Number.isFinite(durationMs) || durationMs < 0) return '—';
+    if (durationMs < 60_000) return `${Math.round(durationMs / 1000)}s`;
+    return `${Math.round(durationMs / 60_000)}m`;
+  }
+
   function statusLabel(execution: Execution): string {
+    if (execution.status === 'running') return 'running';
+    if (execution.status === 'failed') return 'failed';
+    if (execution.change_status === 'same') return 'same';
+    if (execution.criteria_matched) return 'matched';
+    return 'no match';
+  }
+
+  function resultLabel(execution: Execution): string {
+    if (execution.status === 'failed') return 'Fehler';
     if (execution.status === 'running') return 'Läuft';
-    if (execution.status === 'failed') return 'Fehlgeschlagen';
     if (execution.change_status === 'same') return 'Keine Änderung';
     if (execution.criteria_matched) return 'Treffer';
     return 'Kein Treffer';
@@ -44,153 +83,429 @@
   function countLabel(execution: Execution): string {
     const created = execution.units_extracted ?? 0;
     const merged = execution.merged_existing_count ?? 0;
-    if (created === 0 && merged === 0) return 'Keine Einheiten';
-    if (merged === 0) return `${created} neu`;
-    return `${created} neu, ${merged} Duplikate`;
+    return `${created} neu / ${merged} dup`;
+  }
+
+  function summaryLine(execution: Execution): string {
+    return execution.error_message || execution.summary_text || 'Keine Zusammenfassung';
+  }
+
+  async function toggleExecution(execution: Execution): Promise<void> {
+    if (expandedId === execution.id) {
+      expandedId = null;
+      return;
+    }
+
+    expandedId = execution.id;
+    if (detailById.has(execution.id) || detailLoading.has(execution.id)) return;
+
+    detailLoading = new Set(detailLoading).add(execution.id);
+    const nextErrors = new Map(detailErrorById);
+    nextErrors.delete(execution.id);
+    detailErrorById = nextErrors;
+
+    try {
+      const detail = await executionsApi.get(execution.id);
+      const next = new Map(detailById);
+      next.set(execution.id, detail);
+      detailById = next;
+    } catch (err) {
+      const next = new Map(detailErrorById);
+      next.set(execution.id, (err as Error).message || 'Details konnten nicht geladen werden');
+      detailErrorById = next;
+    } finally {
+      const nextLoading = new Set(detailLoading);
+      nextLoading.delete(execution.id);
+      detailLoading = nextLoading;
+    }
+  }
+
+  function unitLabel(unit: InformationUnit): string {
+    const type = unit.unit_type === 'event' ? 'event' : unit.unit_type === 'entity_update' ? 'update' : 'fact';
+    return `${type}${unit.event_date ? ` · ${unit.event_date}` : ''}`;
   }
 </script>
 
-<aside class="run-log-panel" aria-labelledby="run-log-heading">
-  <div class="run-log-header">
+<aside class="execution-log" aria-labelledby="execution-log-heading">
+  <div class="log-heading">
     <div>
-      <h3 id="run-log-heading">Letzte Läufe</h3>
-      <p>Aktuelle Ausführungen dieses Scouts.</p>
+      <h3 id="execution-log-heading">Ausführungslog</h3>
+      <p>Letzte 10 Runs, Metadaten und gespeicherte Einheiten.</p>
     </div>
-    <History size={16} />
+    <button class="refresh-btn" type="button" onclick={() => loadExecutions(scoutId)} title="Neu laden">
+      <RefreshCw size={14} />
+    </button>
   </div>
 
   {#if loading}
-    <p class="run-log-muted">Läufe werden geladen…</p>
+    <div class="log-state">
+      <Loader2 size={14} class="spin" />
+      Läufe werden geladen…
+    </div>
   {:else if error}
-    <p class="run-log-error">{error}</p>
-  {:else if latestExecutions.length === 0}
-    <p class="run-log-muted">Noch keine Läufe</p>
+    <p class="log-error">{error}</p>
+  {:else if executions.length === 0}
+    <p class="log-muted">Noch keine Läufe</p>
   {:else}
-    <ul class="run-log-list">
-      {#each latestExecutions as execution (execution.id)}
-        <li class="run-log-item status-{execution.status}">
-          <div class="run-log-line">
-            <span class="run-log-status">{statusLabel(execution)}</span>
-            <span class="run-log-time">{formatRelativeTime(execution.started_at)}</span>
-          </div>
-          <span class="run-log-count">{countLabel(execution)}</span>
-          {#if execution.error_message}
-            <p class="run-log-message error">{execution.error_message}</p>
-          {:else if execution.summary_text}
-            <p class="run-log-message">{execution.summary_text}</p>
+    <ol class="log-list">
+      {#each executions as execution (execution.id)}
+        {@const detail = detailById.get(execution.id)}
+        {@const detailError = detailErrorById.get(execution.id)}
+        {@const isExpanded = expandedId === execution.id}
+        <li class="log-row status-{execution.status}">
+          <button class="log-summary" type="button" onclick={() => toggleExecution(execution)}>
+            <div class="summary-top">
+              <span class="expand-icon">
+                {#if isExpanded}
+                  <ChevronDown size={15} />
+                {:else}
+                  <ChevronRight size={15} />
+                {/if}
+              </span>
+              <span class="log-status">{statusLabel(execution)}</span>
+              <span class="log-result">{resultLabel(execution)}</span>
+            </div>
+            <div class="summary-meta">
+              <span>{formatTime(execution.started_at)}</span>
+              <span>{countLabel(execution)}</span>
+              <span>{durationLabel(execution)}</span>
+            </div>
+            <p class:error={!!execution.error_message} class="log-message">
+              {summaryLine(execution)}
+            </p>
+          </button>
+
+          {#if isExpanded}
+            <div class="log-detail">
+              {#if detailLoading.has(execution.id)}
+                <div class="log-state compact">
+                  <Loader2 size={13} class="spin" />
+                  Details laden…
+                </div>
+              {:else if detailError}
+                <p class="log-error compact">{detailError}</p>
+              {:else if detail}
+                <dl class="meta-grid">
+                  <div>
+                    <dt>ID</dt>
+                    <dd>{detail.id}</dd>
+                  </div>
+                  <div>
+                    <dt>Start</dt>
+                    <dd>{formatTime(detail.started_at)}</dd>
+                  </div>
+                  <div>
+                    <dt>Ende</dt>
+                    <dd>{formatTime(detail.completed_at)}</dd>
+                  </div>
+                  <div>
+                    <dt>Change</dt>
+                    <dd>{detail.change_status ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Criteria</dt>
+                    <dd>{detail.criteria_matched === null ? '—' : detail.criteria_matched ? 'true' : 'false'}</dd>
+                  </div>
+                  <div>
+                    <dt>Execution dedup</dt>
+                    <dd>{detail.is_duplicate ? `true (${detail.duplicate_similarity ?? 'n/a'})` : 'false'}</dd>
+                  </div>
+                </dl>
+
+                {#if detail.units && detail.units.length > 0}
+                  <div class="unit-block">
+                    <h4>Einheiten ({detail.units.length})</h4>
+                    <ul>
+                      {#each detail.units as unit (unit.id)}
+                        <li>
+                          <span>{unitLabel(unit)}</span>
+                          <p>{unit.statement}</p>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {:else}
+                  <p class="log-muted compact">Keine Einheiten an diesem Lauf.</p>
+                {/if}
+              {/if}
+            </div>
           {/if}
         </li>
       {/each}
-    </ul>
+    </ol>
   {/if}
 </aside>
 
 <style>
-  .run-log-panel {
+  .execution-log {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
+    gap: 0.875rem;
+    min-width: 0;
+    padding: 1rem;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
   }
 
-  .run-log-header {
+  .log-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
-    color: var(--color-text-muted);
+    gap: 0.75rem;
+    padding: 0 0 0.75rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .run-log-header h3 {
+  .log-heading h3 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 650;
     color: var(--color-text);
   }
 
-  .run-log-header p {
+  .log-heading p {
     margin: 0.125rem 0 0;
     font-size: var(--text-sm);
     color: var(--color-text-muted);
   }
 
-  .run-log-muted,
-  .run-log-error {
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .run-log-muted {
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
     color: var(--color-text-light);
-    font-style: italic;
+    cursor: pointer;
   }
 
-  .run-log-error {
-    color: #dc2626;
+  .refresh-btn:hover {
+    color: var(--color-text);
+    background: var(--color-background);
   }
 
-  .run-log-list {
+  .log-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .log-row {
+    padding: 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+  }
+
+  .log-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .summary-top,
+  .summary-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-top {
+    min-height: 1.25rem;
+  }
+
+  .summary-meta {
+    padding-left: 1.5rem;
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+  }
+
+  .summary-meta span {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .summary-meta span + span::before {
+    content: '·';
+    margin-right: 0.5rem;
+    color: var(--color-text-light);
+  }
+
+  .expand-icon {
+    display: flex;
+    color: var(--color-text-light);
+  }
+
+  .log-status,
+  .log-result {
+    min-width: 0;
+    font-size: 0.8125rem;
+  }
+
+  .log-status {
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .status-running .log-status { color: #b45309; }
+  .status-completed .log-status { color: #15803d; }
+  .status-failed .log-status { color: #dc2626; }
+
+  .log-result {
+    color: var(--color-text-muted);
+    font-weight: 600;
+  }
+
+  .log-message {
+    margin: 0;
+    padding-left: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .log-message.error,
+  .log-error {
+    color: #dc2626;
+  }
+
+  .log-detail {
+    margin: 0.875rem 0 0 1.5rem;
+    display: flex;
+    flex-direction: column;
     gap: 0.625rem;
   }
 
-  .run-log-item {
-    padding-left: 0.75rem;
-    border-left: 2px solid #d1d5db;
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem 0.75rem;
+    margin: 0;
   }
 
-  .run-log-item.status-completed {
-    border-left-color: #22c55e;
+  .meta-grid div {
+    min-width: 0;
   }
 
-  .run-log-item.status-running {
-    border-left-color: #f59e0b;
+  .meta-grid dt {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light);
   }
 
-  .run-log-item.status-failed {
-    border-left-color: #ef4444;
+  .meta-grid dd {
+    margin: 0.125rem 0 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
-  .run-log-line {
+  .unit-block {
     display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    font-size: var(--text-xs);
+    flex-direction: column;
+    gap: 0.375rem;
   }
 
-  .run-log-status {
+  .unit-block h4 {
+    margin: 0;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--color-text);
   }
 
-  .run-log-time,
-  .run-log-count {
-    font-size: var(--text-xs);
+  .unit-block ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .unit-block li {
+    padding-left: 0.625rem;
+    border-left: 2px solid var(--color-border);
+  }
+
+  .unit-block span {
+    font-size: 0.6875rem;
+    font-weight: 700;
     color: var(--color-text-light);
+    text-transform: uppercase;
   }
 
-  .run-log-count {
-    display: block;
-    margin-top: 0.125rem;
-  }
-
-  .run-log-message {
-    margin: 0.25rem 0 0;
-    color: var(--color-text-muted);
+  .unit-block p {
+    margin: 0.125rem 0 0;
     font-size: var(--text-sm);
-    line-height: 1.4;
+    line-height: 1.35;
+    color: var(--color-text-muted);
   }
 
-  .run-log-message.error {
-    color: #dc2626;
+  .log-state,
+  .log-muted,
+  .log-error {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .log-state {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--color-text-muted);
+  }
+
+  .log-state.compact,
+  .log-muted.compact,
+  .log-error.compact {
+    font-size: 0.75rem;
+  }
+
+  .log-muted {
+    color: var(--color-text-light);
+    font-style: italic;
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 1120px) {
+    .execution-log {
+      padding: 0.875rem;
+    }
+
+    .summary-meta,
+    .log-message,
+    .log-detail {
+      padding-left: 0;
+      margin-left: 0;
+    }
   }
 </style>

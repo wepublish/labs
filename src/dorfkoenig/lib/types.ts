@@ -260,8 +260,10 @@ export interface RecentPdfUpload {
   units_created: number;
   units_merged?: number;
   dedup_summary?: UploadDedupDetail[] | null;
+  skipped_items?: string[];
   error_message: string | null;
   source_type: 'manual_pdf' | 'manual_text';
+  completed_at?: string | null;
 }
 
 export interface Draft {

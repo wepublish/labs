@@ -154,6 +154,12 @@
     selectedScout ? [selectedScout] : matchingScouts
   );
 
+  $effect(() => {
+    if (selectedScout && selectedUnitIds.size === 0) {
+      showAISelectDropdown = false;
+    }
+  });
+
   let scoutNameOptions = $derived(
     matchingScouts.length === 0
       ? [{ value: '', label: 'Keine Scouts' }]
@@ -606,6 +612,7 @@
   </div>
 
   <!-- ═══ FLOATING BAR: Draft actions (bottom-right) ═══ -->
+  {#if !selectedScout || selectedUnitIds.size > 0}
   <div class="floating-bar">
     <div class="ai-select-wrapper">
       <button
@@ -635,6 +642,7 @@
       {/if}
     </div>
   </div>
+  {/if}
 </div>
 
 <DraftSlideOver

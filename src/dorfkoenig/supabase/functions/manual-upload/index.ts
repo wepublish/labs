@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         const limit = Math.min(Math.max(parseInt(recentParam, 10) || 5, 1), 20);
         const { data, error } = await supabase
           .from('newspaper_jobs')
-          .select('id, label, created_at, status, stage, chunks_total, chunks_processed, units_created, units_merged, dedup_summary, error_message, source_type')
+          .select('id, label, created_at, completed_at, status, stage, chunks_total, chunks_processed, units_created, units_merged, dedup_summary, skipped_items, error_message, source_type')
           .eq('user_id', userId)
           .eq('source_type', 'manual_pdf')
           .order('created_at', { ascending: false })

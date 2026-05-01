@@ -1,7 +1,18 @@
 <script lang="ts">
-  import { X, File as FileIcon, Check, AlertTriangle, Clock, ListChecks, Info } from 'lucide-svelte';
+  import {
+    X,
+    File as FileIcon,
+    Check,
+    AlertTriangle,
+    Clock,
+    ListChecks,
+    Info,
+    ChevronDown,
+    ChevronRight,
+  } from 'lucide-svelte';
   import { manualUploadApi } from '../../lib/api';
   import type { RecentPdfUpload } from '../../lib/types';
+  import UploadDedupDetails from './UploadDedupDetails.svelte';
 
   const RECENT_REFRESH_INTERVAL_MS = 10_000;
 
@@ -28,6 +39,7 @@
   }: Props = $props();
 
   let recent = $state<RecentPdfUpload[]>([]);
+  let expandedUploadId = $state<string | null>(null);
 
   async function loadRecentUploads(): Promise<void> {
     try {
@@ -72,6 +84,26 @@
     return 'In Bearbeitung';
   }
 
+  function stageLabel(r: RecentPdfUpload): string {
+    if (r.status === 'processing') {
+      if (r.stage === 'parsing_pdf') return 'PDF wird gelesen';
+      if (r.stage === 'chunking') return 'Wird aufgeteilt';
+      if (r.stage === 'extracting') return 'KI extrahiert';
+    }
+    if (r.status === 'storing') return 'Speichert Einheiten';
+    return statusLabel(r);
+  }
+
+  function progressLabel(r: RecentPdfUpload): string {
+    if (r.chunks_total > 0 && (r.status === 'processing' || r.status === 'storing')) {
+      return `${Math.min(r.chunks_processed, r.chunks_total)}/${r.chunks_total} Abschnitte`;
+    }
+    if (r.status === 'completed') {
+      return statusLabel(r);
+    }
+    return stageLabel(r);
+  }
+
   function canResume(r: RecentPdfUpload): boolean {
     return r.status === 'review_pending' || r.status === 'processing' || r.status === 'storing';
   }
@@ -84,6 +116,10 @@
     if (r.status === 'review_pending') return 'Prüfen';
     if (r.status === 'completed') return 'Details';
     return 'Öffnen';
+  }
+
+  function toggleExpanded(id: string): void {
+    expandedUploadId = expandedUploadId === id ? null : id;
   }
 </script>
 
@@ -142,41 +178,114 @@
 
 {#if recent.length > 0}
   <div class="recent-uploads">
-    <h4 class="recent-title">Zuletzt hochgeladen</h4>
+    <div class="recent-header">
+      <h4 class="recent-title">Zuletzt hochgeladen</h4>
+      <span class="recent-subtitle">Upload-Log</span>
+    </div>
     <ul class="recent-list">
       {#each recent as r (r.id)}
+        {@const expanded = expandedUploadId === r.id}
         <li class="recent-row">
-          <span class="recent-icon" class:ok={r.status === 'completed'} class:bad={r.status === 'failed'}>
-            {#if r.status === 'completed'}
-              <Check size={14} />
-            {:else if r.status === 'failed'}
-              <AlertTriangle size={14} />
-            {:else}
-              <Clock size={14} />
-            {/if}
-          </span>
-          <span class="recent-label" title={r.label ?? ''}>{r.label ?? '(ohne Bezeichnung)'}</span>
-          <span class="recent-date">{formatDate(r.created_at)}</span>
-          <span class="recent-status">{statusLabel(r)}</span>
-          {#if canOpenDetails(r)}
+          <div class="recent-row-main">
             <button
-              class="recent-action"
+              class="recent-toggle"
               type="button"
-              aria-label="Upload öffnen"
-              title="Upload öffnen"
-              onclick={() => onresumejob?.(r.id)}
+              aria-expanded={expanded}
+              onclick={() => toggleExpanded(r.id)}
             >
-              {#if r.status === 'review_pending'}
-                <ListChecks size={14} />
-              {:else if r.status === 'completed'}
-                <Info size={14} />
+              {#if expanded}
+                <ChevronDown size={14} />
+              {:else}
+                <ChevronRight size={14} />
+              {/if}
+            </button>
+            <span class="recent-icon" class:ok={r.status === 'completed'} class:bad={r.status === 'failed'}>
+              {#if r.status === 'completed'}
+                <Check size={14} />
+              {:else if r.status === 'failed'}
+                <AlertTriangle size={14} />
               {:else}
                 <Clock size={14} />
               {/if}
-              <span>{actionLabel(r)}</span>
-            </button>
-          {:else}
-            <span class="recent-action-spacer"></span>
+            </span>
+            <div class="recent-main-text">
+              <span class="recent-label" title={r.label ?? ''}>{r.label ?? '(ohne Bezeichnung)'}</span>
+              <span class="recent-meta">{formatDate(r.created_at)} · {progressLabel(r)}</span>
+            </div>
+            <span class="recent-status">{stageLabel(r)}</span>
+            {#if canOpenDetails(r)}
+              <button
+                class="recent-action"
+                type="button"
+                aria-label="Upload öffnen"
+                title="Upload öffnen"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onresumejob?.(r.id);
+                }}
+              >
+                {#if r.status === 'review_pending'}
+                  <ListChecks size={14} />
+                {:else if r.status === 'completed'}
+                  <Info size={14} />
+                {:else}
+                  <Clock size={14} />
+                {/if}
+                <span>{actionLabel(r)}</span>
+              </button>
+            {:else}
+              <span class="recent-action-spacer"></span>
+            {/if}
+          </div>
+
+          {#if expanded}
+            <div class="recent-details">
+              <dl class="recent-detail-grid">
+                <div>
+                  <dt>Status</dt>
+                  <dd>{r.status}</dd>
+                </div>
+                <div>
+                  <dt>Stage</dt>
+                  <dd>{r.stage ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Abschnitte</dt>
+                  <dd>{r.chunks_processed}/{r.chunks_total}</dd>
+                </div>
+                <div>
+                  <dt>Einheiten</dt>
+                  <dd>{r.units_created} neu / {r.units_merged ?? 0} dup</dd>
+                </div>
+                <div>
+                  <dt>Erstellt</dt>
+                  <dd>{formatDate(r.created_at)}</dd>
+                </div>
+                <div>
+                  <dt>Fertig</dt>
+                  <dd>{r.completed_at ? formatDate(r.completed_at) : '—'}</dd>
+                </div>
+              </dl>
+
+              {#if r.error_message}
+                <p class="recent-error">{r.error_message}</p>
+              {/if}
+
+              {#if r.dedup_summary && r.dedup_summary.length > 0}
+                <UploadDedupDetails details={r.dedup_summary} />
+              {/if}
+
+              {#if r.skipped_items && r.skipped_items.length > 0}
+                <div class="skipped-block">
+                  <h5>Übersprungen ({r.skipped_items.length})</h5>
+                  <ul>
+                    {#each r.skipped_items.slice(0, 6) as item}
+                      <li>{item}</li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+            </div>
           {/if}
         </li>
       {/each}
@@ -325,9 +434,18 @@
   .recent-uploads {
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border, #e5e7eb);
+    gap: 0.625rem;
+    padding: 0.875rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-surface, white);
+  }
+
+  .recent-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
   .recent-title {
@@ -339,24 +457,49 @@
     letter-spacing: 0.03em;
   }
 
+  .recent-subtitle {
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+  }
+
   .recent-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
 
   .recent-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto auto;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.625rem;
     font-size: 0.8125rem;
     border-radius: 0.375rem;
     background: var(--color-background, #f9fafb);
+    border: 1px solid var(--color-border, #e5e7eb);
+  }
+
+  .recent-row-main {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .recent-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
   }
 
   .recent-icon {
@@ -369,6 +512,13 @@
   .recent-icon.ok { color: #16a34a; }
   .recent-icon.bad { color: var(--color-danger, #ef4444); }
 
+  .recent-main-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
   .recent-label {
     color: var(--color-text);
     overflow: hidden;
@@ -377,10 +527,9 @@
     min-width: 0;
   }
 
-  .recent-date {
+  .recent-meta {
     color: var(--color-text-muted);
     font-size: 0.75rem;
-    white-space: nowrap;
   }
 
   .recent-status {
@@ -412,5 +561,89 @@
   .recent-action:hover {
     border-color: var(--color-primary);
     color: var(--color-primary);
+  }
+
+  .recent-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding-left: 2rem;
+  }
+
+  .recent-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem 0.75rem;
+    margin: 0;
+  }
+
+  .recent-detail-grid div {
+    min-width: 0;
+  }
+
+  .recent-detail-grid dt {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light);
+  }
+
+  .recent-detail-grid dd {
+    margin: 0.125rem 0 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .recent-error {
+    margin: 0;
+    color: var(--color-danger, #ef4444);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .skipped-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .skipped-block h5 {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-text);
+  }
+
+  .skipped-block ul {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 640px) {
+    .recent-row-main {
+      grid-template-columns: auto auto minmax(0, 1fr);
+    }
+
+    .recent-status,
+    .recent-action,
+    .recent-action-spacer {
+      grid-column: 3;
+      justify-self: start;
+    }
+
+    .recent-details {
+      padding-left: 0;
+    }
+
+    .recent-detail-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
