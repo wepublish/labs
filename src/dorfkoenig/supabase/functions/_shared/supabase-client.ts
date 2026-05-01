@@ -111,6 +111,9 @@ export interface ScoutExecution {
   units_extracted: number;
   merged_existing_count: number;
   scrape_duration_ms: number | null;
+  scrape_strategy: string | null;
+  scrape_attempts: number;
+  scrape_warning: string | null;
   created_at: string;
 }
 

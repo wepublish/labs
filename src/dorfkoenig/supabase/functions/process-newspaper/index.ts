@@ -10,6 +10,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
 import {
@@ -56,6 +57,9 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405);
   }
 
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
+
   const supabase = createServiceClient();
 
   let jobId: string | undefined;
@@ -71,6 +75,25 @@ Deno.serve(async (req) => {
     if (!jobId || !storagePath || !userId) {
       return errorResponse('Missing required fields', 400);
     }
+
+    const { data: job, error: jobError } = await supabase
+      .from('newspaper_jobs')
+      .select('id, user_id, storage_path')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (jobError) {
+      console.error('[process-newspaper] Job lookup failed:', jobError);
+      return errorResponse('Job lookup failed', 500);
+    }
+    if (!job) {
+      return errorResponse('Job not found', 404);
+    }
+    if (job.user_id !== userId || job.storage_path !== storagePath) {
+      console.error('[process-newspaper] Job ownership mismatch', { jobId });
+      return errorResponse('Forbidden', 403, 'FORBIDDEN');
+    }
+
     await incrementProcessingAttempt(supabase, jobId);
 
     // ── Duplicate guard ──

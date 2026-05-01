@@ -7,6 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, type Scout } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { resend } from '../_shared/resend.ts';
@@ -35,6 +36,12 @@ const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+function appendWarning(current: string | null, next: string): string {
+  if (!current) return next;
+  if (current.split(',').includes(next)) return current;
+  return `${current},${next}`;
+}
+
 interface ExecuteRequest {
   scoutId: string;
   executionId?: string;
@@ -47,6 +54,9 @@ Deno.serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
 
   const startTime = Date.now();
   const supabase = createServiceClient();
@@ -122,18 +132,27 @@ Deno.serve(async (req) => {
     // firecrawl or null (legacy): scrape with changeTracking
     const useChangeTracking = scout.provider !== 'firecrawl_plain';
 
-    const scrapeResult = await firecrawl.scrape({
+    const scrapeResult = await firecrawl.scrapePrimaryPageResilient({
       url: scout.url,
-      formats: ['markdown', 'rawHtml'],
       timeout: PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
       changeTrackingTag: useChangeTracking ? `scout-${scoutId}` : undefined,
     });
 
     const scrapeDurationMs = Date.now() - startTime;
+    let scrapeWarning = scrapeResult.warning;
 
     if (!scrapeResult.success) {
       console.error(`[${executionId}] Scrape failed:`, scrapeResult.error);
-      await updateExecutionFailed(supabase, executionId, scout, scrapeResult.error!);
+      await supabase
+        .from('scout_executions')
+        .update({
+          scrape_strategy: scrapeResult.strategy,
+          scrape_attempts: scrapeResult.attempts,
+          scrape_warning: scrapeResult.warning,
+          scrape_duration_ms: scrapeDurationMs,
+        })
+        .eq('id', executionId);
+      await updateExecutionFailed(supabase, executionId!, scout, scrapeResult.error!);
       return jsonResponse({
         data: {
           execution_id: executionId,
@@ -167,6 +186,9 @@ Deno.serve(async (req) => {
               change_status: 'first_run',
               summary_text: 'Baseline gespeichert',
               scrape_duration_ms: scrapeDurationMs,
+              scrape_strategy: scrapeResult.strategy,
+              scrape_attempts: scrapeResult.attempts,
+              scrape_warning: scrapeWarning,
             })
             .eq('id', executionId);
 
@@ -221,6 +243,9 @@ Deno.serve(async (req) => {
           change_status: 'same',
           summary_text: 'Keine Änderungen erkannt',
           scrape_duration_ms: scrapeDurationMs,
+          scrape_strategy: scrapeResult.strategy,
+          scrape_attempts: scrapeResult.attempts,
+          scrape_warning: scrapeWarning,
         })
         .eq('id', executionId);
 
@@ -309,6 +334,9 @@ Deno.serve(async (req) => {
         is_duplicate: isDuplicate,
         duplicate_similarity: duplicateSimilarity,
         scrape_duration_ms: scrapeDurationMs,
+        scrape_strategy: scrapeResult.strategy,
+        scrape_attempts: scrapeResult.attempts,
+        scrape_warning: scrapeWarning,
       })
       .eq('id', executionId);
 
@@ -361,6 +389,17 @@ Deno.serve(async (req) => {
       console.log(
         `[${executionId}] Primary extraction skipped: manual-location page looks like a listing (${candidateUrls.length} article candidates)`,
       );
+    }
+
+    if (
+      extractUnits &&
+      analysis.matches &&
+      hasScope &&
+      (indexIsListingPage || deterministicListingPage) &&
+      !scrapeResult.rawHtml
+    ) {
+      scrapeWarning = appendWarning(scrapeWarning, 'phase_b_skipped_raw_html_unavailable');
+      console.warn(`[${executionId}] Phase B skipped: raw HTML unavailable`);
     }
 
     // =========================================================================
@@ -544,6 +583,7 @@ Deno.serve(async (req) => {
         notification_error: notificationError,
         units_extracted: unitsExtracted,
         merged_existing_count: mergedExistingCount,
+        scrape_warning: scrapeWarning,
       })
       .eq('id', executionId);
 

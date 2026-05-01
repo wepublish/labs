@@ -12,6 +12,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import {
   addDaysIso,
@@ -147,6 +148,9 @@ Deno.serve(async (req) => {
     return errorResponse('Methode nicht erlaubt', 405);
   }
 
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
+
   const supabase = createServiceClient();
   const body: AutoDraftRequest = await req.json();
   const { village_id, village_name, user_id } = body;
@@ -199,6 +203,8 @@ Deno.serve(async (req) => {
       .eq('location->>city', village_id)
       .eq('user_id', user_id)
       .eq('used_in_article', false)
+      .not('statement', 'ilike', '[DEBUG]%')
+      .not('source_domain', 'eq', 'example.invalid')
       .order('event_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(100);
