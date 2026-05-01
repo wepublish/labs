@@ -6,15 +6,12 @@
   import DraftGenerating from './DraftGenerating.svelte';
   import DraftError from './DraftError.svelte';
   import DraftActions from './DraftActions.svelte';
-  import DraftListPanel from './DraftListPanel.svelte';
   import VerificationBadge from './VerificationBadge.svelte';
-  import LocationAutocomplete from '../ui/LocationAutocomplete.svelte';
-  import DraftList from './DraftList.svelte';
   import { bajourDrafts } from '../../bajour/store';
   import { bajourApi } from '../../bajour/api';
   import { supabase } from '../../lib/supabase';
   import type { Draft } from '../../lib/types';
-  import type { BajourDraft, VerificationStatus } from '../../bajour/types';
+  import type { BajourDraft, DraftBullet, VerificationStatus } from '../../bajour/types';
 
   interface Props {
     open: boolean;
@@ -27,7 +24,6 @@
     villageName?: string;
     villageId?: string;
     unitIds?: string[];
-    initialShowDraftList?: boolean;
     initialSavedDraft?: BajourDraft | null;
     onClose: () => void;
     onRetry: () => void;
@@ -45,7 +41,6 @@
     villageName,
     villageId,
     unitIds = [],
-    initialShowDraftList = false,
     initialSavedDraft = null,
     onClose,
     onRetry,
@@ -63,7 +58,61 @@
     return parts.join('\n\n');
   }
 
-  function parseSavedDraftBody(sd: BajourDraft): Draft {
+  type DisplayDraft = Draft & {
+    bullets?: DraftBullet[];
+    notes_for_editor?: string[];
+  };
+
+  function parseLegacyMarkdownBullets(body: string): DraftBullet[] {
+    return body
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('- '))
+      .map((line) => {
+        const raw = line.replace(/^-\s+/, '').trim();
+        const emojiMatch = raw.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F)?\s*/u);
+        const emoji = emojiMatch?.[0]?.trim() || '•';
+        const text = emojiMatch ? raw.slice(emojiMatch[0].length).trim() : raw;
+        return {
+          emoji,
+          kind: 'secondary',
+          text,
+          article_url: null,
+          source_domain: null,
+          source_unit_ids: [],
+        } satisfies DraftBullet;
+      });
+  }
+
+  function parseSavedDraftBody(sd: BajourDraft): DisplayDraft {
+    if (sd.schema_version === 2 && sd.bullets_json) {
+      return {
+        title: sd.bullets_json.title || sd.title || '',
+        headline: '',
+        sections: [],
+        gaps: [],
+        sources: [],
+        word_count: 0,
+        units_used: sd.selected_unit_ids.length,
+        bullets: sd.bullets_json.bullets,
+        notes_for_editor: sd.bullets_json.notes_for_editor,
+      };
+    }
+
+    const markdownBullets = parseLegacyMarkdownBullets(sd.body);
+    if (markdownBullets.length > 0) {
+      return {
+        title: sd.title || '',
+        headline: '',
+        sections: [],
+        gaps: [],
+        sources: [],
+        word_count: 0,
+        units_used: sd.selected_unit_ids.length,
+        bullets: markdownBullets,
+      };
+    }
+
     const lines = sd.body.split('\n');
     let headline = '';
     const sections: { heading: string; content: string }[] = [];
@@ -72,9 +121,9 @@
 
     function flush() {
       if (!currentHeading && currentLines.length > 0 && sections.length === 0) {
-        headline = currentLines.join(' ').trim();
+        headline = currentLines.join('\n').trim();
       } else if (currentHeading || currentLines.length > 0) {
-        sections.push({ heading: currentHeading, content: currentLines.join(' ').trim() });
+        sections.push({ heading: currentHeading, content: currentLines.join('\n').trim() });
       }
     }
 
@@ -111,10 +160,8 @@
   let actionError = $state('');
   let actionSuccess = $state<string | null>(null);
 
-  let showDraftList = $state(false);
   let showRegenPrompt = $state(false);
   let regenPrompt = $state('');
-  let locationFilter = $state('');
   let publicationDate = $state(new Date().toISOString().split('T')[0]);
 
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -125,15 +172,6 @@
 
   // Zero state: no draft content and not generating/erroring
   let isZeroState = $derived(!savedDraft && !draft && !isGenerating && !generationError);
-
-  // Drafts filtered by location
-  let filteredDrafts = $derived(
-    locationFilter
-      ? $bajourDrafts.drafts.filter((d) =>
-          d.village_name.toLowerCase().startsWith(locationFilter.toLowerCase())
-        )
-      : $bajourDrafts.drafts
-  );
 
   // --- Realtime subscription ---
 
@@ -167,7 +205,6 @@
   $effect(() => {
     if (open) {
       bajourDrafts.load();
-      showDraftList = initialShowDraftList;
       // Admin deep-link: adopt the pre-fetched draft as the selected one.
       // Do NOT call subscribeToUpdates — Realtime respects bajour_drafts RLS,
       // so an admin who isn't the draft owner would get a silent no-op.
@@ -181,10 +218,8 @@
   $effect(() => {
     if (!open) {
       savedDraft = null;
-      showDraftList = false;
       showRegenPrompt = false;
       regenPrompt = '';
-      locationFilter = '';
       publicationDate = new Date().toISOString().split('T')[0];
       sendLoading = false;
       deleteLoading = false;
@@ -364,40 +399,11 @@
   <!-- Panel -->
   <div class="slide-over" transition:fly={{ x: 400, duration: 300 }} use:focusTrap role="dialog" aria-modal="true" aria-label="Entwurf">
     {#if isZeroState}
-      <!-- ═══ ZERO STATE: full-panel draft list with filter ═══ -->
-      <div class="zero-state-header">
-        <LocationAutocomplete
-          value={locationFilter}
-          onselect={(loc) => { locationFilter = loc.city; }}
-          placeholder="Entwürfe filtern..."
-        />
-        {#if locationFilter}
-          <button class="clear-filter" onclick={() => { locationFilter = ''; }} type="button">
-            Alle anzeigen
-          </button>
-        {/if}
-      </div>
-      <div class="zero-state-body">
-        <DraftList
-          drafts={filteredDrafts}
-          onselect={(selectedDraft) => { savedDraft = selectedDraft; showDraftList = false; actionError = ''; actionSuccess = null; }}
-        />
+      <div class="zero-state-body zero-state-empty">
+        <h2>Kein Entwurf ausgewählt</h2>
+        <p>Öffnen Sie einen Entwurf über das Entwürfe-Panel.</p>
       </div>
     {:else}
-      <!-- ═══ DRAFT STATE: toggle overlay + content ═══ -->
-      <DraftListPanel
-        drafts={$bajourDrafts.drafts}
-        activeDraftId={savedDraft?.id ?? null}
-        show={showDraftList}
-        ontoggle={() => showDraftList = !showDraftList}
-        onselect={(selectedDraft) => {
-          savedDraft = selectedDraft;
-          showDraftList = false;
-          actionError = '';
-          actionSuccess = null;
-        }}
-      />
-
       <!-- Body: content-first layout -->
       <div class="panel-body">
         {#if isGenerating}
@@ -491,34 +497,32 @@
   }
 
   /* ── ZERO STATE ── */
-  .zero-state-header {
-    flex-shrink: 0;
-    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .clear-filter {
-    align-self: flex-start;
-    background: none;
-    border: none;
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    padding: 0;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  .clear-filter:hover {
-    color: var(--color-text);
-  }
-
   .zero-state-body {
     flex: 1;
     overflow-y: auto;
     padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
+  }
+
+  .zero-state-empty {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.375rem;
+    text-align: center;
+  }
+
+  .zero-state-empty h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    color: var(--color-text);
+  }
+
+  .zero-state-empty p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-base-sm);
   }
 
   /* ── DRAFT STATE ── */

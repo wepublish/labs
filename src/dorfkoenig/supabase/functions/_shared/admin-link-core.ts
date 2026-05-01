@@ -78,5 +78,5 @@ export function buildAdminDraftUrl(
     sig: link.sig,
     exp: String(link.exp),
   });
-  return `${base}/?${params.toString()}#/feed`;
+  return `${base}/?${params.toString()}#/drafts`;
 }

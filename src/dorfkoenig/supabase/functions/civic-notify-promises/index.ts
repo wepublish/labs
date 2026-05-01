@@ -8,6 +8,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { resend } from '../_shared/resend.ts';
 
 const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
@@ -18,6 +19,9 @@ const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
 
   const supabase = createServiceClient();
 
@@ -111,7 +115,8 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error('civic-notify-promises error:', error);
-    return errorResponse(error.message, 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('civic-notify-promises error:', message);
+    return errorResponse(message, 500);
   }
 });

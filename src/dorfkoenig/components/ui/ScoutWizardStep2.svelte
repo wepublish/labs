@@ -8,6 +8,7 @@
     dayOfWeek: string;
     timeHour: string;
     timeMinute: string;
+    extractOnFirstPass: boolean;
     submitting: boolean;
     submitError: string;
     onnamechange: (name: string) => void;
@@ -15,6 +16,7 @@
     ondayofweekchange: (day: string) => void;
     ontimehourchange: (hour: string) => void;
     ontimeminutechange: (minute: string) => void;
+    onextractonfirstpasschange: (enabled: boolean) => void;
     onback: () => void;
     onsubmit: () => void;
   }
@@ -25,6 +27,7 @@
     dayOfWeek,
     timeHour,
     timeMinute,
+    extractOnFirstPass,
     submitting,
     submitError,
     onnamechange,
@@ -32,6 +35,7 @@
     ondayofweekchange,
     ontimehourchange,
     ontimeminutechange,
+    onextractonfirstpasschange,
     onback,
     onsubmit,
   }: Props = $props();
@@ -98,6 +102,25 @@
         {/each}
       </select>
     </div>
+  </div>
+
+  <div class="extraction-option">
+    <label class="toggle-row">
+      <input
+        type="checkbox"
+        checked={extractOnFirstPass}
+        onchange={(e) => onextractonfirstpasschange(e.currentTarget.checked)}
+      />
+      <span class="toggle-track" aria-hidden="true">
+        <span class="toggle-thumb"></span>
+      </span>
+      <span class="toggle-copy">
+        <span class="toggle-title">Beim Erstellen Informationen extrahieren</span>
+        <span class="toggle-hint">
+          Startet nach dem Speichern einen ersten Lauf ohne Benachrichtigung und speichert passende Informationseinheiten.
+        </span>
+      </span>
+    </label>
   </div>
 </div>
 
@@ -189,6 +212,82 @@
   .time-separator {
     font-size: 1rem;
     font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .extraction-option {
+    padding: 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-background, #f9fafb);
+  }
+
+  .toggle-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    cursor: pointer;
+  }
+
+  .toggle-row input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 2.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    background: #e5e7eb;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+    transition: transform 0.2s ease;
+  }
+
+  .toggle-row input:checked + .toggle-track {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+
+  .toggle-row input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(1rem);
+  }
+
+  .toggle-row input:focus-visible + .toggle-track {
+    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.18);
+  }
+
+  .toggle-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    min-width: 0;
+  }
+
+  .toggle-title {
+    font-size: 0.8125rem;
+    font-weight: 650;
+    color: var(--color-text);
+  }
+
+  .toggle-hint {
+    font-size: 0.75rem;
+    line-height: 1.4;
     color: var(--color-text-muted);
   }
 </style>

@@ -43,10 +43,7 @@ interface ScrapeResponse {
   error?: string;
 }
 
-/**
- * Scrape a URL and return markdown content
- */
-export async function scrape(options: ScrapeOptions): Promise<{
+export type FirecrawlScrapeResult = {
   success: boolean;
   markdown: string | null;
   rawHtml: string | null;
@@ -54,7 +51,26 @@ export async function scrape(options: ScrapeOptions): Promise<{
   changeStatus: string | null;
   previousScrapeAt: string | null;
   error: string | null;
-}> {
+};
+
+type ScrapeFn = (options: ScrapeOptions) => Promise<FirecrawlScrapeResult>;
+
+export type PrimaryScrapeStrategy =
+  | 'combined'
+  | 'combined_retry'
+  | 'split'
+  | 'markdown_only_fallback';
+
+export type PrimaryScrapeResult = FirecrawlScrapeResult & {
+  strategy: PrimaryScrapeStrategy | null;
+  attempts: number;
+  warning: string | null;
+};
+
+/**
+ * Scrape a URL and return markdown content
+ */
+export async function scrape(options: ScrapeOptions): Promise<FirecrawlScrapeResult> {
   const {
     url,
     formats = ['markdown'],
@@ -159,6 +175,158 @@ export async function scrape(options: ScrapeOptions): Promise<{
       error: err.message,
     };
   }
+}
+
+function isRetryableScrapeError(error: string | null): boolean {
+  if (!error) return false;
+  const normalized = error.toLowerCase();
+  return (
+    normalized.includes('timed out') ||
+    normalized.includes('abort') ||
+    normalized.includes('network') ||
+    normalized.includes('firecrawl api error: 429') ||
+    /firecrawl api error:\s*5\d\d/.test(normalized)
+  );
+}
+
+function appendWarning(current: string | null, next: string): string {
+  if (!current) return next;
+  if (current.split(',').includes(next)) return current;
+  return `${current},${next}`;
+}
+
+function toSuccessfulPrimary(
+  result: FirecrawlScrapeResult,
+  strategy: PrimaryScrapeStrategy,
+  attempts: number,
+  warning: string | null,
+): PrimaryScrapeResult {
+  return {
+    ...result,
+    success: true,
+    strategy,
+    attempts,
+    warning,
+  };
+}
+
+function toFailedPrimary(
+  result: FirecrawlScrapeResult,
+  attempts: number,
+  warning: string | null,
+): PrimaryScrapeResult {
+  return {
+    ...result,
+    success: false,
+    strategy: null,
+    attempts,
+    warning,
+  };
+}
+
+async function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Primary page scrape with fallback for intermittent combined-format Firecrawl
+ * stalls. The scout needs markdown to proceed; rawHtml is best-effort and only
+ * required for listing subpage follow-up.
+ */
+export async function scrapePrimaryPageResilient(options: {
+  url: string;
+  timeout: number;
+  changeTrackingTag?: string;
+  retryBackoffMs?: number;
+  scrapeFn?: ScrapeFn;
+}): Promise<PrimaryScrapeResult> {
+  const {
+    url,
+    timeout,
+    changeTrackingTag,
+    retryBackoffMs = 2_000 + Math.floor(Math.random() * 3_000),
+    scrapeFn = scrape,
+  } = options;
+
+  let attempts = 0;
+  let warning: string | null = null;
+
+  const combinedOptions: ScrapeOptions = {
+    url,
+    formats: ['markdown', 'rawHtml'],
+    timeout,
+    changeTrackingTag,
+  };
+
+  attempts++;
+  const combined = await scrapeFn(combinedOptions);
+  if (combined.success && combined.markdown && combined.rawHtml) {
+    return toSuccessfulPrimary(combined, 'combined', attempts, warning);
+  }
+  if (combined.success && combined.markdown && !combined.rawHtml) {
+    warning = appendWarning(warning, 'raw_html_missing_combined');
+  } else if (!combined.success) {
+    warning = appendWarning(warning, isRetryableScrapeError(combined.error) ? 'combined_timeout' : 'combined_failed');
+  }
+
+  if (!combined.success && isRetryableScrapeError(combined.error)) {
+    await sleep(retryBackoffMs);
+    attempts++;
+    const retry = await scrapeFn(combinedOptions);
+    if (retry.success && retry.markdown && retry.rawHtml) {
+      return toSuccessfulPrimary(retry, 'combined_retry', attempts, warning);
+    }
+    if (retry.success && retry.markdown && !retry.rawHtml) {
+      warning = appendWarning(warning, 'raw_html_missing_combined_retry');
+    } else if (!retry.success) {
+      warning = appendWarning(warning, isRetryableScrapeError(retry.error) ? 'combined_retry_timeout' : 'combined_retry_failed');
+    }
+  }
+
+  const markdown = combined.success && combined.markdown
+    ? combined
+    : await (async () => {
+      attempts++;
+      return scrapeFn({
+      url,
+      formats: ['markdown'],
+      timeout,
+      changeTrackingTag,
+      });
+    })();
+
+  if (!markdown.success || !markdown.markdown) {
+    const failed = markdown.success
+      ? { ...markdown, success: false, error: markdown.error || 'Scrape returned no markdown content' }
+      : markdown;
+    return toFailedPrimary(failed, attempts, warning);
+  }
+
+  attempts++;
+  const rawHtml = await scrapeFn({
+    url,
+    formats: ['rawHtml'],
+    timeout,
+  });
+
+  if (rawHtml.success && rawHtml.rawHtml) {
+    return toSuccessfulPrimary({
+      ...markdown,
+      rawHtml: rawHtml.rawHtml,
+      title: markdown.title || rawHtml.title,
+    }, 'split', attempts, warning);
+  }
+
+  warning = appendWarning(
+    warning,
+    isRetryableScrapeError(rawHtml.error) ? 'raw_html_timeout' : 'raw_html_failed',
+  );
+
+  return toSuccessfulPrimary({
+    ...markdown,
+    rawHtml: null,
+  }, 'markdown_only_fallback', attempts, warning);
 }
 
 /**
@@ -330,6 +498,7 @@ export async function scrapeRawHtml(
 // Export as module
 export const firecrawl = {
   scrape,
+  scrapePrimaryPageResilient,
   getDomain,
   computeContentHash,
   doubleProbe,

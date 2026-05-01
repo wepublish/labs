@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         const limit = Math.min(Math.max(parseInt(recentParam, 10) || 5, 1), 20);
         const { data, error } = await supabase
           .from('newspaper_jobs')
-          .select('id, label, created_at, status, stage, chunks_total, chunks_processed, units_created, units_merged, error_message, source_type')
+          .select('id, label, created_at, completed_at, status, stage, chunks_total, chunks_processed, units_created, units_merged, dedup_summary, skipped_items, error_message, source_type')
           .eq('user_id', userId)
           .eq('source_type', 'manual_pdf')
           .order('created_at', { ascending: false })
@@ -594,6 +594,63 @@ async function handleFileConfirm(
 // shows a checkbox list and calls back here with the selected UIDs. This
 // handler runs embed / dedup / insert on just the picked subset.
 
+type DedupReason = 'in_batch_duplicate' | 'merged_existing';
+
+interface UploadDedupDetail {
+  uid: string;
+  statement: string;
+  reason: DedupReason;
+  matched_uid?: string | null;
+  matched_unit_id?: string | null;
+  matched_statement?: string | null;
+}
+
+function findInBatchDuplicateTarget(
+  index: number,
+  uniqueIndices: number[],
+  statements: string[],
+  vectors: number[][],
+): { matchedIndex: number; matchedStatement: string } | null {
+  for (const seenIndex of uniqueIndices) {
+    if (seenIndex >= index) continue;
+
+    const cosine = embeddings.similarity(vectors[index], vectors[seenIndex]);
+    if (cosine < UNIT_DEDUP_STRONG_COSINE_THRESHOLD) continue;
+
+    const text = embeddings.textSimilarity(statements[index], statements[seenIndex]);
+    if (text >= UNIT_DEDUP_TEXT_THRESHOLD) {
+      return {
+        matchedIndex: seenIndex,
+        matchedStatement: statements[seenIndex],
+      };
+    }
+  }
+
+  return null;
+}
+
+async function loadCanonicalStatements(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  unitIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(unitIds)];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from('information_units')
+    .select('id, statement')
+    .eq('user_id', userId)
+    .in('id', uniqueIds);
+
+  if (error) {
+    console.warn('[pdf_finalize] failed to load dedup matched statements', error);
+    return new Map();
+  }
+
+  return new Map((data ?? []).map((row) => [row.id as string, row.statement as string]));
+}
+
 async function handlePdfFinalize(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
@@ -629,7 +686,7 @@ async function handlePdfFinalize(
     // current state so the client can reconcile.
     const { data: current } = await supabase
       .from('newspaper_jobs')
-      .select('status, units_created, units_merged, error_message')
+      .select('status, units_created, units_merged, dedup_summary, error_message')
       .eq('id', jobId)
       .eq('user_id', userId)
       .maybeSingle();
@@ -643,6 +700,7 @@ async function handlePdfFinalize(
           units_created: unitsCreated,
           units_merged: unitsMerged,
           units_saved: unitsCreated + unitsMerged,
+          dedup_summary: current.dedup_summary ?? [],
           already_finalized: true,
         },
       });
@@ -682,9 +740,10 @@ async function handlePdfFinalize(
         status: 'completed',
         units_created: 0,
         units_merged: 0,
+        dedup_summary: [],
         extracted_units: null,
       });
-    return jsonResponse({ data: { units_created: 0, units_merged: 0, units_saved: 0 } });
+    return jsonResponse({ data: { units_created: 0, units_merged: 0, units_saved: 0, dedup_summary: [] } });
   }
 
   try {
@@ -692,18 +751,35 @@ async function handlePdfFinalize(
     const unitEmbeddings = await embeddings.generateBatch(chosen.map((u) => u.statement));
 
     // In-batch dedup.
+    const statements = chosen.map((u) => u.statement);
     const uniqueIndices = embeddings.deduplicateSimilarStatements(
-      chosen.map((u) => u.statement),
+      statements,
       unitEmbeddings,
       UNIT_DEDUP_STRONG_COSINE_THRESHOLD,
       UNIT_DEDUP_TEXT_THRESHOLD,
     );
     const finalIndices = uniqueIndices;
     const inBatchDuplicateCount = Math.max(0, chosen.length - finalIndices.length);
+    const finalIndexSet = new Set(finalIndices);
+    const dedupDetails: UploadDedupDetail[] = [];
+
+    for (let i = 0; i < chosen.length; i++) {
+      if (finalIndexSet.has(i)) continue;
+      const target = findInBatchDuplicateTarget(i, finalIndices, statements, unitEmbeddings);
+      dedupDetails.push({
+        uid: chosen[i].uid,
+        statement: chosen[i].statement,
+        reason: 'in_batch_duplicate',
+        matched_uid: target ? chosen[target.matchedIndex]?.uid ?? null : null,
+        matched_statement: target?.matchedStatement ?? null,
+      });
+    }
 
     let createdCount = 0;
     let mergedExistingCount = 0;
     let savedCount = 0;
+    const mergedCanonicalIds: string[] = [];
+    const mergedDetailIndexes: number[] = [];
     if (finalIndices.length > 0) {
       const sourceType = ((claimed.source_type as string | null) ?? 'manual_pdf') as 'manual_pdf' | 'manual_text';
       const sourceUrl = sourceType === 'manual_text' ? 'manual://text' : 'manual://pdf';
@@ -756,16 +832,31 @@ async function handlePdfFinalize(
             createdCount++;
           } else if (result.mergedExisting) {
             mergedExistingCount++;
+            mergedCanonicalIds.push(result.unitId);
+            mergedDetailIndexes.push(dedupDetails.length);
+            dedupDetails.push({
+              uid: u.uid,
+              statement: u.statement,
+              reason: 'merged_existing',
+              matched_unit_id: result.unitId,
+              matched_statement: null,
+            });
           }
         }
       }
     }
     const duplicateCount = inBatchDuplicateCount + mergedExistingCount;
+    const matchedStatements = await loadCanonicalStatements(supabase, userId, mergedCanonicalIds);
+    for (const detailIndex of mergedDetailIndexes) {
+      const unitId = dedupDetails[detailIndex]?.matched_unit_id;
+      if (unitId) dedupDetails[detailIndex].matched_statement = matchedStatements.get(unitId) ?? null;
+    }
 
     await updateNewspaperJob(supabase, jobId, {
         status: 'completed',
         units_created: createdCount,
         units_merged: duplicateCount,
+        dedup_summary: dedupDetails,
         extracted_units: null,
       });
 
@@ -774,6 +865,7 @@ async function handlePdfFinalize(
         units_created: createdCount,
         units_merged: duplicateCount,
         units_saved: savedCount,
+        dedup_summary: dedupDetails,
       },
     });
   } catch (error) {

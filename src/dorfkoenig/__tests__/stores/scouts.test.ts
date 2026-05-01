@@ -210,10 +210,10 @@ describe('scouts store', () => {
       const mockResult = { execution_id: 'exec-1', status: 'running', message: 'Started' };
       vi.mocked(scoutsApi.run).mockResolvedValue(mockResult);
 
-      const result = await scouts.run('scout-1', { extract_units: true });
+      const result = await scouts.run('scout-1', { extract_units: true, force_extract: true });
 
       expect(result).toEqual(mockResult);
-      expect(scoutsApi.run).toHaveBeenCalledWith('scout-1', { extract_units: true });
+      expect(scoutsApi.run).toHaveBeenCalledWith('scout-1', { extract_units: true, force_extract: true });
     });
 
     it('calls scoutsApi.run without options', async () => {

@@ -12,6 +12,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import {
   addDaysIso,
@@ -120,7 +121,7 @@ async function notifyEmptyPath(opts: {
 }): Promise<void> {
   if (!FLAG_EMPTY_PATH_EMAIL || ADMIN_EMAILS.length === 0) return;
 
-  const feedUrl = `${PUBLIC_APP_URL}/#/feed?village=${encodeURIComponent(opts.village_id)}`;
+  const feedUrl = `${PUBLIC_APP_URL}/#/scouts?village=${encodeURIComponent(opts.village_id)}`;
   const { subject, html } = buildDraftFailureEmail({
     villageName: opts.village_name,
     villageId: opts.village_id,
@@ -146,6 +147,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return errorResponse('Methode nicht erlaubt', 405);
   }
+
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
 
   const supabase = createServiceClient();
   const body: AutoDraftRequest = await req.json();
@@ -199,6 +203,8 @@ Deno.serve(async (req) => {
       .eq('location->>city', village_id)
       .eq('user_id', user_id)
       .eq('used_in_article', false)
+      .not('statement', 'ilike', '[DEBUG]%')
+      .not('source_domain', 'eq', 'example.invalid')
       .order('event_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(100);

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { MapPin } from 'lucide-svelte';
   import gemeindenData from '../../lib/gemeinden.json';
-  import { pilotVillages } from '../../lib/villages';
+  import { getActivePilotVillageIds, pilotVillages } from '../../lib/villages';
 
   interface Gemeinde {
     id: string;
@@ -42,13 +42,10 @@
   });
 
   // Pilot scoping (opt-in via restrictToPilot): manual upload must not let
-  // editors assign units to villages outside the active pilot. Strict null
-  // handling — while the pilot list is loading we show nothing, so we can't
-  // accidentally leak the full pool during the async resolve.
+  // editors assign units to villages outside the active pilot.
   let allowedGemeinden = $derived.by(() => {
     if (!restrictToPilot) return gemeinden;
-    const pilot = $pilotVillages;
-    if (pilot === null) return [];
+    const pilot = getActivePilotVillageIds($pilotVillages);
     return gemeinden.filter((g) => pilot.includes(g.id));
   });
 

@@ -520,6 +520,13 @@ The layout includes a sticky navbar with:
 - **Center nav**: Verwalten (`#/manage`), Feed (`#/feed`), + "Neuer Scout" CTA button, + "Hochladen" upload button
 - **User area**: Display name + logout icon
 - **Modals**: `ScoutModal` and `UploadModal` rendered at layout level
+- **Manual upload review**: PDF/text extraction stages review units in
+  `newspaper_jobs.extracted_units`; the modal finalizes selected UIDs and shows
+  `dedup_summary` after save so editors can see which units were deduplicated.
+- **Scout run logs**: expanded scout cards lazy-load the latest three
+  `scout_executions` rows and show compact status, time, unit, duplicate, and
+  error/summary details. The full history remains under `#/scout/{id}` and
+  `#/history`.
 
 ```svelte
 <script lang="ts">
@@ -772,7 +779,7 @@ The layout includes a sticky navbar with:
         <span class="location">{scout.location.city}</span>
       {/if}
       <span class="frequency">
-        {scout.frequency === 'daily' ? 'Täglich' :
+        {scout.frequency === 'daily' ? 'Alle 8 Stunden' :
          scout.frequency === 'weekly' ? 'Wöchentlich' :
          scout.frequency === 'biweekly' ? 'Alle 2 Wochen' : 'Monatlich'}
       </span>

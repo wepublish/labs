@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS scouts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Constraints
-    CONSTRAINT scouts_valid_frequency CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+    CONSTRAINT scouts_valid_frequency CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly')),
     CONSTRAINT scouts_valid_url CHECK (url ~ '^https?://'),
     CONSTRAINT scouts_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
     CONSTRAINT scouts_criteria_length CHECK (char_length(criteria) BETWEEN 10 AND 1000)
@@ -401,11 +401,11 @@ BEGIN
     hours_elapsed := EXTRACT(EPOCH FROM (NOW() - p_last_run_at)) / 3600;
 
     threshold_hours := CASE p_frequency
-        WHEN 'daily' THEN 24
+        WHEN 'daily' THEN 8
         WHEN 'weekly' THEN 168
         WHEN 'biweekly' THEN 336
         WHEN 'monthly' THEN 720
-        ELSE 24
+        ELSE 8
     END;
 
     RETURN hours_elapsed >= threshold_hours;

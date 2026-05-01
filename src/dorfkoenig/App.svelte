@@ -7,6 +7,7 @@
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
+  import Drafts from './routes/Drafts.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -20,8 +21,8 @@
   });
 
   // Parse route and params from hash
-  // Examples: #/manage, #/scout/uuid, #/history, #/feed
-  let route = $derived(hash.slice(2).split('/')[0] || 'manage');
+  // Examples: #/scouts, #/drafts, #/scout/uuid, #/history
+  let route = $derived(hash.slice(2).split('/')[0].split('?')[0] || 'scouts');
   let routeParams = $derived(hash.slice(2).split('/').slice(1));
 </script>
 
@@ -40,16 +41,18 @@
   <Login />
 {:else}
   <Layout>
-    {#if route === 'manage' || route === ''}
-      <Manage />
+    {#if route === 'scouts' || route === 'manage' || route === 'feed' || route === ''}
+      <Feed />
+    {:else if route === 'drafts'}
+      <Drafts />
     {:else if route === 'scout' && routeParams[0]}
       <ScoutDetail scoutId={routeParams[0]} />
     {:else if route === 'history'}
       <History />
-    {:else if route === 'feed'}
-      <Feed />
-    {:else}
+    {:else if route === 'manage-legacy'}
       <Manage />
+    {:else}
+      <Feed />
     {/if}
   </Layout>
 {/if}

@@ -190,13 +190,15 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 
 {
   "skip_notification": false,
-  "extract_units": true
+  "extract_units": true,
+  "force_extract": false
 }
 ```
 
 **Query Parameters:**
 - `skip_notification`: Skip email notification (default: false)
 - `extract_units`: Extract information units (default: true)
+- `force_extract`: Bypass baseline/change early exits while keeping normal criteria, listing, deduplication, quality, and ingestion filters (default: false)
 
 **Response:** `202 Accepted`
 ```json
@@ -281,14 +283,30 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 ```
 
 For staged PDF/text review finalization (`content_type: "pdf_finalize"`), the
-same endpoint returns counts only:
+same endpoint returns counts plus per-unit deduplication details:
 
 ```json
 {
   "data": {
     "units_created": 21,
     "units_merged": 2,
-    "units_saved": 21
+    "units_saved": 21,
+    "dedup_summary": [
+      {
+        "uid": "review-unit-uuid",
+        "statement": "Der Gemeinderat hat den Neubau genehmigt.",
+        "reason": "merged_existing",
+        "matched_unit_id": "canonical-unit-uuid",
+        "matched_statement": "Der Gemeinderat hat den Neubau genehmigt."
+      },
+      {
+        "uid": "review-unit-uuid-2",
+        "statement": "Der Gemeinderat hat den Neubau genehmigt.",
+        "reason": "in_batch_duplicate",
+        "matched_uid": "review-unit-uuid",
+        "matched_statement": "Der Gemeinderat hat den Neubau genehmigt."
+      }
+    ]
   }
 }
 ```
@@ -297,7 +315,9 @@ same endpoint returns counts only:
 counts duplicate review selections: both in-batch duplicates and rows attached
 as new `unit_occurrences` to existing canonical units. `units_saved` counts
 selected units that produced an occurrence; in-batch duplicates are not saved as
-separate occurrences.
+separate occurrences. `dedup_summary` is also persisted on `newspaper_jobs` so
+completed PDF uploads can show which selected units were deduplicated after the
+modal is reopened from recent uploads.
 
 ---
 

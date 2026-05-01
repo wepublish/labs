@@ -6,7 +6,7 @@
   import UploadModal from './ui/UploadModal.svelte';
   import CivicScoutModal from './civic/CivicScoutModal.svelte';
   import SettingsModal from './ui/SettingsModal.svelte';
-  import { Radar, Newspaper, Plus, LogOut, Globe, Landmark, ChevronDown, Upload, Settings as SettingsIcon } from 'lucide-svelte';
+  import { Radar, FileText, Plus, LogOut, Globe, Landmark, ChevronDown, Upload, Settings as SettingsIcon } from 'lucide-svelte';
 
   interface Props {
     children: Snippet;
@@ -110,13 +110,16 @@
 
     <!-- Center: Pill segment control (absolutely centered) -->
     <div class="nav-center">
-      <a href="#/manage" class:active={currentHash === '#/' || currentHash === '' || currentHash === '#/manage'}>
+      <a
+        href="#/scouts"
+        class:active={currentHash === '#/' || currentHash === '' || currentHash === '#/scouts' || currentHash === '#/manage' || currentHash === '#/feed'}
+      >
         <Radar size={14} />
-        <span>Verwalten</span>
+        <span>Scouts</span>
       </a>
-      <a href="#/feed" class:active={currentHash === '#/feed'}>
-        <Newspaper size={14} />
-        <span>Feed</span>
+      <a href="#/drafts" class:active={currentHash === '#/drafts'}>
+        <FileText size={14} />
+        <span>Entwürfe</span>
       </a>
     </div>
 
@@ -264,6 +267,11 @@
     position: fixed;
     inset: 0;
     z-index: 99;
+    padding: 0;
+    border: none;
+    background: transparent;
+    appearance: none;
+    cursor: default;
   }
 
   .type-popover {

@@ -68,7 +68,7 @@ export interface Scout {
   url: string | null;
   criteria: string;
   location: Location | null;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
@@ -111,6 +111,9 @@ export interface ScoutExecution {
   units_extracted: number;
   merged_existing_count: number;
   scrape_duration_ms: number | null;
+  scrape_strategy: string | null;
+  scrape_attempts: number;
+  scrape_warning: string | null;
   created_at: string;
 }
 

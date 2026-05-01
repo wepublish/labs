@@ -169,6 +169,17 @@ export interface ManualUploadResult {
   unit_ids: string[];
 }
 
+export type UploadDedupReason = 'in_batch_duplicate' | 'merged_existing';
+
+export interface UploadDedupDetail {
+  uid: string;
+  statement: string;
+  reason: UploadDedupReason;
+  matched_uid?: string | null;
+  matched_unit_id?: string | null;
+  matched_statement?: string | null;
+}
+
 export interface PresignedUploadResult {
   upload_url: string;
   storage_path: string;
@@ -219,6 +230,7 @@ export interface NewspaperJob {
   chunks_processed: number;
   units_created: number;
   units_merged?: number;
+  dedup_summary?: UploadDedupDetail[] | null;
   skipped_items: string[];
   error_message: string | null;
   extracted_units: NewspaperExtractedUnit[] | null;
@@ -247,8 +259,11 @@ export interface RecentPdfUpload {
   chunks_processed: number;
   units_created: number;
   units_merged?: number;
+  dedup_summary?: UploadDedupDetail[] | null;
+  skipped_items?: string[];
   error_message: string | null;
   source_type: 'manual_pdf' | 'manual_text';
+  completed_at?: string | null;
 }
 
 export interface Draft {
@@ -295,6 +310,12 @@ export interface RunResult {
   execution_id: string;
   status: string;
   message: string;
+}
+
+export interface ScoutRunOptions {
+  skip_notification?: boolean;
+  extract_units?: boolean;
+  force_extract?: boolean;
 }
 
 export interface ApiResponse<T> {

@@ -12,9 +12,10 @@
     expanded?: boolean;
     ontoggle?: () => void;
     ondelete?: (id: string) => void;
+    onruncomplete?: () => void;
   }
 
-  let { scout, expanded = false, ontoggle, ondelete }: Props = $props();
+  let { scout, expanded = false, ontoggle, ondelete, onruncomplete }: Props = $props();
 
   type ActionType = 'run' | 'toggle' | 'delete';
   let busy = $state<ActionType | null>(null);
@@ -48,6 +49,7 @@
         }
       }
       await scouts.load();
+      onruncomplete?.();
     });
   }
 
@@ -221,6 +223,7 @@
             <dd class="detail-summary">{scout.last_summary_text}</dd>
           </div>
         {/if}
+
       </dl>
     </div>
   {/if}
@@ -338,7 +341,8 @@
   }
 
   .scout-card:hover .status-pill,
-  .scout-card:focus-within .status-pill {
+  .scout-card:focus-within .status-pill,
+  .scout-card.expanded .status-pill {
     display: none;
   }
 
@@ -351,7 +355,8 @@
   }
 
   .scout-card:hover .card-actions,
-  .scout-card:focus-within .card-actions {
+  .scout-card:focus-within .card-actions,
+  .scout-card.expanded .card-actions {
     display: flex;
   }
 

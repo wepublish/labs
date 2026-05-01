@@ -2,7 +2,7 @@
 
 import { writable, derived } from 'svelte/store';
 import { scoutsApi } from '../lib/api';
-import type { Scout, ScoutCreateInput, ScoutUpdateInput, TestResult, RunResult } from '../lib/types';
+import type { Scout, ScoutCreateInput, ScoutRunOptions, ScoutUpdateInput, TestResult, RunResult } from '../lib/types';
 
 interface ScoutsState {
   scouts: Scout[];
@@ -69,10 +69,7 @@ function createScoutsStore() {
       }
     },
 
-    async run(
-      id: string,
-      options?: { skip_notification?: boolean; extract_units?: boolean }
-    ): Promise<RunResult> {
+    async run(id: string, options?: ScoutRunOptions): Promise<RunResult> {
       return scoutsApi.run(id, options);
     },
 

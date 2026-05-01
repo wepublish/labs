@@ -6,7 +6,7 @@ import { get } from 'svelte/store';
  *
  * The wizard (ScoutModal) orchestrates these store operations:
  *   Step 1: scouts.create({ is_active: false }) → scouts.test(id)
- *   Step 2: scouts.update(id, { name, frequency, is_active: true }) → scouts.run(id)
+ *   Step 2: scouts.update(id, { name, frequency, is_active: true }) → scouts.run(id, { force_extract: true })
  *   Abort:  scouts.delete(id)  (cleanup draft)
  *
  * These tests verify the store layer behaves correctly for each scenario.
@@ -298,14 +298,22 @@ describe('scout wizard flow', () => {
       expect(result.frequency).toBe('biweekly');
     });
 
-    it('triggers silent first run with skip_notification after activation', async () => {
+    it('triggers silent forced first run after activation', async () => {
       const runResult = { execution_id: 'exec-1', status: 'running', message: 'Started' };
       vi.mocked(scoutsApi.run).mockResolvedValue(runResult);
 
-      const result = await scouts.run('draft-1', { skip_notification: true });
+      const result = await scouts.run('draft-1', {
+        skip_notification: true,
+        extract_units: true,
+        force_extract: true,
+      });
 
       expect(result.execution_id).toBe('exec-1');
-      expect(scoutsApi.run).toHaveBeenCalledWith('draft-1', { skip_notification: true });
+      expect(scoutsApi.run).toHaveBeenCalledWith('draft-1', {
+        skip_notification: true,
+        extract_units: true,
+        force_extract: true,
+      });
     });
   });
 
@@ -392,14 +400,18 @@ describe('scout wizard flow', () => {
         content_hash: expect.any(String),
       }));
 
-      // Step 2b: Trigger silent first run
+      // Step 2b: Trigger silent forced first run
       vi.mocked(scoutsApi.run).mockResolvedValue({
         execution_id: 'exec-first',
         status: 'running',
         message: 'Started',
       });
 
-      const run = await scouts.run('wizard-scout', { skip_notification: true });
+      const run = await scouts.run('wizard-scout', {
+        skip_notification: true,
+        extract_units: true,
+        force_extract: true,
+      });
       expect(run.execution_id).toBe('exec-first');
 
       // Verify store state: scout is in the list and active

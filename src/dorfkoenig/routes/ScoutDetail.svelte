@@ -40,7 +40,7 @@
     deleting = true;
     try {
       await scouts.delete(scoutId);
-      location.hash = '#/manage';
+      location.hash = '#/scouts';
     } catch (error) {
       console.error('Delete failed:', error);
       deleting = false;
@@ -52,7 +52,7 @@
   }
 
   function handleBack() {
-    location.hash = '#/manage';
+    location.hash = '#/scouts';
   }
 </script>
 

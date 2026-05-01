@@ -7,6 +7,7 @@
 
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, type Scout } from '../_shared/supabase-client.ts';
+import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { upsertCanonicalUnit } from '../_shared/canonical-units.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { firecrawl } from '../_shared/firecrawl.ts';
@@ -49,6 +50,9 @@ interface ExecuteRequest {
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  const authError = requireInternalRequest(req);
+  if (authError) return authError;
 
   const startTime = Date.now();
   const supabase = createServiceClient();
