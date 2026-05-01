@@ -1,22 +1,20 @@
 <script lang="ts">
   import { processInlineMarkdown } from '../../bajour/utils';
   import type { Draft } from '../../lib/types';
+  import type { DraftBullet } from '../../bajour/types';
 
   interface Props {
-    draft: Draft;
+    draft: Draft & {
+      bullets?: DraftBullet[];
+      notes_for_editor?: string[];
+    };
   }
 
   let { draft }: Props = $props();
 
-  // Strip emoji characters from text
-  function stripEmojis(text: string): string {
-    return text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/\s{2,}/g, ' ').trim();
-  }
-
-  // Process section content: strip emojis, render inline markdown, convert [source.ch] to pills
+  // Process section content: render inline markdown, convert [source.ch] to pills, preserve line breaks.
   function renderContent(text: string): string {
-    const cleaned = stripEmojis(text);
-    let html = processInlineMarkdown(cleaned);
+    let html = processInlineMarkdown(text);
     // Convert source-ref spans into clickable-looking pills
     html = html.replace(
       /<span class="source-ref">\[([^\]]+)\]<\/span>/g,
@@ -27,15 +25,44 @@
 </script>
 
 <article class="document-content">
-  <h1>{stripEmojis(draft.title)}</h1>
+  <h1>{draft.title}</h1>
   {#if draft.headline}
-    <p class="lede">{stripEmojis(draft.headline)}</p>
+    <p class="lede">{draft.headline}</p>
+  {/if}
+
+  {#if draft.bullets && draft.bullets.length > 0}
+    <section class="bullet-digest" aria-label="Entwurf">
+      {#each draft.bullets as bullet}
+        <article class="digest-bullet">
+          <span class="bullet-emoji" aria-hidden="true">{bullet.emoji}</span>
+          <div class="bullet-body">
+            <p>
+              <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via processInlineMarkdown -->
+              {@html renderContent(bullet.text)}
+            </p>
+            {#if bullet.source_domain || bullet.article_url}
+              <div class="bullet-source">
+                {#if bullet.article_url}
+                  <a href={bullet.article_url} target="_blank" rel="noopener noreferrer">
+                    {bullet.source_domain || 'Quelle'}
+                  </a>
+                {:else}
+                  <span>{bullet.source_domain}</span>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </article>
+      {/each}
+    </section>
   {/if}
 
   {#if draft.sections && draft.sections.length > 0}
     {#each draft.sections as section}
       <section class="draft-section">
-        <h2>{stripEmojis(section.heading)}</h2>
+        {#if section.heading}
+          <h2>{section.heading}</h2>
+        {/if}
         <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via processInlineMarkdown -->
         <p>{@html renderContent(section.content)}</p>
       </section>
@@ -47,7 +74,18 @@
       <h2>Informationslücken</h2>
       <ul>
         {#each draft.gaps as gap}
-          <li>{stripEmojis(gap)}</li>
+          <li>{gap}</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if draft.notes_for_editor && draft.notes_for_editor.length > 0}
+    <section class="gaps-section">
+      <h2>Hinweise für die Redaktion</h2>
+      <ul>
+        {#each draft.notes_for_editor as note}
+          <li>{note}</li>
         {/each}
       </ul>
     </section>
@@ -84,12 +122,12 @@
 
   .document-content .lede {
     font-size: var(--text-lg);
-    font-style: italic;
     color: var(--color-text-muted);
     line-height: 1.6;
     margin: 0 0 var(--spacing-xl) 0;
     padding-bottom: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
+    white-space: pre-line;
   }
 
   .document-content h2 {
@@ -118,6 +156,66 @@
     line-height: 1.7;
     color: var(--color-text);
     margin: 0;
+    white-space: pre-line;
+  }
+
+  .bullet-digest {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .digest-bullet {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .bullet-emoji {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1.5;
+  }
+
+  .bullet-body {
+    min-width: 0;
+  }
+
+  .bullet-body p {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  .bullet-source {
+    display: flex;
+    margin-top: 0.5rem;
+  }
+
+  .bullet-source a,
+  .bullet-source span {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-full);
+    background: rgba(234, 114, 110, 0.08);
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .bullet-source a:hover {
+    background: rgba(234, 114, 110, 0.15);
   }
 
   /* Inline source pills */
@@ -139,6 +237,18 @@
   .document-content :global(.source-pill:hover) {
     background: rgba(234, 114, 110, 0.15);
     text-decoration: none;
+  }
+
+  .document-content :global(.inline-link) {
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  .document-content :global(.inline-link:hover) {
+    color: var(--color-primary-dark);
   }
 
   .gaps-section {

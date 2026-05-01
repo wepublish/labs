@@ -7,6 +7,7 @@ import type { Village } from '../bajour/types';
 import { supabase } from './supabase';
 
 export const villages: Village[] = gemeindenJson;
+export const fallbackPilotVillageIds = ['arlesheim', 'muenchenstein'] as const;
 
 export function getVillageByName(name: string): Village | undefined {
   const lower = name.toLowerCase();
@@ -16,10 +17,9 @@ export function getVillageByName(name: string): Village | undefined {
 /**
  * Pilot allow-list — mirrors the `bajour_pilot_villages_list` table that
  * gates the 18:00 auto-draft cron. `null` while the list is loading or after
- * an error; once loaded, an empty array means "no village is in the pilot"
- * (all draft-trigger surfaces should be disabled). Only draft-trigger UI
- * (AISelectDropdown) should gate on this — extraction runs for all 10
- * villages regardless.
+ * an error. The browser can occasionally receive an empty result while the
+ * table/policy is being rolled out, so read helpers fall back to the seeded
+ * pilot villages instead of hiding all data.
  */
 export const pilotVillages: Writable<string[] | null> = writable(null);
 
@@ -35,12 +35,19 @@ export async function loadPilotVillages(): Promise<void> {
   pilotVillages.set((data ?? []).map((r) => r.village_id));
 }
 
+export function getActivePilotVillageIds(pilotList: string[] | null): string[] {
+  if (pilotList && pilotList.length > 0) return pilotList;
+  return [...fallbackPilotVillageIds];
+}
+
+export function getActiveVillages(pilotList: string[] | null): Village[] {
+  const activeIds = new Set(getActivePilotVillageIds(pilotList));
+  return villages.filter((village) => activeIds.has(village.id));
+}
+
 export function isVillageActive(
   villageId: string,
   pilotList: string[] | null,
 ): boolean {
-  // While loading (null): don't block anything — the user will see the list
-  // refresh once the fetch resolves. Once loaded, enforce membership.
-  if (pilotList === null) return true;
-  return pilotList.includes(villageId);
+  return getActivePilotVillageIds(pilotList).includes(villageId);
 }

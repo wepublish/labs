@@ -11,11 +11,13 @@
   // import UploadPhotoTab from './UploadPhotoTab.svelte';  // Hidden until image embedding
   import UploadPdfTab from './UploadPdfTab.svelte';
   import PdfReviewPanel from './PdfReviewPanel.svelte';
+  import UploadDedupDetails from './UploadDedupDetails.svelte';
   import type {
     Location,
     NewspaperJob,
     NewspaperJobStage,
     NewspaperExtractedUnit,
+    UploadDedupDetail,
   } from '../../lib/types';
   import { supabase } from '../../lib/supabase';
   import { loadPilotVillages } from '../../lib/villages';
@@ -63,6 +65,7 @@
   let uploadError = $state('');
   let unitsCreated = $state(0);
   let unitsMerged = $state(0);
+  let dedupSummary = $state<UploadDedupDetail[]>([]);
 
   // Review state (PDF preview-and-confirm)
   let reviewUnits = $state<NewspaperExtractedUnit[]>([]);
@@ -129,6 +132,7 @@
     uploadError = '';
     unitsCreated = 0;
     unitsMerged = 0;
+    dedupSummary = [];
     reviewUnits = [];
     selectedUids = new Set();
     validationError = '';
@@ -315,6 +319,7 @@
       teardownJobWatchers();
       unitsCreated = job.units_created;
       unitsMerged = job.units_merged ?? 0;
+      dedupSummary = job.dedup_summary ?? [];
       uploadState = 'success';
     } else if (job.status === 'failed' || job.status === 'cancelled') {
       processingJobId = null;
@@ -364,10 +369,13 @@
       const result = await manualUploadApi.finalizePdf(processingJobId, [...selectedUids]);
       unitsCreated = result.units_created;
       unitsMerged = result.units_merged ?? 0;
+      dedupSummary = result.dedup_summary ?? [];
       processingJobId = null;
       teardownJobWatchers();
       uploadState = 'success';
-      autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+      if (dedupSummary.length === 0 && unitsMerged === 0) {
+        autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
+      }
     } catch (err) {
       uploadState = 'review';
       uploadError = (err as Error).message || 'Speichern fehlgeschlagen';
@@ -407,6 +415,7 @@
           uploadProgress = 100;
           unitsCreated = result.units_created ?? 0;
           unitsMerged = result.units_merged ?? 0;
+          dedupSummary = [];
           uploadState = 'success';
           autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
         } else {
@@ -473,6 +482,7 @@
           unitsMerged = 'units_merged' in result && typeof result.units_merged === 'number'
             ? result.units_merged
             : 0;
+          dedupSummary = [];
           uploadState = 'success';
           autoCloseTimer = setTimeout(() => { handleClose(); }, 2000);
         }
@@ -584,12 +594,15 @@
           {/if}
 
         {:else if uploadState === 'success'}
-          <ProgressIndicator
-            state="success"
-            progress={100}
-            successMessage="Erfolgreich verarbeitet"
-            {successDetails}
-          />
+          <div class="success-stack">
+            <ProgressIndicator
+              state="success"
+              progress={100}
+              successMessage="Erfolgreich verarbeitet"
+              {successDetails}
+            />
+            <UploadDedupDetails details={dedupSummary} />
+          </div>
 
         {:else if uploadState === 'error'}
           <ProgressIndicator
@@ -814,6 +827,13 @@
     flex: 1 1 auto;
     overflow: hidden;
     min-height: 0;
+  }
+
+  .success-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    overflow-y: auto;
   }
 
   /* Footer */

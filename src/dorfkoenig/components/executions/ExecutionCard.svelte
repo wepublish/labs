@@ -19,7 +19,9 @@
       <span class="execution-time">{formatRelativeTime(execution.started_at)}</span>
     </div>
 
-    {#if execution.summary_text && !compact}
+    {#if execution.error_message && !compact}
+      <p class="execution-summary error">{execution.error_message}</p>
+    {:else if execution.summary_text && !compact}
       <p class="execution-summary">{execution.summary_text}</p>
     {/if}
 
@@ -44,6 +46,10 @@
 
       {#if execution.units_extracted > 0}
         <Badge variant="neutral">{execution.units_extracted} Einheiten</Badge>
+      {/if}
+
+      {#if (execution.merged_existing_count ?? 0) > 0}
+        <Badge variant="duplicate">{execution.merged_existing_count} Duplikate</Badge>
       {/if}
     </div>
   </div>
@@ -99,6 +105,10 @@
     font-size: var(--text-base);
     color: var(--color-text);
     margin-bottom: var(--spacing-sm);
+  }
+
+  .execution-summary.error {
+    color: #dc2626;
   }
 
   .execution-badges {

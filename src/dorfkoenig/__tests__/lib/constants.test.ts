@@ -11,7 +11,7 @@ import {
 describe('FREQUENCY_OPTIONS_EXTENDED', () => {
   it('contains daily, weekly, biweekly, and monthly with German labels', () => {
     expect(FREQUENCY_OPTIONS_EXTENDED).toEqual([
-      { value: 'daily', label: 'Täglich' },
+      { value: 'daily', label: 'Alle 8 Stunden' },
       { value: 'weekly', label: 'Wöchentlich' },
       { value: 'biweekly', label: 'Alle 2 Wochen' },
       { value: 'monthly', label: 'Monatlich' },

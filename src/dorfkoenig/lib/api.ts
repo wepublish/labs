@@ -90,16 +90,25 @@ export const scoutsApi = {
   update: (id: string, data: import('./types').ScoutUpdateInput) =>
     api.put<import('./types').Scout>(`scouts/${id}`, data),
   delete: (id: string) => api.delete(`scouts/${id}`),
-  run: (id: string, options?: { skip_notification?: boolean; extract_units?: boolean }) =>
+  run: (id: string, options?: import('./types').ScoutRunOptions) =>
     api.post<import('./types').RunResult>(`scouts/${id}/run`, options),
   test: (id: string) => api.post<import('./types').TestResult>(`scouts/${id}/test`),
 };
 
 export const unitsApi = {
-  list: (params?: { location_city?: string; topic?: string; unused_only?: boolean; limit?: number; date_from?: string; date_to?: string }) => {
+  list: (params?: {
+    location_city?: string;
+    topic?: string;
+    scout_id?: string;
+    unused_only?: boolean;
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }) => {
     const searchParams = new URLSearchParams();
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
+    if (params?.scout_id) searchParams.set('scout_id', params.scout_id);
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.date_from) searchParams.set('date_from', params.date_from);
@@ -107,10 +116,16 @@ export const unitsApi = {
     return api.get<import('./types').InformationUnit[]>(`units?${searchParams}`);
   },
   locations: () => api.get<import('./types').Location[]>('units/locations'),
-  search: (query: string, params?: { location_city?: string; topic?: string; min_similarity?: number }) => {
+  search: (query: string, params?: {
+    location_city?: string;
+    topic?: string;
+    scout_id?: string;
+    min_similarity?: number;
+  }) => {
     const searchParams = new URLSearchParams({ q: query });
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
+    if (params?.scout_id) searchParams.set('scout_id', params.scout_id);
     if (params?.min_similarity) searchParams.set('min_similarity', String(params.min_similarity));
     return api.get<import('./types').InformationUnit[]>(`units/search?${searchParams}`);
   },
@@ -169,6 +184,7 @@ export const manualUploadApi = {
       units_created: number;
       units_merged?: number;
       units_saved?: number;
+      dedup_summary?: import('./types').UploadDedupDetail[];
       already_finalized?: boolean;
     }>('manual-upload', {
       content_type: 'pdf_finalize',

@@ -433,7 +433,7 @@ export function buildDraftFailureEmail(params: {
     <h3 style="font-size: 14px; color: #57534e; text-transform: uppercase; letter-spacing: 0.5px;">Gründe</h3>
     ${reasonsHtml}
     <p style="margin-top: 24px;">
-      <a href="${sanitizeUrl(feedUrl)}" style="display: inline-block; background: #78716c; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Feed-Panel öffnen</a>
+      <a href="${sanitizeUrl(feedUrl)}" style="display: inline-block; background: #78716c; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Scouts-Panel öffnen</a>
     </p>
     <p style="color: #a8a29e; font-size: 12px; margin-top: 24px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
       Automatische Meldung aus bajour-auto-draft. Korrespondenten erhalten an leeren Tagen keine WhatsApp-Nachricht.

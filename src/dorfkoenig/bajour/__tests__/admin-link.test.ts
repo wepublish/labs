@@ -76,7 +76,7 @@ describe('admin-link HMAC helpers', () => {
         sig: 'deadbeef',
       });
       expect(url).toBe(
-        `https://wepublish.github.io/labs/dorfkoenig/?draft=${DRAFT_ID}&sig=deadbeef&exp=1700000000#/feed`
+        `https://wepublish.github.io/labs/dorfkoenig/?draft=${DRAFT_ID}&sig=deadbeef&exp=1700000000#/drafts`
       );
     });
 
@@ -87,7 +87,7 @@ describe('admin-link HMAC helpers', () => {
         sig: 'x',
       });
       expect(url).toBe(
-        `https://example.com/app/?draft=${DRAFT_ID}&sig=x&exp=1700000000#/feed`
+        `https://example.com/app/?draft=${DRAFT_ID}&sig=x&exp=1700000000#/drafts`
       );
     });
   });

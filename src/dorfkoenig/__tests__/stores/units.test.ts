@@ -90,6 +90,16 @@ describe('units store', () => {
       );
     });
 
+    it('passes scout_id to API when provided', async () => {
+      vi.mocked(unitsApi.list).mockResolvedValue([]);
+
+      await units.load(undefined, true, undefined, undefined, undefined, 'scout-123');
+
+      expect(unitsApi.list).toHaveBeenCalledWith(
+        expect.objectContaining({ scout_id: 'scout-123' })
+      );
+    });
+
     it('does not include topic param when not provided', async () => {
       vi.mocked(unitsApi.list).mockResolvedValue([]);
 
@@ -172,6 +182,18 @@ describe('units store', () => {
       });
     });
 
+    it('passes scout_id to search when provided', async () => {
+      vi.mocked(unitsApi.search).mockResolvedValue([]);
+
+      await units.search('test', undefined, undefined, 'scout-123');
+
+      expect(unitsApi.search).toHaveBeenCalledWith('test', {
+        location_city: undefined,
+        scout_id: 'scout-123',
+        min_similarity: 0.3,
+      });
+    });
+
     it('does not include topic param when not provided', async () => {
       vi.mocked(unitsApi.search).mockResolvedValue([]);
 
@@ -193,6 +215,12 @@ describe('units store', () => {
       units.setTopic('Verkehr');
 
       expect(get(units).selectedTopic).toBe('Verkehr');
+    });
+
+    it('updates selectedScoutId', () => {
+      units.setScout('scout-123');
+
+      expect(get(units).selectedScoutId).toBe('scout-123');
     });
   });
 

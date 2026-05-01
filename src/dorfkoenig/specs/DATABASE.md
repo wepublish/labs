@@ -514,11 +514,11 @@ BEGIN
     hours_elapsed := EXTRACT(EPOCH FROM (NOW() - p_last_run_at)) / 3600;
 
     threshold_hours := CASE p_frequency
-        WHEN 'daily' THEN 24
+        WHEN 'daily' THEN 8
         WHEN 'weekly' THEN 168
         WHEN 'biweekly' THEN 336
         WHEN 'monthly' THEN 720
-        ELSE 24
+        ELSE 8
     END;
 
     RETURN hours_elapsed >= threshold_hours;
@@ -1013,6 +1013,39 @@ Returns one row per village with rolling 7d / 28d aggregates and a `delta_sigma`
 ---
 
 ## Additional Tables
+
+### newspaper_jobs
+
+Tracks manual text/PDF extraction jobs and feeds Realtime progress in the upload
+modal.
+
+```sql
+CREATE TABLE newspaper_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    publication_date DATE,
+    label TEXT,
+    status TEXT NOT NULL DEFAULT 'processing',
+    stage TEXT,
+    source_type TEXT NOT NULL DEFAULT 'manual_pdf',
+    chunks_total INTEGER NOT NULL DEFAULT 0,
+    chunks_processed INTEGER NOT NULL DEFAULT 0,
+    units_created INTEGER NOT NULL DEFAULT 0,
+    units_merged INTEGER NOT NULL DEFAULT 0,
+    dedup_summary JSONB,
+    skipped_items TEXT[] NOT NULL DEFAULT '{}',
+    extracted_units JSONB,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+```
+
+`extracted_units` stores staged review rows before finalization. `dedup_summary`
+stores the editor-facing result of finalization: selected upload units that were
+deduplicated either inside the uploaded batch (`in_batch_duplicate`) or by
+merging with an existing canonical unit (`merged_existing`).
 
 ### upload_rate_limits
 

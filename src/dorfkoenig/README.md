@@ -40,6 +40,7 @@ Dorfkoenig is a web scout monitoring system for journalists that tracks URLs for
 ### Manual Upload
 - Upload text, photos, and PDFs as information units
 - Extracted via LLM, stored with embeddings
+- PDF/text review shows which selected units were deduplicated after save
 
 ### Bajour Village Newsletter (Feature-Flagged)
 - 3-step wizard: village select, generate draft, preview/send
@@ -226,7 +227,7 @@ npm run build:production
 | `/compose/generate` | POST | Generate article draft |
 | `/executions` | GET | List executions |
 | `/executions/:id` | GET | Get execution details |
-| `/manual-upload` | POST | Upload text/photo/PDF as units |
+| `/manual-upload` | GET/POST | Upload text/photo/PDF as units; poll jobs and recent PDF history |
 | `/bajour-drafts` | GET/POST/PATCH | Bajour draft CRUD |
 | `/bajour-select-units` | POST | AI-select units for village |
 | `/bajour-generate-draft` | POST | Generate newsletter draft |

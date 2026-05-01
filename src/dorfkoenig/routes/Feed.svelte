@@ -2,5 +2,5 @@
   import ComposePanel from '../components/compose/ComposePanel.svelte';
 </script>
 
-<h1 class="visually-hidden">Feed</h1>
+<h1 class="visually-hidden">Scouts</h1>
 <ComposePanel />

@@ -235,6 +235,27 @@ describe('scoutsApi', () => {
     expect(body.extract_units).toBe(true);
   });
 
+  it('run() sends force_extract option', async () => {
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        data: { execution_id: 'exec-1', status: 'running', message: 'Started' },
+      })
+    );
+
+    await scoutsApi.run('scout-1', {
+      skip_notification: true,
+      extract_units: true,
+      force_extract: true,
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body).toEqual({
+      skip_notification: true,
+      extract_units: true,
+      force_extract: true,
+    });
+  });
+
   it('test() calls POST /scouts/:id/test', async () => {
     const testResult = {
       scrape_result: { success: true, word_count: 500, title: 'Test' },
@@ -410,6 +431,15 @@ describe('unitsApi', () => {
     expect(calledUrl).toContain('topic=Verkehr');
   });
 
+  it('list() includes scout_id query param when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.list({ scout_id: 'scout-123' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('scout_id=scout-123');
+  });
+
   it('search() includes topic query param when provided', async () => {
     mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
 
@@ -437,6 +467,15 @@ describe('unitsApi', () => {
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     expect(calledUrl).toContain('location_city=Berlin');
     expect(calledUrl).toContain('topic=Verkehr');
+  });
+
+  it('search() includes scout_id query param when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.search('query', { scout_id: 'scout-123' });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('scout_id=scout-123');
   });
 });
 

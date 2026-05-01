@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, File as FileIcon, Check, AlertTriangle, Clock, ListChecks } from 'lucide-svelte';
+  import { X, File as FileIcon, Check, AlertTriangle, Clock, ListChecks, Info } from 'lucide-svelte';
   import { manualUploadApi } from '../../lib/api';
   import type { RecentPdfUpload } from '../../lib/types';
 
@@ -75,6 +75,16 @@
   function canResume(r: RecentPdfUpload): boolean {
     return r.status === 'review_pending' || r.status === 'processing' || r.status === 'storing';
   }
+
+  function canOpenDetails(r: RecentPdfUpload): boolean {
+    return canResume(r) || r.status === 'completed';
+  }
+
+  function actionLabel(r: RecentPdfUpload): string {
+    if (r.status === 'review_pending') return 'Prüfen';
+    if (r.status === 'completed') return 'Details';
+    return 'Öffnen';
+  }
 </script>
 
 <div class="form-group">
@@ -148,7 +158,7 @@
           <span class="recent-label" title={r.label ?? ''}>{r.label ?? '(ohne Bezeichnung)'}</span>
           <span class="recent-date">{formatDate(r.created_at)}</span>
           <span class="recent-status">{statusLabel(r)}</span>
-          {#if canResume(r)}
+          {#if canOpenDetails(r)}
             <button
               class="recent-action"
               type="button"
@@ -158,10 +168,12 @@
             >
               {#if r.status === 'review_pending'}
                 <ListChecks size={14} />
+              {:else if r.status === 'completed'}
+                <Info size={14} />
               {:else}
                 <Clock size={14} />
               {/if}
-              <span>{r.status === 'review_pending' ? 'Prüfen' : 'Öffnen'}</span>
+              <span>{actionLabel(r)}</span>
             </button>
           {:else}
             <span class="recent-action-spacer"></span>

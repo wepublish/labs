@@ -40,6 +40,7 @@ interface ExecuteRequest {
   executionId?: string;
   skipNotification?: boolean;
   extractUnits?: boolean;
+  forceExtract?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
 
   try {
     const body: ExecuteRequest = await req.json();
-    const { scoutId, skipNotification = false, extractUnits = true } = body;
+    const { scoutId, skipNotification = false, extractUnits = true, forceExtract = false } = body;
     executionId = body.executionId;
 
     if (!scoutId) {
@@ -155,40 +156,44 @@ Deno.serve(async (req) => {
         // First run for firecrawl_plain — store hash and exit
         changeStatus = 'first_run';
 
-        await supabase
-          .from('scout_executions')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            change_status: 'first_run',
-            summary_text: 'Baseline gespeichert',
-            scrape_duration_ms: scrapeDurationMs,
-          })
-          .eq('id', executionId);
+        if (forceExtract) {
+          console.log(`[${executionId}] Forced extraction: continuing past firecrawl_plain first-run baseline`);
+        } else {
+          await supabase
+            .from('scout_executions')
+            .update({
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              change_status: 'first_run',
+              summary_text: 'Baseline gespeichert',
+              scrape_duration_ms: scrapeDurationMs,
+            })
+            .eq('id', executionId);
 
-        await supabase
-          .from('scouts')
-          .update({
-            last_run_at: new Date().toISOString(),
-            consecutive_failures: 0,
-            content_hash: newHash,
-          })
-          .eq('id', scoutId);
+          await supabase
+            .from('scouts')
+            .update({
+              last_run_at: new Date().toISOString(),
+              consecutive_failures: 0,
+              content_hash: newHash,
+            })
+            .eq('id', scoutId);
 
-        const durationMs = Date.now() - startTime;
-        return jsonResponse({
-          data: {
-            execution_id: executionId,
-            status: 'completed',
-            change_status: 'first_run',
-            criteria_matched: false,
-            is_duplicate: false,
-            notification_sent: false,
-            units_extracted: 0,
-            duration_ms: durationMs,
-            summary: 'Baseline gespeichert',
-          },
-        });
+          const durationMs = Date.now() - startTime;
+          return jsonResponse({
+            data: {
+              execution_id: executionId,
+              status: 'completed',
+              change_status: 'first_run',
+              criteria_matched: false,
+              is_duplicate: false,
+              notification_sent: false,
+              units_extracted: 0,
+              duration_ms: durationMs,
+              summary: 'Baseline gespeichert',
+            },
+          });
+        }
       } else if (newHash === scout.content_hash) {
         changeStatus = 'same';
       } else {
@@ -207,7 +212,7 @@ Deno.serve(async (req) => {
     }
 
     // Early exit if content hasn't changed
-    if (changeStatus === 'same') {
+    if (changeStatus === 'same' && !forceExtract) {
       await supabase
         .from('scout_executions')
         .update({

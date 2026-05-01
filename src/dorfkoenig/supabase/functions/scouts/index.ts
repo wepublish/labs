@@ -188,7 +188,7 @@ async function createScout(
   if (!body.name?.trim()) {
     return errorResponse('Name ist erforderlich', 400, 'VALIDATION_ERROR');
   }
-  if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) {
+  if (!['daily', 'weekly', 'biweekly', 'monthly'].includes(body.frequency)) {
     return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
   }
 
@@ -266,6 +266,7 @@ async function createScout(
       .update({
         ...baselineFields,
         is_active: true,
+        last_run_at: new Date().toISOString(),
       })
       .eq('id', data.id)
       .eq('user_id', userId)
@@ -335,7 +336,7 @@ async function updateScout(
   // supplied — units get a location from content, not the scout.
   if (body.location_mode === 'auto') updates.location = null;
   if (body.frequency !== undefined) {
-    if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) {
+    if (!['daily', 'weekly', 'biweekly', 'monthly'].includes(body.frequency)) {
       return errorResponse('Ungültige Frequenz', 400, 'VALIDATION_ERROR');
     }
     updates.frequency = body.frequency;
@@ -378,6 +379,7 @@ async function updateScout(
   if (shouldInitializeBaseline) {
     try {
       Object.assign(updates, await initializeBaseline(nextScout));
+      updates.last_run_at = new Date().toISOString();
     } catch (baselineError) {
       console.error('Initialize baseline on update error:', baselineError);
       return errorResponse(
@@ -459,7 +461,7 @@ async function runScout(
   }
 
   // Parse options from request body
-  let options = { skip_notification: false, extract_units: true };
+  let options = { skip_notification: false, extract_units: true, force_extract: false };
   try {
     const body = await req.json();
     options = { ...options, ...body };
@@ -516,6 +518,7 @@ async function runScout(
       executionId: execution.id,
       skipNotification: options.skip_notification,
       extractUnits: options.extract_units,
+      forceExtract: options.force_extract,
     }),
   })
     .then(async (res) => {

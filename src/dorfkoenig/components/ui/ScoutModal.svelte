@@ -42,6 +42,7 @@
   let timeMinute = $state('00');
   let detectedProvider = $state<string | null>(null);
   let contentHash = $state<string | null>(null);
+  let extractOnFirstPass = $state(true);
 
   // Submit state
   let submitting = $state(false);
@@ -76,6 +77,7 @@
     timeMinute = '00';
     detectedProvider = null;
     contentHash = null;
+    extractOnFirstPass = true;
     submitting = false;
     submitError = '';
     step1Error = '';
@@ -199,6 +201,14 @@
         content_hash: contentHash,
       });
 
+      if (extractOnFirstPass) {
+        await scouts.run(draftScoutId, {
+          skip_notification: true,
+          extract_units: true,
+          force_extract: true,
+        });
+      }
+
       draftScoutId = null;
 
       await scouts.load();
@@ -299,6 +309,7 @@
           {dayOfWeek}
           {timeHour}
           {timeMinute}
+          {extractOnFirstPass}
           {submitting}
           {submitError}
           onnamechange={(v) => { name = v; }}
@@ -306,6 +317,7 @@
           ondayofweekchange={(v) => { dayOfWeek = v; }}
           ontimehourchange={(v) => { timeHour = v; }}
           ontimeminutechange={(v) => { timeMinute = v; }}
+          onextractonfirstpasschange={(v) => { extractOnFirstPass = v; }}
           onback={handleBack}
           onsubmit={handleSubmit}
         />

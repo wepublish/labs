@@ -34,7 +34,10 @@ function escapeHtml(text: string): string {
 export function processInlineMarkdown(text: string): string {
   let html = escapeHtml(text);
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a class="inline-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
   html = html.replace(/\[([^\]]+)\]/g, '<span class="source-ref">[$1]</span>');
   return html;
 }
-

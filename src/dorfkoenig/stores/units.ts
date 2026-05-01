@@ -10,6 +10,7 @@ interface UnitsState {
   topics: string[];
   selectedLocation: string | null;
   selectedTopic: string | null;
+  selectedScoutId: string | null;
   dateFrom: string | null;
   dateTo: string | null;
   searchQuery: string;
@@ -24,6 +25,7 @@ function createUnitsStore() {
     topics: [],
     selectedLocation: null,
     selectedTopic: null,
+    selectedScoutId: null,
     dateFrom: null,
     dateTo: null,
     searchQuery: '',
@@ -43,7 +45,14 @@ function createUnitsStore() {
       }
     },
 
-    async load(locationCity?: string, unusedOnly = true, topic?: string, dateFrom?: string, dateTo?: string) {
+    async load(
+      locationCity?: string,
+      unusedOnly = true,
+      topic?: string,
+      dateFrom?: string,
+      dateTo?: string,
+      scoutId?: string
+    ) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         const data = await unitsApi.list({
@@ -51,6 +60,7 @@ function createUnitsStore() {
           unused_only: unusedOnly,
           limit: 100,
           ...(topic && { topic }),
+          ...(scoutId && { scout_id: scoutId }),
           ...(dateFrom && { date_from: dateFrom }),
           ...(dateTo && { date_to: dateTo }),
         });
@@ -61,12 +71,13 @@ function createUnitsStore() {
       }
     },
 
-    async search(query: string, locationCity?: string, topic?: string) {
+    async search(query: string, locationCity?: string, topic?: string, scoutId?: string) {
       update((s) => ({ ...s, loading: true, searchQuery: query, error: null }));
       try {
         const data = await unitsApi.search(query, {
           location_city: locationCity,
           ...(topic && { topic }),
+          ...(scoutId && { scout_id: scoutId }),
           min_similarity: 0.3,
         });
         update((s) => ({ ...s, units: data, loading: false }));
@@ -81,6 +92,10 @@ function createUnitsStore() {
 
     setTopic(topic: string | null) {
       update((s) => ({ ...s, selectedTopic: topic }));
+    },
+
+    setScout(id: string | null) {
+      update((s) => ({ ...s, selectedScoutId: id }));
     },
 
     setDateRange(from: string | null, to: string | null) {

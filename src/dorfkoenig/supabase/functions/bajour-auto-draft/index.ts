@@ -120,7 +120,7 @@ async function notifyEmptyPath(opts: {
 }): Promise<void> {
   if (!FLAG_EMPTY_PATH_EMAIL || ADMIN_EMAILS.length === 0) return;
 
-  const feedUrl = `${PUBLIC_APP_URL}/#/feed?village=${encodeURIComponent(opts.village_id)}`;
+  const feedUrl = `${PUBLIC_APP_URL}/#/scouts?village=${encodeURIComponent(opts.village_id)}`;
   const { subject, html } = buildDraftFailureEmail({
     villageName: opts.village_name,
     villageId: opts.village_id,

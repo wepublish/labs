@@ -22,6 +22,7 @@ export interface NewspaperJobUpdate {
   chunks_processed?: number;
   units_created?: number;
   units_merged?: number;
+  dedup_summary?: unknown[] | null;
   skipped_items?: string[];
   extracted_units?: unknown[] | null;
   completed_at?: string | null;
