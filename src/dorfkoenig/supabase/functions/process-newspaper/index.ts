@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
     if (!jobId || !storagePath || !userId) {
       return errorResponse('Missing required fields', 400);
     }
+    await incrementProcessingAttempt(supabase, jobId);
 
     const { data: job, error: jobError } = await supabase
       .from('newspaper_jobs')
