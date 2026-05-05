@@ -140,6 +140,7 @@ export const manualUploadApi = {
     location?: import('./types').Location | null;
     topic?: string | null;
     source_title?: string | null;
+    source_url?: string | null;
     publication_date: string;
   }) =>
     api.post<import('./types').NewspaperProcessingResult>('manual-upload', {
@@ -162,6 +163,7 @@ export const manualUploadApi = {
     location?: import('./types').Location | null;
     topic?: string | null;
     source_title?: string | null;
+    source_url?: string | null;
     publication_date?: string | null;
   }) =>
     api.post<import('./types').ManualUploadResult | import('./types').NewspaperProcessingResult>('manual-upload', data),

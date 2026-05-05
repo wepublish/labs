@@ -163,6 +163,12 @@ On empty paths (a-c), send one email to `ADMIN_EMAILS` via `buildDraftFailureEma
 
 On withheld drafts (d), save the draft row, set `verification_status='withheld'`, write `quality_warnings`, and email `ADMIN_EMAILS` via `buildDraftWithheldEmail()` with a signed admin deep-link. `bajour-send-verification` rejects withheld drafts.
 
+Manual newspaper PDFs must carry a real publication/source URL at upload time.
+Finalized PDF units use that URL as both `source_url` and `article_url`; legacy
+`manual://pdf` rows are backfilled by `npm run backfill:manual-pdf-sources`.
+This prevents otherwise usable newspaper units from being downgraded as
+`NO_LINK` during compose.
+
 **No WhatsApp message to correspondents on any of these paths.** Admins are the sole notification target for empty-day / withheld conditions.
 
 **Rate-limit.** Bounded — worst case 20 emails/day (one per village). Fine. If volume becomes annoying, add a daily digest option later.
@@ -319,7 +325,7 @@ validateKindCounts(draft): { draft, warnings[] }
 
 **Fail-closed triggers.** If after all validators `bullets.length === 0`, the empty-path admin email (§3.1.4 case c) fires. If bullets remain but the quality gate finds blockers, the draft is saved as `withheld`, selected units are not marked `used_in_article`, and the withheld admin email fires.
 
-**Files.** `_shared/draft-quality.ts` (emoji palette, banlist, validators), `_shared/auto-draft-quality.ts` (date context, fallback selection, gate policy), `bajour-auto-draft/index.ts`, `compose/index.ts`.
+**Files.** `_shared/draft-quality.ts` (emoji palette, banlist, validators), `_shared/auto-draft-quality.ts` (date context, fallback selection, gate policy), `_shared/selection-ranking.ts` (candidate ranking + near-duplicate collapse), `bajour-auto-draft/index.ts`, `compose/index.ts`.
 
 **Rollback.** Wrap validator chain in `if (featureFlag('draft_validation'))`. Off = pre-change behaviour.
 

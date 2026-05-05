@@ -270,6 +270,20 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 }
 ```
 
+**Request (PDF confirm):**
+```json
+{
+  "content_type": "pdf_confirm",
+  "storage_path": "user-id/file.pdf",
+  "publication_date": "2026-05-04",
+  "source_title": "Wochenblatt 30. April",
+  "source_url": "https://www.wochenblatt.ch/"
+}
+```
+
+`source_url` is required for PDF uploads and must be `http://` or `https://`.
+It is written to finalized units as both `source_url` and `article_url`.
+
 **Response:** `201 Created`
 ```json
 {

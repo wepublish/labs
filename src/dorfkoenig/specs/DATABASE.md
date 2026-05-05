@@ -1034,6 +1034,7 @@ CREATE TABLE newspaper_jobs (
     user_id TEXT NOT NULL,
     storage_path TEXT NOT NULL,
     publication_date DATE,
+    source_url TEXT,
     label TEXT,
     status TEXT NOT NULL DEFAULT 'processing',
     stage TEXT,
@@ -1050,6 +1051,11 @@ CREATE TABLE newspaper_jobs (
     completed_at TIMESTAMPTZ
 );
 ```
+
+`source_url` is optional for historical rows and manual text, but required by
+the PDF upload API for new `manual_pdf` jobs. Finalized PDF units use it as both
+`information_units.source_url` and `article_url`, replacing the older
+`manual://pdf` placeholder for new uploads.
 
 `extracted_units` stores staged review rows before finalization. `dedup_summary`
 stores the editor-facing result of finalization: selected upload units that were

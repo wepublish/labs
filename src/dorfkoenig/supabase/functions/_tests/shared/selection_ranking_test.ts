@@ -4,6 +4,7 @@ import {
 } from 'https://deno.land/std@0.220.0/assert/mod.ts';
 
 import {
+  dedupeSelectionCandidates,
   enforceMandatorySelection,
   rankSelectionCandidates,
   selectDeterministicFallback,
@@ -98,4 +99,45 @@ Deno.test('mandatory high-value units survive truncation', () => {
 
   assertEquals(selectDeterministicFallback(ranked, 1), ['accident']);
   assertEquals(enforceMandatorySelection(['filler'], ranked, 1), ['accident']);
+});
+
+Deno.test('dedupeSelectionCandidates collapses near-identical event listings', () => {
+  const result = dedupeSelectionCandidates([
+    {
+      id: 'walzwerk-1',
+      statement: 'Am 9. Mai 2026 finden im Walzwerkareal Arealführungen statt.',
+      unit_type: 'event',
+      event_date: '2026-05-09',
+      publication_date: '2026-05-01',
+      quality_score: 55,
+      article_url: 'https://openhouse-basel.org/orte/walzwerk-2026/',
+      is_listing_page: false,
+    },
+    {
+      id: 'walzwerk-2',
+      statement: 'Am Samstag, 9. Mai 2026, finden Arealführungen im Walzwerkareal in Münchenstein statt.',
+      unit_type: 'event',
+      event_date: '2026-05-09',
+      publication_date: '2026-05-01',
+      quality_score: 55,
+      article_url: 'https://openhouse-basel.org/orte/walzwerk-2026/',
+      is_listing_page: false,
+    },
+    {
+      id: 'dreispitz',
+      statement: 'Die Planung für den Dreispitz in Münchenstein geht in die nächste Runde.',
+      unit_type: 'fact',
+      publication_date: '2026-04-30',
+      quality_score: 80,
+      article_url: 'https://www.wochenblatt.ch/',
+      is_listing_page: false,
+    },
+  ], {
+    currentDate: '2026-05-03',
+    publicationDate: '2026-05-04',
+  });
+
+  assertEquals(result.units.length, 2);
+  assert(result.rejected.some((row) => row.id === 'walzwerk-1' || row.id === 'walzwerk-2'));
+  assert(result.units.some((unit) => unit.id === 'dreispitz'));
 });

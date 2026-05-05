@@ -15,6 +15,7 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import {
+  addDaysIso,
   buildInformationSelectPrompt,
   DRAFT_COMPOSE_PROMPT,
   DRAFT_COMPOSE_PROMPT_V2,
@@ -38,6 +39,7 @@ import type { DraftV2 } from '../_shared/draft-quality.ts';
 import { loadComposeFeedbackExamplesForVillage } from '../_shared/feedback-retrieval.ts';
 import {
   buildSelectionDiagnostics,
+  dedupeSelectionCandidates,
   enforceMandatorySelection,
   rankSelectionCandidates,
 } from '../_shared/selection-ranking.ts';
@@ -53,7 +55,14 @@ import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
 
-const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || 'samuel.hufschmid@bajour.ch,ernst.field@bajour.ch')
+const DEFAULT_ADMIN_EMAILS = [
+  'samuel.hufschmid@bajour.ch',
+  'ernst.field@bajour.ch',
+  'tom@wepublish.ch',
+  'lukas@wepublish.ch',
+  'elias@wepublish.ch',
+].join(',');
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || DEFAULT_ADMIN_EMAILS)
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 // Feature flags (DRAFT_QUALITY.md §7). Default off = pre-change behaviour.
@@ -272,14 +281,18 @@ Deno.serve(async (req) => {
       // were surfaced too early in the 24. Apr. draft. A weekly newsletter that
       // lands the next morning gets the most reader value from this-week events;
       // farther-out items get re-surfaced on later runs as they enter the window.
-      const news7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
-      const backstop30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
-      const eventStart = new Date(Date.now() - 1 * 86_400_000).toISOString().slice(0, 10);
-      const eventEnd = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+      const news7d = `${addDaysIso(publicationDate, -7)}T00:00:00Z`;
+      const backstop30d = `${addDaysIso(publicationDate, -30)}T00:00:00Z`;
+      const eventStart = runDate;
+      const eventEnd = addDaysIso(publicationDate, 7);
       unitsQuery = unitsQuery
         .gte('created_at', backstop30d)
         .or(
-          `and(event_date.is.null,created_at.gte.${news7d}),and(event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
+          [
+            `and(unit_type.eq.event,event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
+            `and(unit_type.neq.event,publication_date.gte.${addDaysIso(publicationDate, -14)})`,
+            `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${news7d})`,
+          ].join(','),
         )
         .gte('quality_score', QUALITY_THRESHOLD);
     } else {
@@ -308,7 +321,7 @@ Deno.serve(async (req) => {
             .eq('location->>city', village_id)
             .eq('user_id', user_id)
             .eq('used_in_article', false)
-            .gte('created_at', new Date(Date.now() - 30 * 86_400_000).toISOString())
+            .gte('created_at', `${addDaysIso(publicationDate, -30)}T00:00:00Z`)
             .limit(20)
         : Promise.resolve({ data: null } as { data: null }),
     ]);
@@ -369,6 +382,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { status: 'skipped', reason: caseLabel } });
     }
 
+    const candidateDedup = dedupeSelectionCandidates(units, {
+      currentDate: runDate,
+      publicationDate,
+    });
+    const candidateUnits = candidateDedup.units;
+    if (candidateDedup.rejected.length > 0) {
+      console.log(
+        `[auto-draft] near-duplicate candidates removed for ${village_id}: ${candidateDedup.rejected.length}`,
+      );
+    }
+
     // Soft-dedup: look up which candidates appeared in a recently-published
     // draft for this village. Token injected into formatted lines below; the
     // selection prompt rule ("nur aufnehmen, wenn neue Entwicklung") drives the
@@ -376,15 +400,15 @@ Deno.serve(async (req) => {
     const previouslyPublished = await loadPreviouslyPublishedDates(
       supabase,
       village_id,
-      units.map((u) => u.id),
+      candidateUnits.map((u) => u.id),
     );
     if (previouslyPublished.size > 0) {
       console.log(
-        `[auto-draft] previously-published candidates for ${village_id}: ${previouslyPublished.size}/${units.length}`,
+        `[auto-draft] previously-published candidates for ${village_id}: ${previouslyPublished.size}/${candidateUnits.length}`,
       );
     }
 
-    const rankedUnits = rankSelectionCandidates(units, {
+    const rankedUnits = rankSelectionCandidates(candidateUnits, {
       currentDate: runDate,
       publicationDate,
       maxCandidates: 80,
@@ -438,7 +462,10 @@ Deno.serve(async (req) => {
           candidate_snapshot: diagnostics.candidate_snapshot,
           selected_unit_ids: selectedIds,
           mandatory_kept_ids: diagnostics.mandatory_kept_ids,
-          rejected_top_units: diagnostics.rejected_top_units,
+          rejected_top_units: [
+            ...candidateDedup.rejected.slice(0, 10),
+            ...diagnostics.rejected_top_units,
+          ].slice(0, 20),
           selection_response_preview: selectionResponsePreview.slice(0, 1000),
         })
         .eq('id', runId);
