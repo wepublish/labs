@@ -3,7 +3,7 @@ import {
   assertExists,
   assertStringIncludes,
 } from 'https://deno.land/std@0.220.0/assert/mod.ts';
-import { buildScoutAlertEmail, sendEmail } from '../../_shared/resend.ts';
+import { buildDraftWithheldEmail, buildScoutAlertEmail, sendEmail } from '../../_shared/resend.ts';
 
 // --- buildScoutAlertEmail (pure function tests) ---
 
@@ -117,6 +117,23 @@ Deno.test('buildScoutAlertEmail produces valid HTML document', () => {
   assertStringIncludes(html, '<!DOCTYPE html>');
   assertStringIncludes(html, '<html lang="de">');
   assertStringIncludes(html, '</html>');
+});
+
+Deno.test('buildDraftWithheldEmail includes the withheld draft body', () => {
+  const { html } = buildDraftWithheldEmail({
+    villageName: 'Arlesheim',
+    villageId: 'arlesheim',
+    publicationDate: '2026-05-04',
+    draftTitle: 'Sperrungen und Landrat',
+    draftBody: '- Birkenstrasse ist vollgesperrt.\n\n- Honegger wird angelobt.',
+    draftUrl: 'https://example.com/draft',
+    reasons: ['Event-Bullet hat zu wenig Kontext.'],
+  });
+
+  assertStringIncludes(html, 'Entwurf');
+  assertStringIncludes(html, 'Birkenstrasse ist vollgesperrt.');
+  assertStringIncludes(html, 'Honegger wird angelobt.');
+  assertStringIncludes(html, 'Event-Bullet hat zu wenig Kontext.');
 });
 
 // --- sendEmail (integration test) ---

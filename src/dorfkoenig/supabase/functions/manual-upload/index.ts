@@ -67,6 +67,60 @@ function sourceDomainFromUrl(sourceUrl: string): string {
   }
 }
 
+interface SourceCitation {
+  publication?: string;
+  issue_date?: string;
+  issue_label?: string;
+  page?: string;
+  article_title?: string;
+  section?: string;
+  citation_label?: string;
+}
+
+function cleanOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function buildSourceCitation(body: Record<string, unknown>, fallback: {
+  sourceTitle?: string | null;
+  publicationDate?: string | null;
+}): SourceCitation {
+  const citation: SourceCitation = {
+    publication: cleanOptionalText(body.source_publication) ?? cleanOptionalText(fallback.sourceTitle ?? undefined),
+    issue_date: cleanOptionalText(body.source_issue_date) ?? cleanOptionalText(fallback.publicationDate ?? undefined),
+    issue_label: cleanOptionalText(body.source_issue_label),
+    page: cleanOptionalText(body.source_page),
+    article_title: cleanOptionalText(body.article_title),
+    section: cleanOptionalText(body.article_section),
+  };
+  const labelParts = [
+    citation.publication,
+    citation.issue_label,
+    citation.page ? `S. ${citation.page}` : undefined,
+  ].filter(Boolean);
+  citation.citation_label = cleanOptionalText(body.citation_label) ?? (
+    labelParts.length > 0 ? labelParts.join(', ') : undefined
+  );
+  return Object.fromEntries(
+    Object.entries(citation).filter(([, value]) => typeof value === 'string' && value.length > 0),
+  ) as SourceCitation;
+}
+
+async function attachSourceCitation(
+  supabase: ReturnType<typeof createServiceClient>,
+  unitId: string,
+  occurrenceId: string | null,
+  sourceCitation: SourceCitation,
+): Promise<void> {
+  if (Object.keys(sourceCitation).length === 0) return;
+  await supabase.from('information_units').update({ source_citation: sourceCitation }).eq('id', unitId);
+  if (occurrenceId) {
+    await supabase.from('unit_occurrences').update({ source_citation: sourceCitation }).eq('id', occurrenceId);
+  }
+}
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -193,6 +247,7 @@ async function handleTextUpload(
   const sourceTitle = (body.source_title as string) || null;
   const sourceUrl = cleanOptionalUrl(body.source_url);
   const publicationDate = body.publication_date as string | undefined;
+  const sourceCitation = buildSourceCitation(body, { sourceTitle, publicationDate });
 
   // Validation
   if (!text || typeof text !== 'string') {
@@ -232,6 +287,7 @@ async function handleTextUpload(
       storage_path: '',
       publication_date: publicationDate,
       source_url: sourceUrl,
+      source_citation: sourceCitation,
       label,
       status: 'processing',
       stage: 'extracting',
@@ -424,6 +480,7 @@ async function handleFileConfirm(
   const sourceTitle = (body.source_title as string) || null;
   const sourceUrl = cleanOptionalUrl(body.source_url);
   const publicationDate = (body.publication_date as string) || null;
+  const sourceCitation = buildSourceCitation(body, { sourceTitle, publicationDate });
 
   const isPhoto = contentType === 'photo_confirm';
   const isPdf = contentType === 'pdf_confirm';
@@ -515,6 +572,7 @@ async function handleFileConfirm(
         storage_path: storagePath,
         publication_date: publicationDate,
         source_url: sourceUrl,
+        source_citation: sourceCitation,
         label: description?.trim() || null,
         last_heartbeat_at: new Date().toISOString(),
       })
@@ -707,7 +765,7 @@ async function handlePdfFinalize(
     .eq('id', jobId)
     .eq('user_id', userId)
     .eq('status', 'review_pending')
-    .select('id, extracted_units, storage_path, label, source_type, publication_date, source_url')
+      .select('id, extracted_units, storage_path, label, source_type, publication_date, source_url, source_citation')
     .maybeSingle();
 
   if (claimErr) {
@@ -824,6 +882,11 @@ async function handlePdfFinalize(
       const sourceDomain = sourceDomainFromUrl(sourceUrl);
       const defaultTopic = sourceType === 'manual_text' ? null : 'Wochenblatt';
       const jobPubDate = claimed.publication_date as string | null;
+      const sourceCitation = (
+        claimed.source_citation && typeof claimed.source_citation === 'object' && !Array.isArray(claimed.source_citation)
+          ? claimed.source_citation as SourceCitation
+          : {}
+      );
       for (const i of finalIndices) {
         const u: ReviewUnit = chosen[i];
         const normalizedLocation = u.location?.city
@@ -868,6 +931,7 @@ async function handlePdfFinalize(
         });
 
         if (result.attachedOccurrence) {
+          await attachSourceCitation(supabase, result.unitId, result.occurrenceId, sourceCitation);
           savedCount++;
           if (result.createdNew) {
             createdCount++;

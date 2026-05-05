@@ -85,6 +85,28 @@ function sanitizeUrl(url: string): string {
   return escapeHtml(trimmed);
 }
 
+function markdownDraftToEmailHtml(markdown: string): string {
+  const blocks = markdown
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) return '<p><em>(Entwurf ist leer)</em></p>';
+
+  return blocks.map((block) => {
+    if (block.startsWith('- ')) {
+      const items = block
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('- '))
+        .map((line) => `<li>${escapeHtml(line.slice(2))}</li>`)
+        .join('');
+      return `<ul style="margin: 0 0 12px; padding-left: 20px;">${items}</ul>`;
+    }
+    return `<p style="margin: 0 0 12px;">${escapeHtml(block)}</p>`;
+  }).join('');
+}
+
 /**
  * Build scout alert email HTML
  */
@@ -450,14 +472,16 @@ export function buildDraftWithheldEmail(params: {
   villageId: string;
   publicationDate: string;
   draftTitle: string;
+  draftBody: string;
   draftUrl: string;
   reasons: string[];
 }): { subject: string; html: string } {
-  const { villageName, villageId, publicationDate, draftTitle, draftUrl, reasons } = params;
+  const { villageName, villageId, publicationDate, draftTitle, draftBody, draftUrl, reasons } = params;
   const subject = `[Dorfkönig] Entwurf zurückgehalten — ${villageName} am ${publicationDate}`;
   const reasonsHtml = reasons.length
     ? `<ul>${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`
     : '<p><em>(keine Details verfügbar)</em></p>';
+  const draftHtml = markdownDraftToEmailHtml(draftBody);
 
   const html = `
 <!DOCTYPE html>
@@ -476,6 +500,10 @@ export function buildDraftWithheldEmail(params: {
     </p>
     <div style="margin: 16px 0;">
       <strong>Titel:</strong> ${escapeHtml(draftTitle || '(ohne Titel)')}
+    </div>
+    <h3 style="font-size: 14px; color: #57534e; text-transform: uppercase; letter-spacing: 0.5px;">Entwurf</h3>
+    <div style="background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 14px 16px; margin: 0 0 20px;">
+      ${draftHtml}
     </div>
     <h3 style="font-size: 14px; color: #57534e; text-transform: uppercase; letter-spacing: 0.5px;">Gründe</h3>
     ${reasonsHtml}

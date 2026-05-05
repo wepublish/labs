@@ -1,6 +1,6 @@
 # Dorfkönig Draft Quality — System Spec
 
-> **Status:** draft (2026-04-22, optimized after Big Tony + code-reviewer pass, scoped to capture-only feedback) · **Owner:** Tom · **Scope:** automated village newsletter drafting (`bajour-auto-draft`) for 20 villages.
+> **Status:** draft (updated 2026-05-05 for source-citation metadata, compose selection cleanup, and eval audits) · **Owner:** Tom · **Scope:** automated village newsletter drafting (`bajour-auto-draft`) for 20 villages.
 >
 > Source of truth for the quality overhaul. Every PR that touches the drafting pipeline, extraction prompts, or the `bajour_drafts` schema links here. When behaviour changes, this file changes first.
 
@@ -163,11 +163,12 @@ On empty paths (a-c), send one email to `ADMIN_EMAILS` via `buildDraftFailureEma
 
 On withheld drafts (d), save the draft row, set `verification_status='withheld'`, write `quality_warnings`, and email `ADMIN_EMAILS` via `buildDraftWithheldEmail()` with a signed admin deep-link. `bajour-send-verification` rejects withheld drafts.
 
-Manual newspaper PDFs must carry a real publication/source URL at upload time.
-Finalized PDF units use that URL as both `source_url` and `article_url`; legacy
-`manual://pdf` rows are backfilled by `npm run backfill:manual-pdf-sources`.
-This prevents otherwise usable newspaper units from being downgraded as
-`NO_LINK` during compose.
+Manual newspaper PDFs/text uploads carry both a source URL and structured
+`source_citation` metadata (publication, issue date/label, page, article title,
+section, generated `citation_label`). Finalized units copy that metadata to
+`information_units.source_citation` and `unit_occurrences.source_citation`, so
+newspaper/PDF facts remain citeable even when the URL is a newspaper landing
+page rather than an article permalink.
 
 **No WhatsApp message to correspondents on any of these paths.** Admins are the sole notification target for empty-day / withheld conditions.
 
@@ -280,15 +281,15 @@ ZITATION:
   nach einem Markdown-Link.
 ```
 
-**§3.4.3 Listing-page guard (deterministic, pre-prompt).** Before composing, code checks each unit: if `is_listing_page = true` OR `article_url IS NULL` OR URL matches the scout's base URL → the unit's `article_url` is set to `null` in the prompt payload and tagged `NO_LINK`.
+**§3.4.3 Listing/homepage guard (deterministic, pre-prompt).** Before composing, code checks each unit with `_shared/source-url.ts`: if `is_listing_page = true`, `article_url IS NULL`, or the URL is a homepage/generic index path (for example `https://www.wochenblatt.ch/`) → the unit is tagged `NO_LINK` in the prompt. Structured `source_citation.citation_label` may still be emitted as `CITATION:` for manual newspaper/PDF provenance.
 
 **§3.4.4 Prompt negatives (static).** The §2.4 anti-pattern table is inlined in the compose prompt as a labelled negative-example block. Additions to the table over time land via prompt-text PRs (with `DEFAULT_PROMPT_VERSIONS.draft_compose` bump per §3.6). Tom's markdown-file feedback gets folded into this table manually.
 
 > Dynamic per-village retrieval from `bajour_feedback_examples` is **not** in scope for this spec. See §8 + `specs/followups/self-learning-system.md`.
 
-**§3.4.5 Cross-village exclusivity.** Code-side pre-filter (tighten the existing check at `bajour-auto-draft/index.ts:178`): drop when `location.city != village_id` OR `village_confidence = 'low'`.
+**§3.4.5 Cross-village exclusivity and compose selection.** Code-side pre-filter drops when `location.city != village_id` OR `village_confidence = 'low'`. `_shared/selection-ranking.ts` then removes static directory facts, supporting fragments, cross-village drift, not-yet-published backfill units, homepage-only sources, and events too far ahead for a daily digest. `_shared/story-candidates.ts` folds related support facts into a lead unit's `Zusatzkontext` instead of asking the composer to cover fragments as standalone bullets.
 
-**Files.** `_shared/prompts.ts`, `bajour-auto-draft/index.ts`, `compose/index.ts` (atomic — both call sites ship in the same PR or manual compose regresses).
+**Files.** `_shared/prompts.ts`, `_shared/source-url.ts`, `_shared/selection-ranking.ts`, `_shared/story-candidates.ts`, `bajour-auto-draft/index.ts`, `compose/index.ts` (atomic — both call sites ship in the same PR or manual compose regresses).
 
 **Rollback.** Prompt text is versioned (§3.6). Revert = bump `DEFAULT_PROMPT_VERSIONS.draft_compose` back.
 
@@ -320,6 +321,11 @@ validateKindCounts(draft): { draft, warnings[] }
   //   extra 'good_news' → drop
   // Warning per demotion/drop.
 ```
+
+`composeDraftFromUnitsV2()` also performs one deterministic citation repair
+before the validator chain: if a bullet cites `source_unit_ids` but omits
+`article_url`, and exactly those units contain an article-level URL, the URL and
+one Markdown source link are restored from the unit metadata.
 
 **Warning sink.** Validator warnings append to `notes_for_editor`. Post-compose quality gate warnings also persist as `bajour_drafts.quality_warnings` and render prominently in the draft UI.
 
@@ -450,6 +456,12 @@ RLS: service_role ALL, authenticated users SELECT own-village rows (pilot-list s
 ## 4. Benchmark system
 
 One-shot evaluator for testing prompt/model/config changes against frozen fixtures.
+
+For production-data audits, `npm run eval:drafts -- --from YYYY-MM-DD --to
+YYYY-MM-DD --ignore-used --out-dir exports/...` regenerates drafts against
+available units without marking them used. It records selected units,
+selected-but-omitted units, quality warnings, and zero-selection days as
+withheld audit artifacts instead of aborting the run.
 
 ### 4.1 Fixtures
 

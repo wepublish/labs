@@ -1,3 +1,5 @@
+import { isArticleLevelUrl } from './source-url.ts';
+
 export interface UnitForSelectionRanking {
   id: string;
   statement: string;
@@ -52,6 +54,12 @@ const SOFT_FILLER = [
   'schnupperlektion', 'ausstellung', 'konzert', 'markt',
 ];
 
+const STATIC_DIRECTORY = [
+  'telefonnummer', 'telefonisch', 'e-mail-adresse', 'email-adresse',
+  'öffnungszeiten', 'schalter', 'adresse', 'befindet sich an',
+  'termine ausserhalb', 'montag bis freitag',
+];
+
 export function dedupeSelectionCandidates<T extends UnitForSelectionRanking>(
   units: T[],
   opts: { currentDate: string; publicationDate: string },
@@ -64,8 +72,8 @@ export function dedupeSelectionCandidates<T extends UnitForSelectionRanking>(
 
   for (const row of ranked) {
     const fingerprint = statementFingerprint(row.unit.statement);
-    const existing = [...seen.entries()].find(([seenFingerprint]) =>
-      fingerprintsOverlap(seenFingerprint, fingerprint)
+    const existing = [...seen.entries()].find(([, seenUnit]) =>
+      areNearDuplicate(seenUnit, row.unit)
     );
     if (!existing) {
       seen.set(fingerprint, row.unit);
@@ -107,9 +115,10 @@ export function rankSelectionCandidates<T extends UnitForSelectionRanking>(
     currentDate: string;
     publicationDate: string;
     maxCandidates?: number;
+    villageId?: string;
   },
 ): RankedSelectionUnit<T>[] {
-  const ranked = units.map((unit) => rankOne(unit, opts.currentDate, opts.publicationDate));
+  const ranked = units.map((unit) => rankOne(unit, opts.currentDate, opts.publicationDate, opts.villageId));
   ranked.sort((a, b) => b.score - a.score || compareDateDesc(a.unit, b.unit));
   return typeof opts.maxCandidates === 'number'
     ? ranked.slice(0, opts.maxCandidates)
@@ -149,6 +158,35 @@ export function enforceMandatorySelection<T extends UnitForSelectionRanking>(
     if (out.includes(row.unit.id) && !keep.includes(row.unit.id)) keep.push(row.unit.id);
   }
   return keep.slice(0, maxUnits);
+}
+
+export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
+  selectedIds: string[],
+  ranked: RankedSelectionUnit<T>[],
+  maxUnits: number,
+): string[] {
+  const selected = new Set(selectedIds);
+  const composeCap = Math.min(maxUnits, 5);
+  const preferred: string[] = [];
+
+  for (const row of ranked) {
+    if (!selected.has(row.unit.id)) continue;
+    if (!isComposeEligible(row)) continue;
+    preferred.push(row.unit.id);
+    if (preferred.length >= composeCap) return preferred;
+  }
+
+  if (preferred.length > 0) return preferred;
+
+  // If the LLM selected only weak context fragments, recover with the best
+  // eligible ranked units. This keeps drafts narrow without returning empty.
+  for (const row of ranked) {
+    if (!isComposeEligible(row)) continue;
+    if (!preferred.includes(row.unit.id)) preferred.push(row.unit.id);
+    if (preferred.length >= composeCap) break;
+  }
+
+  return preferred.length > 0 ? preferred : selectedIds.slice(0, Math.max(1, composeCap));
 }
 
 export function buildSelectionDiagnostics<T extends UnitForSelectionRanking>(
@@ -191,6 +229,7 @@ function rankOne<T extends UnitForSelectionRanking>(
   unit: T,
   currentDate: string,
   publicationDate: string,
+  villageId?: string,
 ): RankedSelectionUnit<T> {
   const reasons: string[] = [];
   let score = unit.quality_score ?? 40;
@@ -209,7 +248,25 @@ function rankOne<T extends UnitForSelectionRanking>(
     }
   }
 
-  if (containsAny(text, PUBLIC_SAFETY)) {
+  const staticDirectoryFact = isStaticDirectoryFact(text);
+  if (publicationAge < 0) {
+    score -= 80;
+    reasons.push('future_publication');
+  }
+  if (staticDirectoryFact) {
+    score -= 55;
+    reasons.push('static_directory_fact');
+  }
+  if (isSupportingFragment(text)) {
+    score -= 70;
+    reasons.push('supporting_fragment');
+  }
+  if (villageId && hasCrossVillageDrift(text, villageId)) {
+    score -= 60;
+    reasons.push('cross_village_drift');
+  }
+
+  if (containsAny(text, PUBLIC_SAFETY) && !staticDirectoryFact) {
     score += 35;
     reasons.push('public_safety');
   }
@@ -232,6 +289,9 @@ function rankOne<T extends UnitForSelectionRanking>(
     } else if (daysBetween(publicationDate, unit.event_date) > 7) {
       score -= 30;
       reasons.push('far_future_event');
+    } else if (daysBetween(publicationDate, unit.event_date) > 3) {
+      score -= 55;
+      reasons.push('too_early_event');
     }
   }
 
@@ -243,10 +303,10 @@ function rankOne<T extends UnitForSelectionRanking>(
     reasons.push('stale');
   }
 
-  if (unit.article_url && !unit.is_listing_page) {
+  if (unit.article_url && !unit.is_listing_page && isArticleLevelUrl(unit.article_url)) {
     score += 15;
     reasons.push('article_url');
-  } else if (unit.is_listing_page || !unit.article_url) {
+  } else if (unit.is_listing_page || !isArticleLevelUrl(unit.article_url)) {
     score -= 25;
     reasons.push('weak_url');
   }
@@ -267,13 +327,70 @@ function rankOne<T extends UnitForSelectionRanking>(
     score >= 95 &&
     !reasons.includes('stale_sensitive') &&
     !reasons.includes('low_village_confidence') &&
+    !reasons.includes('weak_url') &&
+    !reasons.includes('static_directory_fact') &&
+    !reasons.includes('supporting_fragment') &&
+    !reasons.includes('cross_village_drift') &&
+    !reasons.includes('too_early_event') &&
+    !reasons.includes('far_future_event') &&
+    !reasons.includes('future_publication') &&
     (reasons.includes('public_safety') || reasons.includes('civic_utility'));
 
   return { unit, score, mandatory, reasons };
 }
 
+function isComposeEligible<T extends UnitForSelectionRanking>(row: RankedSelectionUnit<T>): boolean {
+  if (row.score < 70) return false;
+  if (row.reasons.includes('static_directory_fact')) return false;
+  if (row.reasons.includes('supporting_fragment')) return false;
+  if (row.reasons.includes('cross_village_drift')) return false;
+  if (row.reasons.includes('too_early_event')) return false;
+  if (row.reasons.includes('far_future_event')) return false;
+  if (row.reasons.includes('future_publication')) return false;
+  if (row.reasons.includes('low_village_confidence')) return false;
+  if (row.reasons.includes('soft_filler') && !row.reasons.includes('public_safety') && !row.reasons.includes('civic_utility')) {
+    return false;
+  }
+  if (row.reasons.includes('weak_url') && row.score < 115) return false;
+  return true;
+}
+
 function containsAny(text: string, needles: string[]): boolean {
   return needles.some((needle) => text.includes(needle));
+}
+
+function isStaticDirectoryFact(text: string): boolean {
+  if (containsAny(text, STATIC_DIRECTORY)) return true;
+  if (/\b\d{3}\s?\d{3}\s?\d{2}\s?\d{2}\b/.test(text)) return true;
+  if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text)) return true;
+  if (/\b\w+(strasse|str\.|gasse|weg)\s+\d+\b/i.test(text)) return true;
+  return false;
+}
+
+function isSupportingFragment(text: string): boolean {
+  return /\b(haltestelle|anreise|tatbestandsaufnahme|verkehrsbehinderungen|mitfahrenden personen|details.*nicht bekannt|befindet sich|ist erreichbar)\b/i
+    .test(text);
+}
+
+function hasCrossVillageDrift(text: string, villageId: string): boolean {
+  const aliases: Record<string, string[]> = {
+    arlesheim: ['arlesheim'],
+    muenchenstein: ['münchenstein', 'muenchenstein'],
+    reinach: ['reinach'],
+    aesch: ['aesch'],
+    allschwil: ['allschwil'],
+    binningen: ['binningen'],
+    bottmingen: ['bottmingen'],
+    muttenz: ['muttenz'],
+    pratteln: ['pratteln'],
+    riehen: ['riehen'],
+  };
+  const current = aliases[villageId] ?? [villageId];
+  const mentionsCurrent = current.some((name) => text.includes(name));
+  const otherVillageMentioned = Object.entries(aliases)
+    .filter(([id]) => id !== villageId)
+    .some(([, names]) => names.some((name) => text.includes(name)));
+  return otherVillageMentioned && !mentionsCurrent;
 }
 
 function compareDateDesc(a: UnitForSelectionRanking, b: UnitForSelectionRanking): number {
@@ -290,16 +407,48 @@ function daysBetween(fromIso: string, toIso: string): number {
 }
 
 function statementFingerprint(statement: string): string {
+  return fingerprintTokens(statement)
+    .slice(0, 10)
+    .sort()
+    .join('|');
+}
+
+function fingerprintTokens(statement: string): string[] {
   return statement
     .toLocaleLowerCase('de-CH')
     .replace(/\b\d{1,2}\.?\b/g, '')
     .replace(/\b20\d{2}\b/g, '')
     .split(/[^a-z0-9äöüß]+/i)
     .filter((token) => token.length >= 4)
-    .map(stemToken)
-    .slice(0, 10)
-    .sort()
-    .join('|');
+    .map(stemToken);
+}
+
+function areNearDuplicate(a: UnitForSelectionRanking, b: UnitForSelectionRanking): boolean {
+  const aFingerprint = statementFingerprint(a.statement);
+  const bFingerprint = statementFingerprint(b.statement);
+  if (!fingerprintsOverlap(aFingerprint, bFingerprint)) return false;
+
+  // Same-place event listings often share only generic venue words. Treat them
+  // as duplicates only when date/source or enough topic tokens also agree.
+  if (a.unit_type === 'event' && b.unit_type === 'event') {
+    if (a.event_date && b.event_date && a.event_date === b.event_date) return true;
+    if (a.article_url && b.article_url && a.article_url === b.article_url && topicOverlap(a.statement, b.statement) >= 1) {
+      return true;
+    }
+    return topicOverlap(a.statement, b.statement) >= 2;
+  }
+
+  return true;
+}
+
+function topicOverlap(a: string, b: string): number {
+  const generic = new Set([
+    'findet', 'statt', 'arlesheim', 'münchenstein', 'muenchenstein', 'klinik',
+    'restaurant', 'gemeinde', 'samstag', 'sonntag', 'montag', 'dienstag',
+    'mittwoch', 'donnerstag', 'freitag',
+  ]);
+  const left = new Set(fingerprintTokens(a).filter((token) => !generic.has(token)));
+  return fingerprintTokens(b).filter((token) => !generic.has(token) && left.has(token)).length;
 }
 
 function fingerprintsOverlap(a: string, b: string): boolean {
