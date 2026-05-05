@@ -3,6 +3,8 @@
 //   INFORMATION_SELECT_PROMPT — which units to pick
 //   DRAFT_COMPOSE_PROMPT      — how to write the draft
 //
+import { isArticleLevelUrl } from './source-url.ts';
+
 // Version stamps for DRAFT_QUALITY.md §3.6 hygiene. Bump when prompt text changes
 // in the same PR; benchmarks (§4) gate the change. user_prompts.based_on_version
 // persists the version an override was derived from so `specs/DATABASE.md`
@@ -153,6 +155,7 @@ interface UnitForCompose {
   is_listing_page?: boolean | null;
   quality_score?: number | null;
   sensitivity?: string | null;
+  source_citation?: { citation_label?: string | null } | null;
 }
 
 /**
@@ -160,7 +163,7 @@ interface UnitForCompose {
  * pipeline. Keep aligned with `UnitForCompose` above.
  */
 export const UNIT_FOR_COMPOSE_COLUMNS =
-  'id, statement, unit_type, event_date, publication_date, created_at, source_domain, source_url, article_url, is_listing_page, quality_score, sensitivity';
+  'id, statement, unit_type, event_date, publication_date, created_at, source_domain, source_url, source_citation, article_url, is_listing_page, quality_score, sensitivity';
 
 /**
  * Format units grouped by type (FAKTEN / EREIGNISSE / AKTUALISIERUNGEN).
@@ -217,12 +220,15 @@ export function formatUnitsForCompose(units: UnitForCompose[]): string {
       const type = typeLabel[u.unit_type] ?? u.unit_type.toUpperCase();
       const date = u.event_date ?? u.created_at?.split('T')[0] ?? 'unbekannt';
       const publicationDate = u.publication_date ?? u.created_at?.split('T')[0] ?? 'unbekannt';
-      const url = u.article_url && !u.is_listing_page ? u.article_url : 'NO_LINK';
+      const url = u.article_url && !u.is_listing_page && isArticleLevelUrl(u.article_url) ? u.article_url : 'NO_LINK';
       const domain = u.source_domain || 'unbekannt';
+      const citation = typeof u.source_citation?.citation_label === 'string' && u.source_citation.citation_label.trim()
+        ? ` | CITATION:${u.source_citation.citation_label.trim()}`
+        : '';
       const quality = u.quality_score ?? '-';
       const sens = u.sensitivity && u.sensitivity !== 'none' ? ` | SENSITIV:${u.sensitivity}` : '';
       const idPart = u.id ? ` | ID:${u.id}` : '';
-      return `[${i + 1}] ${type} | EVENT:${date} | PUB:${publicationDate} | ${u.statement} | URL:${url} | DOMAIN:${domain} | QUALITY:${quality}${sens}${idPart}`;
+      return `[${i + 1}] ${type} | EVENT:${date} | PUB:${publicationDate} | ${u.statement} | URL:${url} | DOMAIN:${domain}${citation} | QUALITY:${quality}${sens}${idPart}`;
     })
     .join('\n');
 }

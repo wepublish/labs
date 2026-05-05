@@ -50,6 +50,10 @@
   let topic = $state('');
   let sourceTitle = $state('');
   let sourceUrl = $state('');
+  let sourceIssueLabel = $state('');
+  let sourcePage = $state('');
+  let articleTitle = $state('');
+  let articleSection = $state('');
 
   // Text state
   let text = $state('');
@@ -109,6 +113,10 @@
     topic = '';
     sourceTitle = '';
     sourceUrl = '';
+    sourceIssueLabel = '';
+    sourcePage = '';
+    articleTitle = '';
+    articleSection = '';
     text = '';
     file = null;
     if (filePreviewUrl) {
@@ -423,6 +431,12 @@
           topic: topic.trim() || null,
           source_title: sourceTitle.trim() || null,
           source_url: sourceUrl.trim() || null,
+          source_publication: sourceTitle.trim() || null,
+          source_issue_date: publicationDate,
+          source_issue_label: sourceIssueLabel.trim() || null,
+          source_page: sourcePage.trim() || null,
+          article_title: articleTitle.trim() || null,
+          article_section: articleSection.trim() || null,
           publication_date: publicationDate,
         });
         uploadProgress = 60;
@@ -482,6 +496,12 @@
           publication_date: publicationDate || null,
           source_title: sourceTitle.trim() || null,
           source_url: sourceUrl.trim(),
+          source_publication: sourceTitle.trim() || null,
+          source_issue_date: publicationDate || null,
+          source_issue_label: sourceIssueLabel.trim() || null,
+          source_page: sourcePage.trim() || null,
+          article_title: articleTitle.trim() || null,
+          article_section: articleSection.trim() || null,
         });
 
         // Check if response is processing (PDF) or immediate (photo)
@@ -691,6 +711,48 @@
               required={activeTab === 'pdf'}
             />
           </div>
+
+          <div class="source-grid">
+            <div class="form-group">
+              <label for="upload-issue-label">Ausgabe <span class="optional">(optional)</span></label>
+              <input
+                id="upload-issue-label"
+                type="text"
+                bind:value={sourceIssueLabel}
+                placeholder="z.B. Nr. 18/2026"
+              />
+            </div>
+            <div class="form-group">
+              <label for="upload-source-page">Seite <span class="optional">(optional)</span></label>
+              <input
+                id="upload-source-page"
+                type="text"
+                bind:value={sourcePage}
+                placeholder="z.B. 7"
+              />
+            </div>
+          </div>
+
+          <div class="source-grid">
+            <div class="form-group">
+              <label for="upload-article-title">Artikeltitel <span class="optional">(optional)</span></label>
+              <input
+                id="upload-article-title"
+                type="text"
+                bind:value={articleTitle}
+                placeholder="z.B. Felix Berchten gewählt"
+              />
+            </div>
+            <div class="form-group">
+              <label for="upload-article-section">Rubrik <span class="optional">(optional)</span></label>
+              <input
+                id="upload-article-section"
+                type="text"
+                bind:value={articleSection}
+                placeholder="z.B. Arlesheim"
+              />
+            </div>
+          </div>
         {/if}
       </div>
 
@@ -884,6 +946,12 @@
     gap: 0.375rem;
   }
 
+  .source-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
   .form-group label,
   .form-label {
     font-size: var(--text-base-sm);
@@ -906,6 +974,23 @@
     color: var(--color-text);
     font-family: inherit;
     resize: vertical;
+  }
+
+  .form-group input[type="url"] {
+    width: 100%;
+    padding: var(--spacing-sm) 0.75rem;
+    font-size: var(--text-base);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text);
+    font-family: inherit;
+  }
+
+  @media (max-width: 640px) {
+    .source-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .form-group input:focus {

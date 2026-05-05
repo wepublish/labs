@@ -224,6 +224,74 @@ Deno.test('composeDraftFromUnitsV2 — extracts submit_digest tool_call argument
   }
 });
 
+Deno.test('composeDraftFromUnitsV2 — repairs missing article_url from source_unit_ids', async () => {
+  const originalChat = openrouter.chat;
+  try {
+    openrouter.chat = ((_opts) =>
+      Promise.resolve({
+        id: 'test',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call_1',
+                  type: 'function' as const,
+                  function: {
+                    name: 'submit_digest',
+                    arguments: JSON.stringify({
+                      title: 'Arlesheim — KW 17',
+                      bullets: [
+                        {
+                          emoji: '🚧',
+                          kind: 'event',
+                          text: 'Morgen ist die Birkenstrasse voll gesperrt.',
+                          article_url: null,
+                          source_domain: 'Gemeinde Arlesheim',
+                          source_unit_ids: ['u1'],
+                        },
+                      ],
+                      notes_for_editor: [],
+                    }),
+                  },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      })) as typeof openrouter.chat;
+
+    const { draft } = await composeDraftFromUnitsV2({
+      village_id: 'arlesheim',
+      village_name: 'Arlesheim',
+      selected_units: [
+        {
+          id: 'u1',
+          statement: 'Am 5. Mai zwischen 8 und 17 Uhr findet eine Vollsperrung der Birkenstrasse statt.',
+          unit_type: 'event',
+          source_domain: 'Gemeinde Arlesheim',
+          source_url: 'https://www.arlesheim.ch/de/aktuelles/baustelleninfo.php',
+          article_url: 'https://www.arlesheim.ch/de/aktuelles/baustelleninfo.php',
+          is_listing_page: false,
+        },
+      ],
+    });
+
+    assertEquals(draft.bullets[0].article_url, 'https://www.arlesheim.ch/de/aktuelles/baustelleninfo.php');
+    assertStringIncludes(
+      draft.bullets[0].text,
+      '[Gemeinde Arlesheim](https://www.arlesheim.ch/de/aktuelles/baustelleninfo.php)',
+    );
+  } finally {
+    openrouter.chat = originalChat;
+  }
+});
+
 Deno.test('composeDraftFromUnitsV2 — falls back to text content when provider ignores tool_choice', async () => {
   const originalChat = openrouter.chat;
   try {

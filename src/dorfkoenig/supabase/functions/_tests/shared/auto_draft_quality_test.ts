@@ -112,6 +112,37 @@ Deno.test('assessDraftQuality — withholds explicit missing source-link notes',
   assert(result.warnings.some((w) => w.reason === 'weak_sources'));
 });
 
+Deno.test('assessDraftQuality — withholds bullet that drops available article URL', () => {
+  const result = assessDraftQuality({
+    draft: draft({
+      title: 'Kehrichtabfuhr nachgeholt',
+      bullets: [
+        {
+          emoji: '📍',
+          kind: 'lead',
+          text: 'Die Kehrichtabfuhr im Abfallkreis West wird morgen nachgeholt.',
+          article_url: null,
+          source_domain: 'wochenblatt.ch',
+          source_unit_ids: ['u1'],
+        },
+      ],
+    }),
+    selectedUnits: [{
+      id: 'u1',
+      statement: 'Die Kehrichtabfuhr im Abfallkreis West fällt am 1. Mai 2026 aus und wird am 5. Mai 2026 nachgeholt.',
+      unit_type: 'fact',
+      article_url: 'https://www.wochenblatt.ch/kehrichtabfuhr',
+      source_url: 'https://www.wochenblatt.ch/kehrichtabfuhr',
+    }],
+    rankedSelection: [ranked({ id: 'u1', score: 105 })],
+    selectedIds: ['u1'],
+    context: resolveDraftRunContext({ zurichToday: '2026-05-05' }),
+  });
+
+  assertEquals(result.decision, 'withhold');
+  assert(result.warnings.some((w) => w.reason === 'weak_sources'));
+});
+
 Deno.test('assessDraftQuality — clean draft sends', () => {
   const result = assessDraftQuality({
     draft: draft({ title: 'Birkenstrasse gesperrt' }),
@@ -124,6 +155,33 @@ Deno.test('assessDraftQuality — clean draft sends', () => {
     }],
     rankedSelection: [ranked({ id: 'u1', score: 100 })],
     selectedIds: ['u1'],
+    context: resolveDraftRunContext({ zurichToday: '2026-05-05' }),
+  });
+
+  assertEquals(result.decision, 'send');
+});
+
+Deno.test('assessDraftQuality — does not require non-mandatory selected fragments', () => {
+  const result = assessDraftQuality({
+    draft: draft({ title: 'Birkenstrasse gesperrt' }),
+    selectedUnits: [{
+      id: 'u1',
+      statement: 'Am Dienstag ist die Birkenstrasse gesperrt.',
+      unit_type: 'event',
+      article_url: 'https://example.com/a',
+      source_url: 'https://example.com/a',
+    }, {
+      id: 'support',
+      statement: 'Die Haltestelle für die Anreise mit dem Tram ist Stollenrain.',
+      unit_type: 'fact',
+      article_url: 'https://example.com/support',
+      source_url: 'https://example.com/support',
+    }],
+    rankedSelection: [
+      ranked({ id: 'u1', score: 100, mandatory: true }),
+      ranked({ id: 'support', score: 100, mandatory: false, reasons: ['supporting_fragment', 'article_url'] }),
+    ],
+    selectedIds: ['u1', 'support'],
     context: resolveDraftRunContext({ zurichToday: '2026-05-05' }),
   });
 

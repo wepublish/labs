@@ -141,6 +141,13 @@ export const manualUploadApi = {
     topic?: string | null;
     source_title?: string | null;
     source_url?: string | null;
+    source_publication?: string | null;
+    source_issue_date?: string | null;
+    source_issue_label?: string | null;
+    source_page?: string | null;
+    article_title?: string | null;
+    article_section?: string | null;
+    citation_label?: string | null;
     publication_date: string;
   }) =>
     api.post<import('./types').NewspaperProcessingResult>('manual-upload', {
@@ -164,6 +171,13 @@ export const manualUploadApi = {
     topic?: string | null;
     source_title?: string | null;
     source_url?: string | null;
+    source_publication?: string | null;
+    source_issue_date?: string | null;
+    source_issue_label?: string | null;
+    source_page?: string | null;
+    article_title?: string | null;
+    article_section?: string | null;
+    citation_label?: string | null;
     publication_date?: string | null;
   }) =>
     api.post<import('./types').ManualUploadResult | import('./types').NewspaperProcessingResult>('manual-upload', data),

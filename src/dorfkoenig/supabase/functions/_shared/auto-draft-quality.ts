@@ -9,6 +9,7 @@
 import type { DraftV2 } from './draft-quality.ts';
 import type { RankedSelectionUnit, UnitForSelectionRanking } from './selection-ranking.ts';
 import { addDaysIso } from './prompts.ts';
+import { isArticleLevelUrl } from './source-url.ts';
 
 export type WithheldReason =
   | 'selection_empty'
@@ -47,6 +48,7 @@ interface ComposeUnit {
   article_url?: string | null;
   source_url?: string | null;
   source_domain?: string | null;
+  source_citation?: { citation_label?: string | null } | null;
 }
 
 export function subtractDaysIso(isoDate: string, days: number): string {
@@ -136,7 +138,7 @@ export function assessDraftQuality(args: {
   }
 
   for (const row of args.rankedSelection.slice(0, 8)) {
-    if (row.score < 95 || !args.selectedIds.includes(row.unit.id)) continue;
+    if (!row.mandatory || !args.selectedIds.includes(row.unit.id)) continue;
     if (bulletSourceIds.has(row.unit.id)) continue;
     warnings.push({
       reason: 'missing_required_context',
@@ -148,6 +150,16 @@ export function assessDraftQuality(args: {
 
   for (const bullet of args.draft.bullets) {
     const sourceUnits = args.selectedUnits.filter((u) => u.id && bullet.source_unit_ids.includes(u.id));
+    const hasStructuredCitation = sourceUnits.some((u) => Boolean(u.source_citation?.citation_label));
+    if (!bullet.article_url && !hasStructuredCitation && sourceUnits.some((u) => isArticleLevelUrl(u.article_url))) {
+      warnings.push({
+        reason: 'weak_sources',
+        severity: 'blocker',
+        message: `Bullet fehlt Quellenlink trotz verfügbarer Artikel-URL: ${bullet.text.slice(0, 140)}`,
+        unit_ids: bullet.source_unit_ids,
+      });
+    }
+
     const hasEvent = sourceUnits.some((u) => u.unit_type === 'event');
     if (!hasEvent) continue;
     const hasUrl = Boolean(bullet.article_url);

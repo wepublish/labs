@@ -33,6 +33,7 @@ import {
   type DraftV2,
   type PositiveSeed,
 } from './draft-quality.ts';
+import { isArticleLevelUrl } from './source-url.ts';
 
 export interface UnitForCompose {
   id?: string;
@@ -48,6 +49,15 @@ export interface UnitForCompose {
   quality_score?: number | null;
   sensitivity?: string | null;
   location?: { city?: string | null } | null;
+  source_citation?: {
+    publication?: string | null;
+    issue_date?: string | null;
+    issue_label?: string | null;
+    page?: string | null;
+    article_title?: string | null;
+    section?: string | null;
+    citation_label?: string | null;
+  } | null;
 }
 
 export interface ComposeInput {
@@ -368,9 +378,40 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
 
   const draft = normaliseDraftV2(raw, village_name);
   const allowedUrls = collectAllowedUrls(selected_units);
-  const validated = runValidatorChain(draft, allowedUrls);
+  const repaired = repairMissingSourceLinks(draft, selected_units);
+  const validated = runValidatorChain(repaired, allowedUrls);
 
   return { draft: validated, usage: response.usage };
+}
+
+/**
+ * The model sometimes cites `source_unit_ids` but leaves `article_url` empty.
+ * Repair that deterministically from the selected units so downstream quality
+ * gates and renderers keep the source trace instead of withholding a good item.
+ */
+function repairMissingSourceLinks(draft: DraftV2, units: UnitForCompose[]): DraftV2 {
+  const unitsById = new Map(units.filter((u) => u.id).map((u) => [u.id as string, u]));
+  const bullets = draft.bullets.map((bullet) => {
+    if (bullet.article_url || bullet.text.includes('](')) return bullet;
+
+    const sourceUnits = bullet.source_unit_ids
+      .map((id) => unitsById.get(id))
+      .filter((unit): unit is UnitForCompose => Boolean(unit));
+    const citedUnit = sourceUnits.find((unit) =>
+      unit.article_url && !unit.is_listing_page && isArticleLevelUrl(unit.article_url)
+    );
+    if (!citedUnit?.article_url) return bullet;
+
+    const domain = bullet.source_domain || citedUnit.source_domain || 'Quelle';
+    return {
+      ...bullet,
+      text: `${trimTrailingPunctuation(bullet.text)}, wie [${domain}](${citedUnit.article_url}) meldet.`,
+      article_url: citedUnit.article_url,
+      source_domain: domain,
+    };
+  });
+
+  return { ...draft, bullets };
 }
 
 /** Coerce untrusted LLM output into a DraftV2 with safe defaults. */
@@ -421,6 +462,10 @@ function collectAllowedUrls(units: UnitForCompose[]): string[] {
     if (u.article_url) urls.push(u.article_url);
   }
   return urls;
+}
+
+function trimTrailingPunctuation(text: string): string {
+  return text.trim().replace(/[.!?]+$/u, '');
 }
 
 /** Render a v2 DraftV2 to Markdown for backward-compat body column. */

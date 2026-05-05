@@ -41,8 +41,10 @@ import {
   enforceMandatorySelection,
   rankSelectionCandidates,
   buildSelectionDiagnostics,
+  refineSelectionForCompose,
 } from '../supabase/functions/_shared/selection-ranking.ts';
 import { openrouter } from '../supabase/functions/_shared/openrouter.ts';
+import { prepareUnitsForCompose } from '../supabase/functions/_shared/story-candidates.ts';
 
 interface Args {
   from: string;
@@ -66,6 +68,78 @@ interface CandidateUnit extends UnitForCompose {
   location?: { city?: string | null } | null;
   village_confidence?: string | null;
   used_in_article?: boolean | null;
+}
+
+function selectedUnitDiagnostics(
+  selected: CandidateUnit[],
+  ranked: ReturnType<typeof rankSelectionCandidates<CandidateUnit>>,
+): Array<Record<string, unknown>> {
+  const rankById = new Map(ranked.map((row) => [row.unit.id, row]));
+  return selected.map((unit) => {
+    const rank = rankById.get(unit.id);
+    return {
+      id: unit.id,
+      score: rank?.score ?? null,
+      reasons: rank?.reasons ?? [],
+      mandatory: rank?.mandatory ?? false,
+      statement: unit.statement,
+      unit_type: unit.unit_type,
+      event_date: unit.event_date ?? null,
+      publication_date: unit.publication_date ?? null,
+      source_domain: unit.source_domain ?? null,
+      article_url: unit.article_url ?? null,
+      quality_score: unit.quality_score ?? null,
+      village_confidence: unit.village_confidence ?? null,
+    };
+  });
+}
+
+function compositionCoverage(
+  selected: CandidateUnit[],
+  draft: Awaited<ReturnType<typeof composeDraftFromUnitsV2>>['draft'],
+): Array<Record<string, unknown>> {
+  return selected.map((unit) => {
+    const bullets = draft.bullets
+      .map((bullet, index) => ({ bullet, index: index + 1 }))
+      .filter(({ bullet }) => bullet.source_unit_ids.includes(unit.id));
+    return {
+      id: unit.id,
+      statement: unit.statement,
+      covered: bullets.length > 0,
+      bullet_indexes: bullets.map(({ index }) => index),
+      bullet_texts: bullets.map(({ bullet }) => bullet.text),
+    };
+  });
+}
+
+function markdownListSection(title: string, rows: string[]): string[] {
+  return [
+    `## ${title}`,
+    '',
+    ...(rows.length ? rows.map((row) => `- ${row}`) : ['- none']),
+    '',
+  ];
+}
+
+function classifyEvalVerdicts(args: {
+  selectedDiagnostics: Array<Record<string, unknown>>;
+  coverage: Array<Record<string, unknown>>;
+  warnings: Array<{ reason: string; severity: string; message: string }>;
+}): string[] {
+  const verdicts = new Set<string>();
+  const selectedCount = args.selectedDiagnostics.length;
+  const omittedCount = args.coverage.filter((row) => row.covered === false).length;
+  const staticCount = args.selectedDiagnostics.filter((row) =>
+    Array.isArray(row.reasons) && row.reasons.includes('static_directory_fact')
+  ).length;
+
+  if (selectedCount === 0) verdicts.add('selection_empty');
+  if (staticCount >= Math.max(2, Math.ceil(selectedCount / 2))) verdicts.add('too_many_static_units');
+  if (omittedCount > 0) verdicts.add('composition_omitted_selected_units');
+  if (args.warnings.some((w) => w.reason === 'weak_sources')) verdicts.add('source_link_missing');
+  if (args.warnings.some((w) => w.severity === 'blocker')) verdicts.add('quality_gate_blocked');
+  if (verdicts.size === 0) verdicts.add('selection_and_composition_passed');
+  return [...verdicts];
 }
 
 function parseArgs(argv: string[]): Args {
@@ -165,6 +239,7 @@ async function selectUnitIds(draft: DraftRow, rankedRows: CandidateUnit[], maxUn
     currentDate: context.runDate,
     publicationDate: context.publicationDate,
     maxCandidates: 80,
+    villageId: draft.village_id,
   });
   const formatted = formatUnitsForSelection(ranked.map((row) => row.unit));
   const response = await openrouter.chat({
@@ -187,7 +262,8 @@ async function selectUnitIds(draft: DraftRow, rankedRows: CandidateUnit[], maxUn
   const ids = Array.isArray(parsed.selected_unit_ids)
     ? parsed.selected_unit_ids.filter((id): id is string => typeof id === 'string' && valid.has(id))
     : [];
-  return enforceMandatorySelection(ids, ranked, maxUnits).slice(0, maxUnits);
+  const enforced = enforceMandatorySelection(ids, ranked, maxUnits);
+  return refineSelectionForCompose(enforced, ranked, maxUnits);
 }
 
 async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args): Promise<void> {
@@ -204,21 +280,36 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
     currentDate: context.runDate,
     publicationDate: context.publicationDate,
     maxCandidates: 80,
+    villageId: draft.village_id,
   });
-  const selectedIds = await selectUnitIds(draft, deduped.units, args.maxUnits);
-  const selected = deduped.units.filter((u) => selectedIds.includes(u.id));
-  if (selected.length === 0) throw new Error(`${draft.village_id} ${draft.publication_date}: no selected units`);
-
-  const { draft: generated, usage } = await composeDraftFromUnitsV2({
-    village_id: draft.village_id,
-    village_name: draft.village_name,
-    selected_units: selected,
-    positiveExamples: AGNOSTIC_POSITIVE_SEEDS,
-    antiPatterns: ANTI_PATTERNS,
-    currentDate: context.runDate,
-    publicationDate: context.publicationDate,
-    ctx: { village_id: draft.village_id, run_id: draft.id },
-  });
+  let selectedIds = await selectUnitIds(draft, deduped.units, args.maxUnits);
+  const selectedById = new Map(deduped.units.map((u) => [u.id, u]));
+  const selected = prepareUnitsForCompose(
+    selectedIds.map((id) => selectedById.get(id)).filter((u): u is CandidateUnit => Boolean(u)),
+    ranked,
+  ) as CandidateUnit[];
+  selectedIds = selected.map((u) => u.id);
+  const composeResult = selected.length > 0
+    ? await composeDraftFromUnitsV2({
+      village_id: draft.village_id,
+      village_name: draft.village_name,
+      selected_units: selected,
+      positiveExamples: AGNOSTIC_POSITIVE_SEEDS,
+      antiPatterns: ANTI_PATTERNS,
+      currentDate: context.runDate,
+      publicationDate: context.publicationDate,
+      ctx: { village_id: draft.village_id, run_id: draft.id },
+    })
+    : {
+      draft: {
+        title: `${draft.village_name} — ${draft.publication_date}`,
+        bullets: [],
+        notes_for_editor: ['Keine auswählbaren Einheiten nach Ranking-, Verfügbarkeits- und Qualitätsfiltern.'],
+      },
+      usage: null,
+    };
+  const generated = composeResult.draft;
+  const usage = composeResult.usage;
   const quality = assessDraftQuality({
     draft: generated,
     selectedUnits: selected,
@@ -227,6 +318,14 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
     context,
   });
   const diagnostics = buildSelectionDiagnostics(ranked, selectedIds);
+  const selectedDiagnostics = selectedUnitDiagnostics(selected, ranked);
+  const coverage = compositionCoverage(selected, generated);
+  const omittedSelected = coverage.filter((row) => !row.covered);
+  const evalVerdicts = classifyEvalVerdicts({
+    selectedDiagnostics,
+    coverage,
+    warnings: quality.warnings,
+  });
   const base = `${draft.publication_date}-${draft.village_id}-${draft.id.slice(0, 8)}`;
   const outDir = resolve(process.cwd(), args.outDir);
   mkdirSync(outDir, { recursive: true });
@@ -239,9 +338,15 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
     rejected_duplicates: deduped.rejected,
     selected_unit_ids: selectedIds,
     decision: quality.decision,
+    eval_verdicts: evalVerdicts,
     warnings: quality.warnings,
     usage,
-    diagnostics,
+    diagnostics: {
+      ...diagnostics,
+      selected_units: selectedDiagnostics,
+      composition_coverage: coverage,
+      selected_but_omitted: omittedSelected,
+    },
     draft: generated,
   }, null, 2), 'utf8');
   writeFileSync(join(outDir, `${base}.md`), [
@@ -250,9 +355,21 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
     renderDraftV2ToMarkdown(generated).trim(),
     '',
     `Decision: ${quality.decision}`,
+    `Eval verdicts: ${evalVerdicts.join(', ')}`,
     '',
     'Warnings:',
     ...(quality.warnings.length ? quality.warnings.map((w) => `- [${w.severity}] ${w.reason}: ${w.message}`) : ['- none']),
+    '',
+    ...markdownListSection(
+      'Selected Units',
+      selectedDiagnostics.map((row) =>
+        `${row.id} | score=${row.score} | reasons=${Array.isArray(row.reasons) ? row.reasons.join(',') : ''} | ${row.statement}`
+      ),
+    ),
+    ...markdownListSection(
+      'Selected But Omitted',
+      omittedSelected.map((row) => `${row.id} | ${row.statement}`),
+    ),
   ].join('\n'), 'utf8');
   console.log(`${draft.publication_date} ${draft.village_id}: ${quality.decision}, candidates=${candidates.length}, selected=${selectedIds.length}`);
 }
@@ -270,4 +387,3 @@ main().catch((err) => {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 });
-

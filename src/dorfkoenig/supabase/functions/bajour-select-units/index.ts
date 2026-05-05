@@ -14,6 +14,7 @@ import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 import {
   enforceMandatorySelection,
   rankSelectionCandidates,
+  refineSelectionForCompose,
   selectDeterministicFallback,
 } from '../_shared/selection-ranking.ts';
 
@@ -151,6 +152,7 @@ Deno.serve(async (req) => {
       currentDate,
       publicationDate,
       maxCandidates: 80,
+      villageId: village_id,
     });
     const rankedRows = rankedUnits.map((row) => row.unit);
 
@@ -178,7 +180,7 @@ Deno.serve(async (req) => {
     // Parse LLM response
     let selectedIds: string[];
     try {
-      const parsed = JSON.parse(response.choices[0].message.content);
+      const parsed = JSON.parse(response.choices[0].message.content ?? '{}');
       // Validate that returned IDs exist in the ranked candidate set.
       const validIds = new Set(rankedRows.map((u: { id: string }) => u.id));
       selectedIds = (parsed.selected_unit_ids || []).filter(
@@ -198,6 +200,7 @@ Deno.serve(async (req) => {
       selectedIds = selectDeterministicFallback(rankedUnits, MAX_UNITS_PER_COMPOSE);
     }
     selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE);
+    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE);
 
     return jsonResponse({ data: { selected_unit_ids: selectedIds } });
   } catch (err) {

@@ -42,6 +42,7 @@ import {
   dedupeSelectionCandidates,
   enforceMandatorySelection,
   rankSelectionCandidates,
+  refineSelectionForCompose,
 } from '../_shared/selection-ranking.ts';
 import {
   assessDraftQuality,
@@ -51,6 +52,7 @@ import {
   selectFallbackUnitIds,
 } from '../_shared/auto-draft-quality.ts';
 import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
+import { prepareUnitsForCompose } from '../_shared/story-candidates.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -173,6 +175,7 @@ async function notifyWithheldDraft(opts: {
   village_name: string;
   publicationDate: string;
   draftTitle: string;
+  draftBody: string;
   reasons: string[];
 }): Promise<void> {
   if (ADMIN_EMAILS.length === 0) return;
@@ -185,6 +188,7 @@ async function notifyWithheldDraft(opts: {
       villageId: opts.village_id,
       publicationDate: opts.publicationDate,
       draftTitle: opts.draftTitle,
+      draftBody: opts.draftBody,
       draftUrl,
       reasons: opts.reasons,
     });
@@ -264,7 +268,7 @@ Deno.serve(async (req) => {
 
     let unitsQuery = supabase
       .from('information_units')
-      .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page, source_domain, village_confidence')
+      .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page, source_domain, source_citation, village_confidence')
       .eq('location->>city', village_id)
       .eq('user_id', user_id)
       .eq('used_in_article', false)
@@ -412,6 +416,7 @@ Deno.serve(async (req) => {
       currentDate: runDate,
       publicationDate,
       maxCandidates: 80,
+      villageId: village_id,
     });
     const rankedUnitRows = rankedUnits.map((row) => row.unit);
     const formattedUnits = formatUnitsForSelection(rankedUnitRows, previouslyPublished);
@@ -451,9 +456,7 @@ Deno.serve(async (req) => {
       selectedIds = selectFallbackUnitIds(rankedUnits, maxUnits);
     }
     selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, maxUnits);
-    if (selectedIds.length > maxUnits) {
-      selectedIds = selectedIds.slice(0, maxUnits);
-    }
+    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, maxUnits);
 
     if (runId) {
       const diagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds);
@@ -472,7 +475,7 @@ Deno.serve(async (req) => {
     }
 
     // --- 4. Generate draft ---
-    const { data: selectedUnitsRaw, error: selectedError } = await supabase
+    const { data: selectedUnitsData, error: selectedError } = await supabase
       .from('information_units')
       .select(UNIT_FOR_COMPOSE_COLUMNS + ', location, village_confidence')
       .in('id', selectedIds);
@@ -481,11 +484,11 @@ Deno.serve(async (req) => {
 
     // Server-side village re-check — defense against extraction mislabels AND
     // §3.4.5 tighten: also drop low-confidence village attributions.
-    const selectedUnitRows = (selectedUnitsRaw || []) as unknown as Array<UnitForCompose & {
+    const selectedUnitRows = (selectedUnitsData || []) as unknown as Array<UnitForCompose & {
       location?: { city?: string } | null;
       village_confidence?: string | null;
     }>;
-    const selectedUnits = selectedUnitRows.filter(
+    const villageCheckedUnits = selectedUnitRows.filter(
       (u: { location?: { city?: string } | null; village_confidence?: string | null }) => {
         const city = u.location?.city;
         if (city !== village_id) {
@@ -499,6 +502,14 @@ Deno.serve(async (req) => {
         return true;
       },
     );
+    const selectedUnitsById = new Map(villageCheckedUnits.map((u) => [u.id, u]));
+    const orderedSelectedUnits: UnitForCompose[] = [];
+    for (const id of selectedIds) {
+      const unit = selectedUnitsById.get(id);
+      if (unit) orderedSelectedUnits.push(unit);
+    }
+    const selectedUnits = prepareUnitsForCompose(orderedSelectedUnits, rankedUnits);
+    selectedIds = selectedUnits.map((u) => u.id).filter((id): id is string => Boolean(id));
 
     // Compose: either v1 (legacy markdown sections) or v2 (bullet schema) based on flag.
     let draftTitle: string;
@@ -660,6 +671,7 @@ Deno.serve(async (req) => {
         village_name,
         publicationDate,
         draftTitle,
+        draftBody: bodyMd.trim(),
         reasons,
       });
       if (runId) {

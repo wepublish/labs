@@ -223,6 +223,7 @@ export interface NewspaperJob {
   storage_path: string | null;
   publication_date: string | null;
   source_url?: string | null;
+  source_citation?: SourceCitation | null;
   label: string | null;
   status: NewspaperJobStatus;
   stage: NewspaperJobStage | null;
@@ -237,6 +238,16 @@ export interface NewspaperJob {
   extracted_units: NewspaperExtractedUnit[] | null;
   created_at: string;
   completed_at: string | null;
+}
+
+export interface SourceCitation {
+  publication?: string | null;
+  issue_date?: string | null;
+  issue_label?: string | null;
+  page?: string | null;
+  article_title?: string | null;
+  section?: string | null;
+  citation_label?: string | null;
 }
 
 export interface NewspaperProcessingResult {
