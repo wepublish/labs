@@ -1,12 +1,13 @@
 <script lang="ts">
   import { processInlineMarkdown } from '../../bajour/utils';
   import type { Draft } from '../../lib/types';
-  import type { DraftBullet } from '../../bajour/types';
+  import type { DraftBullet, QualityWarning } from '../../bajour/types';
 
   interface Props {
     draft: Draft & {
       bullets?: DraftBullet[];
       notes_for_editor?: string[];
+      quality_warnings?: QualityWarning[];
     };
   }
 
@@ -26,6 +27,16 @@
 
 <article class="document-content">
   <h1>{draft.title}</h1>
+  {#if (draft.quality_warnings && draft.quality_warnings.length > 0) || (draft.notes_for_editor && draft.notes_for_editor.length > 0)}
+    <section class="quality-banner" aria-label="Qualitätswarnungen">
+      <h2>Qualitätsprüfung</h2>
+      <ul>
+        {#each (draft.quality_warnings && draft.quality_warnings.length > 0 ? draft.quality_warnings.map((w) => w.message) : draft.notes_for_editor || []).slice(0, 5) as warning}
+          <li>{warning}</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
   {#if draft.headline}
     <p class="lede">{draft.headline}</p>
   {/if}
@@ -128,6 +139,28 @@
     padding-bottom: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
     white-space: pre-line;
+  }
+
+  .quality-banner {
+    margin: 0 0 var(--spacing-lg);
+    padding: var(--spacing-md);
+    border: 1px solid #f59e0b;
+    border-left: 3px solid #d97706;
+    border-radius: var(--radius-sm);
+    background: #fffbeb;
+  }
+
+  .quality-banner h2 {
+    color: #92400e;
+    margin-bottom: 0.5rem;
+  }
+
+  .quality-banner ul {
+    margin: 0;
+    padding-left: 1.125rem;
+    color: #78350f;
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   .document-content h2 {

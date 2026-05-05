@@ -9,7 +9,7 @@ export interface Village {
   scout_id: string;
 }
 
-export type VerificationStatus = 'ausstehend' | 'bestätigt' | 'abgelehnt';
+export type VerificationStatus = 'ausstehend' | 'bestätigt' | 'abgelehnt' | 'withheld';
 
 export interface VerificationResponse {
   name: string;
@@ -36,6 +36,13 @@ export interface DraftBulletsJson {
   notes_for_editor: string[];
 }
 
+export interface QualityWarning {
+  reason: string;
+  severity: 'blocker' | 'warning';
+  message: string;
+  unit_ids?: string[];
+}
+
 export interface BajourDraft {
   id: string;
   user_id: string;
@@ -52,10 +59,10 @@ export interface BajourDraft {
   verification_resolved_at: string | null;
   verification_timeout_at: string | null;
   whatsapp_message_ids: string[];
+  quality_warnings?: QualityWarning[];
   created_at: string;
   updated_at: string;
   /** DRAFT_QUALITY.md §3.1 — 1 = legacy markdown, 2 = bullets_json. */
   schema_version?: number;
   bullets_json?: DraftBulletsJson | null;
 }
-

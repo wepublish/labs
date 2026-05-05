@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Status badge for draft verification: ausstehend (pending), bestaetigt, abgelehnt.
-  import { Clock, CheckCircle, XCircle } from 'lucide-svelte';
+  // Status badge for draft verification, including machine-withheld drafts.
+  import { Clock, CheckCircle, XCircle, ShieldAlert } from 'lucide-svelte';
   import type { VerificationStatus } from '../../bajour/types';
 
   interface Props {
@@ -13,6 +13,7 @@
     ausstehend: 'Ausstehend',
     'bestätigt': 'Bestätigt',
     abgelehnt: 'Abgelehnt',
+    withheld: 'Zurückgehalten',
   };
 
   let label = $derived(labelMap[status]);
@@ -23,11 +24,14 @@
   class:badge-pending={status === 'ausstehend'}
   class:badge-confirmed={status === 'bestätigt'}
   class:badge-rejected={status === 'abgelehnt'}
+  class:badge-withheld={status === 'withheld'}
 >
   {#if status === 'ausstehend'}
     <Clock size={12} />
   {:else if status === 'bestätigt'}
     <CheckCircle size={12} />
+  {:else if status === 'withheld'}
+    <ShieldAlert size={12} />
   {:else}
     <XCircle size={12} />
   {/if}
@@ -60,5 +64,10 @@
   .badge-rejected {
     background: var(--color-status-error-bg);
     color: var(--color-status-error-text);
+  }
+
+  .badge-withheld {
+    background: #fffbeb;
+    color: #92400e;
   }
 </style>

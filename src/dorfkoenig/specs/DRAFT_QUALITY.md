@@ -131,7 +131,7 @@ type Bullet = {
 
 Extras are demoted (e.g. second `lead` → `secondary`) or dropped with a warning.
 
-**§3.1.1 Empty draft is valid.** When the LLM returns `bullets: []`, save with `notes_for_editor` non-empty. No WhatsApp message to correspondents on empty days — they get silence. Admin notification path is §3.1.4.
+**§3.1.1 Empty/withheld draft is valid.** When the LLM returns `bullets: []`, the run exits through the empty-path email flow. When a draft has bullets but fails post-compose quality gates, save the draft with `verification_status='withheld'`, persist `quality_warnings`, do not mark selected units as used, and do not send WhatsApp verification. Admin notification path is §3.1.4.
 
 **§3.1.2 Emoji palette (closed list, approved 2026-04-22).**
 
@@ -143,15 +143,16 @@ Lives in `_shared/draft-quality.ts`. `validateEmojiPalette` (§3.5) strips anyth
 
 **§3.1.3 One compose call (not parallel).** At 20 villages × 4 slot calls = 80 concurrent OpenRouter requests at 18:00 — rate-limit risk outweighs marginal quality gain. One call receives all units + the anti-pattern table and returns a full `Draft`. `kind` caps are enforced post-generation in TS.
 
-**§3.1.4 Empty-path admin notifications.** Three paths can end with no draft being published:
+**§3.1.4 Empty-path and withheld admin notifications.** Four paths can end with no WhatsApp verification being sent:
 
 | Case | Where | Trigger |
 |---|---|---|
 | (a) Zero units after filtering | early return in `bajour-auto-draft/index.ts:122-130` | units query returns empty (§3.2 filter matched nothing) |
 | (b) Units exist but all below `quality_score < 40` | same early return | `quality_score >= 40` clause excludes every row |
 | (c) LLM returns `bullets: []` | post-validator in §3.5 | compose completed but `notes_for_editor` non-empty, `bullets` empty |
+| (d) Draft generated but quality gate blocks send | `_shared/auto-draft-quality.ts` after compose validators | title/body mismatch, severe editor notes, weak sources, omitted high-ranked selected unit, or event bullet lacks enough context |
 
-On **any** of the three, send one email to `ADMIN_EMAILS` via `resend.ts`:
+On empty paths (a-c), send one email to `ADMIN_EMAILS` via `buildDraftFailureEmail()`:
 
 - Subject: `[Dorfkönig] Kein Entwurf für {village_name} am {date} — {case_label}`
 - Body includes: village, date, case label, reasons:
@@ -160,13 +161,15 @@ On **any** of the three, send one email to `ADMIN_EMAILS` via `resend.ts`:
   - Case (c): full `notes_for_editor` array verbatim
 - Deep-link to `#/feed?village={village_id}` for the editor to investigate
 
-**No WhatsApp message to correspondents on any of these paths.** Admins are the sole notification target for empty-day / failure conditions.
+On withheld drafts (d), save the draft row, set `verification_status='withheld'`, write `quality_warnings`, and email `ADMIN_EMAILS` via `buildDraftWithheldEmail()` with a signed admin deep-link. `bajour-send-verification` rejects withheld drafts.
+
+**No WhatsApp message to correspondents on any of these paths.** Admins are the sole notification target for empty-day / withheld conditions.
 
 **Rate-limit.** Bounded — worst case 20 emails/day (one per village). Fine. If volume becomes annoying, add a daily digest option later.
 
 **Schema version.** `bajour_drafts` gets `schema_version INT NOT NULL DEFAULT 1` + `bullets_json JSONB` (nullable until Phase 1 ships, then required for `schema_version=2`). Renderer branches on version.
 
-**Files.** `bajour-auto-draft/index.ts`, `compose/index.ts`, `_shared/prompts.ts`, `_shared/draft-quality.ts` (new), `_shared/resend.ts` (add `buildDraftFailureEmail()`), `lib/types.ts`, `components/compose/DraftContent.svelte`, `components/compose/DraftPreview.svelte`.
+**Files.** `bajour-auto-draft/index.ts`, `compose/index.ts`, `_shared/prompts.ts`, `_shared/draft-quality.ts`, `_shared/auto-draft-quality.ts`, `_shared/resend.ts`, `bajour/types.ts`, `components/compose/DraftContent.svelte`, `components/compose/DraftList.svelte`, `components/compose/VerificationBadge.svelte`.
 
 **Rollback.** `VITE_FEATURE_BULLET_SCHEMA=false` → new drafts write v1 markdown; existing v2 drafts render via the new renderer (which handles both shapes). Empty-path emails gated by `feature_empty_path_email` flag in `user_settings`.
 
@@ -312,11 +315,11 @@ validateKindCounts(draft): { draft, warnings[] }
   // Warning per demotion/drop.
 ```
 
-**Warning sink.** All warnings append to `notes_for_editor`. Editor sees them in the `bajour_drafts` row.
+**Warning sink.** Validator warnings append to `notes_for_editor`. Post-compose quality gate warnings also persist as `bajour_drafts.quality_warnings` and render prominently in the draft UI.
 
-**Fail-closed trigger.** Only one path → empty draft: if after all validators `bullets.length === 0`, save `{ bullets: [], notes_for_editor: [...] }`. Empty-path admin email (§3.1.4 case c) then fires.
+**Fail-closed triggers.** If after all validators `bullets.length === 0`, the empty-path admin email (§3.1.4 case c) fires. If bullets remain but the quality gate finds blockers, the draft is saved as `withheld`, selected units are not marked `used_in_article`, and the withheld admin email fires.
 
-**Files.** `_shared/draft-quality.ts` (new — also holds emoji palette, banlist), `bajour-auto-draft/index.ts`, `compose/index.ts`.
+**Files.** `_shared/draft-quality.ts` (emoji palette, banlist, validators), `_shared/auto-draft-quality.ts` (date context, fallback selection, gate policy), `bajour-auto-draft/index.ts`, `compose/index.ts`.
 
 **Rollback.** Wrap validator chain in `if (featureFlag('draft_validation'))`. Off = pre-change behaviour.
 

@@ -58,6 +58,7 @@
   let whatsappPending = $derived(
     savedDraft?.verification_status === 'ausstehend' && whatsappSent
   );
+  let isWithheld = $derived(savedDraft?.verification_status === 'withheld');
 </script>
 
 <div class="draft-actions-footer">
@@ -147,6 +148,8 @@
         {/if}
         Erneut senden
       </button>
+    {:else if isWithheld}
+      <span class="whatsapp-status withheld">Zurückgehalten — Qualitätsprüfung erforderlich</span>
     {:else if whatsappSent}
       <button
         class="step-btn step-btn-resend"
@@ -304,6 +307,10 @@
 
   .whatsapp-status.pending {
     color: var(--color-text-muted);
+  }
+
+  .whatsapp-status.withheld {
+    color: #92400e;
   }
 
   .step-btn {

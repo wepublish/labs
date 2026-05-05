@@ -15,14 +15,15 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 import { requireInternalRequest } from '../_shared/internal-auth.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import {
-  addDaysIso,
   buildInformationSelectPrompt,
   DRAFT_COMPOSE_PROMPT,
+  DRAFT_COMPOSE_PROMPT_V2,
   INFORMATION_SELECT_PROMPT,
   formatUnitsForSelection,
   UNIT_FOR_COMPOSE_COLUMNS,
 } from '../_shared/prompts.ts';
 import { composeDraftFromUnits, composeDraftFromUnitsV2, renderDraftV2ToMarkdown } from '../_shared/compose-draft.ts';
+import type { UnitForCompose } from '../_shared/compose-draft.ts';
 import {
   getCorrespondentsForVillage,
   sendWhatsAppMessage,
@@ -31,15 +32,23 @@ import {
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 import { explainQualityScore } from '../_shared/quality-scoring.ts';
 import { sendEmail } from '../_shared/resend.ts';
-import { buildDraftFailureEmail, type EmptyDraftCase } from '../_shared/resend.ts';
+import { buildDraftFailureEmail, buildDraftWithheldEmail, type EmptyDraftCase } from '../_shared/resend.ts';
 import { ANTI_PATTERNS, AGNOSTIC_POSITIVE_SEEDS } from '../_shared/draft-quality.ts';
+import type { DraftV2 } from '../_shared/draft-quality.ts';
 import { loadComposeFeedbackExamplesForVillage } from '../_shared/feedback-retrieval.ts';
 import {
   buildSelectionDiagnostics,
   enforceMandatorySelection,
   rankSelectionCandidates,
-  selectDeterministicFallback,
 } from '../_shared/selection-ranking.ts';
+import {
+  assessDraftQuality,
+  formatWithheldReasons,
+  qualityWarningsToEditorNotes,
+  resolveDraftRunContext,
+  selectFallbackUnitIds,
+} from '../_shared/auto-draft-quality.ts';
+import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -58,6 +67,8 @@ interface AutoDraftRequest {
   village_id: string;
   village_name: string;
   user_id: string;
+  /** Optional operator backfill date. Normal cron calls omit this. */
+  publication_date?: string;
 }
 
 const RECENCY_DAYS = 2;
@@ -70,6 +81,10 @@ const PUBLISHED_DEDUP_WINDOW_DAYS = 14;
 
 function zurichToday(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+}
+
+function validIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 /**
@@ -103,8 +118,13 @@ async function loadPreviouslyPublishedDates(
   }
 
   const map = new Map<string, string>();
-  for (const row of (data as Array<{ unit_id: string; bajour_drafts: { published_at: string } }>) ?? []) {
-    const date = row.bajour_drafts?.published_at?.slice(0, 10);
+  const rows = (data ?? []) as unknown as Array<{
+    unit_id: string;
+    bajour_drafts: { published_at: string } | Array<{ published_at: string }>;
+  }>;
+  for (const row of rows) {
+    const joinedDraft = Array.isArray(row.bajour_drafts) ? row.bajour_drafts[0] : row.bajour_drafts;
+    const date = joinedDraft?.published_at?.slice(0, 10);
     if (!date) continue;
     const prev = map.get(row.unit_id);
     if (!prev || date > prev) map.set(row.unit_id, date);
@@ -138,6 +158,33 @@ async function notifyEmptyPath(opts: {
   }
 }
 
+async function notifyWithheldDraft(opts: {
+  draftId: string;
+  village_id: string;
+  village_name: string;
+  publicationDate: string;
+  draftTitle: string;
+  reasons: string[];
+}): Promise<void> {
+  if (ADMIN_EMAILS.length === 0) return;
+
+  try {
+    const signed = await signAdminDraftLink(opts.draftId);
+    const draftUrl = buildAdminDraftUrl(PUBLIC_APP_URL, signed);
+    const { subject, html } = buildDraftWithheldEmail({
+      villageName: opts.village_name,
+      villageId: opts.village_id,
+      publicationDate: opts.publicationDate,
+      draftTitle: opts.draftTitle,
+      draftUrl,
+      reasons: opts.reasons,
+    });
+    await sendEmail({ to: ADMIN_EMAILS, subject, html });
+  } catch (err) {
+    console.error('[auto-draft] withheld email send failed (non-fatal):', err);
+  }
+}
+
 // --- Main handler ---
 
 Deno.serve(async (req) => {
@@ -158,8 +205,17 @@ Deno.serve(async (req) => {
   if (!village_id || !village_name || !user_id) {
     return errorResponse('village_id, village_name, user_id erforderlich', 400);
   }
+  if (body.publication_date && !validIsoDate(body.publication_date)) {
+    return errorResponse('publication_date muss YYYY-MM-DD sein', 400, 'VALIDATION_ERROR');
+  }
 
-  const today = zurichToday();
+  // 1. Resolve run context. `publicationDate` is what readers see; `runDate`
+  // anchors prompt recency when the draft is prepared the day before.
+  const runContext = resolveDraftRunContext({
+    requestedPublicationDate: body.publication_date,
+    zurichToday: zurichToday(),
+  });
+  const { runDate, publicationDate } = runContext;
   let runId: number | null = null;
 
   try {
@@ -169,17 +225,17 @@ Deno.serve(async (req) => {
       .select('id')
       .eq('user_id', user_id)
       .eq('village_id', village_id)
-      .eq('publication_date', today)
+      .eq('publication_date', publicationDate)
       .neq('verification_status', 'abgelehnt')
       .limit(1)
       .maybeSingle();
 
     if (existingDraft) {
-      console.log(`Auto-draft skipped: draft already exists for user=${user_id} village=${village_id} on ${today}`);
+      console.log(`Auto-draft skipped: draft already exists for user=${user_id} village=${village_id} on ${publicationDate}`);
       await supabase.from('auto_draft_runs').insert({
         village_id,
         status: 'skipped',
-        error_message: 'Draft already exists for today',
+        error_message: `Draft already exists for ${publicationDate}`,
         completed_at: new Date().toISOString(),
       });
       return jsonResponse({ data: { status: 'skipped', reason: 'draft_exists' } });
@@ -258,7 +314,7 @@ Deno.serve(async (req) => {
     ]);
 
     const selectTemplate = selectRow?.content ?? INFORMATION_SELECT_PROMPT;
-    const composeLayer2 = composeRow?.content ?? DRAFT_COMPOSE_PROMPT;
+    const composeLayer2 = composeRow?.content ?? (FLAG_BULLET_SCHEMA ? DRAFT_COMPOSE_PROMPT_V2 : DRAFT_COMPOSE_PROMPT);
     const maxUnits = typeof maxUnitsRow?.value === 'number' && Number.isInteger(maxUnitsRow.value)
       ? maxUnitsRow.value
       : MAX_UNITS_PER_COMPOSE;
@@ -288,7 +344,7 @@ Deno.serve(async (req) => {
             publication_date: u.publication_date,
             village_confidence: u.village_confidence,
             sensitivity: u.sensitivity,
-          }, today);
+            }, publicationDate);
           const gotKeys = new Set(reasonsForUnit.map((r) => r.key));
           const missingKeys = [
             'article_level_url',
@@ -302,7 +358,7 @@ Deno.serve(async (req) => {
         reasons.push('Keine Einheiten im Zeitfenster. Prüfe Scouts + Kriterien.');
       }
 
-      await notifyEmptyPath({ village_id, village_name, today, caseLabel, reasons });
+      await notifyEmptyPath({ village_id, village_name, today: publicationDate, caseLabel, reasons });
 
       console.log(`Auto-draft skipped: ${caseLabel} for ${village_id}`);
       if (runId) {
@@ -328,9 +384,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const publicationDate = addDaysIso(today, 1);
     const rankedUnits = rankSelectionCandidates(units, {
-      currentDate: today,
+      currentDate: runDate,
       publicationDate,
       maxCandidates: 80,
     });
@@ -342,7 +397,7 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'system',
-          content: buildInformationSelectPrompt(today, RECENCY_DAYS, selectTemplate, publicationDate),
+          content: buildInformationSelectPrompt(runDate, RECENCY_DAYS, selectTemplate, publicationDate),
         },
         {
           role: 'user',
@@ -358,18 +413,18 @@ Deno.serve(async (req) => {
     let selectionResponsePreview = '';
     try {
       selectionResponsePreview = (selectResponse.choices[0].message.content ?? '').slice(0, 1000);
-      const parsed = JSON.parse(selectResponse.choices[0].message.content);
+      const parsed = JSON.parse(selectResponse.choices[0].message.content ?? '{}');
       const validIds = new Set(rankedUnitRows.map((u) => u.id));
       selectedIds = (parsed.selected_unit_ids || []).filter((id: string) => validIds.has(id));
     } catch {
       console.error('Failed to parse LLM selection response');
       selectionResponsePreview = 'parse_failed';
-      selectedIds = selectDeterministicFallback(rankedUnits, maxUnits);
+      selectedIds = selectFallbackUnitIds(rankedUnits, maxUnits);
     }
 
     if (selectedIds.length === 0) {
       selectionResponsePreview ||= 'empty_selection_fallback';
-      selectedIds = selectDeterministicFallback(rankedUnits, maxUnits);
+      selectedIds = selectFallbackUnitIds(rankedUnits, maxUnits);
     }
     selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, maxUnits);
     if (selectedIds.length > maxUnits) {
@@ -399,7 +454,11 @@ Deno.serve(async (req) => {
 
     // Server-side village re-check — defense against extraction mislabels AND
     // §3.4.5 tighten: also drop low-confidence village attributions.
-    const selectedUnits = (selectedUnitsRaw || []).filter(
+    const selectedUnitRows = (selectedUnitsRaw || []) as unknown as Array<UnitForCompose & {
+      location?: { city?: string } | null;
+      village_confidence?: string | null;
+    }>;
+    const selectedUnits = selectedUnitRows.filter(
       (u: { location?: { city?: string } | null; village_confidence?: string | null }) => {
         const city = u.location?.city;
         if (city !== village_id) {
@@ -450,7 +509,7 @@ Deno.serve(async (req) => {
         antiPatterns: retrievedExamples?.antiPatterns,
         positiveExamples: retrievedExamples?.positiveExamples,
         ctx: { village_id, run_id: runId ?? undefined },
-        currentDate: today,
+        currentDate: runDate,
         publicationDate,
       });
       draftTitle = v2.title;
@@ -467,7 +526,7 @@ Deno.serve(async (req) => {
         compose_layer2: composeLayer2,
         ctx: { village_id, run_id: runId ?? undefined },
       });
-      draftTitle = v1.title || `${village_name} — ${today}`;
+      draftTitle = v1.title || `${village_name} — ${publicationDate}`;
       bodyMd = body_md;
       schemaVersion = 1;
       bulletCount = (v1.sections?.length ?? 0) + (v1.greeting ? 1 : 0); // approximate for metrics
@@ -478,7 +537,7 @@ Deno.serve(async (req) => {
       await notifyEmptyPath({
         village_id,
         village_name,
-        today,
+        today: publicationDate,
         caseLabel: 'llm_under_produced',
         reasons: notesForEditor.length > 0 ? notesForEditor : ['Modell hat bullets:[] zurückgegeben.'],
       });
@@ -494,6 +553,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { status: 'skipped', reason: 'llm_under_produced' } });
     }
 
+    // 5. Assess quality. This is intentionally after deterministic validators:
+    // validator notes are part of the blocking signal, not quiet metadata.
+    const quality = FLAG_BULLET_SCHEMA
+      ? assessDraftQuality({
+          draft: bulletsJson as DraftV2,
+          selectedUnits,
+          rankedSelection: rankedUnits,
+          selectedIds,
+          context: runContext,
+        })
+      : { decision: 'send' as const, warnings: [] };
+    if (quality.warnings.length > 0) {
+      notesForEditor = [...notesForEditor, ...qualityWarningsToEditorNotes(quality.warnings)];
+      if (bulletsJson && typeof bulletsJson === 'object') {
+        bulletsJson = {
+          ...(bulletsJson as Record<string, unknown>),
+          notes_for_editor: notesForEditor,
+        };
+      }
+    }
+    const verificationStatus = quality.decision === 'withhold' ? 'withheld' : 'ausstehend';
+
     // --- 5. Save draft ---
     const { data: savedDraft, error: saveError } = await supabase
       .from('bajour_drafts')
@@ -505,9 +586,11 @@ Deno.serve(async (req) => {
         body: bodyMd.trim(),
         schema_version: schemaVersion,
         bullets_json: bulletsJson,
+        quality_warnings: quality.warnings,
         selected_unit_ids: selectedIds,
-        publication_date: today,
-        verification_status: 'ausstehend',
+        publication_date: publicationDate,
+        verification_status: verificationStatus,
+        verification_resolved_at: verificationStatus === 'withheld' ? new Date().toISOString() : null,
       })
       .select('id')
       .single();
@@ -516,11 +599,14 @@ Deno.serve(async (req) => {
 
     const draftId = savedDraft.id;
 
-    // Mark units as used
-    await supabase
-      .from('information_units')
-      .update({ used_in_article: true, used_at: new Date().toISOString() })
-      .in('id', selectedIds);
+    // Mark units as used only once the draft is good enough to send. Withheld
+    // drafts remain review artifacts and should not burn future candidates.
+    if (quality.decision === 'send') {
+      await supabase
+        .from('information_units')
+        .update({ used_in_article: true, used_at: new Date().toISOString() })
+        .in('id', selectedIds);
+    }
 
     // --- 5b. Inline metrics capture (§5.1) ---
     if (FLAG_METRICS_CAPTURE) {
@@ -537,6 +623,36 @@ Deno.serve(async (req) => {
       } catch (metricsErr) {
         console.error('[auto-draft] metrics capture failed (non-fatal):', metricsErr);
       }
+    }
+
+    if (quality.decision === 'withhold') {
+      const reasons = formatWithheldReasons(quality.warnings);
+      await notifyWithheldDraft({
+        draftId,
+        village_id,
+        village_name,
+        publicationDate,
+        draftTitle,
+        reasons,
+      });
+      if (runId) {
+        await supabase.from('auto_draft_runs')
+          .update({
+            status: 'skipped',
+            draft_id: draftId,
+            error_message: `withheld: ${reasons.slice(0, 3).join(' | ')}`.slice(0, 500),
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', runId);
+      }
+      return jsonResponse({
+        data: {
+          status: 'withheld',
+          draft_id: draftId,
+          units_selected: selectedIds.length,
+          reasons,
+        },
+      });
     }
 
     // --- 6. Send WhatsApp verification (non-fatal) ---
@@ -567,7 +683,7 @@ Deno.serve(async (req) => {
                   type: 'body',
                   parameters: [
                     { type: 'text', text: village_name },
-                    { type: 'text', text: today },
+                    { type: 'text', text: publicationDate },
                     { type: 'text', text: bodyParam },
                   ],
                 },

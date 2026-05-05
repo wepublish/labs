@@ -528,7 +528,7 @@ $$ LANGUAGE plpgsql;
 
 ### 4. dispatch_due_scouts
 
-Called by pg_cron to dispatch scouts that are due for execution.
+Called by pg_cron every 15 minutes to dispatch scouts that are due for execution. The function must not sleep inside the database transaction; it caps each tick and relies on running-execution and same-host guards to avoid stampedes.
 
 ```sql
 CREATE OR REPLACE FUNCTION dispatch_due_scouts()
@@ -546,17 +546,23 @@ BEGIN
 
     SELECT decrypted_secret INTO service_key
     FROM vault.decrypted_secrets
-    WHERE name = 'service_role_key';
+    WHERE name = 'internal_function_secret';
+
+    IF service_key IS NULL THEN
+      SELECT decrypted_secret INTO service_key
+      FROM vault.decrypted_secrets
+      WHERE name = 'service_role_key';
+    END IF;
 
     -- Find and dispatch due scouts
     FOR scout_record IN
-        SELECT id, name, frequency, last_run_at
+        SELECT id, name, frequency, last_run_at, url
         FROM scouts
         WHERE is_active = true
           AND consecutive_failures < 3
           AND should_run_scout(frequency, last_run_at)
         ORDER BY last_run_at NULLS FIRST
-        LIMIT 20
+        LIMIT 8
     LOOP
         -- Check for running execution
         IF EXISTS (
@@ -568,7 +574,8 @@ BEGIN
             CONTINUE;
         END IF;
 
-        -- Dispatch via pg_net
+        -- Dispatch via pg_net. Same-host and running-execution guards are
+        -- enforced in production to avoid duplicate work without pg_sleep().
         PERFORM net.http_post(
             url := project_url || '/functions/v1/execute-scout',
             headers := jsonb_build_object(
@@ -579,9 +586,6 @@ BEGIN
         );
 
         dispatched_count := dispatched_count + 1;
-
-        -- Stagger dispatches (10 seconds)
-        PERFORM pg_sleep(10);
     END LOOP;
 
     RETURN dispatched_count;
@@ -667,7 +671,7 @@ CREATE TRIGGER units_extend_ttl
 
 ### dispatch_auto_drafts
 
-Dispatches `bajour-auto-draft` edge function for each active village at 18:00 Europe/Zurich. Staggers calls by 10 seconds to respect rate limits.
+Dispatches `bajour-auto-draft` edge function for each active village at 18:00 Europe/Zurich. Reads `internal_function_secret` from Vault first and falls back to `service_role_key` for the internal bearer token.
 
 ```sql
 CREATE OR REPLACE FUNCTION dispatch_auto_drafts()
@@ -682,11 +686,17 @@ BEGIN
     FROM vault.decrypted_secrets WHERE name = 'project_url';
 
     SELECT decrypted_secret INTO service_key
-    FROM vault.decrypted_secrets WHERE name = 'service_role_key';
+    FROM vault.decrypted_secrets WHERE name = 'internal_function_secret';
+
+    IF service_key IS NULL THEN
+      SELECT decrypted_secret INTO service_key
+      FROM vault.decrypted_secrets WHERE name = 'service_role_key';
+    END IF;
 
     FOR village_record IN
-        SELECT village_id, village_name, scout_id, user_id
+        SELECT village_id, village_name, user_id
         FROM bajour_village_config  -- logical view / config table
+        WHERE is_pilot = true
         ORDER BY village_id
     LOOP
         PERFORM net.http_post(
@@ -698,13 +708,11 @@ BEGIN
             body := jsonb_build_object(
                 'village_id', village_record.village_id,
                 'village_name', village_record.village_name,
-                'scout_id', village_record.scout_id,
                 'user_id', village_record.user_id
             )
         );
 
         dispatched_count := dispatched_count + 1;
-        PERFORM pg_sleep(10);
     END LOOP;
 
     RETURN dispatched_count;
@@ -817,11 +825,12 @@ CREATE TABLE bajour_drafts (
 
     -- Verification workflow
     verification_status TEXT NOT NULL DEFAULT 'ausstehend'
-      CHECK (verification_status IN ('ausstehend', 'bestätigt', 'abgelehnt')),
+      CHECK (verification_status IN ('ausstehend', 'bestätigt', 'abgelehnt', 'withheld')),
     verification_responses JSONB NOT NULL DEFAULT '[]',
     verification_sent_at TIMESTAMPTZ,
     verification_resolved_at TIMESTAMPTZ,
     verification_timeout_at TIMESTAMPTZ,
+    quality_warnings JSONB NOT NULL DEFAULT '[]',
 
     -- WhatsApp tracking
     whatsapp_message_ids JSONB NOT NULL DEFAULT '[]',
@@ -893,7 +902,7 @@ DECLARE
   resolved_count INTEGER;
 BEGIN
   UPDATE bajour_drafts
-  SET verification_status = 'bestätigt',
+  SET verification_status = 'abgelehnt',
       verification_resolved_at = now()
   WHERE verification_status = 'ausstehend'
     AND verification_timeout_at IS NOT NULL

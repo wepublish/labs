@@ -762,6 +762,7 @@ List all Bajour drafts for the authenticated user.
       "verification_resolved_at": null,
       "verification_timeout_at": null,
       "whatsapp_message_ids": [],
+      "quality_warnings": [],
       "created_at": "2026-02-25T10:00:00Z",
       "updated_at": "2026-02-25T10:00:00Z"
     }
@@ -803,6 +804,8 @@ Update an existing draft (only own drafts). Used for manual verification status 
 ```
 
 **Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `publication_date`, `verification_status`.
+
+`verification_status` may be `ausstehend`, `bestätigt`, `abgelehnt`, or `withheld`. `withheld` is set by the auto-draft quality gate for machine-blocked drafts.
 
 **Response:** `200 OK` — full draft object.
 
@@ -856,7 +859,7 @@ Automated daily draft pipeline for a single village. Dispatched by pg_cron via `
 
 **Auth:** Service role key (`Authorization: Bearer {SERVICE_ROLE_KEY}`). Dispatched by pg_cron, not accessible from the frontend.
 
-**Pipeline:** idempotency check → select units (`INFORMATION_SELECT_PROMPT`, 2-day recency, max 20) → generate draft (`DRAFT_COMPOSE_PROMPT`) → save to `bajour_drafts` (publication_date = today Zurich) → send WhatsApp verification (non-fatal) → log to `auto_draft_runs`.
+**Pipeline:** idempotency check → resolve run/publication date context → select units (`INFORMATION_SELECT_PROMPT`) → generate draft (`DRAFT_COMPOSE_PROMPT_V2` when bullet schema is enabled) → deterministic validators → quality gate (`_shared/auto-draft-quality.ts`) → save to `bajour_drafts` → either send WhatsApp verification or save as `withheld` and email admins via Resend.
 
 **Response:**
 ```json
@@ -871,6 +874,18 @@ Automated daily draft pipeline for a single village. Dispatched by pg_cron via `
 ```
 
 Possible `status` values: `completed`, `skipped` (already ran today for this village), `failed`.
+
+Quality-gated response:
+```json
+{
+  "data": {
+    "status": "withheld",
+    "draft_id": "uuid",
+    "units_selected": 5,
+    "reasons": ["title_body_mismatch: Titel nennt ..."]
+  }
+}
+```
 
 ### POST /bajour-send-verification
 
