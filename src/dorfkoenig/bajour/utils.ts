@@ -5,6 +5,7 @@ import type { BajourDraft, VerificationStatus } from './types';
  * show as bestätigt while waiting for server-side resolution.
  */
 export function displayStatus(draft: BajourDraft): VerificationStatus {
+  if (draft.verification_status === 'withheld') return 'withheld';
   if (
     draft.verification_status === 'ausstehend' &&
     draft.verification_timeout_at &&

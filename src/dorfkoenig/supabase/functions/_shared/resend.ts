@@ -51,7 +51,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
   } catch (error) {
     return {
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
@@ -437,6 +437,53 @@ export function buildDraftFailureEmail(params: {
     </p>
     <p style="color: #a8a29e; font-size: 12px; margin-top: 24px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
       Automatische Meldung aus bajour-auto-draft. Korrespondenten erhalten an leeren Tagen keine WhatsApp-Nachricht.
+    </p>
+  </div>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+export function buildDraftWithheldEmail(params: {
+  villageName: string;
+  villageId: string;
+  publicationDate: string;
+  draftTitle: string;
+  draftUrl: string;
+  reasons: string[];
+}): { subject: string; html: string } {
+  const { villageName, villageId, publicationDate, draftTitle, draftUrl, reasons } = params;
+  const subject = `[Dorfkönig] Entwurf zurückgehalten — ${villageName} am ${publicationDate}`;
+  const reasonsHtml = reasons.length
+    ? `<ul>${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`
+    : '<p><em>(keine Details verfügbar)</em></p>';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.5; color: #1c1917; margin: 0; padding: 24px; background: #fafaf9;">
+  <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+    <h1 style="margin: 0 0 12px; font-size: 20px; color: #92400e;">Entwurf zurückgehalten</h1>
+    <p style="color: #57534e; margin: 0 0 16px; font-size: 14px;">
+      <strong>Gemeinde:</strong> ${escapeHtml(villageName)} &nbsp;·&nbsp;
+      <strong>Village-ID:</strong> ${escapeHtml(villageId)} &nbsp;·&nbsp;
+      <strong>Erscheinung:</strong> ${escapeHtml(publicationDate)}
+    </p>
+    <p style="background: #fffbeb; padding: 12px; border-radius: 6px; margin: 16px 0; color: #78350f;">
+      Der Auto-Entwurf wurde gespeichert, aber nicht per WhatsApp versendet, weil er die Qualitätskriterien nicht erfüllt.
+    </p>
+    <div style="margin: 16px 0;">
+      <strong>Titel:</strong> ${escapeHtml(draftTitle || '(ohne Titel)')}
+    </div>
+    <h3 style="font-size: 14px; color: #57534e; text-transform: uppercase; letter-spacing: 0.5px;">Gründe</h3>
+    ${reasonsHtml}
+    <p style="margin-top: 24px;">
+      <a href="${sanitizeUrl(draftUrl)}" style="display: inline-block; background: #92400e; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Entwurf prüfen</a>
+    </p>
+    <p style="color: #a8a29e; font-size: 12px; margin-top: 24px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
+      Automatische Meldung aus bajour-auto-draft. Korrespondenten haben keine WhatsApp-Verifizierung erhalten.
     </p>
   </div>
 </body>

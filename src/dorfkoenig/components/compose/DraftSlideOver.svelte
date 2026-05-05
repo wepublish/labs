@@ -11,7 +11,7 @@
   import { bajourApi } from '../../bajour/api';
   import { supabase } from '../../lib/supabase';
   import type { Draft } from '../../lib/types';
-  import type { BajourDraft, DraftBullet, VerificationStatus } from '../../bajour/types';
+  import type { BajourDraft, DraftBullet, QualityWarning, VerificationStatus } from '../../bajour/types';
 
   interface Props {
     open: boolean;
@@ -61,6 +61,7 @@
   type DisplayDraft = Draft & {
     bullets?: DraftBullet[];
     notes_for_editor?: string[];
+    quality_warnings?: QualityWarning[];
   };
 
   function parseLegacyMarkdownBullets(body: string): DraftBullet[] {
@@ -96,6 +97,7 @@
         units_used: sd.selected_unit_ids.length,
         bullets: sd.bullets_json.bullets,
         notes_for_editor: sd.bullets_json.notes_for_editor,
+        quality_warnings: sd.quality_warnings || [],
       };
     }
 
@@ -110,6 +112,7 @@
         word_count: 0,
         units_used: sd.selected_unit_ids.length,
         bullets: markdownBullets,
+        quality_warnings: sd.quality_warnings || [],
       };
     }
 
@@ -148,6 +151,7 @@
       sources: [],
       word_count: 0,
       units_used: 0,
+      quality_warnings: sd.quality_warnings || [],
     };
   }
 

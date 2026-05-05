@@ -4,7 +4,7 @@
 
 The execute-scout pipeline is the core of Dorfkoenig. It performs web scraping, change detection, criteria analysis, deduplication, information extraction, and notification delivery.
 
-> **DRAFT_QUALITY overhaul shipped 2026-04-23** (see `specs/DRAFT_QUALITY.md`). The `bajour-auto-draft` pipeline gained: compound date filter + quality gate (§3.2), v2 bullet-only schema (§3.1), deterministic post-validation chain (§3.5), empty-path admin notifications (§3.1.4), inline metric capture (§5.1). Extraction paths (Step 6 below, plus `manual-upload` and `process-newspaper`) gained `publication_date`, `sensitivity`, `is_listing_page`, `article_url` + `quality_score`. All gated by `FEATURE_*` env vars (default off). Feature-flag reference in `specs/DATABASE.md § DRAFT_QUALITY overhaul`.
+> **DRAFT_QUALITY overhaul shipped 2026-04-23; withheld gate added 2026-05-05** (see `specs/DRAFT_QUALITY.md`). The `bajour-auto-draft` pipeline gained: compound date filter + quality gate (§3.2), v2 bullet-only schema (§3.1), deterministic post-validation chain (§3.5), empty-path admin notifications (§3.1.4), inline metric capture (§5.1), and a post-compose withheld flow for generated-but-weak drafts. Extraction paths (Step 6 below, plus `manual-upload` and `process-newspaper`) gained `publication_date`, `sensitivity`, `is_listing_page`, `article_url` + `quality_score`. All gated by `FEATURE_*` env vars where noted. Feature-flag reference in `specs/DATABASE.md § DRAFT_QUALITY overhaul`.
 
 ## Execute Scout Pipeline (9 Steps + Phase B)
 
@@ -808,14 +808,17 @@ if (extractUnits && (scout.location || scout.topic)) {
 ## Auto-Draft Pipeline
 
 Daily at 18:00 Europe/Zurich:
-1. pg_cron → dispatch_auto_drafts() → loops 10 villages, 10s stagger
+1. pg_cron → dispatch_auto_drafts() → loops pilot villages
 2. Per village: bajour-auto-draft edge function
-   a. Idempotency check (village + today)
-   b. Select units (INFORMATION_SELECT_PROMPT, 2-day recency, max 20)
-   c. Generate draft (DRAFT_COMPOSE_PROMPT, 3-layer newsletter prompt)
-   d. Save to bajour_drafts (publication_date = today Zurich)
-   e. Send WhatsApp verification (non-fatal)
-   f. Log to auto_draft_runs
+   a. Resolve run date and reader-facing publication date
+   b. Idempotency check (village + publication date)
+   c. Select units (INFORMATION_SELECT_PROMPT + deterministic narrow fallback)
+   d. Generate draft (v2 bullet schema when enabled)
+   e. Run validators and `_shared/auto-draft-quality.ts` gate
+   f. Save to bajour_drafts
+   g. If clean: mark units used and send WhatsApp verification
+   h. If weak: save as `verification_status='withheld'`, persist `quality_warnings`, email admins with Resend, and do not send WhatsApp
+   i. Log to auto_draft_runs
 
 Daily at 22:00 Europe/Zurich:
 3. pg_cron → resolve_bajour_timeouts() — auto-rejects unresponded drafts (silence = rejection, any-reject-wins policy)

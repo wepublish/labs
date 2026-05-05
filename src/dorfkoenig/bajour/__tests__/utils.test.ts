@@ -65,4 +65,12 @@ describe('displayStatus', () => {
     const draft = makeDraft({ verification_status: 'abgelehnt' });
     expect(displayStatus(draft)).toBe('abgelehnt');
   });
+
+  it('returns withheld without timeout coercion', () => {
+    const draft = makeDraft({
+      verification_status: 'withheld',
+      verification_timeout_at: '2026-02-25T12:00:00Z',
+    });
+    expect(displayStatus(draft)).toBe('withheld');
+  });
 });

@@ -48,6 +48,14 @@ Deno.serve(async (req) => {
       return errorResponse('Fehler beim Laden des Entwurfs', 500);
     }
 
+    if (draft.verification_status === 'withheld') {
+      return errorResponse(
+        'Dieser Entwurf wurde wegen Qualitätswarnungen zurückgehalten und kann nicht automatisch versendet werden.',
+        400,
+        'DRAFT_WITHHELD'
+      );
+    }
+
     // Look up correspondents for the draft's village
     const correspondents = await getCorrespondentsForVillage(draft.village_id);
 

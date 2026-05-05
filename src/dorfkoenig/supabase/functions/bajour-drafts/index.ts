@@ -337,7 +337,7 @@ async function updateDraft(
     selected_unit_ids?: string[];
     custom_system_prompt?: string | null;
     publication_date?: string;
-    verification_status?: 'ausstehend' | 'bestätigt' | 'abgelehnt';
+    verification_status?: 'ausstehend' | 'bestätigt' | 'abgelehnt' | 'withheld';
     verification_resolved_at?: string;
   } = {};
 
@@ -363,7 +363,7 @@ async function updateDraft(
   }
   // Allow manual verification status override
   if (body.verification_status !== undefined) {
-    const allowed = ['ausstehend', 'bestätigt', 'abgelehnt'];
+    const allowed = ['ausstehend', 'bestätigt', 'abgelehnt', 'withheld'];
     if (allowed.includes(body.verification_status)) {
       updates.verification_status = body.verification_status;
       if (body.verification_status !== 'ausstehend') {

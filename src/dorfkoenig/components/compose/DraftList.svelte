@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, Clock, CheckCircle, XCircle } from 'lucide-svelte';
+  import { Plus, Clock, CheckCircle, XCircle, ShieldAlert } from 'lucide-svelte';
   import { Button } from '@shared/components';
   import type { BajourDraft } from '../../bajour/types';
   import { displayStatus } from '../../bajour/utils';
@@ -19,6 +19,7 @@
       ausstehend: 'Ausstehend',
       'bestätigt': 'Bestätigt',
       abgelehnt: 'Abgelehnt',
+      withheld: 'Zurückgehalten',
     };
     return map[status];
   }
@@ -58,11 +59,14 @@
                 class:status-pending={status === 'ausstehend'}
                 class:status-confirmed={status === 'bestätigt'}
                 class:status-rejected={status === 'abgelehnt'}
+                class:status-withheld={status === 'withheld'}
               >
                 {#if status === 'ausstehend'}
                   <Clock size={9} strokeWidth={3} />
                 {:else if status === 'bestätigt'}
                   <CheckCircle size={9} strokeWidth={3} />
+                {:else if status === 'withheld'}
+                  <ShieldAlert size={9} strokeWidth={3} />
                 {:else}
                   <XCircle size={9} strokeWidth={3} />
                 {/if}
@@ -197,6 +201,11 @@
   .status-rejected {
     background: var(--color-status-error-bg);
     color: var(--color-status-error-text);
+  }
+
+  .status-withheld {
+    background: #fffbeb;
+    color: #92400e;
   }
 
   @media (max-width: 560px) {
