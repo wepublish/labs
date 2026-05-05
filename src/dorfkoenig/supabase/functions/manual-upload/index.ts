@@ -46,6 +46,26 @@ const MAGIC_BYTES: Record<string, { bytes: number[]; offset?: number; extraBytes
 // Rate limits per hour
 const RATE_LIMITS = { text: 20, file: 10 };
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+const HTTP_URL_RE = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+
+function cleanOptionalUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function validateHttpUrl(value: string | null): boolean {
+  return value === null || HTTP_URL_RE.test(value);
+}
+
+function sourceDomainFromUrl(sourceUrl: string): string {
+  if (sourceUrl.startsWith('manual://')) return 'manual';
+  try {
+    return new URL(sourceUrl).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return 'manual';
+  }
+}
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -171,6 +191,7 @@ async function handleTextUpload(
   const location = body.location as { city: string; state?: string; country: string; latitude?: number; longitude?: number } | null;
   const topic = (body.topic as string) || null;
   const sourceTitle = (body.source_title as string) || null;
+  const sourceUrl = cleanOptionalUrl(body.source_url);
   const publicationDate = body.publication_date as string | undefined;
 
   // Validation
@@ -188,6 +209,9 @@ async function handleTextUpload(
   }
   if (!publicationDate || !/^\d{4}-\d{2}-\d{2}$/.test(publicationDate)) {
     return errorResponse('Publikationsdatum ist erforderlich (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
+  }
+  if (!validateHttpUrl(sourceUrl)) {
+    return errorResponse('Quellen-URL muss mit http:// oder https:// beginnen', 400, 'VALIDATION_ERROR');
   }
 
   const normalizedTextLocation = location?.city
@@ -207,6 +231,7 @@ async function handleTextUpload(
       // requires a non-null storage_path.
       storage_path: '',
       publication_date: publicationDate,
+      source_url: sourceUrl,
       label,
       status: 'processing',
       stage: 'extracting',
@@ -397,6 +422,7 @@ async function handleFileConfirm(
   const location = body.location as { city: string; state?: string; country: string; latitude?: number; longitude?: number } | null;
   const topic = (body.topic as string) || null;
   const sourceTitle = (body.source_title as string) || null;
+  const sourceUrl = cleanOptionalUrl(body.source_url);
   const publicationDate = (body.publication_date as string) || null;
 
   const isPhoto = contentType === 'photo_confirm';
@@ -474,6 +500,13 @@ async function handleFileConfirm(
 
   // ── PDF: trigger async processing ──
   if (isPdf) {
+    if (!sourceUrl) {
+      return errorResponse('Quellen-URL ist für PDF-Uploads erforderlich', 400, 'VALIDATION_ERROR');
+    }
+    if (!validateHttpUrl(sourceUrl)) {
+      return errorResponse('Quellen-URL muss mit http:// oder https:// beginnen', 400, 'VALIDATION_ERROR');
+    }
+
     // Create newspaper_jobs row
     const { data: job, error: jobError } = await supabase
       .from('newspaper_jobs')
@@ -481,6 +514,7 @@ async function handleFileConfirm(
         user_id: userId,
         storage_path: storagePath,
         publication_date: publicationDate,
+        source_url: sourceUrl,
         label: description?.trim() || null,
         last_heartbeat_at: new Date().toISOString(),
       })
@@ -673,7 +707,7 @@ async function handlePdfFinalize(
     .eq('id', jobId)
     .eq('user_id', userId)
     .eq('status', 'review_pending')
-    .select('id, extracted_units, storage_path, label, source_type, publication_date')
+    .select('id, extracted_units, storage_path, label, source_type, publication_date, source_url')
     .maybeSingle();
 
   if (claimErr) {
@@ -782,7 +816,12 @@ async function handlePdfFinalize(
     const mergedDetailIndexes: number[] = [];
     if (finalIndices.length > 0) {
       const sourceType = ((claimed.source_type as string | null) ?? 'manual_pdf') as 'manual_pdf' | 'manual_text';
-      const sourceUrl = sourceType === 'manual_text' ? 'manual://text' : 'manual://pdf';
+      const jobSourceUrl = cleanOptionalUrl(claimed.source_url);
+      if (sourceType === 'manual_pdf' && !jobSourceUrl) {
+        throw new Error('PDF-Job hat keine Quellen-URL');
+      }
+      const sourceUrl = jobSourceUrl ?? 'manual://text';
+      const sourceDomain = sourceDomainFromUrl(sourceUrl);
       const defaultTopic = sourceType === 'manual_text' ? null : 'Wochenblatt';
       const jobPubDate = claimed.publication_date as string | null;
       for (const i of finalIndices) {
@@ -795,7 +834,9 @@ async function handlePdfFinalize(
         const qualityScore = computeQualityScore({
           statement: u.statement,
           source_url: sourceUrl,
-          source_domain: 'manual',
+          source_domain: sourceDomain,
+          article_url: sourceType === 'manual_pdf' || jobSourceUrl ? sourceUrl : null,
+          is_listing_page: false,
           event_date: eventDate,
           publication_date: pubDate,
           village_confidence: u.village_confidence,
@@ -807,7 +848,7 @@ async function handlePdfFinalize(
           unitType: u.unit_type,
           entities: u.entities,
           sourceUrl,
-          sourceDomain: 'manual',
+          sourceDomain,
           sourceTitle: claimed.label,
           location: normalizedLocation,
           topic: defaultTopic,
@@ -818,7 +859,7 @@ async function handlePdfFinalize(
           publicationDate: pubDate,
           sensitivity: 'none',
           isListingPage: false,
-          articleUrl: null,
+          articleUrl: sourceType === 'manual_pdf' || jobSourceUrl ? sourceUrl : null,
           qualityScore,
           villageConfidence: u.village_confidence,
           reviewRequired: u.review_required,

@@ -49,6 +49,7 @@
   let location = $state<Location | null>(null);
   let topic = $state('');
   let sourceTitle = $state('');
+  let sourceUrl = $state('');
 
   // Text state
   let text = $state('');
@@ -107,6 +108,7 @@
     location = null;
     topic = '';
     sourceTitle = '';
+    sourceUrl = '';
     text = '';
     file = null;
     if (filePreviewUrl) {
@@ -196,7 +198,7 @@
       return text.trim().length >= MIN_TEXT_LENGTH;
     } else {
       // PDF: file required, publication date required, no location needed
-      return file !== null && publicationDate !== '';
+      return file !== null && publicationDate !== '' && /^https?:\/\/\S+$/i.test(sourceUrl.trim());
     }
   });
 
@@ -216,6 +218,10 @@
         validationError = 'Publikationsdatum ist erforderlich';
         return false;
       }
+      if (sourceUrl.trim() && !/^https?:\/\/\S+$/i.test(sourceUrl.trim())) {
+        validationError = 'Quellen-URL muss mit http:// oder https:// beginnen';
+        return false;
+      }
     } else {
       if (!file) {
         validationError = 'Datei ist erforderlich';
@@ -223,6 +229,14 @@
       }
       if (!publicationDate) {
         validationError = 'Publikationsdatum ist erforderlich';
+        return false;
+      }
+      if (!sourceUrl.trim()) {
+        validationError = 'Quellen-URL ist für PDF-Uploads erforderlich';
+        return false;
+      }
+      if (!/^https?:\/\/\S+$/i.test(sourceUrl.trim())) {
+        validationError = 'Quellen-URL muss mit http:// oder https:// beginnen';
         return false;
       }
     }
@@ -408,6 +422,7 @@
           location,
           topic: topic.trim() || null,
           source_title: sourceTitle.trim() || null,
+          source_url: sourceUrl.trim() || null,
           publication_date: publicationDate,
         });
         uploadProgress = 60;
@@ -466,6 +481,7 @@
           description: description.trim() || undefined,
           publication_date: publicationDate || null,
           source_title: sourceTitle.trim() || null,
+          source_url: sourceUrl.trim(),
         });
 
         // Check if response is processing (PDF) or immediate (photo)
@@ -660,6 +676,19 @@
               type="text"
               bind:value={sourceTitle}
               placeholder="z.B. Pressekonferenz Rathaus"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="upload-source-url">
+              Quellen-URL {#if activeTab === 'text'}<span class="optional">(optional)</span>{/if}
+            </label>
+            <input
+              id="upload-source-url"
+              type="url"
+              bind:value={sourceUrl}
+              placeholder="https://www.wochenblatt.ch/"
+              required={activeTab === 'pdf'}
             />
           </div>
         {/if}

@@ -22,7 +22,13 @@ const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET')!;
 const WHATSAPP_WEBHOOK_VERIFY_TOKEN = Deno.env.get('WHATSAPP_WEBHOOK_VERIFY_TOKEN')!;
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
-const DEFAULT_ADMIN_EMAILS = 'samuel.hufschmid@bajour.ch,ernst.field@bajour.ch';
+const DEFAULT_ADMIN_EMAILS = [
+  'samuel.hufschmid@bajour.ch',
+  'ernst.field@bajour.ch',
+  'tom@wepublish.ch',
+  'lukas@wepublish.ch',
+  'elias@wepublish.ch',
+].join(',');
 const ADMIN_EMAILS: string[] = (Deno.env.get('ADMIN_EMAILS') || DEFAULT_ADMIN_EMAILS)
   .split(',')
   .map((s) => s.trim())

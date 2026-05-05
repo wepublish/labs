@@ -163,6 +163,17 @@ export function assessDraftQuality(args: {
     }
   }
 
+  const eventSourceCount = args.selectedUnits.filter((u) => u.unit_type === 'event').length;
+  const civicOrSafetyCount = args.selectedUnits.filter((u) => hasCivicOrSafetySignal(u.statement)).length;
+  if (args.selectedUnits.length >= 3 && eventSourceCount >= args.selectedUnits.length - 1 && civicOrSafetyCount === 0) {
+    warnings.push({
+      reason: 'not_enough_data',
+      severity: 'warning',
+      message: 'Auswahl besteht fast nur aus weichen Veranstaltungshinweisen; kein klarer News-/Service-Lead erkennbar.',
+      unit_ids: args.selectedIds,
+    });
+  }
+
   if (args.context.isBackfill && /\b(heute|morgen|gestern|seit gestern)\b/i.test(draftText)) {
     warnings.push({
       reason: 'date_framing_risk',
@@ -190,7 +201,7 @@ function classifyEditorNote(note: string): QualityWarning | null {
   if (/Emoji .* ersetzt|herabgestuft/i.test(note)) {
     return { reason: 'missing_required_context', severity: 'warning', message: note };
   }
-  if (/generische .*URL|kein direkter Link|Keine URL|NO_LINK|URL verfügbar/i.test(note)) {
+  if (/generische .*URL|kein direkter Link|kein Link verfügbar|Keine URL|NO_LINK|URL verfügbar/i.test(note)) {
     return { reason: 'weak_sources', severity: 'blocker', message: note };
   }
   if (/fehlt|Bitte prüfen|Bitte verifizieren|Bitte ergänzen|Bitte.*nachfragen|Details.*prüfen/i.test(note)) {
@@ -200,6 +211,11 @@ function classifyEditorNote(note: string): QualityWarning | null {
     return { reason: 'missing_required_context', severity: 'blocker', message: note };
   }
   return null;
+}
+
+function hasCivicOrSafetySignal(statement: string): boolean {
+  return /\b(unfall|kollision|brand|polizei|feuerwehr|sperrung|strasse gesperrt|gemeinderat|einwohnerrat|landrat|abstimmung|initiative|budget|kredit|planung|kantonsstrasse|talboden|dreispitz|schwimmbad|schule|verwaltung|kehricht|wahl|nationalrat|behörde|kommission|baugesuch)\b/i
+    .test(statement);
 }
 
 function findTitleBodyMismatch(title: string, bodyText: string): string[] {
@@ -212,6 +228,10 @@ function importantTitleTokens(title: string): string[] {
   const stop = new Set([
     'und', 'oder', 'der', 'die', 'das', 'ein', 'eine', 'einer', 'mit', 'für',
     'von', 'vom', 'im', 'in', 'am', 'an', 'zu', 'zur', 'zum', 'aus',
+    'montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag', 'sonntag',
+    'januar', 'februar', 'märz', 'april', 'mai', 'juni', 'juli', 'august',
+    'september', 'oktober', 'november', 'dezember',
+    'arlesheim', 'münchenstein', 'muenchenstein',
   ]);
   return normaliseText(title)
     .split(/[^a-z0-9äöüß]+/i)

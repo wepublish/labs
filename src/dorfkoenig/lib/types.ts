@@ -222,6 +222,7 @@ export interface NewspaperJob {
   user_id: string;
   storage_path: string | null;
   publication_date: string | null;
+  source_url?: string | null;
   label: string | null;
   status: NewspaperJobStatus;
   stage: NewspaperJobStage | null;

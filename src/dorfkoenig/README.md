@@ -264,6 +264,8 @@ npm run build:production
 - Atomic facts extracted from content (or manually uploaded)
 - Types: fact, event, entity_update
 - Source types: scout, manual_text, manual_photo, manual_pdf
+- Manual PDF uploads require a newspaper/source URL; finalized PDF units store it
+  as citeable `source_url` and `article_url`.
 - Semantic search via embedding
 
 ### bajour_drafts

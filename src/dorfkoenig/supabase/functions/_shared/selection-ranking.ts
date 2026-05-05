@@ -20,6 +20,17 @@ export interface RankedSelectionUnit<T extends UnitForSelectionRanking = UnitFor
   reasons: string[];
 }
 
+export interface SelectionDedupResult<T extends UnitForSelectionRanking = UnitForSelectionRanking> {
+  units: T[];
+  rejected: Array<{
+    id: string;
+    matched_id: string;
+    reason: 'near_duplicate';
+    statement: string;
+    matched_statement: string;
+  }>;
+}
+
 const PUBLIC_SAFETY = [
   'unfall', 'kollision', 'verkehrsunfall', 'brand', 'polizei', 'feuerwehr',
   'verletz', 'spital', 'strasse gesperrt', 'sperrung', 'einsatz',
@@ -29,13 +40,66 @@ const CIVIC = [
   'gemeinderat', 'einwohnerrat', 'landrat', 'abstimmung', 'initiative',
   'budget', 'kredit', 'million', 'zone', 'bauarbeiten', 'sanierung',
   'verkehr', 'schule', 'kindergarten', 'wasser', 'versorgung', 'entsorgung',
-  'tempo', 'baustelle', 'verwaltung', 'kehricht',
+  'tempo', 'baustelle', 'verwaltung', 'kehricht', 'planung', 'planungsvereinbarung',
+  'kantonsstrasse', 'talboden', 'dreispitz', 'schwimmbad', 'becken',
+  'gemeindepräsident', 'wahl', 'sozialhilfebehörde', 'finanzplankommission',
+  'nationalrat', 'vereidigt', 'behörde', 'kommission', 'baugesuch',
 ];
 
 const SOFT_FILLER = [
   'geburtstag', 'hochzeit', 'gratuliert', 'verein', 'club', 'jubiläum',
-  'kaffee', 'tombola',
+  'kaffee', 'tombola', 'jassturnier', 'chorkonzert', 'laufgruppe',
+  'schnupperlektion', 'ausstellung', 'konzert', 'markt',
 ];
+
+export function dedupeSelectionCandidates<T extends UnitForSelectionRanking>(
+  units: T[],
+  opts: { currentDate: string; publicationDate: string },
+): SelectionDedupResult<T> {
+  const ranked = rankSelectionCandidates(units, opts);
+  const byId = new Map(ranked.map((row) => [row.unit.id, row]));
+  const kept: T[] = [];
+  const seen = new Map<string, T>();
+  const rejected: SelectionDedupResult<T>['rejected'] = [];
+
+  for (const row of ranked) {
+    const fingerprint = statementFingerprint(row.unit.statement);
+    const existing = [...seen.entries()].find(([seenFingerprint]) =>
+      fingerprintsOverlap(seenFingerprint, fingerprint)
+    );
+    if (!existing) {
+      seen.set(fingerprint, row.unit);
+      kept.push(row.unit);
+      continue;
+    }
+
+    const [, keptUnit] = existing;
+    rejected.push({
+      id: row.unit.id,
+      matched_id: keptUnit.id,
+      reason: 'near_duplicate',
+      statement: row.unit.statement.slice(0, 180),
+      matched_statement: keptUnit.statement.slice(0, 180),
+    });
+
+    const keptScore = byId.get(keptUnit.id)?.score ?? 0;
+    if (row.score > keptScore + 15) {
+      const idx = kept.findIndex((u) => u.id === keptUnit.id);
+      if (idx >= 0) kept[idx] = row.unit;
+      seen.delete(existing[0]);
+      seen.set(fingerprint, row.unit);
+      rejected[rejected.length - 1] = {
+        id: keptUnit.id,
+        matched_id: row.unit.id,
+        reason: 'near_duplicate',
+        statement: keptUnit.statement.slice(0, 180),
+        matched_statement: row.unit.statement.slice(0, 180),
+      };
+    }
+  }
+
+  return { units: kept, rejected };
+}
 
 export function rankSelectionCandidates<T extends UnitForSelectionRanking>(
   units: T[],
@@ -223,4 +287,38 @@ function daysBetween(fromIso: string, toIso: string): number {
   const to = Date.parse(`${toIso.slice(0, 10)}T00:00:00Z`);
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 999;
   return Math.floor((to - from) / 86_400_000);
+}
+
+function statementFingerprint(statement: string): string {
+  return statement
+    .toLocaleLowerCase('de-CH')
+    .replace(/\b\d{1,2}\.?\b/g, '')
+    .replace(/\b20\d{2}\b/g, '')
+    .split(/[^a-z0-9äöüß]+/i)
+    .filter((token) => token.length >= 4)
+    .map(stemToken)
+    .slice(0, 10)
+    .sort()
+    .join('|');
+}
+
+function fingerprintsOverlap(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const left = new Set(a.split('|'));
+  const right = b.split('|');
+  const overlap = right.filter((token) => left.has(token)).length;
+  return overlap >= 4 && overlap / Math.min(left.size, right.length) >= 0.55;
+}
+
+function stemToken(token: string): string {
+  return token
+    .replace(/innen$/, '')
+    .replace(/ungen$/, 'ung')
+    .replace(/führungen$/, 'führung')
+    .replace(/tionen$/, 'tion')
+    .replace(/ern$/, '')
+    .replace(/en$/, '')
+    .replace(/er$/, '')
+    .replace(/e$/, '');
 }

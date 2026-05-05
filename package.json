@@ -33,6 +33,8 @@
     "ingest:feedback": "tsx src/dorfkoenig/scripts/ingest-feedback.ts",
     "submit:published": "tsx src/dorfkoenig/scripts/submit-published-draft.ts",
     "regenerate:past-drafts": "tsx src/dorfkoenig/scripts/regenerate-past-drafts.ts",
+    "eval:drafts": "tsx src/dorfkoenig/scripts/eval-drafts.ts",
+    "backfill:manual-pdf-sources": "tsx src/dorfkoenig/scripts/backfill-manual-pdf-source-urls.ts",
     "benchmark:subpages": "tsx src/dorfkoenig/scripts/benchmark-subpage-follow.ts",
     "benchmark:bz-subpages": "tsx src/dorfkoenig/scripts/benchmark-bz-subpage-follow.ts",
     "repair:dedup": "tsx src/dorfkoenig/scripts/repair-dedup-regression.ts"

@@ -99,6 +99,19 @@ Deno.test('assessDraftQuality — withholds severe editor notes', () => {
   assert(result.warnings.some((w) => w.reason === 'missing_required_context'));
 });
 
+Deno.test('assessDraftQuality — withholds explicit missing source-link notes', () => {
+  const result = assessDraftQuality({
+    draft: draft({ notes_for_editor: ['Chorkonzert: kein Link verfügbar, bitte Quelle prüfen.'] }),
+    selectedUnits: [],
+    rankedSelection: [],
+    selectedIds: [],
+    context: resolveDraftRunContext({ zurichToday: '2026-05-05' }),
+  });
+
+  assertEquals(result.decision, 'withhold');
+  assert(result.warnings.some((w) => w.reason === 'weak_sources'));
+});
+
 Deno.test('assessDraftQuality — clean draft sends', () => {
   const result = assessDraftQuality({
     draft: draft({ title: 'Birkenstrasse gesperrt' }),
@@ -115,4 +128,41 @@ Deno.test('assessDraftQuality — clean draft sends', () => {
   });
 
   assertEquals(result.decision, 'send');
+});
+
+Deno.test('assessDraftQuality — warns on event-only digest without news lead', () => {
+  const result = assessDraftQuality({
+    draft: draft({
+      title: 'Jassturnier und Chorkonzert',
+      bullets: [
+        {
+          emoji: '📅',
+          kind: 'lead',
+          text: 'Am Mittwoch findet im Coop Restaurant ein Jassturnier statt.',
+          article_url: 'https://example.com/jass',
+          source_domain: 'example.com',
+          source_unit_ids: ['u1'],
+        },
+        {
+          emoji: '🎵',
+          kind: 'secondary',
+          text: 'Am Freitag findet in der katholischen Kirche ein Chorkonzert statt.',
+          article_url: 'https://example.com/chor',
+          source_domain: 'example.com',
+          source_unit_ids: ['u2'],
+        },
+      ],
+    }),
+    selectedUnits: [
+      { id: 'u1', statement: 'Am 6. Mai findet ein Jassturnier statt.', unit_type: 'event' },
+      { id: 'u2', statement: 'Am 8. Mai findet ein Chorkonzert statt.', unit_type: 'event' },
+      { id: 'u3', statement: 'Am 7. Mai startet eine Laufgruppe.', unit_type: 'event' },
+    ],
+    rankedSelection: [],
+    selectedIds: ['u1', 'u2', 'u3'],
+    context: resolveDraftRunContext({ zurichToday: '2026-05-05' }),
+  });
+
+  assertEquals(result.decision, 'send');
+  assert(result.warnings.some((w) => w.reason === 'not_enough_data'));
 });
