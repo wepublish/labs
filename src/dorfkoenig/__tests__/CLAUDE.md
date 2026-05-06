@@ -13,19 +13,24 @@ npm run test:watch  # watch mode
 
 ## Config
 
-- `vitest.config.ts` — includes `src/dorfkoenig/__tests__/**/*.test.ts`
+- `vitest.config.ts` — includes `src/dorfkoenig/__tests__/**/*.test.ts` and `src/dorfkoenig/bajour/__tests__/**/*.test.ts`
 - `setup.ts` — mocks `localStorage` for Node environment
 
 ## Test Map
 
 | Source Module | Test File | What's Covered |
 |---------------|-----------|----------------|
-| `lib/api.ts` | `lib/api.test.ts` | `api.get/post/delete` (headers, auth, envelope unwrap, errors), `scoutsApi` (list, get, create, update, delete, run, test — incl. is_active, location, frequency, extract_units), `unitsApi` (list with filters, search with topic, combined location+topic), `composeApi` (generate), `executionsApi` (list with filters, get) |
+| `lib/api.ts` | `lib/api.test.ts` | `api.get/post/delete` (headers, auth, envelope unwrap, errors), `scoutsApi` (list, get, create, update, delete, run, test — incl. is_active, location, frequency, extract_units), `unitsApi` (list with filters, ids filter, direct `lookupByIds` fallback, search with topic, combined location+topic), `composeApi` (generate), `settingsApi` (selection ranking CRUD), `executionsApi` (list with filters, get) |
 | `lib/constants.ts` | `lib/constants.test.ts` | `FREQUENCY_OPTIONS_EXTENDED`, `DAY_OF_WEEK_OPTIONS`, `UNIT_TYPE_LABELS`, `PRESET_USERS`, `formatDate`, `formatRelativeTime` |
 | `stores/auth.ts` | `stores/auth.test.ts` | `login` (localStorage, trim, empty validation), `logout`, `getUserId`, `initAuth` (session restore, URL token auth, token priority over localStorage, empty token fallback, iframe error, standalone login page) |
 | `stores/scouts.ts` | `stores/scouts.test.ts` | `load` (success + error), `create` (with topic, without topic), `get` (success + null on failure), `update` (name, topic, clear topic), `delete`, `run` (with/without options, error propagation), `test` (success, failure, error propagation), `clearError`, enrichment fields, derived stores (`scoutsCount`) |
 | `stores/units.ts` | `stores/units.test.ts` | `load` (with city, topic, topic derivation, errors, display-name-verbatim contract), `search` (with/without location, with topic, combined location+topic), `setLocation`, `setTopic`, `markUsed`, `clearError` |
+| `bajour/api.ts` | `bajour/__tests__/api.test.ts` | Draft list/create/update/delete helpers, selection diagnostics pass-through, unit selection response shape, verification send, signed admin draft fetch errors |
+| `bajour/store.ts` | `bajour/__tests__/store.test.ts` | Draft load/create/delete, polling lifecycle, verification status update, API error handling |
+| `bajour/utils.ts` | `bajour/__tests__/utils.test.ts` | Display status, date/status formatting, markdown/source rendering helpers |
 | `supabase/functions/_shared/village-id.ts` | `lib/village-id.test.ts` | `normalizeCity` (lowercasing, umlauts ä/ö/ü, ß, whitespace trim, nullish, idempotence, gemeinden.json name↔id contract per village) |
+| `supabase/functions/_shared/auto-draft-idempotency.ts` | `supabase/functions/_tests/shared/auto_draft_idempotency_test.ts` | Same-village/date rerun blocking policy: `ausstehend`/`bestätigt` block; `withheld`/`abgelehnt` can regenerate |
+| `supabase/functions/_shared/auto-draft-quality.ts` | `supabase/functions/_tests/shared/auto_draft_quality_test.ts` | Publication-date resolution, fallback selection, blocker/warning quality gate, no-link service/civic event acceptance, vague no-link event rejection |
 | Scout wizard flow | `stores/scout-wizard.test.ts` | Step 1: create inactive draft (with location / topic / criteria), test scrape (success / failure / criteria analysis). Step 2: update + activate, biweekly frequency, first run with/without baseline import. Abort: draft cleanup on cancel, already-deleted draft. Full sequence: create -> test -> configure -> activate -> run, retry with re-created draft. |
 
 ## Conventions

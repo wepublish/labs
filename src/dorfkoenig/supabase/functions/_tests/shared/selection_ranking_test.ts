@@ -4,11 +4,14 @@ import {
 } from 'https://deno.land/std@0.220.0/assert/mod.ts';
 
 import {
+  DEFAULT_SELECTION_RANKING_CONFIG,
   dedupeSelectionCandidates,
   enforceMandatorySelection,
+  normalizeSelectionRankingConfig,
   rankSelectionCandidates,
   refineSelectionForCompose,
   selectDeterministicFallback,
+  validateSelectionRankingConfig,
 } from '../../_shared/selection-ranking.ts';
 
 Deno.test('rankSelectionCandidates prioritizes fresh Arlesheim accident over filler', () => {
@@ -62,6 +65,60 @@ Deno.test('rankSelectionCandidates prioritizes fresh Arlesheim accident over fil
   assertEquals(ranked[0].unit.id, 'accident');
   assert(ranked[0].mandatory);
   assert(ranked[0].score > ranked[1].score);
+});
+
+Deno.test('rankSelectionCandidates accepts editable ranking weights', () => {
+  const config = normalizeSelectionRankingConfig({
+    ...DEFAULT_SELECTION_RANKING_CONFIG,
+    weights: {
+      ...DEFAULT_SELECTION_RANKING_CONFIG.weights,
+      soft_filler: 80,
+      public_safety: 0,
+      fresh_sensitive: 0,
+    },
+  });
+
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'accident',
+      statement: 'Die Polizei meldet einen Verkehrsunfall in Arlesheim.',
+      unit_type: 'fact',
+      created_at: '2026-04-27T11:13:00Z',
+      publication_date: '2026-04-27',
+      quality_score: 60,
+      sensitivity: 'accident',
+      article_url: 'https://example.ch/article',
+      is_listing_page: false,
+    },
+    {
+      id: 'club',
+      statement: 'Der Verein lädt zum Kaffee und Konzert ein.',
+      unit_type: 'event',
+      event_date: '2026-04-28',
+      created_at: '2026-04-27T10:00:00Z',
+      publication_date: '2026-04-27',
+      quality_score: 60,
+      sensitivity: 'none',
+      article_url: 'https://example.ch/club',
+      is_listing_page: false,
+    },
+  ], {
+    currentDate: '2026-04-27',
+    publicationDate: '2026-04-28',
+  }, config);
+
+  assertEquals(ranked[0].unit.id, 'club');
+  assert(ranked[0].reasons.includes('soft_filler'));
+});
+
+Deno.test('validateSelectionRankingConfig rejects out-of-range edits', () => {
+  assertEquals(validateSelectionRankingConfig({
+    ...DEFAULT_SELECTION_RANKING_CONFIG,
+    weights: {
+      ...DEFAULT_SELECTION_RANKING_CONFIG.weights,
+      weak_url: -250,
+    },
+  }), 'weak_url muss zwischen -200 und 200 liegen');
 });
 
 Deno.test('mandatory high-value units survive truncation', () => {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import {
     X,
     File as FileIcon,
@@ -24,6 +25,7 @@
     ondescriptionchange: (description: string) => void;
     onpublicationdatechange: (date: string) => void;
     onresumejob?: (jobId: string) => void;
+    children?: Snippet;
   }
 
   let {
@@ -35,6 +37,7 @@
     ondescriptionchange,
     onpublicationdatechange,
     onresumejob,
+    children,
   }: Props = $props();
 
   let recent = $state<RecentPdfUpload[]>([]);
@@ -169,6 +172,10 @@
   Die KI erkennt automatisch, welche Gemeinden im PDF vorkommen, und ordnet jede
   Information der entsprechenden Gemeinde zu. Kein Ort erforderlich.
 </p>
+
+{#if children}
+  {@render children()}
+{/if}
 
 {#if recent.length > 0}
   <div class="recent-uploads">

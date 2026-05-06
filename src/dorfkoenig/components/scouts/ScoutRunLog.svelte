@@ -65,19 +65,27 @@
   }
 
   function statusLabel(execution: Execution): string {
-    if (execution.status === 'running') return 'running';
-    if (execution.status === 'failed') return 'failed';
-    if (execution.change_status === 'same') return 'same';
-    if (execution.criteria_matched) return 'matched';
-    return 'no match';
+    if (execution.status === 'running') return 'Läuft';
+    if (execution.status === 'failed') return 'Fehler';
+    if (execution.change_status === 'same') return 'Unverändert';
+    if (execution.criteria_matched) return 'Treffer';
+    return 'Geändert';
   }
 
   function resultLabel(execution: Execution): string {
     if (execution.status === 'failed') return 'Fehler';
-    if (execution.status === 'running') return 'Läuft';
-    if (execution.change_status === 'same') return 'Keine Änderung';
-    if (execution.criteria_matched) return 'Treffer';
-    return 'Kein Treffer';
+    if (execution.status === 'running') return 'Wird geprüft';
+    if (execution.change_status === 'same') return 'Keine neue relevante Änderung';
+    if (execution.criteria_matched) return 'Kriterien erfüllt';
+    return 'Kriterien nicht erfüllt';
+  }
+
+  function statusTone(execution: Execution): string {
+    if (execution.status === 'running') return 'running';
+    if (execution.status === 'failed') return 'failed';
+    if (execution.change_status === 'same') return 'same';
+    if (execution.criteria_matched) return 'matched';
+    return 'changed';
   }
 
   function countLabel(execution: Execution): string {
@@ -152,7 +160,8 @@
         {@const detail = detailById.get(execution.id)}
         {@const detailError = detailErrorById.get(execution.id)}
         {@const isExpanded = expandedId === execution.id}
-        <li class="log-row status-{execution.status}">
+        {@const tone = statusTone(execution)}
+        <li class="log-row tone-{tone}">
           <button class="log-summary" type="button" onclick={() => toggleExecution(execution)}>
             <div class="summary-top">
               <span class="expand-icon">
@@ -162,7 +171,7 @@
                   <ChevronRight size={15} />
                 {/if}
               </span>
-              <span class="log-status">{statusLabel(execution)}</span>
+              <span class="log-status status-chip-{tone}">{statusLabel(execution)}</span>
               <span class="log-result">{resultLabel(execution)}</span>
             </div>
             <div class="summary-meta">
@@ -301,8 +310,28 @@
   .log-row {
     padding: 0.875rem;
     border: 1px solid var(--color-border);
+    border-left: 3px solid var(--log-tone, var(--color-border));
     border-radius: var(--radius-sm);
     background: var(--color-background);
+  }
+
+  .log-row.tone-matched {
+    --log-tone: #16a34a;
+    background: rgba(22, 163, 74, 0.035);
+  }
+
+  .log-row.tone-same {
+    --log-tone: #9ca3af;
+  }
+
+  .log-row.tone-changed,
+  .log-row.tone-running {
+    --log-tone: #d97706;
+  }
+
+  .log-row.tone-failed {
+    --log-tone: #dc2626;
+    background: rgba(220, 38, 38, 0.035);
   }
 
   .log-summary {
@@ -361,12 +390,39 @@
 
   .log-status {
     font-weight: 700;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.35rem;
+    padding: 0.0625rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
   }
 
-  .status-running .log-status { color: #b45309; }
-  .status-completed .log-status { color: #15803d; }
-  .status-failed .log-status { color: #dc2626; }
+  .status-chip-matched {
+    border-color: rgba(22, 163, 74, 0.22);
+    background: rgba(22, 163, 74, 0.1);
+    color: #15803d;
+  }
+
+  .status-chip-same {
+    border-color: var(--color-border);
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+  }
+
+  .status-chip-changed,
+  .status-chip-running {
+    border-color: rgba(217, 119, 6, 0.22);
+    background: rgba(217, 119, 6, 0.1);
+    color: #b45309;
+  }
+
+  .status-chip-failed {
+    border-color: rgba(220, 38, 38, 0.22);
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
 
   .log-result {
     color: var(--color-text-muted);

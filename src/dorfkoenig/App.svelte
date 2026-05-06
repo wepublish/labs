@@ -3,7 +3,6 @@
   import { Loading } from '@shared/components';
   import Layout from './components/Layout.svelte';
   import Login from './routes/Login.svelte';
-  import Manage from './routes/Manage.svelte';
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
@@ -49,8 +48,6 @@
       <ScoutDetail scoutId={routeParams[0]} />
     {:else if route === 'history'}
       <History />
-    {:else if route === 'manage-legacy'}
-      <Manage />
     {:else}
       <Feed />
     {/if}

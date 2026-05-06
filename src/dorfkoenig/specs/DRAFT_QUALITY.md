@@ -93,7 +93,7 @@ Lives in `_shared/draft-quality.ts` as exported regex array. Post-validation (§
 | Homepage-only link | "Link führt nur auf Hauptseite" | §3.4.3 listing-page guard — `article_url = null` → no link |
 | Forced outlook/sign-off | "unnötige Dopplung" | §3.1 schema has no outlook/sign_off fields |
 | Cross-village standalone | "nicht vorgesehen" | §3.4.5 code-side filter pre-prompt |
-| Far-future event | "sehr weit in der Zukunft" | §3.2 `event_date` within [today-1d, today+14d] |
+| Far-future event | "sehr weit in der Zukunft" | §3.2 `event_date` within [publication date, publication date + 7d] |
 | Death without care | "besondere Sorgfalt" | §3.3 `sensitivity ≠ none` → `review_required`, no emoji lead, tighter age gate |
 
 ---
@@ -150,7 +150,7 @@ Lives in `_shared/draft-quality.ts`. `validateEmojiPalette` (§3.5) strips anyth
 | (a) Zero units after filtering | early return in `bajour-auto-draft/index.ts:122-130` | units query returns empty (§3.2 filter matched nothing) |
 | (b) Units exist but all below `quality_score < 40` | same early return | `quality_score >= 40` clause excludes every row |
 | (c) LLM returns `bullets: []` | post-validator in §3.5 | compose completed but `notes_for_editor` non-empty, `bullets` empty |
-| (d) Draft generated but quality gate blocks send | `_shared/auto-draft-quality.ts` after compose validators | title/body mismatch, severe editor notes, weak sources, omitted high-ranked selected unit, or event bullet lacks enough context |
+| (d) Draft generated but quality gate blocks send | `_shared/auto-draft-quality.ts` after compose validators | title/body mismatch, severe editor notes, weak sources, omitted high-ranked selected unit, or event bullet lacks enough context. No-link events can still pass when they have timing plus clear service/place or civic/public-safety context. |
 
 On empty paths (a-c), send one email to `ADMIN_EMAILS` via `buildDraftFailureEmail()`:
 
@@ -161,7 +161,7 @@ On empty paths (a-c), send one email to `ADMIN_EMAILS` via `buildDraftFailureEma
   - Case (c): full `notes_for_editor` array verbatim
 - Deep-link to `#/feed?village={village_id}` for the editor to investigate
 
-On withheld drafts (d), save the draft row, set `verification_status='withheld'`, write `quality_warnings`, and email `ADMIN_EMAILS` via `buildDraftWithheldEmail()` with a signed admin deep-link. `bajour-send-verification` rejects withheld drafts.
+On withheld drafts (d), save the draft row, set `verification_status='withheld'`, write `quality_warnings`, and email `ADMIN_EMAILS` via `buildDraftWithheldEmail()` with a signed admin deep-link. `bajour-send-verification` rejects withheld drafts. Auto-draft idempotency only blocks reruns when a same-village/date draft is already `ausstehend` or `bestätigt`; `withheld` and `abgelehnt` drafts can be regenerated after a quality-gate or content fix.
 
 Manual newspaper PDFs/text uploads carry both a source URL and structured
 `source_citation` metadata (publication, issue date/label, page, article title,
@@ -176,7 +176,7 @@ page rather than an article permalink.
 
 **Schema version.** `bajour_drafts` gets `schema_version INT NOT NULL DEFAULT 1` + `bullets_json JSONB` (nullable until Phase 1 ships, then required for `schema_version=2`). Renderer branches on version.
 
-**Files.** `bajour-auto-draft/index.ts`, `compose/index.ts`, `_shared/prompts.ts`, `_shared/draft-quality.ts`, `_shared/auto-draft-quality.ts`, `_shared/resend.ts`, `bajour/types.ts`, `components/compose/DraftContent.svelte`, `components/compose/DraftList.svelte`, `components/compose/VerificationBadge.svelte`.
+**Files.** `bajour-auto-draft/index.ts`, `compose/index.ts`, `_shared/prompts.ts`, `_shared/draft-quality.ts`, `_shared/auto-draft-quality.ts`, `_shared/auto-draft-idempotency.ts`, `_shared/resend.ts`, `bajour/types.ts`, `components/compose/DraftContent.svelte`, `components/compose/DraftList.svelte`, `components/compose/VerificationBadge.svelte`.
 
 **Rollback.** `VITE_FEATURE_BULLET_SCHEMA=false` → new drafts write v1 markdown; existing v2 drafts render via the new renderer (which handles both shapes). Empty-path emails gated by `feature_empty_path_email` flag in `user_settings`.
 
@@ -186,22 +186,24 @@ page rather than an article permalink.
 
 **What.** Two changes. Get clean input to the selector.
 
-**§3.2.1 Compound date filter.** Replace single `created_at >= cutoff` at `bajour-auto-draft/index.ts:96-105` with:
+**§3.2.1 Compound date filter.** Replace single `created_at >= cutoff` with a publication-date anchored filter:
 
 ```sql
 WHERE user_id = $user
   AND location->>'city' = $village
   AND used_in_article = false
   AND (
-    (event_date IS NULL AND created_at >= NOW() - INTERVAL '7 days')
-    OR event_date BETWEEN CURRENT_DATE - INTERVAL '1 day'
-                      AND CURRENT_DATE + INTERVAL '14 days'
+    (unit_type != 'event' AND publication_date >= $publication_date - INTERVAL '48 hours')
+    OR (unit_type != 'event' AND publication_date IS NULL
+        AND created_at >= $publication_date - INTERVAL '48 hours')
+    OR (unit_type = 'event' AND event_date BETWEEN $publication_date
+                                               AND $publication_date + INTERVAL '7 days')
   )
-  AND created_at >= NOW() - INTERVAL '30 days'  -- hard backstop
+  AND created_at >= $publication_date - INTERVAL '30 days'  -- hard backstop
   AND quality_score >= 40
 ```
 
-News units (no `event_date`) are fresh if ingested ≤ 7d. Event units are relevant if the event is near-term (−1d to +14d). 30d backstop prevents zombie units.
+News units are fresh only when their article `publication_date` is within 48h before the reader-facing publication date; `created_at` is used only when `publication_date` is missing. Event units are relevant from the publication date through +7d. 30d backstop prevents zombie units.
 
 **§3.2.2 Unit quality score.** Deterministic 0–100, computed at ingest, stored as `information_units.quality_score INT`. Weights in `_shared/quality-scoring.ts`:
 
@@ -287,7 +289,7 @@ ZITATION:
 
 > Dynamic per-village retrieval from `bajour_feedback_examples` is **not** in scope for this spec. See §8 + `specs/followups/self-learning-system.md`.
 
-**§3.4.5 Cross-village exclusivity and compose selection.** Code-side pre-filter drops when `location.city != village_id` OR `village_confidence = 'low'`. `_shared/selection-ranking.ts` then removes static directory facts, supporting fragments, cross-village drift, not-yet-published backfill units, homepage-only sources, and events too far ahead for a daily digest. `_shared/story-candidates.ts` folds related support facts into a lead unit's `Zusatzkontext` instead of asking the composer to cover fragments as standalone bullets.
+**§3.4.5 Cross-village exclusivity and compose selection.** Code-side pre-filter drops when `location.city != village_id` OR `village_confidence = 'low'`. `_shared/selection-ranking.ts` then ranks and filters static directory facts, supporting fragments, cross-village drift, not-yet-published backfill units, homepage-only sources, and events too far ahead for a daily digest. Default weights live in `DEFAULT_SELECTION_RANKING_CONFIG`; editors can override them via `user_settings.selection_ranking` from the Settings modal. `_shared/story-candidates.ts` folds related support facts into a lead unit's `Zusatzkontext` instead of asking the composer to cover fragments as standalone bullets.
 
 **Files.** `_shared/prompts.ts`, `_shared/source-url.ts`, `_shared/selection-ranking.ts`, `_shared/story-candidates.ts`, `bajour-auto-draft/index.ts`, `compose/index.ts` (atomic — both call sites ship in the same PR or manual compose regresses).
 
@@ -327,7 +329,7 @@ before the validator chain: if a bullet cites `source_unit_ids` but omits
 `article_url`, and exactly those units contain an article-level URL, the URL and
 one Markdown source link are restored from the unit metadata.
 
-**Warning sink.** Validator warnings append to `notes_for_editor`. Post-compose quality gate warnings also persist as `bajour_drafts.quality_warnings` and render prominently in the draft UI.
+**Warning sink.** Validator warnings append to `notes_for_editor`. Post-compose quality gate warnings also persist as `bajour_drafts.quality_warnings` and render prominently in the draft UI. Selection ranking diagnostics persist separately as `bajour_drafts.selection_diagnostics` so editors can inspect selected and rejected units without mixing ranking debug data into compose quality warnings.
 
 **Fail-closed triggers.** If after all validators `bullets.length === 0`, the empty-path admin email (§3.1.4 case c) fires. If bullets remain but the quality gate finds blockers, the draft is saved as `withheld`, selected units are not marked `used_in_article`, and the withheld admin email fires.
 

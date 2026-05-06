@@ -2,7 +2,7 @@
 
 import { api, ApiClientError } from '../lib/api';
 import type { ApiError } from '../lib/types';
-import type { BajourDraft, VerificationStatus } from './types';
+import type { BajourDraft, SelectionDiagnostics, VerificationStatus } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -50,6 +50,7 @@ export const bajourApi = {
     selected_unit_ids: string[];
     custom_system_prompt?: string | null;
     publication_date?: string;
+    selection_diagnostics?: SelectionDiagnostics | null;
   }) => api.post<BajourDraft>('bajour-drafts', data),
 
   /** Update a draft's verification status or publication date. */
@@ -63,7 +64,7 @@ export const bajourApi = {
    *  Server filters candidates by `location->>city = village_id`, matching the
    *  17:00 auto-draft cron. `selection_hint` is a per-run free-text hint. */
   selectUnits: (data: { village_id: string; recency_days?: number; selection_hint?: string; publication_date?: string }) =>
-    api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
+    api.post<{ selected_unit_ids: string[]; selection_diagnostics?: SelectionDiagnostics | null }>('bajour-select-units', data),
 
   /** Send draft to village correspondents via WhatsApp for verification. */
   sendVerification: (draftId: string) =>

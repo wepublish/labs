@@ -88,7 +88,10 @@ async function listDrafts(
     return errorResponse('Fehler beim Laden der Entwürfe', 500);
   }
 
-  return jsonResponse({ data: data || [] });
+  const drafts = data || [];
+  await attachRunSelectionDiagnostics(supabase, drafts);
+
+  return jsonResponse({ data: drafts });
 }
 
 // Create a new draft
@@ -157,6 +160,9 @@ async function createDraft(
     publication_date: publicationDate,
     provider,
   };
+  if (body.selection_diagnostics && typeof body.selection_diagnostics === 'object') {
+    insertRow.selection_diagnostics = body.selection_diagnostics;
+  }
 
   if (provider === 'external') {
     // External drafts represent an actually-published newsletter; mark as
@@ -412,6 +418,76 @@ async function updateDraft(
   }
 
   return jsonResponse({ data });
+}
+
+async function attachRunSelectionDiagnostics(
+  supabase: ReturnType<typeof createServiceClient>,
+  drafts: Array<Record<string, unknown>>,
+): Promise<void> {
+  const missingIds = drafts
+    .filter((draft) => !draft.selection_diagnostics)
+    .map((draft) => draft.id)
+    .filter((id): id is string => typeof id === 'string');
+  if (missingIds.length === 0) return;
+
+  const { data: runs, error } = await supabase
+    .from('auto_draft_runs')
+    .select('draft_id, candidate_snapshot, selected_unit_ids, mandatory_kept_ids, rejected_top_units, selection_response_preview, started_at')
+    .in('draft_id', missingIds)
+    .order('started_at', { ascending: false });
+
+  if (error) {
+    console.error('[bajour-drafts] selection diagnostics fallback failed:', error);
+    return;
+  }
+
+  const byDraft = new Map<string, Record<string, unknown>>();
+  for (const run of runs ?? []) {
+    const draftId = run.draft_id as string | null;
+    if (!draftId || byDraft.has(draftId)) continue;
+    byDraft.set(draftId, run as Record<string, unknown>);
+  }
+
+  for (const draft of drafts) {
+    const draftId = draft.id;
+    if (typeof draftId !== 'string' || draft.selection_diagnostics) continue;
+    const run = byDraft.get(draftId);
+    if (!run) continue;
+    draft.selection_diagnostics = buildRunDiagnosticsFallback(
+      run,
+      Array.isArray(draft.selected_unit_ids) ? draft.selected_unit_ids.filter((id) => typeof id === 'string') : [],
+    );
+  }
+}
+
+function buildRunDiagnosticsFallback(
+  run: Record<string, unknown>,
+  draftSelectedIds: string[],
+): Record<string, unknown> {
+  const candidateSnapshot = Array.isArray(run.candidate_snapshot) ? run.candidate_snapshot : [];
+  const selectedUnitIds = Array.isArray(run.selected_unit_ids)
+    ? run.selected_unit_ids.filter((id) => typeof id === 'string')
+    : draftSelectedIds;
+  const selected = new Set(selectedUnitIds);
+  const selectedUnits = candidateSnapshot.filter((row) =>
+    typeof row === 'object' && row !== null && selected.has(String((row as { id?: unknown }).id))
+  );
+  const rejectedTopUnits = Array.isArray(run.rejected_top_units)
+    ? run.rejected_top_units
+    : candidateSnapshot
+        .filter((row) => typeof row === 'object' && row !== null && !selected.has(String((row as { id?: unknown }).id)))
+        .slice(0, 10);
+
+  return {
+    candidate_snapshot: candidateSnapshot,
+    selected_unit_ids: selectedUnitIds,
+    selected_units: selectedUnits,
+    mandatory_kept_ids: Array.isArray(run.mandatory_kept_ids) ? run.mandatory_kept_ids : [],
+    rejected_top_units: rejectedTopUnits,
+    selection_response_preview: typeof run.selection_response_preview === 'string'
+      ? run.selection_response_preview
+      : null,
+  };
 }
 
 // Delete a draft (only own drafts)

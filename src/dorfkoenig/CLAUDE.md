@@ -25,10 +25,10 @@ src/dorfkoenig/
 │   ├── units.ts           # Units list/search/markUsed
 │   └── executions.ts      # Execution history + pagination
 ├── routes/
-│   ├── Manage.svelte      # Scout list + filters
 │   ├── ScoutDetail.svelte # Scout edit + execution history
 │   ├── History.svelte     # All executions
-│   ├── Feed.svelte        # Unit search + article drafting (ComposePanel)
+│   ├── Feed.svelte        # Scouts/uploads toggle, unit search + article drafting (ComposePanel)
+│   ├── Drafts.svelte      # Saved Bajour drafts
 │   └── Login.svelte       # Mock auth login
 ├── components/
 │   ├── Layout.svelte      # Shell (nav + content)
@@ -41,7 +41,7 @@ src/dorfkoenig/
 │       ├── DraftListPanel.svelte   # Header toggle: Entwürfe button → draft list overlay
 │       ├── DraftList.svelte        # Draft list rows (village pill, title, status badge)
 │       ├── DraftActions.svelte     # Footer: verification toggle, WhatsApp/Mailchimp send
-│       ├── DraftContent.svelte     # Draft body renderer (headline + sections)
+│       ├── DraftContent.svelte     # Draft renderer + selection ranking audit
 │       ├── DraftGenerating.svelte  # Loading state during AI generation
 │       ├── DraftError.svelte       # Error state with retry
 │       ├── DraftPreview.svelte     # Draft preview formatter
@@ -55,7 +55,7 @@ src/dorfkoenig/
 ├── bajour/                # Bajour village newsletter feature (feature-flagged)
 │   ├── api.ts             # Bajour API client (drafts, units, generate, verify, mailchimp)
 │   ├── store.ts           # Bajour drafts store
-│   ├── types.ts           # Village, Correspondent, BajourDraft, VerificationStatus
+│   ├── types.ts           # Village, BajourDraft, VerificationStatus, selection diagnostics
 │   ├── utils.ts           # Utility functions
 │   ├── mailchimp-template.html  # Backup of Mailchimp newsletter template (23k)
 │   └── __tests__/
@@ -160,9 +160,9 @@ Derived: `scoutsCount`
 Pagination: page size 20, `hasMore` flag.
 
 ### `bajourDrafts` (`bajour/store.ts`)
-`load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`, `clearError()`
+`load()`, `create(data)`, `delete(draftId)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `startPolling()`, `stopPolling()`, `clearError()`
 Polls every 30s for pending verifications. Auto-stops when no `ausstehend` drafts. `DraftSlideOver` subscribes to Realtime updates for live verification status.
-State also reflects `auto_draft_runs` logs for automated pipeline tracking.
+Draft rows can carry `selection_diagnostics` from `bajour_drafts`; older auto drafts fall back to `auto_draft_runs` ranking snapshots when available. If no snapshot exists, the draft UI still shows the persisted `selected_unit_ids` and makes clear that rejected candidates were not recorded.
 
 ### `auth` (`stores/auth.ts`)
 Re-exports `@shared/stores/auth`. Functions: `initAuth(urlToken?, inIframe?)`, `login(userId)`, `logout()`, `getUserId()`, `getUser()`, `isAuthenticated()`
@@ -182,7 +182,11 @@ headers: {
 // Response auto-unwraps { data: ... }
 ```
 
-Type-safe helpers: `scoutsApi`, `unitsApi`, `composeApi`, `executionsApi`, `bajourApi`.
+Type-safe helpers: `scoutsApi`, `unitsApi`, `composeApi`, `settingsApi`, `executionsApi`, `bajourApi`. `settingsApi.getComposePrompt()` calls `compose/prompt?schema=auto` so the settings UI shows the active auto-draft Layer 2 default.
+
+Frontend source browsing uses the same two-state pattern for Scouts and Uploads. In list state the inbox headings are source-specific (`Scouts-Inbox`, `Uploads-Inbox`); after focusing a single Scout/PDF the heading collapses to `Inbox`.
+
+Legacy draft selection audits first use `units?ids=...`; if the deployed Edge Function does not yet support exact ID lookup, `DraftContent.svelte` falls back to `unitsApi.lookupByIds()`, a direct PostgREST read with the same `x-user-id` auth header.
 
 ## Routing (`App.svelte`)
 
@@ -190,10 +194,10 @@ Hash-based routing (required for GitHub Pages + iframe embedding):
 
 | Hash | Component | Params |
 |------|-----------|--------|
-| `#/manage` or `#/` | Manage | - |
+| `#/scouts`, `#/manage`, `#/feed`, or `#/` | Feed | - |
+| `#/drafts` | Drafts | - |
 | `#/scout/{id}` | ScoutDetail | `scoutId` |
 | `#/history` | History | - |
-| `#/feed` | Feed (ComposePanel + DraftSlideOver) | - |
 
 Auth gate: shows `Loading` while checking, error message if `$auth.error`, `Login` if no user, `Layout > Route` if authenticated.
 

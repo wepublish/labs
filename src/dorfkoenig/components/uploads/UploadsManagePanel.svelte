@@ -5,32 +5,25 @@
     CheckCircle2,
     Clock,
     FileSearch,
-    Loader2,
-    RefreshCw,
-    Search
+    Search,
+    X
   } from 'lucide-svelte';
   import { Loading } from '@shared/components';
   import { EmptyState } from '../ui/primitives';
+  import DraftCoverageModal from '../compose/DraftCoverageModal.svelte';
   import UnitList from '../compose/UnitList.svelte';
   import UploadDedupDetails from '../ui/UploadDedupDetails.svelte';
   import { manualUploadApi, unitsApi } from '../../lib/api';
   import type { InformationUnit, NewspaperJobStatus, RecentPdfUpload } from '../../lib/types';
 
-  const MAX_UPLOADS = 20;
-  const MAX_COVERAGE_QUERIES = 12;
-  const COVERAGE_MIN_QUERY_LENGTH = 24;
-  const COVERAGE_SEARCH_LIMIT = 3;
-  const COVERAGE_MIN_SIMILARITY = 0.18;
-  const EMPTY_SELECTION = new Set<string>();
-
-  type CoverageStatus = 'found' | 'likely' | 'weak' | 'missing' | 'error';
-
-  interface CoverageResult {
-    query: string;
-    status: CoverageStatus;
-    matches: InformationUnit[];
-    error?: string;
+  interface Props {
+    onfocuschange?: (focused: boolean) => void;
   }
+
+  let { onfocuschange = () => {} }: Props = $props();
+
+  const MAX_UPLOADS = 20;
+  const EMPTY_SELECTION = new Set<string>();
 
   let uploads = $state<RecentPdfUpload[]>([]);
   let selectedUploadId = $state<string | null>(null);
@@ -40,11 +33,8 @@
   let uploadError = $state('');
   let unitsError = $state('');
   let unitsRequestSeq = 0;
-
-  let draftText = $state('');
-  let coverageLoading = $state(false);
-  let coverageError = $state('');
-  let coverageResults = $state<CoverageResult[]>([]);
+  let uploadSearchInput = $state('');
+  let showDraftCoverageModal = $state(false);
 
   const DATE_FMT = new Intl.DateTimeFormat('de-CH', {
     day: '2-digit',
@@ -57,6 +47,16 @@
   let selectedUpload = $derived(
     selectedUploadId ? (uploads.find((upload) => upload.id === selectedUploadId) ?? null) : null
   );
+  let displayedUploads = $derived(selectedUpload ? [selectedUpload] : uploads);
+  let draftCoverageUnitIds = $derived(new Set(uploadUnits.map((unit) => unit.id)));
+  let draftCoverageScopeLabel = $derived(
+    selectedUpload ? (selectedUpload.label ?? formatSource(selectedUpload)) : 'Uploads-Inbox'
+  );
+  let filteredUploadUnits = $derived(
+    uploadSearchInput.trim()
+      ? uploadUnits.filter((unit) => unitMatchesSearch(unit, uploadSearchInput))
+      : uploadUnits
+  );
 
   onMount(() => {
     void loadUploads();
@@ -65,32 +65,64 @@
   $effect(() => {
     if (selectedUploadId) {
       void loadUploadUnits(selectedUploadId);
+    } else if (uploads.length > 0) {
+      void loadAllUploadUnits(uploads);
     } else {
       uploadUnits = [];
     }
   });
 
   async function loadUploads(): Promise<void> {
-    const previousSelectedId = selectedUploadId;
     loadingUploads = true;
     uploadError = '';
     try {
       const rows = await manualUploadApi.listPdfs(MAX_UPLOADS);
       uploads = rows;
-      if (rows.length === 0) {
+      if (selectedUploadId && !rows.some((upload) => upload.id === selectedUploadId)) {
         selectedUploadId = null;
-      } else if (!selectedUploadId || !rows.some((upload) => upload.id === selectedUploadId)) {
-        selectedUploadId = rows[0].id;
-      }
-      if (selectedUploadId && selectedUploadId === previousSelectedId) {
-        void loadUploadUnits(selectedUploadId);
+        onfocuschange(false);
       }
     } catch (err) {
       uploadError = (err as Error).message;
       uploads = [];
       selectedUploadId = null;
+      onfocuschange(false);
     } finally {
       loadingUploads = false;
+    }
+  }
+
+  async function loadAllUploadUnits(rows: RecentPdfUpload[]): Promise<void> {
+    const requestId = ++unitsRequestSeq;
+    loadingUnits = true;
+    unitsError = '';
+    try {
+      const batches = await Promise.all(
+        rows.map((upload) =>
+          unitsApi.list({
+            upload_job_id: upload.id,
+            unused_only: false,
+            limit: 100
+          })
+        )
+      );
+      if (requestId === unitsRequestSeq) {
+        const seen = new Set<string>();
+        uploadUnits = batches.flat().filter((unit) => {
+          if (seen.has(unit.id)) return false;
+          seen.add(unit.id);
+          return true;
+        });
+      }
+    } catch (err) {
+      if (requestId === unitsRequestSeq) {
+        unitsError = (err as Error).message;
+        uploadUnits = [];
+      }
+    } finally {
+      if (requestId === unitsRequestSeq) {
+        loadingUnits = false;
+      }
     }
   }
 
@@ -151,6 +183,18 @@
     return 'Abgebrochen';
   }
 
+  function focusUpload(id: string): void {
+    selectedUploadId = id;
+    uploadSearchInput = '';
+    onfocuschange(true);
+  }
+
+  function showAllUploads(): void {
+    selectedUploadId = null;
+    uploadSearchInput = '';
+    onfocuschange(false);
+  }
+
   function unitCountLabel(upload: RecentPdfUpload): string {
     const merged = upload.units_merged ?? 0;
     if (upload.status !== 'completed') return statusLabel(upload.status);
@@ -158,134 +202,33 @@
     return `${upload.units_created} Einheiten`;
   }
 
-  function cleanDraftLine(value: string): string {
-    return value
-      .replace(/^#{1,6}\s+/, '')
-      .replace(/^[-*•]\s+/, '')
-      .replace(/^\d+[.)]\s+/, '')
-      .replace(/^\[[^\]]+\]\s*/, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function extractDraftQueries(value: string): string[] {
-    const normalized = value.replace(/\r/g, '\n');
-    const lines = normalized
-      .split(/\n+/)
-      .map(cleanDraftLine)
-      .filter((line) => line.length >= COVERAGE_MIN_QUERY_LENGTH);
-
-    const chunks: string[] = [];
-    for (const line of lines) {
-      if (line.length <= 260) {
-        chunks.push(line);
-        continue;
-      }
-
-      const sentences = line
-        .split(/[.!?]\s+/)
-        .map(cleanDraftLine)
-        .filter((sentence) => sentence.length >= COVERAGE_MIN_QUERY_LENGTH);
-      chunks.push(...(sentences.length > 1 ? sentences : [line]));
-    }
-
-    const seen = new Set<string>();
-    const queries: string[] = [];
-    for (const chunk of chunks) {
-      const query = chunk.length > 320 ? `${chunk.slice(0, 317)}...` : chunk;
-      const key = query.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      queries.push(query);
-      if (queries.length >= MAX_COVERAGE_QUERIES) break;
-    }
-    return queries;
-  }
-
-  function coverageStatus(matches: InformationUnit[]): CoverageStatus {
-    const score = matches[0]?.similarity ?? 0;
-    if (score >= 0.82) return 'found';
-    if (score >= 0.62) return 'likely';
-    if (score >= 0.38) return 'weak';
-    return 'missing';
-  }
-
-  function coverageLabel(status: CoverageStatus): string {
-    if (status === 'found') return 'Gefunden';
-    if (status === 'likely') return 'Wahrscheinlich';
-    if (status === 'weak') return 'Schwach';
-    if (status === 'error') return 'Fehler';
-    return 'Fehlt';
-  }
-
-  function scoreLabel(unit: InformationUnit): string {
-    return unit.similarity === undefined ? '-' : `${Math.round(unit.similarity * 100)}%`;
-  }
-
-  async function runCoverageCheck(): Promise<void> {
-    const queries = extractDraftQueries(draftText);
-    coverageResults = [];
-    coverageError = '';
-    if (queries.length === 0) {
-      coverageError = 'Kein prüfbarer Text gefunden.';
-      return;
-    }
-
-    coverageLoading = true;
-    try {
-      for (const query of queries) {
-        try {
-          const matches = await unitsApi.search(query, {
-            unused_only: false,
-            min_similarity: COVERAGE_MIN_SIMILARITY,
-            limit: COVERAGE_SEARCH_LIMIT
-          });
-          coverageResults = [
-            ...coverageResults,
-            {
-              query,
-              matches,
-              status: coverageStatus(matches)
-            }
-          ];
-        } catch (err) {
-          coverageResults = [
-            ...coverageResults,
-            {
-              query,
-              matches: [],
-              status: 'error',
-              error: (err as Error).message
-            }
-          ];
-        }
-      }
-    } finally {
-      coverageLoading = false;
-    }
+  function unitMatchesSearch(unit: InformationUnit, query: string): boolean {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return [
+      unit.statement,
+      unit.source_title,
+      unit.source_domain,
+      unit.topic,
+      ...(unit.entities ?? []),
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(needle));
   }
 </script>
 
 <div class="uploads-panel">
-  <section class="uploads-section" aria-labelledby="uploads-heading">
-    <div class="section-heading">
-      <div>
-        <h2 id="uploads-heading">PDF-Uploads</h2>
-        <p>{uploads.length} Uploads</p>
-      </div>
-      <button
-        class="icon-button"
-        type="button"
-        onclick={loadUploads}
-        disabled={loadingUploads}
-        title="Aktualisieren"
-      >
-        <RefreshCw size={15} class={loadingUploads ? 'spin' : ''} />
-      </button>
-    </div>
-
+  <section class="uploads-section" aria-label="PDF-Uploads">
     {#if uploadError}
       <div class="error-message" aria-live="polite">{uploadError}</div>
+    {/if}
+
+    {#if selectedUpload}
+      <div class="focused-upload-return">
+        <button class="back-to-uploads-btn" onclick={showAllUploads} type="button">
+          ← Alle Uploads
+        </button>
+      </div>
     {/if}
 
     {#if loadingUploads && uploads.length === 0}
@@ -297,15 +240,13 @@
         description="Es wurden noch keine PDF-Uploads gefunden."
       />
     {:else}
-      <div class="upload-list">
-        {#each uploads as upload (upload.id)}
+      <div class="upload-list" class:focused={!!selectedUpload}>
+        {#each displayedUploads as upload (upload.id)}
           <button
             class="upload-row"
             class:active={upload.id === selectedUploadId}
             type="button"
-            onclick={() => {
-              selectedUploadId = upload.id;
-            }}
+            onclick={() => focusUpload(upload.id)}
           >
             <span
               class="upload-icon"
@@ -330,35 +271,115 @@
           </button>
         {/each}
       </div>
+
+      {#if selectedUpload}
+        <div class="upload-detail-panel">
+          <dl>
+            <div>
+              <dt>Status</dt>
+              <dd>{statusLabel(selectedUpload.status)}</dd>
+            </div>
+            <div>
+              <dt>Verarbeitet</dt>
+              <dd>{formatDate(selectedUpload.completed_at ?? selectedUpload.created_at)}</dd>
+            </div>
+            <div>
+              <dt>Publikation</dt>
+              <dd>{selectedUpload.source_citation?.publication ?? formatSource(selectedUpload)}</dd>
+            </div>
+            <div>
+              <dt>Ausgabe</dt>
+              <dd>{selectedUpload.source_citation?.issue_label ?? selectedUpload.publication_date ?? '-'}</dd>
+            </div>
+            <div>
+              <dt>Artikel</dt>
+              <dd>{selectedUpload.source_citation?.article_title ?? selectedUpload.label ?? '-'}</dd>
+            </div>
+            <div>
+              <dt>Einheiten</dt>
+              <dd>{unitCountLabel(selectedUpload)}</dd>
+            </div>
+            {#if selectedUpload.source_citation?.page}
+              <div>
+                <dt>Seite</dt>
+                <dd>{selectedUpload.source_citation.page}</dd>
+              </div>
+            {/if}
+            {#if selectedUpload.source_citation?.section}
+              <div>
+                <dt>Rubrik</dt>
+                <dd>{selectedUpload.source_citation.section}</dd>
+              </div>
+            {/if}
+            {#if selectedUpload.source_url}
+              <div>
+                <dt>Quelle</dt>
+                <dd>
+                  <a href={selectedUpload.source_url} target="_blank" rel="noopener noreferrer">
+                    {formatDomain(selectedUpload.source_url)}
+                  </a>
+                </dd>
+              </div>
+            {/if}
+            {#if selectedUpload.error_message}
+              <div class="detail-wide">
+                <dt>Fehler</dt>
+                <dd>{selectedUpload.error_message}</dd>
+              </div>
+            {/if}
+          </dl>
+        </div>
+      {/if}
     {/if}
   </section>
 
   <section class="units-section" aria-labelledby="upload-units-heading">
     <div class="section-heading">
       <div>
-        <h2 id="upload-units-heading">Einheiten aus Upload</h2>
+        <h2 id="upload-units-heading">{selectedUpload ? 'Inbox' : 'Uploads-Inbox'}</h2>
         <p>
           {#if selectedUpload}
-            {selectedUpload.label ?? formatSource(selectedUpload)}
+            Einheiten aus diesem PDF.
           {:else}
-            Kein Upload ausgewählt
+            Einheiten aus den letzten PDF-Uploads.
           {/if}
         </p>
       </div>
-      <span class="section-count">{uploadUnits.length}</span>
+      <span class="section-count">{filteredUploadUnits.length}</span>
+    </div>
+
+    <div class="inbox-toolbar">
+      <div class="inbox-search">
+        <Search size={14} />
+        <input
+          type="text"
+          value={uploadSearchInput}
+          oninput={(event) => { uploadSearchInput = event.currentTarget.value; }}
+          placeholder={selectedUpload ? 'Einheiten in diesem PDF suchen...' : 'Einheiten suchen...'}
+        />
+        {#if uploadSearchInput}
+          <button
+            class="search-clear"
+            onclick={() => { uploadSearchInput = ''; }}
+            type="button"
+            aria-label="Suche löschen"
+          >
+            <X size={14} />
+          </button>
+        {/if}
+        <button
+          class="draft-search-btn"
+          onclick={() => { showDraftCoverageModal = true; }}
+          type="button"
+          title="Draft-Abgleich"
+          aria-label="Draft-Abgleich öffnen"
+        >
+          <FileSearch size={14} />
+        </button>
+      </div>
     </div>
 
     {#if selectedUpload}
-      <div class="upload-detail-strip">
-        <span>{statusLabel(selectedUpload.status)}</span>
-        <span>{formatDate(selectedUpload.completed_at ?? selectedUpload.created_at)}</span>
-        {#if selectedUpload.source_url}
-          <a href={selectedUpload.source_url} target="_blank" rel="noopener noreferrer">
-            {formatDomain(selectedUpload.source_url)}
-          </a>
-        {/if}
-      </div>
-
       {#if selectedUpload.dedup_summary && selectedUpload.dedup_summary.length > 0}
         <UploadDedupDetails details={selectedUpload.dedup_summary} />
       {/if}
@@ -383,85 +404,21 @@
       <Loading label="Einheiten laden..." />
     {:else}
       <UnitList
-        units={uploadUnits}
+        units={filteredUploadUnits}
         selected={EMPTY_SELECTION}
         ontoggle={() => {}}
         readonly={true}
       />
     {/if}
   </section>
-
-  <section class="coverage-section" aria-labelledby="coverage-heading">
-    <div class="section-heading">
-      <div>
-        <h2 id="coverage-heading">Draft-Abgleich</h2>
-        <p>{coverageResults.length} geprüfte Textstellen</p>
-      </div>
-    </div>
-
-    <div class="coverage-input">
-      <textarea
-        bind:value={draftText}
-        rows="7"
-        placeholder="Manuellen Draft oder Bullet-Liste einfügen..."
-      ></textarea>
-      <button
-        class="primary-action"
-        type="button"
-        disabled={coverageLoading || draftText.trim().length === 0}
-        onclick={runCoverageCheck}
-      >
-        {#if coverageLoading}
-          <Loader2 size={15} class="spin" />
-        {:else}
-          <Search size={15} />
-        {/if}
-        <span>Datenbank prüfen</span>
-      </button>
-    </div>
-
-    {#if coverageError}
-      <div class="error-message" aria-live="polite">{coverageError}</div>
-    {/if}
-
-    {#if coverageResults.length > 0}
-      <div class="coverage-results">
-        {#each coverageResults as result}
-          <article class="coverage-row status-{result.status}">
-            <div class="coverage-row-header">
-              <span class="coverage-badge">{coverageLabel(result.status)}</span>
-              <p>{result.query}</p>
-            </div>
-
-            {#if result.error}
-              <div class="coverage-error">{result.error}</div>
-            {:else if result.matches.length === 0}
-              <div class="no-match">Kein Treffer</div>
-            {:else}
-              <ol class="match-list">
-                {#each result.matches as match}
-                  <li>
-                    <span class="match-score">{scoreLabel(match)}</span>
-                    <span class="match-statement">{match.statement}</span>
-                    <span class="match-source">
-                      {#if match.source_url}
-                        <a href={match.source_url} target="_blank" rel="noopener noreferrer">
-                          {formatDomain(match.source_url)}
-                        </a>
-                      {:else}
-                        {match.source_domain}
-                      {/if}
-                    </span>
-                  </li>
-                {/each}
-              </ol>
-            {/if}
-          </article>
-        {/each}
-      </div>
-    {/if}
-  </section>
 </div>
+
+<DraftCoverageModal
+  open={showDraftCoverageModal}
+  onclose={() => { showDraftCoverageModal = false; }}
+  allowedUnitIds={draftCoverageUnitIds}
+  scopeLabel={draftCoverageScopeLabel}
+/>
 
 <style>
   .uploads-panel {
@@ -471,8 +428,7 @@
   }
 
   .uploads-section,
-  .units-section,
-  .coverage-section {
+  .units-section {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -503,42 +459,119 @@
     font-size: var(--text-sm);
   }
 
-  .icon-button {
-    display: inline-flex;
+  .inbox-toolbar {
+    display: grid;
+    grid-template-columns: minmax(18rem, 1fr);
+    gap: 0.625rem;
     align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .inbox-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.5rem 0.625rem;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: var(--color-surface);
+    background: var(--color-background);
     color: var(--color-text-muted);
+  }
+
+  .inbox-search:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.12);
+  }
+
+  .inbox-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--text-base-sm);
+  }
+
+  .inbox-search input::placeholder {
+    color: var(--color-text-light);
+  }
+
+  .search-clear,
+  .draft-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-light);
     cursor: pointer;
   }
 
-  .icon-button:hover:not(:disabled) {
-    color: var(--color-text);
-    border-color: var(--color-primary);
+  .draft-search-btn {
+    color: var(--color-primary);
   }
 
-  .icon-button:disabled {
-    opacity: 0.65;
-    cursor: wait;
+  .search-clear:hover,
+  .draft-search-btn:hover {
+    color: var(--color-text);
+    background: var(--color-surface-muted);
   }
 
   .upload-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.625rem;
+  }
+
+  .upload-list.focused {
+    grid-template-columns: 1fr;
+  }
+
+  .focused-upload-return {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .back-to-uploads-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4375rem 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--text-base-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .back-to-uploads-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(234, 114, 110, 0.06);
   }
 
   .upload-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.625rem;
     width: 100%;
-    padding: 0.75rem 0.875rem;
+    min-height: 4.25rem;
+    padding: 0.625rem 0.75rem;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
@@ -584,7 +617,7 @@
   .upload-title {
     overflow: hidden;
     color: var(--color-text);
-    font-size: var(--text-sm);
+    font-size: var(--text-base-sm);
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -600,26 +633,52 @@
     white-space: nowrap;
   }
 
-  .upload-detail-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
+  .upload-detail-panel {
+    padding: 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
   }
 
-  .upload-detail-strip span,
-  .upload-detail-strip a {
-    padding: 0.125rem 0.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-full);
-    background: var(--color-surface-muted);
-    color: inherit;
+  .upload-detail-panel dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  .upload-detail-panel div {
+    min-width: 0;
+  }
+
+  .upload-detail-panel .detail-wide {
+    grid-column: 1 / -1;
+  }
+
+  .upload-detail-panel dt {
+    margin: 0 0 0.125rem;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .upload-detail-panel dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .upload-detail-panel a {
+    color: var(--color-primary);
     text-decoration: none;
   }
 
-  .upload-detail-strip a:hover {
-    color: var(--color-primary);
+  .upload-detail-panel a:hover {
+    text-decoration: underline;
   }
 
   .skipped-block {
@@ -641,176 +700,16 @@
     font-size: var(--text-sm);
   }
 
-  .coverage-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-
-  .coverage-input textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
-    color: var(--color-text);
-    font-family: inherit;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  .coverage-input textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(234, 114, 110, 0.15);
-  }
-
-  .primary-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    align-self: flex-start;
-    gap: 0.375rem;
-    min-height: 2rem;
-    padding: 0 0.875rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--color-primary);
-    color: white;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .primary-action:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .coverage-results {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-
-  .coverage-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-    padding: 0.75rem 0.875rem;
-    border: 1px solid var(--color-border);
-    border-left: 3px solid #9ca3af;
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-  }
-
-  .coverage-row.status-found {
-    border-left-color: #16a34a;
-  }
-
-  .coverage-row.status-likely {
-    border-left-color: #2563eb;
-  }
-
-  .coverage-row.status-weak {
-    border-left-color: #d97706;
-  }
-
-  .coverage-row.status-missing,
-  .coverage-row.status-error {
-    border-left-color: var(--color-danger, #ef4444);
-  }
-
-  .coverage-row-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.625rem;
-  }
-
-  .coverage-row-header p {
-    margin: 0;
-    color: var(--color-text);
-    font-size: var(--text-sm);
-    line-height: 1.45;
-  }
-
-  .coverage-badge {
-    flex: 0 0 auto;
-    min-width: 6.25rem;
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .match-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .match-list li {
-    display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr) auto;
-    gap: 0.625rem;
-    align-items: baseline;
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-  }
-
-  .match-score {
-    font-weight: 700;
-    color: var(--color-text);
-  }
-
-  .match-statement {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .match-source a {
-    color: var(--color-text-muted);
-    text-decoration: none;
-  }
-
-  .match-source a:hover {
-    color: var(--color-primary);
-  }
-
-  .no-match,
-  .coverage-error,
   .error-message {
     padding: 0.625rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: var(--text-sm);
   }
 
-  .no-match {
-    color: var(--color-text-muted);
-    background: var(--color-surface-muted);
-  }
-
-  .coverage-error,
   .error-message {
     color: var(--color-status-error-text);
     background: var(--color-danger-surface);
     border: 1px solid var(--color-danger-border);
-  }
-
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   @media (max-width: 720px) {
@@ -822,12 +721,5 @@
       grid-column: 2;
     }
 
-    .match-list li {
-      grid-template-columns: 2.75rem minmax(0, 1fr);
-    }
-
-    .match-source {
-      grid-column: 2;
-    }
   }
 </style>

@@ -76,21 +76,8 @@ src/dorfkoenig/
 ├── bajour/                     # Bajour village newsletter feature (feature-flagged)
 │   ├── api.ts                  # Bajour API client
 │   ├── store.ts                # Bajour drafts store
-│   ├── types.ts                # Village, Correspondent, BajourDraft types
+│   ├── types.ts                # Village, BajourDraft, selection diagnostic types
 │   ├── utils.ts                # Utility functions
-│   ├── villages.json           # Village configuration data
-│   ├── components/
-│   │   ├── DraftPanel.svelte        # Legacy 3-step wizard (dead code, kept for reference)
-│   │   ├── DraftList.svelte
-│   │   ├── DraftPreview.svelte
-│   │   ├── DraftsSidebar.svelte
-│   │   ├── VillageSelect.svelte
-│   │   ├── StepVillageSelect.svelte
-│   │   ├── StepGenerate.svelte
-│   │   ├── StepPreviewSend.svelte
-│   │   ├── StepIndicator.svelte
-│   │   ├── SuccessBanner.svelte
-│   │   └── VerificationBadge.svelte
 │   └── __tests__/
 │       ├── api.test.ts
 │       ├── store.test.ts
@@ -98,10 +85,10 @@ src/dorfkoenig/
 │
 └── routes/
     ├── Login.svelte
-    ├── Manage.svelte           # Scout list + filters (was Dashboard)
     ├── ScoutDetail.svelte
     ├── History.svelte
-    └── Feed.svelte             # Unit search + article drafting (was Compose)
+    ├── Feed.svelte             # Scouts/uploads toggle, unit search + article drafting
+    └── Drafts.svelte           # Saved Bajour drafts
 ```
 
 ---
@@ -163,10 +150,10 @@ Hash-based routing for GitHub Pages compatibility.
   import { Loading } from '@shared/components';
   import Layout from './components/Layout.svelte';
   import Login from './routes/Login.svelte';
-  import Manage from './routes/Manage.svelte';
   import ScoutDetail from './routes/ScoutDetail.svelte';
   import History from './routes/History.svelte';
   import Feed from './routes/Feed.svelte';
+  import Drafts from './routes/Drafts.svelte';
 
   // Simple hash-based routing
   let hash = $state(window.location.hash || '#/');
@@ -180,7 +167,7 @@ Hash-based routing for GitHub Pages compatibility.
   });
 
   // Route parsing
-  let route = $derived(hash.slice(2).split('/')[0] || 'manage');
+  let route = $derived(hash.slice(2).split('/')[0].split('?')[0] || 'scouts');
   let routeParams = $derived(hash.slice(2).split('/').slice(1));
 </script>
 
@@ -199,16 +186,16 @@ Hash-based routing for GitHub Pages compatibility.
   <Login />
 {:else}
   <Layout>
-    {#if route === 'manage' || route === ''}
-      <Manage />
+    {#if route === 'scouts' || route === 'manage' || route === 'feed' || route === ''}
+      <Feed />
+    {:else if route === 'drafts'}
+      <Drafts />
     {:else if route === 'scout' && routeParams[0]}
       <ScoutDetail scoutId={routeParams[0]} />
     {:else if route === 'history'}
       <History />
-    {:else if route === 'feed'}
-      <Feed />
     {:else}
-      <Manage />
+      <Feed />
     {/if}
   </Layout>
 {/if}
@@ -218,10 +205,10 @@ Hash-based routing for GitHub Pages compatibility.
 
 | Hash | Component | Description |
 |------|-----------|-------------|
-| `#/manage` or `#/` | `Manage` | Scout list + filters |
+| `#/scouts`, `#/manage`, `#/feed`, or `#/` | `Feed` | Scouts/uploads toggle, unit search, drafting |
+| `#/drafts` | `Drafts` | Saved Bajour drafts |
 | `#/scout/{id}` | `ScoutDetail` | Scout edit + execution history |
 | `#/history` | `History` | All executions |
-| `#/feed` | `Feed` | Unit search + article drafting (ComposePanel + DraftSlideOver) |
 
 ### Navigation Helper
 
@@ -517,7 +504,8 @@ export const executions = createExecutionsStore();
 
 The layout includes a sticky navbar with:
 - **Brand**: DorfKönig logo (SVG crown + village) with text
-- **Center nav**: Verwalten (`#/manage`), Feed (`#/feed`), + "Neuer Scout" CTA button, + "Hochladen" upload button
+- **Center nav**: Scouts (`#/scouts`) and Entwürfe (`#/drafts`)
+- **Left actions**: "Neuer Scout" CTA button and "Hochladen" upload button
 - **User area**: Display name + logout icon
 - **Modals**: `ScoutModal` and `UploadModal` rendered at layout level
 - **Manual upload review**: PDF/text extraction stages review units in
@@ -554,8 +542,8 @@ The layout includes a sticky navbar with:
       </a>
     </div>
     <div class="nav-center">
-      <a href="#/manage">Verwalten</a>
-      <a href="#/feed">Feed</a>
+      <a href="#/scouts">Scouts</a>
+      <a href="#/drafts">Entwürfe</a>
       <button class="new-scout-btn" onclick={handleNewScout}>Neuer Scout</button>
       <button class="upload-btn" onclick={handleUpload}>Hochladen</button>
     </div>
@@ -1044,13 +1032,16 @@ The layout includes a sticky navbar with:
 
 ## Routes
 
-### Manage.svelte (was Dashboard.svelte)
-
-The main scout management view. Displays the scout list with filter/scope controls. Scout creation is handled via `ScoutModal` triggered from the Layout navbar.
-
 ### Feed.svelte (was Compose.svelte)
 
-The information unit browsing and article drafting view. Renders `ComposePanel` with location/topic filters, semantic search, and draft generation.
+The main scouts/uploads and drafting view. Renders `ComposePanel` with a visible Scouts/Uploads toggle, location/topic filters, semantic search, and draft generation.
+
+The Scouts and Uploads tabs use the same two-state browsing pattern:
+
+1. **List state**: show every matching Scout or recent PDF upload; the inbox shows units from the current scope and labels the panel `Scouts-Inbox` or `Uploads-Inbox`.
+2. **Focused state**: clicking a Scout or PDF hides sibling items, expands details for the selected item, and filters the inbox to only units from that Scout/PDF. The back control returns to the full list.
+
+Inbox search bars include a `DraftCoverageModal` trigger. The modal accepts pasted draft text, runs vector search through `units/search`, and displays grouped matches with similarity scores.
 
 ---
 
@@ -1259,22 +1250,23 @@ Enabled via `VITE_FEATURE_BAJOUR=true`. Bajour draft functionality is integrated
 
 Self-contained in `bajour/` subdirectory with its own API client, store, types, utilities, components, and tests.
 
-### Workflow (3-Step Wizard)
+### Workflow
 
-1. **Village Select** (`StepVillageSelect.svelte`): Pick a village from `villages.json` (10 villages). AI auto-selects relevant information units via `bajour-select-units` endpoint.
-2. **Generate** (`StepGenerate.svelte`): Generate newsletter draft via LLM (`bajour-generate-draft`). Optional custom system prompt.
-3. **Preview & Send** (`StepPreviewSend.svelte`): Review draft, send to village correspondents via WhatsApp for verification (`bajour-send-verification`), then aggregate verified drafts into a Mailchimp campaign (`bajour-send-mailchimp`).
+1. **Village Select** (`AISelectDropdown.svelte`): Pick a village from the active pilot list. AI auto-selects relevant information units via `bajour-select-units` using the fixed 48h publication-date news window; the response includes `selection_diagnostics` so saved drafts can show what was selected/rejected and why.
+2. **Generate** (`ComposePanel.svelte`): Generate newsletter draft via `compose/generate`. Optional custom system prompt.
+3. **Preview & Send** (`DraftSlideOver.svelte`): Review draft, send to village correspondents via WhatsApp for verification (`bajour-send-verification`), then aggregate verified drafts into a Mailchimp campaign (`bajour-send-mailchimp`) from the backend workflow.
 
 ### Key Components
 
 - `DraftPanel.svelte`: Legacy wizard component (dead code, kept for reference)
-- `DraftSlideOver.svelte` (in `compose/`): Current slide-over panel integrated into Feed
-- `DraftsSidebar.svelte`: List of existing drafts
+- `DraftSlideOver.svelte` (in `compose/`): Current slide-over panel integrated into Feed; passes selection diagnostics into saved/manual drafts.
+- `DraftContent.svelte` (in `compose/`): Renders draft body plus the selection-ranking audit when `selection_diagnostics` exists, and reconstructs legacy selected-unit details from saved IDs when older drafts have no ranking snapshot. Reconstruction uses `units?ids=...` first, then a direct authenticated `information_units` lookup if the deployed Edge Function cannot resolve exact IDs yet.
 - `VerificationBadge.svelte`: Status badge (ausstehend/bestätigt/abgelehnt)
+- `SettingsModal.svelte` (in `ui/`): Prompt editor, max-unit limit, and editable deterministic selection-ranking weights. The compose prompt request uses `compose/prompt?schema=auto` so the displayed default matches the active auto-draft schema flag.
 
 ### Store (`bajour/store.ts`)
 
-`load()`, `create(data)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `sendToMailchimp()`, `startPolling()`, `stopPolling()`. Polls every 30s for pending verifications.
+`load()`, `create(data)`, `sendVerification(draftId)`, `updateVerificationStatus(draftId, status)`, `startPolling()`, `stopPolling()`. Polls every 30s for pending verifications.
 
 ---
 

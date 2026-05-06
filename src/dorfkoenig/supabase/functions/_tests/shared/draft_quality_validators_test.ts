@@ -98,12 +98,12 @@ Deno.test('validateEmojiPalette — palette emoji unchanged', () => {
   assertEquals(warnings.length, 0);
 });
 
-Deno.test('validateEmojiPalette — non-palette replaced by kind-appropriate fallback', () => {
+Deno.test('validateEmojiPalette — model-selected emoji outside examples preserved', () => {
   const { draft: out, warnings } = validateEmojiPalette(
     draft([bullet({ emoji: '🚀', kind: 'event' })]),
   );
-  assertEquals(out.bullets[0].emoji, '📅');
-  assertEquals(warnings.length, 1);
+  assertEquals(out.bullets[0].emoji, '🚀');
+  assertEquals(warnings.length, 0);
 });
 
 // --- validateKindCounts ------------------------------------------------------
@@ -146,7 +146,7 @@ Deno.test('validateKindCounts — respects MAX_BULLETS_PER_DRAFT=4', () => {
 
 // --- runValidatorChain -------------------------------------------------------
 
-Deno.test('runValidatorChain — combined pipeline demotes extra lead + strips filler (bullet survives) + replaces bad emoji', () => {
+Deno.test('runValidatorChain — combined pipeline demotes extra lead + strips filler while preserving emoji', () => {
   const allowed = ['https://www.bzbasel.ch/ld.123'];
   const input = draft([
     bullet({
@@ -167,13 +167,13 @@ Deno.test('runValidatorChain — combined pipeline demotes extra lead + strips f
   ]);
   const out = runValidatorChain(input, allowed);
 
-  // Filler removed in place, bullets keep their non-filler prose, kinds demoted, emoji replaced.
+  // Filler removed in place, bullets keep their non-filler prose, kinds demoted, emoji preserved.
   assertEquals(out.bullets.length, 3);
   assertEquals(out.bullets[0].kind, 'lead');
   assertEquals(out.bullets[1].kind, 'secondary');
   assertEquals(out.bullets[2].kind, 'secondary');
   assertFalse(out.bullets.some((b) => b.text.includes('Bis zur nächsten Ausgabe')));
-  assertFalse(out.bullets.some((b) => b.emoji === '🚀'));
+  assert(out.bullets.some((b) => b.emoji === '🚀'));
   assert(out.notes_for_editor.length > 0);
 });
 

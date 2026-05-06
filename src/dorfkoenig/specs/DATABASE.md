@@ -831,6 +831,7 @@ CREATE TABLE bajour_drafts (
     verification_resolved_at TIMESTAMPTZ,
     verification_timeout_at TIMESTAMPTZ,
     quality_warnings JSONB NOT NULL DEFAULT '[]',
+    selection_diagnostics JSONB,
 
     -- WhatsApp tracking
     whatsapp_message_ids JSONB NOT NULL DEFAULT '[]',
@@ -879,7 +880,14 @@ CREATE TABLE auto_draft_runs (
     error_message TEXT,
     draft_id UUID REFERENCES bajour_drafts(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at TIMESTAMPTZ
+    completed_at TIMESTAMPTZ,
+
+    -- Selection audit fallback for older drafts
+    candidate_snapshot JSONB,
+    selected_unit_ids JSONB,
+    mandatory_kept_ids JSONB,
+    rejected_top_units JSONB,
+    selection_response_preview TEXT
 );
 
 -- RLS: service_role only
@@ -888,6 +896,25 @@ CREATE POLICY "Service role manages auto_draft_runs"
   ON auto_draft_runs FOR ALL
   USING (current_setting('role', true) = 'service_role');
 ```
+
+### user_settings
+
+Per-user JSONB settings. Row absence means the Edge Function default applies.
+
+```sql
+CREATE TABLE user_settings (
+  user_id    TEXT NOT NULL,
+  key        TEXT NOT NULL,
+  value      JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, key),
+  CONSTRAINT user_settings_valid_key
+    CHECK (key IN ('max_units_per_compose', 'selection_ranking'))
+);
+```
+
+- `max_units_per_compose`: integer cap for compose inputs.
+- `selection_ranking`: editable deterministic ranking weights and thresholds consumed by `_shared/selection-ranking.ts`.
 
 ---
 
@@ -1014,7 +1041,7 @@ Returns one row per village with rolling 7d / 28d aggregates and a `delta_sigma`
 | Flag | Default | Purpose |
 |---|---|---|
 | `FEATURE_BULLET_SCHEMA` | `false` | `bajour-auto-draft` writes `schema_version=2` + `bullets_json` |
-| `FEATURE_QUALITY_GATING` | `false` | Compound date filter + `quality_score >= 40` + low village-confidence drop |
+| `FEATURE_QUALITY_GATING` | `false` | 48h publication-date filter + `quality_score >= 40` + low village-confidence drop |
 | `FEATURE_EMPTY_PATH_EMAIL` | `false` | Admin emails on the 3 empty-path branches |
 | `FEATURE_METRICS_CAPTURE` | `false` | Inline `draft_quality_metrics` writes |
 | `FEATURE_FEEDBACK_CAPTURE` | `false` | Webhook harvests rejected bullets into `bajour_feedback_examples` |

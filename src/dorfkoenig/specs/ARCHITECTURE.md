@@ -186,10 +186,10 @@ Feature-flagged (`VITE_FEATURE_BAJOUR=true`). Village newsletter draft creation 
 1. Select village (from villages.json, 10 villages)
        │
        ▼
-2. AI selects relevant units (bajour-select-units)
+2. AI selects relevant units (bajour-select-units + editable deterministic ranking)
        │
        ▼
-3. Generate newsletter draft via LLM (bajour-generate-draft)
+3. Generate newsletter draft via LLM (compose/generate)
        │
        ▼
 4. Send to correspondents via WhatsApp (bajour-send-verification)

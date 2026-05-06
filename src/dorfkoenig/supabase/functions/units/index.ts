@@ -12,6 +12,8 @@ import { embeddings } from '../_shared/embeddings.ts';
 import { DEFAULT_UNITS_PAGE_SIZE, DEFAULT_SEARCH_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_PAGE_SIZE, SEARCH_MIN_SIMILARITY } from '../_shared/constants.ts';
 import { normalizeCity } from '../_shared/village-id.ts';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+
 Deno.serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -72,6 +74,11 @@ async function listUnits(
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const scoutId = url.searchParams.get('scout_id');
   const uploadJobId = url.searchParams.get('upload_job_id');
+  const unitIds = url.searchParams
+    .getAll('ids')
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
   const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_UNITS_PAGE_SIZE)), MAX_PAGE_SIZE);
   const offset = parseInt(url.searchParams.get('offset') || '0');
   const dateFrom = url.searchParams.get('date_from');
@@ -97,6 +104,13 @@ async function listUnits(
 
   if (unusedOnly) {
     query = query.eq('used_in_article', false);
+  }
+
+  if (unitIds.length > 0) {
+    if (!unitIds.every((id) => UUID_RE.test(id))) {
+      return errorResponse('Ungültige Unit-ID', 400, 'VALIDATION_ERROR');
+    }
+    query = query.in('id', [...new Set(unitIds)].slice(0, MAX_PAGE_SIZE));
   }
 
   if (scoutId) {

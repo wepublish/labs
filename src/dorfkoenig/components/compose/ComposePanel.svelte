@@ -5,6 +5,7 @@
     Loader2,
     Trash2,
     Search,
+    FileSearch,
     X,
   } from 'lucide-svelte';
   import { units } from '../../stores/units';
@@ -16,23 +17,31 @@
   import PanelFilterBar from '../ui/PanelFilterBar.svelte';
   import UnitList from './UnitList.svelte';
   import AISelectDropdown from './AISelectDropdown.svelte';
+  import DraftCoverageModal from './DraftCoverageModal.svelte';
   import DraftSlideOver from './DraftSlideOver.svelte';
+  import UploadsManagePanel from '../uploads/UploadsManagePanel.svelte';
   import ScoutCard from '../scouts/ScoutCard.svelte';
   import ScoutRunLog from '../scouts/ScoutRunLog.svelte';
   import { Loading } from '@shared/components';
   import { bajourDrafts } from '../../bajour/store';
   import type { Draft, Scout } from '../../lib/types';
-  import type { BajourDraft } from '../../bajour/types';
+  import type { BajourDraft, SelectionDiagnostics } from '../../bajour/types';
 
+  type FeedMode = 'scouts' | 'uploads';
+
+  let activeMode = $state<FeedMode>('scouts');
   let selectedUnitIds = $state<Set<string>>(new Set());
   let draft = $state<Draft | null>(null);
   let generating = $state(false);
   let error = $state('');
   let showDraftSlideOver = $state(false);
+  let showDraftCoverageModal = $state(false);
+  let uploadFocused = $state(false);
   let customPrompt = $state<string | null>(null);
   let unitsUsedForDraft = $state<string[]>([]);
   let draftGeneratedAt = $state<string | null>(null);
   let adminLinkedDraft = $state<BajourDraft | null>(null);
+  let selectionDiagnostics = $state<SelectionDiagnostics | null>(null);
 
   // Frozen village context — captured at draft generation time
   let draftVillageName = $state<string | undefined>(undefined);
@@ -155,6 +164,15 @@
     selectedScout ? [selectedScout] : matchingScouts
   );
 
+  let draftCoverageScopeLabel = $derived(selectedScout?.name ?? selectedLocation ?? 'Scouts-Inbox');
+
+  let draftCoverageSearchParams = $derived({
+    ...(selectedLocation ? { location_city: selectedLocation } : {}),
+    ...(selectedTopic ? { topic: selectedTopic } : {}),
+    ...(selectedScoutId ? { scout_id: selectedScoutId } : {}),
+    unused_only: false,
+  });
+
   $effect(() => {
     if (selectedScout && selectedUnitIds.size === 0) {
       showAISelectDropdown = false;
@@ -183,6 +201,7 @@
     draftGeneratedAt = null;
     draftVillageName = undefined;
     draftVillageId = undefined;
+    selectionDiagnostics = null;
   }
 
   function resetSearchState() {
@@ -295,6 +314,15 @@
     handleSearch('');
   }
 
+  function setActiveMode(mode: FeedMode) {
+    activeMode = mode;
+    if (mode === 'uploads') {
+      showAISelectDropdown = false;
+    } else {
+      uploadFocused = false;
+    }
+  }
+
   function toggleUnit(id: string) {
     const newSet = new Set(selectedUnitIds);
     if (newSet.has(id)) {
@@ -330,6 +358,7 @@
     aiPhase = 'generating';
     showDraftSlideOver = true;
     draftGeneratedAt = null;
+    selectionDiagnostics = null;
     const unitIds = Array.from(selectedUnitIds);
     unitsUsedForDraft = unitIds;
     try {
@@ -353,9 +382,9 @@
     }
   }
 
-  async function handleAISelectRun(villageName: string, recencyDays: number | null, selectionPrompt: string) {
+  async function handleAISelectRun(villageName: string, selectionPrompt: string) {
     showAISelectDropdown = false;
-    retryHandler = () => handleAISelectRun(villageName, recencyDays, selectionPrompt);
+    retryHandler = () => handleAISelectRun(villageName, selectionPrompt);
 
     const village = getVillageByName(villageName);
     if (!village) {
@@ -372,15 +401,16 @@
     showDraftSlideOver = true;
     draft = null;
     draftGeneratedAt = null;
+    selectionDiagnostics = null;
 
     try {
       const selectResult = await bajourApi.selectUnits({
         village_id: village.id,
-        ...(recencyDays !== null && { recency_days: recencyDays }),
         selection_hint: selectionPrompt.trim() || undefined,
       });
 
       const selectedIds = selectResult.selected_unit_ids;
+      selectionDiagnostics = selectResult.selection_diagnostics ?? null;
       if (selectedIds.length === 0) {
         error = 'Keine relevanten Einheiten gefunden.';
         generating = false;
@@ -449,22 +479,24 @@
 
 <div class="feed-panel">
   <!-- ═══ TOP BAR: Data concerns (sticky) ═══ -->
-  <div class="top-bar">
-    <PanelFilterBar
-      {locationOptions}
-      {topicOptions}
-      selectedLocation={selectedLocation}
-      selectedTopic={selectedTopic}
-      onLocationChange={handleLocationChange}
-      onTopicChange={handleTopicChange}
-      scoutOptions={scoutNameOptions}
-      selectedScout={selectedScoutId}
-      onScoutChange={handleScoutChange}
-      loading={$scouts.loading && $scouts.scouts.length === 0}
-    />
-  </div>
+  {#if activeMode === 'scouts'}
+    <div class="top-bar">
+      <PanelFilterBar
+        {locationOptions}
+        {topicOptions}
+        selectedLocation={selectedLocation}
+        selectedTopic={selectedTopic}
+        onLocationChange={handleLocationChange}
+        onTopicChange={handleTopicChange}
+        scoutOptions={scoutNameOptions}
+        selectedScout={selectedScoutId}
+        onScoutChange={handleScoutChange}
+        loading={$scouts.loading && $scouts.scouts.length === 0}
+      />
+    </div>
+  {/if}
 
-  {#if error && !showDraftSlideOver}
+  {#if activeMode === 'scouts' && error && !showDraftSlideOver}
     <div class="error-banner" aria-live="polite">
       {error}
       <button class="error-dismiss" onclick={() => { error = ''; }} type="button">&times;</button>
@@ -472,154 +504,210 @@
   {/if}
 
   <!-- ═══ SCROLLABLE CONTENT ═══ -->
-  <div class="panel-content">
-    {#if $units.error}
-      <div class="error-message" aria-live="polite">{$units.error}</div>
-    {/if}
-
-    {#if $units.loading && !initialLoadDone}
-      <Loading label="Laden..." />
-    {:else}
-      <section class="scouts-section" aria-labelledby="scouts-heading">
-        {#if selectedScout}
-          <div class="focused-scout-return">
-            <button class="back-to-scouts-btn" onclick={() => handleScoutChange(null)} type="button">
-              ← Alle Scouts
-            </button>
-          </div>
-        {:else}
+  {#if activeMode === 'uploads'}
+    <div class="panel-content panel-content-uploads">
+      {#if !uploadFocused}
+        <section class="scouts-section" aria-labelledby="scouts-heading">
           <div class="section-heading">
             <div>
-              <h2 id="scouts-heading">Scouts</h2>
+              <h2 id="scouts-heading" class="mode-heading-toggle">
+                <button
+                  class="mode-heading-tab"
+                  type="button"
+                  aria-pressed="false"
+                  onclick={() => setActiveMode('scouts')}
+                >
+                  Scouts
+                </button>
+                <button
+                  class="mode-heading-tab active"
+                  type="button"
+                  aria-pressed="true"
+                  onclick={() => setActiveMode('uploads')}
+                >
+                  Uploads
+                </button>
+              </h2>
+            </div>
+          </div>
+        </section>
+      {/if}
+      <UploadsManagePanel onfocuschange={(focused) => { uploadFocused = focused; }} />
+    </div>
+  {:else}
+    <div class="panel-content">
+      {#if $units.error}
+        <div class="error-message" aria-live="polite">{$units.error}</div>
+      {/if}
+
+      {#if $units.loading && !initialLoadDone}
+        <Loading label="Laden..." />
+      {:else}
+        <section class="scouts-section" aria-label="Scouts">
+          {#if !selectedScout}
+            <div class="section-heading">
+              <div>
+                <h2 id="scouts-heading" class="mode-heading-toggle">
+                  <button
+                    class="mode-heading-tab active"
+                    type="button"
+                    aria-pressed="true"
+                    onclick={() => setActiveMode('scouts')}
+                  >
+                    Scouts
+                  </button>
+                  <button
+                    class="mode-heading-tab"
+                    type="button"
+                    aria-pressed="false"
+                    onclick={() => setActiveMode('uploads')}
+                  >
+                    Uploads
+                  </button>
+                </h2>
+              </div>
+              <span class="section-count">{matchingScouts.length} Scouts</span>
+            </div>
+          {/if}
+          {#if selectedScout}
+            <div class="focused-scout-return">
+              <button class="back-to-scouts-btn" onclick={() => handleScoutChange(null)} type="button">
+                ← Alle Scouts
+              </button>
+            </div>
+          {/if}
+
+          {#if $scouts.loading && $scouts.scouts.length === 0}
+            <Loading label="Scouts laden..." />
+          {:else if $scouts.error}
+            <div class="error-message" aria-live="polite">{$scouts.error}</div>
+          {:else if visibleScouts.length === 0}
+            <div class="empty-inline">Keine Scouts passen zu den aktuellen Filtern.</div>
+          {:else}
+            {#if selectedScout}
+              <div class="focused-scout-layout">
+                <div class="scouts-grid scouts-grid-focused">
+                  <ScoutCard
+                    scout={selectedScout}
+                    expanded={true}
+                    ontoggle={() => handleScoutClick(selectedScout.id)}
+                    ondelete={handleScoutDeleted}
+                    onruncomplete={refreshRunLog}
+                  />
+                </div>
+                <ScoutRunLog scoutId={selectedScout.id} refreshKey={runLogRefreshKey} />
+              </div>
+            {:else}
+              <div class="scouts-grid">
+                {#each visibleScouts as scout (scout.id)}
+                  <ScoutCard
+                    {scout}
+                    expanded={false}
+                    ontoggle={() => handleScoutClick(scout.id)}
+                    ondelete={handleScoutDeleted}
+                  />
+                {/each}
+              </div>
+            {/if}
+          {/if}
+        </section>
+
+        <section class="inbox-section" aria-labelledby="inbox-heading">
+          <div class="section-heading">
+            <div>
+              <h2 id="inbox-heading">{selectedScout ? 'Inbox' : 'Scouts-Inbox'}</h2>
               <p>
-                Wählen Sie einen Scout, um die Inbox zu filtern.
+                {#if selectedScout}
+                  Informationseinheiten aus diesem Scout.
+                {:else}
+                  Informationseinheiten aus dem aktuellen Scout-Filter.
+                {/if}
               </p>
             </div>
-            <span class="section-count">{matchingScouts.length} Scouts</span>
+            <span class="section-count">{filteredUnits.length}</span>
           </div>
-        {/if}
 
-        {#if $scouts.loading && $scouts.scouts.length === 0}
-          <Loading label="Scouts laden..." />
-        {:else if $scouts.error}
-          <div class="error-message" aria-live="polite">{$scouts.error}</div>
-        {:else if visibleScouts.length === 0}
-          <div class="empty-inline">Keine Scouts passen zu den aktuellen Filtern.</div>
-        {:else}
-          {#if selectedScout}
-            <div class="focused-scout-layout">
-              <div class="scouts-grid scouts-grid-focused">
-                <ScoutCard
-                  scout={selectedScout}
-                  expanded={true}
-                  ontoggle={() => handleScoutClick(selectedScout.id)}
-                  ondelete={handleScoutDeleted}
-                  onruncomplete={refreshRunLog}
-                />
-              </div>
-              <ScoutRunLog scoutId={selectedScout.id} refreshKey={runLogRefreshKey} />
-            </div>
-          {:else}
-            <div class="scouts-grid">
-              {#each visibleScouts as scout (scout.id)}
-                <ScoutCard
-                  {scout}
-                  expanded={false}
-                  ontoggle={() => handleScoutClick(scout.id)}
-                  ondelete={handleScoutDeleted}
-                />
-              {/each}
-            </div>
-          {/if}
-        {/if}
-      </section>
-
-      <section class="inbox-section" aria-labelledby="inbox-heading">
-        <div class="section-heading">
-          <div>
-            <h2 id="inbox-heading">Inbox</h2>
-            <p>
-              {#if selectedScout}
-                Informationseinheiten aus diesem Scout.
-              {:else}
-                Informationseinheiten aus allen Scouts und Uploads.
+          <div class="inbox-toolbar">
+            <div class="inbox-search">
+              <Search size={14} />
+              <input
+                type="text"
+                value={searchInput}
+                oninput={handleSearchInput}
+                placeholder={selectedScout ? `Informationen in ${selectedScout.name} suchen...` : 'Informationen suchen...'}
+              />
+              {#if isSearching}
+                <Loader2 size={14} class="spin" />
+              {:else if searchInput}
+                <button class="search-clear" onclick={clearSearch} type="button" aria-label="Suche löschen">
+                  <X size={14} />
+                </button>
               {/if}
-            </p>
-          </div>
-          <span class="section-count">{filteredUnits.length}</span>
-        </div>
-
-        <div class="inbox-toolbar">
-          <div class="inbox-search">
-            <Search size={14} />
-            <input
-              type="text"
-              value={searchInput}
-              oninput={handleSearchInput}
-              placeholder={selectedScout ? `Informationen in ${selectedScout.name} suchen...` : 'Informationen suchen...'}
-            />
-            {#if isSearching}
-              <Loader2 size={14} class="spin" />
-            {:else if searchInput}
-              <button class="search-clear" onclick={clearSearch} type="button" aria-label="Suche löschen">
-                <X size={14} />
+              <button
+                class="draft-search-btn"
+                onclick={() => { showDraftCoverageModal = true; }}
+                type="button"
+                title="Draft-Abgleich"
+                aria-label="Draft-Abgleich öffnen"
+              >
+                <FileSearch size={14} />
               </button>
+            </div>
+
+            <div class="date-filter-compact">
+              <input
+                type="date"
+                value={dateFrom}
+                oninput={(e) => handleDateChange(e.currentTarget.value, dateTo)}
+                aria-label="Von Datum"
+              />
+              <span>–</span>
+              <input
+                type="date"
+                value={dateTo}
+                oninput={(e) => handleDateChange(dateFrom, e.currentTarget.value)}
+                aria-label="Bis Datum"
+              />
+            </div>
+          </div>
+
+          <div class="inbox-action-row">
+            {#if generating}
+              <span class="status-text">
+                <Loader2 size={14} class="spin" />
+                KI wählt aus...
+              </span>
+            {:else if selectedUnitIds.size > 0}
+              <span class="selection-pill">{selectedUnitIds.size} ausgewählt</span>
+              <button class="text-link" onclick={clearSelection} type="button">Aufheben</button>
+              <button class="icon-btn icon-btn-danger" onclick={handleDeleteSelected} type="button" title="Auswahl löschen">
+                <Trash2 size={14} />
+              </button>
+            {:else}
+              <span class="count-label">{filteredUnits.length} Einheiten</span>
+              {#if selectedScout}
+                <span class="scope-pill">{selectedScout.name}</span>
+                <button class="text-link" onclick={() => handleScoutChange(null)} type="button">Alle Scouts anzeigen</button>
+              {/if}
+              {#if filteredUnits.length > 0}
+                <button class="text-link" onclick={selectAll} type="button">Alle auswählen</button>
+              {/if}
             {/if}
           </div>
 
-          <div class="date-filter-compact">
-            <input
-              type="date"
-              value={dateFrom}
-              oninput={(e) => handleDateChange(e.currentTarget.value, dateTo)}
-              aria-label="Von Datum"
-            />
-            <span>–</span>
-            <input
-              type="date"
-              value={dateTo}
-              oninput={(e) => handleDateChange(dateFrom, e.currentTarget.value)}
-              aria-label="Bis Datum"
-            />
-          </div>
-        </div>
-
-        <div class="inbox-action-row">
-          {#if generating}
-            <span class="status-text">
-              <Loader2 size={14} class="spin" />
-              KI wählt aus...
-            </span>
-          {:else if selectedUnitIds.size > 0}
-            <span class="selection-pill">{selectedUnitIds.size} ausgewählt</span>
-            <button class="text-link" onclick={clearSelection} type="button">Aufheben</button>
-            <button class="icon-btn icon-btn-danger" onclick={handleDeleteSelected} type="button" title="Auswahl löschen">
-              <Trash2 size={14} />
-            </button>
-          {:else}
-            <span class="count-label">{filteredUnits.length} Einheiten</span>
-            {#if selectedScout}
-              <span class="scope-pill">{selectedScout.name}</span>
-              <button class="text-link" onclick={() => handleScoutChange(null)} type="button">Alle Scouts anzeigen</button>
-            {/if}
-            {#if filteredUnits.length > 0}
-              <button class="text-link" onclick={selectAll} type="button">Alle auswählen</button>
-            {/if}
-          {/if}
-        </div>
-
-        <UnitList
-          units={filteredUnits}
-          selected={selectedUnitIds}
-          ontoggle={toggleUnit}
-          dimmed={($units.loading && initialLoadDone) || generating}
-        />
-      </section>
-    {/if}
-  </div>
+          <UnitList
+            units={filteredUnits}
+            selected={selectedUnitIds}
+            ontoggle={toggleUnit}
+            dimmed={($units.loading && initialLoadDone) || generating}
+          />
+        </section>
+      {/if}
+    </div>
+  {/if}
 
   <!-- ═══ FLOATING BAR: Draft actions (bottom-right) ═══ -->
-  {#if !selectedScout || selectedUnitIds.size > 0}
+  {#if activeMode === 'scouts' && (!selectedScout || selectedUnitIds.size > 0)}
   <div class="floating-bar">
     <div class="ai-select-wrapper">
       <button
@@ -665,9 +753,17 @@
   unitIds={unitsUsedForDraft}
   generatedAt={draftGeneratedAt}
   initialSavedDraft={adminLinkedDraft}
+  {selectionDiagnostics}
   onClose={() => { showDraftSlideOver = false; adminLinkedDraft = null; }}
   onRetry={() => retryHandler?.()}
   onRegenerate={regenerateDraft}
+/>
+
+<DraftCoverageModal
+  open={showDraftCoverageModal}
+  onclose={() => { showDraftCoverageModal = false; }}
+  searchParams={draftCoverageSearchParams}
+  scopeLabel={draftCoverageScopeLabel}
 />
 
 <style>
@@ -677,6 +773,42 @@
     height: 100%;
     overflow: hidden;
     position: relative;
+  }
+
+  .mode-heading-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    width: fit-content;
+    padding: 0.1875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+  }
+
+  .mode-heading-tab {
+    min-height: 2.25rem;
+    padding: 0 0.875rem;
+    border: none;
+    border-radius: calc(var(--radius-sm) - 2px);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      color var(--transition-base),
+      background var(--transition-base);
+  }
+
+  .mode-heading-tab:hover,
+  .mode-heading-tab.active {
+    color: var(--color-primary);
+  }
+
+  .mode-heading-tab.active {
+    background: rgba(234, 114, 110, 0.08);
   }
 
   /* ── TOP BAR: sticky data concerns ── */
@@ -768,6 +900,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+  }
+
+  .panel-content-uploads {
+    gap: 0.625rem;
   }
 
   .scouts-section,
@@ -892,12 +1028,13 @@
     color: var(--color-text-light);
   }
 
-  .search-clear {
+  .search-clear,
+  .draft-search-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
     padding: 0;
     border: none;
     border-radius: var(--radius-sm);
@@ -906,7 +1043,12 @@
     cursor: pointer;
   }
 
-  .search-clear:hover {
+  .draft-search-btn {
+    color: var(--color-primary);
+  }
+
+  .search-clear:hover,
+  .draft-search-btn:hover {
     color: var(--color-text);
     background: var(--color-surface-muted);
   }
