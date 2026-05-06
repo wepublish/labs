@@ -318,8 +318,80 @@ Deno.test('composeDraftFromUnitsV2 — falls back to text content when provider 
       selected_units: [],
     });
 
-    assertEquals(draft.title, 'Fallback');
+    assertStringIncludes(draft.title, 'Arlesheim');
     assertEquals(draft.bullets.length, 0);
+  } finally {
+    openrouter.chat = originalChat;
+  }
+});
+
+Deno.test('composeDraftFromUnitsV2 — deterministic fallback for empty model output with usable units', async () => {
+  const originalChat = openrouter.chat;
+  try {
+    openrouter.chat = ((_opts) =>
+      Promise.resolve({
+        id: 'test',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call_1',
+                  type: 'function' as const,
+                  function: {
+                    name: 'submit_digest',
+                    arguments: JSON.stringify({
+                      title: 'Münchenstein — Montag, 4. Mai 2026',
+                      bullets: [],
+                      notes_for_editor: ['Termine sind nicht heute.'],
+                    }),
+                  },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      })) as typeof openrouter.chat;
+
+    const { draft } = await composeDraftFromUnitsV2({
+      village_id: 'muenchenstein',
+      village_name: 'Münchenstein',
+      publicationDate: '2026-05-04',
+      selected_units: [
+        {
+          id: 'jass',
+          statement: 'Am 6. Mai 2026 findet ein Jassturnier im Coop Restaurant des Einkaufszentrums Gartenstadt in Münchenstein statt.',
+          unit_type: 'event',
+          event_date: '2026-05-06',
+          source_domain: 'gartenstadt-muenchenstein.ch',
+          source_url: 'https://gartenstadt-muenchenstein.ch/de/aktuelles/jass-turnier-2026-997',
+          article_url: 'https://gartenstadt-muenchenstein.ch/de/aktuelles/jass-turnier-2026-997',
+          is_listing_page: false,
+          quality_score: 80,
+        },
+        {
+          id: 'lauf',
+          statement: 'Die Laufgruppe wird erstmalig am Donnerstag, 7. Mai 2026, angeboten.',
+          unit_type: 'event',
+          event_date: '2026-05-07',
+          source_domain: 'muenchenstein.ch',
+          source_url: 'https://www.muenchenstein.ch/_rte/information/2844079',
+          article_url: 'https://www.muenchenstein.ch/_rte/information/2844079',
+          is_listing_page: false,
+          quality_score: 100,
+        },
+      ],
+    });
+
+    assertEquals(draft.bullets.length, 2);
+    assertStringIncludes(draft.bullets[0].text, 'Jassturnier');
+    assertStringIncludes(draft.bullets[1].text, 'Laufgruppe');
+    assertStringIncludes(draft.notes_for_editor.join(' '), 'Fallback');
   } finally {
     openrouter.chat = originalChat;
   }

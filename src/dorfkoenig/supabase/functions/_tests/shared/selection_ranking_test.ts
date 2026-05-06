@@ -102,6 +102,30 @@ Deno.test('mandatory high-value units survive truncation', () => {
   assertEquals(enforceMandatorySelection(['filler'], ranked, 1), ['accident']);
 });
 
+Deno.test('rankSelectionCandidates treats generation-day events as past for next-morning issues', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'evening-event',
+      statement: 'Am Sonntag findet ein Konzert im Dorfzentrum statt.',
+      unit_type: 'event',
+      event_date: '2026-05-03',
+      created_at: '2026-05-03T15:00:00Z',
+      publication_date: '2026-05-03',
+      quality_score: 75,
+      sensitivity: 'none',
+      article_url: 'https://example.ch/event',
+      is_listing_page: false,
+      village_confidence: 'high',
+      source_domain: 'Gemeinde',
+    },
+  ], {
+    currentDate: '2026-05-03',
+    publicationDate: '2026-05-04',
+  });
+
+  assert(ranked[0].reasons.includes('past_event'));
+});
+
 Deno.test('dedupeSelectionCandidates collapses near-identical event listings', () => {
   const result = dedupeSelectionCandidates([
     {
@@ -318,7 +342,7 @@ Deno.test('refineSelectionForCompose drops weak context and caps compose inputs'
   );
 });
 
-Deno.test('refineSelectionForCompose does not backfill soft events after one good selection', () => {
+Deno.test('refineSelectionForCompose backfills thin local-news runs with soft events', () => {
   const ranked = rankSelectionCandidates([
     {
       id: 'kehricht',
@@ -326,8 +350,8 @@ Deno.test('refineSelectionForCompose does not backfill soft events after one goo
       unit_type: 'event',
       event_date: '2026-05-05',
       publication_date: '2026-04-30',
-      quality_score: 55,
-      article_url: 'https://www.wochenblatt.ch/',
+      quality_score: 80,
+      article_url: 'https://example.com/kehricht',
       is_listing_page: false,
     },
     {
@@ -356,10 +380,10 @@ Deno.test('refineSelectionForCompose does not backfill soft events after one goo
     villageId: 'muenchenstein',
   });
 
-  assertEquals(refineSelectionForCompose(['kehricht'], ranked, 8), ['kehricht']);
+  assertEquals(refineSelectionForCompose(['kehricht'], ranked, 8), ['kehricht', 'laufgruppe', 'jass']);
 });
 
-Deno.test('refineSelectionForCompose drops events that are too early for a daily digest', () => {
+Deno.test('refineSelectionForCompose can backfill near-future article-backed events on thin days', () => {
   const ranked = rankSelectionCandidates([
     {
       id: 'roadworks',
@@ -388,7 +412,7 @@ Deno.test('refineSelectionForCompose drops events that are too early for a daily
 
   const earlyEvent = ranked.find((row) => row.unit.id === 'roadworks');
   assert(earlyEvent?.reasons.includes('too_early_event'));
-  assertEquals(refineSelectionForCompose(['roadworks', 'meeting'], ranked, 8), ['meeting']);
+  assertEquals(refineSelectionForCompose(['roadworks', 'meeting'], ranked, 8), ['meeting', 'roadworks']);
 });
 
 Deno.test('refineSelectionForCompose drops units not yet published for simulated backfills', () => {
@@ -421,4 +445,53 @@ Deno.test('refineSelectionForCompose drops units not yet published for simulated
   const future = ranked.find((row) => row.unit.id === 'future');
   assert(future?.reasons.includes('future_publication'));
   assertEquals(refineSelectionForCompose(['future', 'available'], ranked, 8), ['available']);
+});
+
+Deno.test('refineSelectionForCompose recovers from weak LLM picks with top local candidates', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'jass',
+      statement: 'Am 6. Mai 2026 findet ein Jassturnier im Coop Restaurant des Einkaufszentrums Gartenstadt in Münchenstein statt.',
+      unit_type: 'event',
+      event_date: '2026-05-06',
+      quality_score: 80,
+      article_url: 'https://gartenstadt-muenchenstein.ch/de/aktuelles/jass-turnier-2026-997',
+      is_listing_page: false,
+    },
+    {
+      id: 'laufgruppe',
+      statement: 'Die Laufgruppe wird erstmalig am Donnerstag, 7. Mai 2026, angeboten.',
+      unit_type: 'event',
+      event_date: '2026-05-07',
+      publication_date: '2026-04-29',
+      quality_score: 100,
+      article_url: 'https://www.muenchenstein.ch/_rte/information/2844079',
+      is_listing_page: false,
+    },
+    {
+      id: 'walzwerk',
+      statement: 'Am 9. Mai 2026 finden im Walzwerkareal Arealführungen statt.',
+      unit_type: 'event',
+      event_date: '2026-05-09',
+      quality_score: 55,
+      article_url: 'https://openhouse-basel.org/orte/walzwerk-2026/',
+      is_listing_page: false,
+    },
+    {
+      id: 'future-football',
+      statement: 'Nach einem Juniorenspiel des FC Concordia Basel in Münchenstein kam es zu einem Streit.',
+      unit_type: 'fact',
+      event_date: '2026-05-05',
+      publication_date: '2026-05-05',
+      quality_score: 85,
+      article_url: 'https://www.blick.ch/autoren/ralph-donghi-id15067851.html',
+      is_listing_page: false,
+    },
+  ], {
+    currentDate: '2026-05-03',
+    publicationDate: '2026-05-04',
+    villageId: 'muenchenstein',
+  });
+
+  assertEquals(refineSelectionForCompose(['future-football'], ranked, 8), ['laufgruppe', 'jass', 'walzwerk']);
 });

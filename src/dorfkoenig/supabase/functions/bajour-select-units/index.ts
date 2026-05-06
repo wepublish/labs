@@ -17,10 +17,18 @@ import {
   refineSelectionForCompose,
   selectDeterministicFallback,
 } from '../_shared/selection-ranking.ts';
+import {
+  addDaysIsoDate,
+  isIsoDate,
+  isWeekdayPublicationDate,
+  nextValidPublicationDateAfter,
+  zurichTodayIso,
+} from '../_shared/publication-calendar.ts';
 
 interface SelectUnitsRequest {
   village_id: string;
   recency_days?: number;
+  publication_date?: string;
   /**
    * Per-run hint from the user (free text, e.g. "Bevorzuge kulturelle Veranstaltungen").
    * Prepended to the user message — does NOT replace the system prompt template.
@@ -113,10 +121,19 @@ Deno.serve(async (req) => {
     if (!village_id || typeof village_id !== 'string') {
       return errorResponse('village_id erforderlich', 400, 'VALIDATION_ERROR');
     }
+    if (body.publication_date && !isIsoDate(body.publication_date)) {
+      return errorResponse('publication_date muss YYYY-MM-DD sein', 400, 'VALIDATION_ERROR');
+    }
+    if (body.publication_date && !isWeekdayPublicationDate(body.publication_date)) {
+      return errorResponse('publication_date muss Montag bis Freitag sein', 400, 'VALIDATION_ERROR');
+    }
+
+    const currentDate = zurichTodayIso();
+    const publicationDate = body.publication_date ?? nextValidPublicationDateAfter(currentDate);
 
     // Query unused information units for this village (owned by user), ordered by recency.
     // Filter by location->>city = village_id — matches the bajour-auto-draft cron after
-    // the 2026-04-21 normalization migration, so manual KI Entwurf and the 18:00 fan-out
+    // the 2026-04-21 normalization migration, so manual KI Entwurf and the 17:00 fan-out
     // see the same candidate pool regardless of which scout or ingest path produced them.
     let query = supabase
       .from('information_units')
@@ -126,9 +143,16 @@ Deno.serve(async (req) => {
       .eq('used_in_article', false);
 
     if (recencyDays !== null) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - recencyDays);
-      query = query.gte('created_at', cutoffDate.toISOString());
+      const newsStart = addDaysIsoDate(publicationDate, -recencyDays);
+      const backstop30d = `${addDaysIsoDate(publicationDate, -30)}T00:00:00Z`;
+      const eventEnd = addDaysIsoDate(publicationDate, 7);
+      query = query
+        .gte('created_at', backstop30d)
+        .or([
+          `and(unit_type.eq.event,event_date.gte.${publicationDate},event_date.lte.${eventEnd})`,
+          `and(unit_type.neq.event,publication_date.gte.${newsStart})`,
+          `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${newsStart}T00:00:00Z)`,
+        ].join(','));
     }
 
     const { data: units, error } = await query
@@ -146,8 +170,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ data: { selected_unit_ids: [] } });
     }
 
-    const currentDate = new Date().toISOString().split('T')[0];
-    const publicationDate = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
     const rankedUnits = rankSelectionCandidates(units, {
       currentDate,
       publicationDate,
@@ -169,7 +191,7 @@ Deno.serve(async (req) => {
 
     const response = await openrouter.chat({
       messages: [
-        { role: 'system', content: buildInformationSelectPrompt(currentDate, recencyDays, template) },
+        { role: 'system', content: buildInformationSelectPrompt(currentDate, recencyDays, template, publicationDate) },
         { role: 'user', content: userMessage },
       ],
       temperature: 0.2,

@@ -167,26 +167,49 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
 ): string[] {
   const selected = new Set(selectedIds);
   const composeCap = Math.min(maxUnits, 5);
+  const minComposeUnits = Math.min(3, composeCap);
   const preferred: string[] = [];
+  const preferredUnits: T[] = [];
+
+  const addPreferred = (row: RankedSelectionUnit<T>): boolean => {
+    if (preferred.includes(row.unit.id)) return false;
+    if (preferredUnits.some((unit) => sameComposeStory(unit.statement, row.unit.statement))) {
+      return false;
+    }
+    preferred.push(row.unit.id);
+    preferredUnits.push(row.unit);
+    return true;
+  };
 
   for (const row of ranked) {
     if (!selected.has(row.unit.id)) continue;
-    if (!isComposeEligible(row)) continue;
-    preferred.push(row.unit.id);
-    if (preferred.length >= composeCap) return preferred;
+    if (!isComposeEligible(row, 'strict')) continue;
+    addPreferred(row);
+    if (preferred.length >= composeCap) return preferred.slice(0, composeCap);
   }
 
-  if (preferred.length > 0) return preferred;
+  if (preferred.length >= minComposeUnits) return preferred;
 
-  // If the LLM selected only weak context fragments, recover with the best
-  // eligible ranked units. This keeps drafts narrow without returning empty.
+  // Thin local-news days need a backfill path. Keep strong selected units first,
+  // then add softer but still useful local items until the composer has enough
+  // story candidates to produce a digest instead of a one-item stub.
   for (const row of ranked) {
-    if (!isComposeEligible(row)) continue;
-    if (!preferred.includes(row.unit.id)) preferred.push(row.unit.id);
-    if (preferred.length >= composeCap) break;
+    if (!isComposeEligible(row, 'strict')) continue;
+    addPreferred(row);
+    if (preferred.length >= minComposeUnits) break;
   }
 
-  return preferred.length > 0 ? preferred : selectedIds.slice(0, Math.max(1, composeCap));
+  if (preferred.length < minComposeUnits) {
+    for (const row of ranked) {
+      if (!isComposeEligible(row, 'thin')) continue;
+      addPreferred(row);
+      if (preferred.length >= minComposeUnits) break;
+    }
+  }
+
+  return preferred.length > 0
+    ? preferred.slice(0, composeCap)
+    : selectedIds.slice(0, Math.max(1, composeCap));
 }
 
 export function buildSelectionDiagnostics<T extends UnitForSelectionRanking>(
@@ -283,7 +306,7 @@ function rankOne<T extends UnitForSelectionRanking>(
     if (unit.event_date === publicationDate) {
       score += 30;
       reasons.push('today_event');
-    } else if (unit.event_date < currentDate) {
+    } else if (unit.event_date < publicationDate) {
       score -= 40;
       reasons.push('past_event');
     } else if (daysBetween(publicationDate, unit.event_date) > 7) {
@@ -339,20 +362,38 @@ function rankOne<T extends UnitForSelectionRanking>(
   return { unit, score, mandatory, reasons };
 }
 
-function isComposeEligible<T extends UnitForSelectionRanking>(row: RankedSelectionUnit<T>): boolean {
-  if (row.score < 70) return false;
+type ComposeEligibilityMode = 'strict' | 'thin';
+
+function isComposeEligible<T extends UnitForSelectionRanking>(
+  row: RankedSelectionUnit<T>,
+  mode: ComposeEligibilityMode,
+): boolean {
+  if (row.score < (mode === 'thin' ? 25 : 70)) return false;
   if (row.reasons.includes('static_directory_fact')) return false;
   if (row.reasons.includes('supporting_fragment')) return false;
   if (row.reasons.includes('cross_village_drift')) return false;
-  if (row.reasons.includes('too_early_event')) return false;
+  if (row.reasons.includes('too_early_event') && !isThinUsefulEvent(row)) return false;
   if (row.reasons.includes('far_future_event')) return false;
   if (row.reasons.includes('future_publication')) return false;
   if (row.reasons.includes('low_village_confidence')) return false;
-  if (row.reasons.includes('soft_filler') && !row.reasons.includes('public_safety') && !row.reasons.includes('civic_utility')) {
+  if (
+    row.reasons.includes('soft_filler') &&
+    !row.reasons.includes('public_safety') &&
+    !row.reasons.includes('civic_utility') &&
+    !(mode === 'thin' && isArticleBacked(row.unit))
+  ) {
     return false;
   }
-  if (row.reasons.includes('weak_url') && row.score < 115) return false;
+  if (row.reasons.includes('weak_url') && row.score < (mode === 'thin' ? 80 : 115)) return false;
   return true;
+}
+
+function isThinUsefulEvent<T extends UnitForSelectionRanking>(row: RankedSelectionUnit<T>): boolean {
+  return isArticleBacked(row.unit) && !row.reasons.includes('soft_filler');
+}
+
+function isArticleBacked(unit: UnitForSelectionRanking): boolean {
+  return Boolean(unit.article_url && !unit.is_listing_page && isArticleLevelUrl(unit.article_url));
 }
 
 function containsAny(text: string, needles: string[]): boolean {
@@ -449,6 +490,10 @@ function topicOverlap(a: string, b: string): number {
   ]);
   const left = new Set(fingerprintTokens(a).filter((token) => !generic.has(token)));
   return fingerprintTokens(b).filter((token) => !generic.has(token) && left.has(token)).length;
+}
+
+function sameComposeStory(a: string, b: string): boolean {
+  return topicOverlap(a, b) >= 2;
 }
 
 function fingerprintsOverlap(a: string, b: string): boolean {

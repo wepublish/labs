@@ -1,7 +1,8 @@
 /**
  * @module bajour-auto-draft
  * Automated daily newsletter draft pipeline for a single village.
- * Triggered by pg_cron via dispatch_auto_drafts() at 18:00 Europe/Zurich.
+ * Triggered by pg_cron via dispatch_auto_drafts() at 17:00 Europe/Zurich,
+ * Sunday-Thursday, for next-morning Monday-Friday issues.
  *
  * Pipeline: idempotency check → select units (LLM) → generate draft (LLM) →
  * validators (§3.5) → save → verify (WhatsApp) → metrics capture (§5.1).
@@ -53,6 +54,7 @@ import {
 } from '../_shared/auto-draft-quality.ts';
 import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
 import { prepareUnitsForCompose } from '../_shared/story-candidates.ts';
+import { isWeekdayPublicationDate } from '../_shared/publication-calendar.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -198,6 +200,67 @@ async function notifyWithheldDraft(opts: {
   }
 }
 
+async function notifyCompletedDraftStatus(opts: {
+  draftId: string;
+  village_id: string;
+  village_name: string;
+  publicationDate: string;
+  draftTitle: string;
+  draftBody: string;
+  selectedUnitCount: number;
+  verificationSent: boolean;
+  verificationTimeoutAt: string | null;
+  whatsappMessageCount: number;
+}): Promise<void> {
+  if (ADMIN_EMAILS.length === 0) return;
+
+  try {
+    const signed = await signAdminDraftLink(opts.draftId);
+    const draftUrl = buildAdminDraftUrl(PUBLIC_APP_URL, signed);
+    const status = opts.verificationSent ? 'ausstehend' : 'ausstehend, WhatsApp nicht gesendet';
+    const verificationLine = opts.verificationSent
+      ? `${opts.whatsappMessageCount} WhatsApp-Nachricht(en) gesendet` +
+        (opts.verificationTimeoutAt ? `; Timeout: ${opts.verificationTimeoutAt}` : '')
+      : 'Keine WhatsApp-Verifizierung gesendet. Bitte manuell prüfen.';
+
+    const html = `<!doctype html>
+<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.45; color: #111; max-width: 760px;">
+  <h1>Dorfkönig Entwurf: ${escapeHtml(opts.village_name)} — ${escapeHtml(status)}</h1>
+  <p>
+    <strong>Gemeinde:</strong> ${escapeHtml(opts.village_name)} (${escapeHtml(opts.village_id)})<br>
+    <strong>Publikationsdatum:</strong> ${escapeHtml(opts.publicationDate)}<br>
+    <strong>Entwurf:</strong> ${escapeHtml(opts.draftId)}<br>
+    <strong>Ausgewählte Units:</strong> ${opts.selectedUnitCount}<br>
+    <strong>Verifikation:</strong> ${escapeHtml(verificationLine)}
+  </p>
+  <p><a href="${escapeHtml(draftUrl)}">Entwurf im Admin öffnen</a></p>
+  <h2>${escapeHtml(opts.draftTitle || '(ohne Titel)')}</h2>
+  <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; background: #f6f6f6; padding: 12px; border-radius: 6px;">${escapeHtml(opts.draftBody)}</pre>
+  <p style="color: #666; font-size: 12px;">
+    Automatische Statusmeldung aus bajour-auto-draft. Korrespondenten erhalten weiterhin die WhatsApp-Verifizierung; diese E-Mail geht nur an Admins.
+  </p>
+</body>
+</html>`;
+
+    await sendEmail({
+      to: ADMIN_EMAILS,
+      subject: `Dorfkönig Status — ${opts.village_name}: ${status}`,
+      html,
+    });
+  } catch (err) {
+    console.error('[auto-draft] completed status email send failed (non-fatal):', err);
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // --- Main handler ---
 
 Deno.serve(async (req) => {
@@ -221,6 +284,9 @@ Deno.serve(async (req) => {
   if (body.publication_date && !validIsoDate(body.publication_date)) {
     return errorResponse('publication_date muss YYYY-MM-DD sein', 400, 'VALIDATION_ERROR');
   }
+  if (body.publication_date && !isWeekdayPublicationDate(body.publication_date)) {
+    return errorResponse('publication_date muss Montag bis Freitag sein', 400, 'VALIDATION_ERROR');
+  }
 
   // 1. Resolve run context. `publicationDate` is what readers see; `runDate`
   // anchors prompt recency when the draft is prepared the day before.
@@ -230,6 +296,17 @@ Deno.serve(async (req) => {
   });
   const { runDate, publicationDate } = runContext;
   let runId: number | null = null;
+
+  if (!publicationDate) {
+    console.log(`Auto-draft skipped: ${village_id} is not followed by a Mon-Fri publication day`);
+    await supabase.from('auto_draft_runs').insert({
+      village_id,
+      status: 'skipped',
+      error_message: 'non_publication_day',
+      completed_at: new Date().toISOString(),
+    });
+    return jsonResponse({ data: { status: 'skipped', reason: 'non_publication_day' } });
+  }
 
   try {
     // --- 1. Idempotency check ---
@@ -279,7 +356,8 @@ Deno.serve(async (req) => {
       .limit(100);
 
     if (FLAG_QUALITY_GATING) {
-      // §3.2.1 compound date filter: news units fresh within 7d, event units near-term.
+      // §3.2.1 compound date filter: news units fresh within 7d of the
+      // publication issue, event units near-term from the reader's issue date.
       // Event end-window tightened 2026-04-26 from +14d → +7d after Tom's
       // feedback that events 3–5 days out ("Veranstaltungen vom 27./28. April")
       // were surfaced too early in the 24. Apr. draft. A weekly newsletter that
@@ -287,7 +365,7 @@ Deno.serve(async (req) => {
       // farther-out items get re-surfaced on later runs as they enter the window.
       const news7d = `${addDaysIso(publicationDate, -7)}T00:00:00Z`;
       const backstop30d = `${addDaysIso(publicationDate, -30)}T00:00:00Z`;
-      const eventStart = runDate;
+      const eventStart = publicationDate;
       const eventEnd = addDaysIso(publicationDate, 7);
       unitsQuery = unitsQuery
         .gte('created_at', backstop30d)
@@ -696,6 +774,8 @@ Deno.serve(async (req) => {
 
     // --- 6. Send WhatsApp verification (non-fatal) ---
     let verificationSent = false;
+    let verificationTimeoutAt: string | null = null;
+    let whatsappMessageCount = 0;
     try {
       const correspondents = await getCorrespondentsForVillage(village_id);
 
@@ -734,12 +814,14 @@ Deno.serve(async (req) => {
 
         const now = new Date();
         const timeoutAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        verificationTimeoutAt = timeoutAt.toISOString();
+        whatsappMessageCount = allMessageIds.length;
 
         await supabase
           .from('bajour_drafts')
           .update({
             verification_sent_at: now.toISOString(),
-            verification_timeout_at: timeoutAt.toISOString(),
+            verification_timeout_at: verificationTimeoutAt,
             whatsapp_message_ids: allMessageIds,
           })
           .eq('id', draftId);
@@ -762,6 +844,19 @@ Deno.serve(async (req) => {
         })
         .eq('id', runId);
     }
+
+    await notifyCompletedDraftStatus({
+      draftId,
+      village_id,
+      village_name,
+      publicationDate,
+      draftTitle,
+      draftBody: bodyMd.trim(),
+      selectedUnitCount: selectedIds.length,
+      verificationSent,
+      verificationTimeoutAt,
+      whatsappMessageCount,
+    });
 
     console.log(
       `Auto-draft completed for ${village_id}: draft ${draftId}, units: ${selectedIds.length}, verification: ${verificationSent}`,

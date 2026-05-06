@@ -1,5 +1,6 @@
 <script lang="ts">
   import { processInlineMarkdown } from '../../bajour/utils';
+  import { formatZurichGeneratedAt } from '../../supabase/functions/_shared/publication-calendar';
   import type { Draft } from '../../lib/types';
   import type { DraftBullet, QualityWarning } from '../../bajour/types';
 
@@ -9,9 +10,10 @@
       notes_for_editor?: string[];
       quality_warnings?: QualityWarning[];
     };
+    generatedAt?: string | null;
   }
 
-  let { draft }: Props = $props();
+  let { draft, generatedAt = null }: Props = $props();
 
   // Process section content: render inline markdown, convert [source.ch] to pills, preserve line breaks.
   function renderContent(text: string): string {
@@ -27,6 +29,9 @@
 
 <article class="document-content">
   <h1>{draft.title}</h1>
+  {#if generatedAt}
+    <p class="generated-at">Generiert: {formatZurichGeneratedAt(generatedAt)}</p>
+  {/if}
   {#if (draft.quality_warnings && draft.quality_warnings.length > 0) || (draft.notes_for_editor && draft.notes_for_editor.length > 0)}
     <section class="quality-banner" aria-label="Qualitätswarnungen">
       <h2>Qualitätsprüfung</h2>
@@ -129,6 +134,12 @@
     line-height: 1.25;
     color: var(--color-text);
     margin: 0 0 var(--spacing-md) 0;
+  }
+
+  .generated-at {
+    margin: -0.25rem 0 var(--spacing-md);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .document-content .lede {

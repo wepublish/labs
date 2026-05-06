@@ -27,6 +27,7 @@ import {
 import {
   ANTI_PATTERNS,
   AGNOSTIC_POSITIVE_SEEDS,
+  EMOJI_PALETTE,
   runValidatorChain,
   type AntiPattern,
   type Bullet,
@@ -379,9 +380,115 @@ ERFINDE nichts. Wenn etwas unsicher ist, gib "bullets": [] zurück statt zu spek
   const draft = normaliseDraftV2(raw, village_name);
   const allowedUrls = collectAllowedUrls(selected_units);
   const repaired = repairMissingSourceLinks(draft, selected_units);
-  const validated = runValidatorChain(repaired, allowedUrls);
+  let validated = runValidatorChain(repaired, allowedUrls);
+  if (validated.bullets.length === 0) {
+    validated = buildFallbackDraftV2({
+      villageName: village_name,
+      selectedUnits: selected_units,
+      allowedUrls,
+      publicationDate,
+      existingNotes: draft.notes_for_editor,
+    });
+  }
 
   return { draft: validated, usage: response.usage };
+}
+
+function buildFallbackDraftV2(args: {
+  villageName: string;
+  selectedUnits: UnitForCompose[];
+  allowedUrls: string[];
+  publicationDate?: string;
+  existingNotes: string[];
+}): DraftV2 {
+  const bullets: Bullet[] = [];
+  const seenStories: UnitForCompose[] = [];
+
+  for (const unit of args.selectedUnits) {
+    if (bullets.length >= 3) break;
+    if (!isFallbackBulletUnit(unit)) continue;
+    if (seenStories.some((seen) => sameFallbackStory(seen.statement, unit.statement))) continue;
+
+    const url = unit.article_url && !unit.is_listing_page && isArticleLevelUrl(unit.article_url)
+      ? unit.article_url
+      : null;
+    const domain = unit.source_domain || 'Quelle';
+    const text = fallbackBulletText(unit, domain, url);
+    if (!text) continue;
+
+    bullets.push({
+      emoji: fallbackEmoji(unit),
+      kind: unit.unit_type === 'event' ? 'event' : 'secondary',
+      text,
+      article_url: url,
+      source_domain: domain,
+      source_unit_ids: unit.id ? [unit.id] : [],
+    });
+    seenStories.push(unit);
+  }
+
+  const draft: DraftV2 = {
+    title: `${args.villageName} — ${args.publicationDate ?? new Date().toISOString().slice(0, 10)}`,
+    bullets,
+    notes_for_editor: [
+      ...args.existingNotes,
+      ...(bullets.length > 0
+        ? ['Fallback: Modell lieferte keine Bullets; deterministisch aus ausgewählten Einheiten erstellt.']
+        : []),
+    ],
+  };
+  return runValidatorChain(draft, args.allowedUrls);
+}
+
+function isFallbackBulletUnit(unit: UnitForCompose): boolean {
+  if (!unit.id || !unit.statement.trim()) return false;
+  if ((unit.quality_score ?? 0) < 40) return false;
+  if (unit.sensitivity && unit.sensitivity !== 'none') return false;
+  if (unit.unit_type === 'event') {
+    return Boolean(unit.event_date || unit.article_url);
+  }
+  return hasCivicOrServiceSignal(unit.statement) || Boolean(unit.article_url);
+}
+
+function fallbackBulletText(unit: UnitForCompose, domain: string, url: string | null): string {
+  const statement = trimTrailingPunctuation(unit.statement);
+  if (!statement) return '';
+  if (!url) return statement + '.';
+  return `${statement}, wie [${domain}](${url}) meldet.`;
+}
+
+function fallbackEmoji(unit: UnitForCompose): string {
+  const text = unit.statement.toLocaleLowerCase('de-CH');
+  if (/\b(sperrung|vollsperrung|baustelle|bauarbeiten|strasse|weg|verkehr)\b/i.test(text)) return '🚧';
+  if (/\b(gemeinderat|landrat|verwaltung|wahl|kommission|behörde|nationalrat)\b/i.test(text)) return '🏛️';
+  if (unit.unit_type === 'event') return '📅';
+  return (EMOJI_PALETTE as readonly string[]).includes('📍') ? '📍' : '🏠';
+}
+
+function hasCivicOrServiceSignal(statement: string): boolean {
+  return /\b(gemeinderat|einwohnerrat|landrat|abstimmung|initiative|budget|planung|verwaltung|kehricht|wahl|nationalrat|behörde|kommission|baugesuch|sperrung|strasse|weg|schule|kindergarten)\b/i
+    .test(statement);
+}
+
+function sameFallbackStory(a: string, b: string): boolean {
+  const left = new Set(fallbackTokens(a));
+  const right = fallbackTokens(b);
+  const overlap = right.filter((token) => left.has(token)).length;
+  return overlap >= 2;
+}
+
+function fallbackTokens(value: string): string[] {
+  const generic = new Set([
+    'findet', 'statt', 'gemeinde', 'montag', 'dienstag', 'mittwoch',
+    'donnerstag', 'freitag', 'samstag', 'sonntag', 'wurde', 'wird',
+    'erstmalig', 'heute', 'morgen', 'april',
+  ]);
+  return value
+    .toLocaleLowerCase('de-CH')
+    .replace(/\b\d{1,2}\.?\b/g, '')
+    .replace(/\b20\d{2}\b/g, '')
+    .split(/[^a-z0-9äöüß]+/i)
+    .filter((token) => token.length >= 5 && !generic.has(token));
 }
 
 /**

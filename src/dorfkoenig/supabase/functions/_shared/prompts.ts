@@ -321,8 +321,11 @@ wenn sie klaren Bezug zur Ziel-Gemeinde haben. Schreibe keinen generischen
 REDAKTIONSWERT:
 - Keine alten abgeschlossenen Meldungen recyceln. Wenn eine Einheit mehrere Wochen
   alt ist, braucht sie eine neue Entwicklung im Input.
-- Für Veranstaltungen gilt bei täglicher Frequenz: heute zuerst. Morgen oder
-  später nur, wenn heute eine Handlung oder Entscheidung nötig ist.
+- Für Veranstaltungen gilt bei täglicher Frequenz: heute zuerst. Wenn der
+  Auswahl-Schritt aber nur wenige starke lokale Einheiten liefert, sind konkrete
+  Termine in den nächsten 7 Tagen ausdrücklich gültig — besonders, wenn sie von
+  Gemeinde-, Veranstalter- oder Artikelquellen stammen. Gib deshalb nicht
+  "bullets":[] zurück, nur weil ein Termin erst morgen oder später stattfindet.
 - Gute Nachrichten aus Facebook/Community-Quellen sind als letzte Meldung ok,
   wenn sie lokal, konkret und nicht bloss Werbung sind.
 - Geburtstage, Hochzeiten, Vereinsnotizen und dünne Community-Hinweise sind

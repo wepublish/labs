@@ -10,6 +10,7 @@ import type { DraftV2 } from './draft-quality.ts';
 import type { RankedSelectionUnit, UnitForSelectionRanking } from './selection-ranking.ts';
 import { addDaysIso } from './prompts.ts';
 import { isArticleLevelUrl } from './source-url.ts';
+import { isWeekdayPublicationDate, nextPublicationDateFromZurichRunDate } from './publication-calendar.ts';
 
 export type WithheldReason =
   | 'selection_empty'
@@ -29,8 +30,8 @@ export interface QualityWarning {
 export interface DraftRunContext {
   /** Date the system is drafting from. Normal cron: Zurich today. */
   runDate: string;
-  /** Reader-facing issue date. Normal cron: runDate + 1. */
-  publicationDate: string;
+  /** Reader-facing issue date. Normal cron: next weekday issue or null on non-publication days. */
+  publicationDate: string | null;
   /** True when the operator requested a historical publication date. */
   isBackfill: boolean;
 }
@@ -67,13 +68,15 @@ export function resolveDraftRunContext(opts: {
   if (opts.requestedPublicationDate) {
     return {
       runDate: subtractDaysIso(opts.requestedPublicationDate, 1),
-      publicationDate: opts.requestedPublicationDate,
+      publicationDate: isWeekdayPublicationDate(opts.requestedPublicationDate)
+        ? opts.requestedPublicationDate
+        : null,
       isBackfill: true,
     };
   }
   return {
     runDate: opts.zurichToday,
-    publicationDate: addDaysIso(opts.zurichToday, 1),
+    publicationDate: nextPublicationDateFromZurichRunDate(opts.zurichToday),
     isBackfill: false,
   };
 }
@@ -163,9 +166,8 @@ export function assessDraftQuality(args: {
     const hasEvent = sourceUnits.some((u) => u.unit_type === 'event');
     if (!hasEvent) continue;
     const hasUrl = Boolean(bullet.article_url);
-    const hasDate = /\b\d{1,2}\.\s*[A-Za-zÄÖÜäöü]+|\b\d{4}-\d{2}-\d{2}|\b(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)\b/i.test(bullet.text);
-    const hasContext = /\b(?:Uhr|Restaurant|Kirche|Areal|Strasse|Weg|Saal|Treffpunkt|Anmeldung|Start|Ort)\b/i.test(bullet.text);
-    if (!hasUrl && !(hasDate && hasContext)) {
+    const sufficientContext = hasSufficientEventContext(bullet.text, sourceUnits);
+    if (!hasUrl && !sufficientContext) {
       warnings.push({
         reason: 'missing_required_context',
         severity: 'blocker',
@@ -213,6 +215,12 @@ function classifyEditorNote(note: string): QualityWarning | null {
   if (/Emoji .* ersetzt|herabgestuft/i.test(note)) {
     return { reason: 'missing_required_context', severity: 'warning', message: note };
   }
+  if (
+    /URL:NO_LINK|kein direkter Link|kein Link verfügbar|Keine URL|NO_LINK|URL verfügbar/i.test(note) &&
+    /lokal relevant|lokale? Relevanz|Quality\s*(?:[6-9]\d|100)/i.test(note)
+  ) {
+    return { reason: 'weak_sources', severity: 'warning', message: note };
+  }
   if (/generische .*URL|kein direkter Link|kein Link verfügbar|Keine URL|NO_LINK|URL verfügbar/i.test(note)) {
     return { reason: 'weak_sources', severity: 'blocker', message: note };
   }
@@ -228,6 +236,22 @@ function classifyEditorNote(note: string): QualityWarning | null {
 function hasCivicOrSafetySignal(statement: string): boolean {
   return /\b(unfall|kollision|brand|polizei|feuerwehr|sperrung|strasse gesperrt|gemeinderat|einwohnerrat|landrat|abstimmung|initiative|budget|kredit|planung|kantonsstrasse|talboden|dreispitz|schwimmbad|schule|verwaltung|kehricht|wahl|nationalrat|behörde|kommission|baugesuch)\b/i
     .test(statement);
+}
+
+function hasSufficientEventContext(text: string, sourceUnits: ComposeUnit[]): boolean {
+  const haystack = `${text} ${sourceUnits.map((u) => u.statement).join(' ')}`;
+  const hasExplicitDate =
+    /\b\d{1,2}\.\s*[A-Za-zÄÖÜäöü]+|\b\d{4}-\d{2}-\d{2}|\b(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)\b/i
+      .test(text);
+  const hasRelativeTiming =
+    /\b(heute|morgen|gestern|übermorgen|ab heute|ab morgen|bis\s+(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)|noch bis|seit heute|seit gestern|ganztägig)\b/i
+      .test(text);
+  const hasSourceDate = sourceUnits.some((u) => Boolean(u.event_date));
+  const hasTiming = hasExplicitDate || hasRelativeTiming || hasSourceDate;
+  const hasPlaceOrService =
+    /\b(?:Uhr|Restaurant|Kirche|Areal|Strasse|Straße|Weg|Gasse|Kreuzung|Kreuzungsbereich|Saal|Treffpunkt|Anmeldung|Start|Ort|Sperrung|Vollsperrung|Bauarbeiten|Baustelle|Kehricht|Abfall|Verwaltung|Schalter|Schule|Kindergarten|Wasser|Strom)\b/i
+      .test(haystack);
+  return hasTiming && hasPlaceOrService;
 }
 
 function findTitleBodyMismatch(title: string, bodyText: string): string[] {

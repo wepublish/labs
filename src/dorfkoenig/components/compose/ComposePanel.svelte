@@ -31,6 +31,7 @@
   let showDraftSlideOver = $state(false);
   let customPrompt = $state<string | null>(null);
   let unitsUsedForDraft = $state<string[]>([]);
+  let draftGeneratedAt = $state<string | null>(null);
   let adminLinkedDraft = $state<BajourDraft | null>(null);
 
   // Frozen village context — captured at draft generation time
@@ -179,6 +180,7 @@
   function resetDraftState() {
     selectedUnitIds = new Set();
     draft = null;
+    draftGeneratedAt = null;
     draftVillageName = undefined;
     draftVillageId = undefined;
   }
@@ -327,6 +329,7 @@
     error = '';
     aiPhase = 'generating';
     showDraftSlideOver = true;
+    draftGeneratedAt = null;
     const unitIds = Array.from(selectedUnitIds);
     unitsUsedForDraft = unitIds;
     try {
@@ -339,6 +342,7 @@
         ...(customPrompt && { custom_system_prompt: customPrompt }),
       });
       draft = result;
+      draftGeneratedAt = new Date().toISOString();
       await units.markUsed(unitIds);
       selectedUnitIds = new Set();
     } catch (err) {
@@ -367,6 +371,7 @@
     error = '';
     showDraftSlideOver = true;
     draft = null;
+    draftGeneratedAt = null;
 
     try {
       const selectResult = await bajourApi.selectUnits({
@@ -396,6 +401,7 @@
       });
 
       draft = result;
+      draftGeneratedAt = new Date().toISOString();
       await units.markUsed(selectedIds);
       selectedUnitIds = new Set();
     } catch (err) {
@@ -425,6 +431,7 @@
         ...(regenPrompt && { custom_system_prompt: regenPrompt }),
       });
       draft = result;
+      draftGeneratedAt = new Date().toISOString();
     } catch (err) {
       error = (err as Error).message;
     } finally {
@@ -656,6 +663,7 @@
   villageName={draftVillageName}
   villageId={draftVillageId}
   unitIds={unitsUsedForDraft}
+  generatedAt={draftGeneratedAt}
   initialSavedDraft={adminLinkedDraft}
   onClose={() => { showDraftSlideOver = false; adminLinkedDraft = null; }}
   onRetry={() => retryHandler?.()}

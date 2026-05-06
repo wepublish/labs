@@ -135,7 +135,7 @@ function scoreUrlArticleQuality(fixture: Fixture, output: BenchOutput): MetricRe
   }
   const knownArticleUrls = new Set(
     fixture.units
-      .filter((u) => u.article_url && !u.is_listing_page)
+      .filter((u) => u.article_url && !u.is_listing_page && isArticleLevelUrl(u.article_url))
       .map((u) => normalizeUrl(u.article_url as string)),
   );
   const articleLevel = cited.filter((url) =>
