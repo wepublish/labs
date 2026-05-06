@@ -201,10 +201,12 @@ async function loadCandidateUnits(supabase: SupabaseClient, draft: DraftRow, ign
     requestedPublicationDate: draft.publication_date,
     zurichToday: draft.publication_date,
   });
-  const news7d = `${addDaysIso(context.publicationDate, -7)}T00:00:00Z`;
-  const backstop30d = `${addDaysIso(context.publicationDate, -30)}T00:00:00Z`;
-  const eventStart = context.runDate;
-  const eventEnd = addDaysIso(context.publicationDate, 7);
+  if (!context.publicationDate) return [];
+  const publicationDate = context.publicationDate;
+  const news7d = `${addDaysIso(publicationDate, -7)}T00:00:00Z`;
+  const backstop30d = `${addDaysIso(publicationDate, -30)}T00:00:00Z`;
+  const eventStart = publicationDate;
+  const eventEnd = addDaysIso(publicationDate, 7);
 
   let query = supabase
     .from('information_units')
@@ -216,7 +218,7 @@ async function loadCandidateUnits(supabase: SupabaseClient, draft: DraftRow, ign
     .gte('created_at', backstop30d)
     .or([
       `and(unit_type.eq.event,event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
-      `and(unit_type.neq.event,publication_date.gte.${addDaysIso(context.publicationDate, -14)})`,
+      `and(unit_type.neq.event,publication_date.gte.${addDaysIso(publicationDate, -14)})`,
       `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${news7d})`,
     ].join(','))
     .gte('quality_score', 40)
@@ -235,9 +237,11 @@ async function selectUnitIds(draft: DraftRow, rankedRows: CandidateUnit[], maxUn
     requestedPublicationDate: draft.publication_date,
     zurichToday: draft.publication_date,
   });
+  if (!context.publicationDate) return [];
+  const publicationDate = context.publicationDate;
   const ranked = rankSelectionCandidates(rankedRows, {
     currentDate: context.runDate,
-    publicationDate: context.publicationDate,
+    publicationDate,
     maxCandidates: 80,
     villageId: draft.village_id,
   });
@@ -246,7 +250,7 @@ async function selectUnitIds(draft: DraftRow, rankedRows: CandidateUnit[], maxUn
     messages: [
       {
         role: 'system',
-        content: buildInformationSelectPrompt(context.runDate, 2, INFORMATION_SELECT_PROMPT, context.publicationDate),
+        content: buildInformationSelectPrompt(context.runDate, 2, INFORMATION_SELECT_PROMPT, publicationDate),
       },
       {
         role: 'user',
@@ -271,14 +275,19 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
     requestedPublicationDate: draft.publication_date,
     zurichToday: draft.publication_date,
   });
+  if (!context.publicationDate) {
+    console.warn(`[skip] ${draft.village_id} ${draft.publication_date}: non-publication day`);
+    return;
+  }
+  const publicationDate = context.publicationDate;
   const candidates = await loadCandidateUnits(supabase, draft, args.ignoreUsed);
   const deduped = dedupeSelectionCandidates(candidates, {
     currentDate: context.runDate,
-    publicationDate: context.publicationDate,
+    publicationDate,
   });
   const ranked = rankSelectionCandidates(deduped.units, {
     currentDate: context.runDate,
-    publicationDate: context.publicationDate,
+    publicationDate,
     maxCandidates: 80,
     villageId: draft.village_id,
   });
@@ -297,7 +306,7 @@ async function evalDraft(supabase: SupabaseClient, draft: DraftRow, args: Args):
       positiveExamples: AGNOSTIC_POSITIVE_SEEDS,
       antiPatterns: ANTI_PATTERNS,
       currentDate: context.runDate,
-      publicationDate: context.publicationDate,
+      publicationDate,
       ctx: { village_id: draft.village_id, run_id: draft.id },
     })
     : {

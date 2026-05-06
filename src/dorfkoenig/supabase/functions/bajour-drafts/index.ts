@@ -9,6 +9,12 @@ import { createServiceClient, requireUserId } from '../_shared/supabase-client.t
 import { openrouter } from '../_shared/openrouter.ts';
 import { embeddings } from '../_shared/embeddings.ts';
 import { upsertCanonicalUnit } from '../_shared/canonical-units.ts';
+import {
+  isIsoDate,
+  isWeekdayPublicationDate,
+  nextValidPublicationDateAfter,
+  zurichTodayIso,
+} from '../_shared/publication-calendar.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -125,13 +131,19 @@ async function createDraft(
 
   if (
     body.publication_date !== undefined &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(body.publication_date)
+    !isIsoDate(body.publication_date)
   ) {
     return errorResponse('Ungültiges Datumsformat (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
   }
+  if (
+    body.publication_date !== undefined &&
+    !isWeekdayPublicationDate(body.publication_date)
+  ) {
+    return errorResponse('Publikationsdatum muss Montag bis Freitag sein', 400, 'VALIDATION_ERROR');
+  }
 
   const publicationDate =
-    body.publication_date || new Date().toISOString().split('T')[0];
+    body.publication_date || nextValidPublicationDateAfter(zurichTodayIso());
   const draftBody = body.body.trim();
 
   const insertRow: Record<string, unknown> = {
@@ -356,8 +368,11 @@ async function updateDraft(
   }
   // Allow publication date update
   if (body.publication_date !== undefined) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.publication_date)) {
+    if (!isIsoDate(body.publication_date)) {
       return errorResponse('Ungültiges Datumsformat (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
+    }
+    if (!isWeekdayPublicationDate(body.publication_date)) {
+      return errorResponse('Publikationsdatum muss Montag bis Freitag sein', 400, 'VALIDATION_ERROR');
     }
     updates.publication_date = body.publication_date;
   }

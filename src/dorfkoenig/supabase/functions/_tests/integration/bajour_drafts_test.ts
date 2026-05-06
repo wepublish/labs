@@ -126,6 +126,24 @@ Deno.test({
 });
 
 Deno.test({
+  name: 'bajour-drafts: create draft rejects weekend publication date',
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const res = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        ...VALID_DRAFT,
+        publication_date: '2026-05-09',
+      }),
+    });
+
+    assertEquals(res.status, 400, 'Weekend publication_date should return 400');
+  },
+});
+
+Deno.test({
   name: 'bajour-drafts: PATCH updates verification_status to bestätigt',
   sanitizeOps: false,
   sanitizeResources: false,
@@ -221,6 +239,34 @@ Deno.test({
     });
 
     assertEquals(patchRes.status, 400, 'Empty PATCH should return 400');
+  },
+});
+
+Deno.test({
+  name: 'bajour-drafts: PATCH rejects weekend publication date',
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const createRes = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        ...VALID_DRAFT,
+        publication_date: '2026-05-08',
+      }),
+    });
+    const createBody = await createRes.json();
+    assertEquals(createRes.status, 201);
+    const draftId = createBody.data.id;
+    createdDraftIds.push(draftId);
+
+    const patchRes = await fetch(`${BASE_URL}/${draftId}`, {
+      method: 'PATCH',
+      headers: headers(),
+      body: JSON.stringify({ publication_date: '2026-05-09' }),
+    });
+
+    assertEquals(patchRes.status, 400, 'Weekend publication_date PATCH should return 400');
   },
 });
 

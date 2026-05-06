@@ -21,8 +21,8 @@ import {
   AGNOSTIC_POSITIVE_SEEDS,
 } from '../../_shared/draft-quality.ts';
 
-Deno.test('emoji palette contains 32 approved emoji', () => {
-  assertEquals(EMOJI_PALETTE.length, 32);
+Deno.test('emoji palette contains the approved closed set', () => {
+  assertEquals(EMOJI_PALETTE.length, 39);
 });
 
 Deno.test('isAllowedEmoji — palette members pass', () => {

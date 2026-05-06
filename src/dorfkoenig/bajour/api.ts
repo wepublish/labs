@@ -61,8 +61,8 @@ export const bajourApi = {
 
   /** LLM-powered selection of relevant units for a village newsletter.
    *  Server filters candidates by `location->>city = village_id`, matching the
-   *  18:00 auto-draft cron. `selection_hint` is a per-run free-text hint. */
-  selectUnits: (data: { village_id: string; recency_days?: number; selection_hint?: string }) =>
+   *  17:00 auto-draft cron. `selection_hint` is a per-run free-text hint. */
+  selectUnits: (data: { village_id: string; recency_days?: number; selection_hint?: string; publication_date?: string }) =>
     api.post<{ selected_unit_ids: string[] }>('bajour-select-units', data),
 
   /** Send draft to village correspondents via WhatsApp for verification. */

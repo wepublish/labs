@@ -10,6 +10,11 @@
   import { bajourDrafts } from '../../bajour/store';
   import { bajourApi } from '../../bajour/api';
   import { supabase } from '../../lib/supabase';
+  import {
+    isWeekdayPublicationDate,
+    nextValidPublicationDateAfter,
+    zurichTodayIso,
+  } from '../../supabase/functions/_shared/publication-calendar';
   import type { Draft } from '../../lib/types';
   import type { BajourDraft, DraftBullet, QualityWarning, VerificationStatus } from '../../bajour/types';
 
@@ -24,6 +29,7 @@
     villageName?: string;
     villageId?: string;
     unitIds?: string[];
+    generatedAt?: string | null;
     initialSavedDraft?: BajourDraft | null;
     onClose: () => void;
     onRetry: () => void;
@@ -41,6 +47,7 @@
     villageName,
     villageId,
     unitIds = [],
+    generatedAt = null,
     initialSavedDraft = null,
     onClose,
     onRetry,
@@ -56,6 +63,10 @@
       parts.push(`## ${section.heading}\n${section.content}`);
     }
     return parts.join('\n\n');
+  }
+
+  function defaultPublicationDate(): string {
+    return nextValidPublicationDateAfter(zurichTodayIso());
   }
 
   type DisplayDraft = Draft & {
@@ -166,7 +177,7 @@
 
   let showRegenPrompt = $state(false);
   let regenPrompt = $state('');
-  let publicationDate = $state(new Date().toISOString().split('T')[0]);
+  let publicationDate = $state(defaultPublicationDate());
 
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -224,7 +235,7 @@
       savedDraft = null;
       showRegenPrompt = false;
       regenPrompt = '';
-      publicationDate = new Date().toISOString().split('T')[0];
+      publicationDate = defaultPublicationDate();
       sendLoading = false;
       deleteLoading = false;
       statusLoading = false;
@@ -376,7 +387,12 @@
   }
 
   async function handlePublicationDateChange(newDate: string): Promise<void> {
+    if (!isWeekdayPublicationDate(newDate)) {
+      actionError = 'Erscheinungsdatum muss Montag bis Freitag sein.';
+      return;
+    }
     publicationDate = newDate;
+    actionError = '';
     if (savedDraft) {
       try {
         const updated = await bajourApi.updateDraft(savedDraft.id, { publication_date: newDate });
@@ -431,7 +447,7 @@
               aria-label="Erscheinungsdatum"
             />
           </div>
-          <DraftContent draft={parseSavedDraftBody(savedDraft)} />
+          <DraftContent draft={parseSavedDraftBody(savedDraft)} generatedAt={savedDraft.created_at} />
         {:else if draft}
           {#if villageName}
             <div class="meta-line">
@@ -440,12 +456,12 @@
                 type="date"
                 class="publication-date"
                 value={publicationDate}
-                onchange={(e) => { publicationDate = e.currentTarget.value; }}
+                onchange={(e) => { void handlePublicationDateChange(e.currentTarget.value); }}
                 aria-label="Erscheinungsdatum"
               />
             </div>
           {/if}
-          <DraftContent {draft} />
+          <DraftContent {draft} {generatedAt} />
         {/if}
       </div>
 
