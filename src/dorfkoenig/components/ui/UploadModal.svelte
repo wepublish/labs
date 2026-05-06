@@ -539,6 +539,73 @@
   let successDetails = $derived(formatUploadSuccessDetails(unitsCreated, unitsMerged));
 </script>
 
+{#snippet sourceMetadataFields()}
+  <div class="form-group">
+    <label for="upload-source">Quellenangabe <span class="optional">(optional)</span></label>
+    <input
+      id="upload-source"
+      type="text"
+      bind:value={sourceTitle}
+      placeholder="z.B. Pressekonferenz Rathaus"
+    />
+  </div>
+
+  <div class="form-group">
+    <label for="upload-source-url">
+      Quellen-URL {#if activeTab === 'text'}<span class="optional">(optional)</span>{/if}
+    </label>
+    <input
+      id="upload-source-url"
+      type="url"
+      bind:value={sourceUrl}
+      placeholder="https://www.wochenblatt.ch/"
+      required={activeTab === 'pdf'}
+    />
+  </div>
+
+  <div class="source-grid">
+    <div class="form-group">
+      <label for="upload-issue-label">Ausgabe <span class="optional">(optional)</span></label>
+      <input
+        id="upload-issue-label"
+        type="text"
+        bind:value={sourceIssueLabel}
+        placeholder="z.B. Nr. 18/2026"
+      />
+    </div>
+    <div class="form-group">
+      <label for="upload-source-page">Seite <span class="optional">(optional)</span></label>
+      <input
+        id="upload-source-page"
+        type="text"
+        bind:value={sourcePage}
+        placeholder="z.B. 7"
+      />
+    </div>
+  </div>
+
+  <div class="source-grid">
+    <div class="form-group">
+      <label for="upload-article-title">Artikeltitel <span class="optional">(optional)</span></label>
+      <input
+        id="upload-article-title"
+        type="text"
+        bind:value={articleTitle}
+        placeholder="z.B. Felix Berchten gewählt"
+      />
+    </div>
+    <div class="form-group">
+      <label for="upload-article-section">Rubrik <span class="optional">(optional)</span></label>
+      <input
+        id="upload-article-section"
+        type="text"
+        bind:value={articleSection}
+        placeholder="z.B. Arlesheim"
+      />
+    </div>
+  </div>
+{/snippet}
+
 {#if open}
   <div
     class="modal-backdrop"
@@ -670,7 +737,9 @@
               ondescriptionchange={(v) => { description = v; }}
               onpublicationdatechange={(v) => { publicationDate = v; }}
               onresumejob={resumeJob}
-            />
+            >
+              {@render sourceMetadataFields()}
+            </UploadPdfTab>
           {/if}
 
           <!-- Scope toggle: only for text uploads (PDF assigns villages via LLM) -->
@@ -686,73 +755,8 @@
                 ontopicchange={(t) => { topic = t; }}
               />
             </div>
+            {@render sourceMetadataFields()}
           {/if}
-
-          <!-- Optional source title -->
-          <div class="form-group">
-            <label for="upload-source">Quellenangabe <span class="optional">(optional)</span></label>
-            <input
-              id="upload-source"
-              type="text"
-              bind:value={sourceTitle}
-              placeholder="z.B. Pressekonferenz Rathaus"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="upload-source-url">
-              Quellen-URL {#if activeTab === 'text'}<span class="optional">(optional)</span>{/if}
-            </label>
-            <input
-              id="upload-source-url"
-              type="url"
-              bind:value={sourceUrl}
-              placeholder="https://www.wochenblatt.ch/"
-              required={activeTab === 'pdf'}
-            />
-          </div>
-
-          <div class="source-grid">
-            <div class="form-group">
-              <label for="upload-issue-label">Ausgabe <span class="optional">(optional)</span></label>
-              <input
-                id="upload-issue-label"
-                type="text"
-                bind:value={sourceIssueLabel}
-                placeholder="z.B. Nr. 18/2026"
-              />
-            </div>
-            <div class="form-group">
-              <label for="upload-source-page">Seite <span class="optional">(optional)</span></label>
-              <input
-                id="upload-source-page"
-                type="text"
-                bind:value={sourcePage}
-                placeholder="z.B. 7"
-              />
-            </div>
-          </div>
-
-          <div class="source-grid">
-            <div class="form-group">
-              <label for="upload-article-title">Artikeltitel <span class="optional">(optional)</span></label>
-              <input
-                id="upload-article-title"
-                type="text"
-                bind:value={articleTitle}
-                placeholder="z.B. Felix Berchten gewählt"
-              />
-            </div>
-            <div class="form-group">
-              <label for="upload-article-section">Rubrik <span class="optional">(optional)</span></label>
-              <input
-                id="upload-article-section"
-                type="text"
-                bind:value={articleSection}
-                placeholder="z.B. Arlesheim"
-              />
-            </div>
-          </div>
         {/if}
       </div>
 
