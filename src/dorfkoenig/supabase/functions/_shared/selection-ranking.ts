@@ -22,6 +22,121 @@ export interface RankedSelectionUnit<T extends UnitForSelectionRanking = UnitFor
   reasons: string[];
 }
 
+export const SELECTION_RANKING_REASON_KEYS = [
+  'fresh_sensitive',
+  'stale_sensitive',
+  'future_publication',
+  'static_directory_fact',
+  'supporting_fragment',
+  'cross_village_drift',
+  'public_safety',
+  'civic_utility',
+  'soft_filler',
+  'today_event',
+  'past_event',
+  'far_future_event',
+  'too_early_event',
+  'fresh',
+  'stale',
+  'article_url',
+  'weak_url',
+  'low_village_confidence',
+  'high_village_confidence',
+  'below_quality_threshold',
+] as const;
+
+export type SelectionRankingReasonKey = typeof SELECTION_RANKING_REASON_KEYS[number];
+
+export interface SelectionRankingConfig {
+  weights: Record<SelectionRankingReasonKey, number>;
+  mandatoryScore: number;
+  composeStrictMinScore: number;
+  composeThinMinScore: number;
+  weakUrlStrictMinScore: number;
+  weakUrlThinMinScore: number;
+}
+
+export const DEFAULT_SELECTION_RANKING_CONFIG: SelectionRankingConfig = {
+  weights: {
+    fresh_sensitive: 45,
+    stale_sensitive: -80,
+    future_publication: -80,
+    static_directory_fact: -55,
+    supporting_fragment: -70,
+    cross_village_drift: -60,
+    public_safety: 35,
+    civic_utility: 25,
+    soft_filler: -25,
+    today_event: 30,
+    past_event: -40,
+    far_future_event: -30,
+    too_early_event: -55,
+    fresh: 20,
+    stale: -35,
+    article_url: 15,
+    weak_url: -25,
+    low_village_confidence: -60,
+    high_village_confidence: 10,
+    below_quality_threshold: -40,
+  },
+  mandatoryScore: 95,
+  composeStrictMinScore: 70,
+  composeThinMinScore: 25,
+  weakUrlStrictMinScore: 115,
+  weakUrlThinMinScore: 80,
+};
+
+export function normalizeSelectionRankingConfig(value: unknown): SelectionRankingConfig {
+  if (!value || typeof value !== 'object') return structuredClone(DEFAULT_SELECTION_RANKING_CONFIG);
+  const input = value as Partial<SelectionRankingConfig> & { weights?: Record<string, unknown> };
+  const weights = { ...DEFAULT_SELECTION_RANKING_CONFIG.weights };
+  for (const key of SELECTION_RANKING_REASON_KEYS) {
+    const raw = input.weights?.[key];
+    if (typeof raw === 'number' && Number.isFinite(raw)) weights[key] = Math.round(raw);
+  }
+
+  return {
+    weights,
+    mandatoryScore: readNumber(input.mandatoryScore, DEFAULT_SELECTION_RANKING_CONFIG.mandatoryScore),
+    composeStrictMinScore: readNumber(input.composeStrictMinScore, DEFAULT_SELECTION_RANKING_CONFIG.composeStrictMinScore),
+    composeThinMinScore: readNumber(input.composeThinMinScore, DEFAULT_SELECTION_RANKING_CONFIG.composeThinMinScore),
+    weakUrlStrictMinScore: readNumber(input.weakUrlStrictMinScore, DEFAULT_SELECTION_RANKING_CONFIG.weakUrlStrictMinScore),
+    weakUrlThinMinScore: readNumber(input.weakUrlThinMinScore, DEFAULT_SELECTION_RANKING_CONFIG.weakUrlThinMinScore),
+  };
+}
+
+export function validateSelectionRankingConfig(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return 'config muss ein Objekt sein';
+  const input = value as Partial<SelectionRankingConfig> & { weights?: Record<string, unknown> };
+  if (!input.weights || typeof input.weights !== 'object') return 'weights muss ein Objekt sein';
+
+  for (const key of SELECTION_RANKING_REASON_KEYS) {
+    const raw = input.weights[key];
+    if (raw === undefined) continue;
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || !Number.isInteger(raw)) {
+      return `${key} muss eine ganze Zahl sein`;
+    }
+    if (raw < -200 || raw > 200) return `${key} muss zwischen -200 und 200 liegen`;
+  }
+
+  const thresholdKeys = [
+    'mandatoryScore',
+    'composeStrictMinScore',
+    'composeThinMinScore',
+    'weakUrlStrictMinScore',
+    'weakUrlThinMinScore',
+  ] as const;
+  for (const key of thresholdKeys) {
+    const raw = input[key];
+    if (raw === undefined) continue;
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || !Number.isInteger(raw)) {
+      return `${key} muss eine ganze Zahl sein`;
+    }
+    if (raw < 0 || raw > 250) return `${key} muss zwischen 0 und 250 liegen`;
+  }
+  return null;
+}
+
 export interface SelectionDedupResult<T extends UnitForSelectionRanking = UnitForSelectionRanking> {
   units: T[];
   rejected: Array<{
@@ -63,8 +178,9 @@ const STATIC_DIRECTORY = [
 export function dedupeSelectionCandidates<T extends UnitForSelectionRanking>(
   units: T[],
   opts: { currentDate: string; publicationDate: string },
+  config: SelectionRankingConfig = DEFAULT_SELECTION_RANKING_CONFIG,
 ): SelectionDedupResult<T> {
-  const ranked = rankSelectionCandidates(units, opts);
+  const ranked = rankSelectionCandidates(units, opts, config);
   const byId = new Map(ranked.map((row) => [row.unit.id, row]));
   const kept: T[] = [];
   const seen = new Map<string, T>();
@@ -117,8 +233,10 @@ export function rankSelectionCandidates<T extends UnitForSelectionRanking>(
     maxCandidates?: number;
     villageId?: string;
   },
+  config: SelectionRankingConfig = DEFAULT_SELECTION_RANKING_CONFIG,
 ): RankedSelectionUnit<T>[] {
-  const ranked = units.map((unit) => rankOne(unit, opts.currentDate, opts.publicationDate, opts.villageId));
+  const normalized = normalizeSelectionRankingConfig(config);
+  const ranked = units.map((unit) => rankOne(unit, opts.currentDate, opts.publicationDate, opts.villageId, normalized));
   ranked.sort((a, b) => b.score - a.score || compareDateDesc(a.unit, b.unit));
   return typeof opts.maxCandidates === 'number'
     ? ranked.slice(0, opts.maxCandidates)
@@ -164,7 +282,9 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
   selectedIds: string[],
   ranked: RankedSelectionUnit<T>[],
   maxUnits: number,
+  config: SelectionRankingConfig = DEFAULT_SELECTION_RANKING_CONFIG,
 ): string[] {
+  const normalized = normalizeSelectionRankingConfig(config);
   const selected = new Set(selectedIds);
   const composeCap = Math.min(maxUnits, 5);
   const minComposeUnits = Math.min(3, composeCap);
@@ -183,7 +303,7 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
 
   for (const row of ranked) {
     if (!selected.has(row.unit.id)) continue;
-    if (!isComposeEligible(row, 'strict')) continue;
+    if (!isComposeEligible(row, 'strict', normalized)) continue;
     addPreferred(row);
     if (preferred.length >= composeCap) return preferred.slice(0, composeCap);
   }
@@ -194,14 +314,14 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
   // then add softer but still useful local items until the composer has enough
   // story candidates to produce a digest instead of a one-item stub.
   for (const row of ranked) {
-    if (!isComposeEligible(row, 'strict')) continue;
+    if (!isComposeEligible(row, 'strict', normalized)) continue;
     addPreferred(row);
     if (preferred.length >= minComposeUnits) break;
   }
 
   if (preferred.length < minComposeUnits) {
     for (const row of ranked) {
-      if (!isComposeEligible(row, 'thin')) continue;
+      if (!isComposeEligible(row, 'thin', normalized)) continue;
       addPreferred(row);
       if (preferred.length >= minComposeUnits) break;
     }
@@ -215,36 +335,40 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
 export function buildSelectionDiagnostics<T extends UnitForSelectionRanking>(
   ranked: RankedSelectionUnit<T>[],
   selectedIds: string[],
+  config: SelectionRankingConfig = DEFAULT_SELECTION_RANKING_CONFIG,
 ): {
   candidate_snapshot: Array<Record<string, unknown>>;
+  selected_unit_ids: string[];
+  selected_units: Array<Record<string, unknown>>;
   mandatory_kept_ids: string[];
   rejected_top_units: Array<Record<string, unknown>>;
+  ranking_config: SelectionRankingConfig;
 } {
   const selected = new Set(selectedIds);
+  const normalized = normalizeSelectionRankingConfig(config);
+  const snapshot = (r: RankedSelectionUnit<T>) => ({
+    id: r.unit.id,
+    score: r.score,
+    mandatory: r.mandatory,
+    quality_score: r.unit.quality_score ?? null,
+    sensitivity: r.unit.sensitivity ?? null,
+    publication_date: r.unit.publication_date ?? null,
+    event_date: r.unit.event_date ?? null,
+    article_url: r.unit.article_url ?? null,
+    source_domain: r.unit.source_domain ?? null,
+    reasons: r.reasons,
+    statement: r.unit.statement.slice(0, 180),
+  });
   return {
-    candidate_snapshot: ranked.slice(0, 30).map((r) => ({
-      id: r.unit.id,
-      score: r.score,
-      mandatory: r.mandatory,
-      quality_score: r.unit.quality_score ?? null,
-      sensitivity: r.unit.sensitivity ?? null,
-      publication_date: r.unit.publication_date ?? null,
-      event_date: r.unit.event_date ?? null,
-      article_url: r.unit.article_url ?? null,
-      source_domain: r.unit.source_domain ?? null,
-      reasons: r.reasons,
-      statement: r.unit.statement.slice(0, 180),
-    })),
+    candidate_snapshot: ranked.slice(0, 30).map(snapshot),
+    selected_unit_ids: selectedIds,
+    selected_units: ranked.filter((r) => selected.has(r.unit.id)).map(snapshot),
     mandatory_kept_ids: ranked.filter((r) => r.mandatory).map((r) => r.unit.id),
     rejected_top_units: ranked
       .filter((r) => !selected.has(r.unit.id))
       .slice(0, 10)
-      .map((r) => ({
-        id: r.unit.id,
-        score: r.score,
-        reasons: r.reasons,
-        statement: r.unit.statement.slice(0, 180),
-      })),
+      .map((r) => ({ ...snapshot(r), rejection_reason: 'not_selected' })),
+    ranking_config: normalized,
   };
 }
 
@@ -253,6 +377,7 @@ function rankOne<T extends UnitForSelectionRanking>(
   currentDate: string,
   publicationDate: string,
   villageId?: string,
+  config: SelectionRankingConfig = DEFAULT_SELECTION_RANKING_CONFIG,
 ): RankedSelectionUnit<T> {
   const reasons: string[] = [];
   let score = unit.quality_score ?? 40;
@@ -263,91 +388,92 @@ function rankOne<T extends UnitForSelectionRanking>(
 
   if (unit.sensitivity && unit.sensitivity !== 'none') {
     if (publicationAge >= 0 && publicationAge <= 3) {
-      score += 45;
+      score += config.weights.fresh_sensitive;
       reasons.push('fresh_sensitive');
     } else {
-      score -= 80;
+      score += config.weights.stale_sensitive;
       reasons.push('stale_sensitive');
     }
   }
 
   const staticDirectoryFact = isStaticDirectoryFact(text);
   if (publicationAge < 0) {
-    score -= 80;
+    score += config.weights.future_publication;
     reasons.push('future_publication');
   }
   if (staticDirectoryFact) {
-    score -= 55;
+    score += config.weights.static_directory_fact;
     reasons.push('static_directory_fact');
   }
   if (isSupportingFragment(text)) {
-    score -= 70;
+    score += config.weights.supporting_fragment;
     reasons.push('supporting_fragment');
   }
   if (villageId && hasCrossVillageDrift(text, villageId)) {
-    score -= 60;
+    score += config.weights.cross_village_drift;
     reasons.push('cross_village_drift');
   }
 
   if (containsAny(text, PUBLIC_SAFETY) && !staticDirectoryFact) {
-    score += 35;
+    score += config.weights.public_safety;
     reasons.push('public_safety');
   }
   if (containsAny(text, CIVIC)) {
-    score += 25;
+    score += config.weights.civic_utility;
     reasons.push('civic_utility');
   }
   if (containsAny(text, SOFT_FILLER)) {
-    score -= 25;
+    score += config.weights.soft_filler;
     reasons.push('soft_filler');
   }
 
   if (unit.event_date) {
     if (unit.event_date === publicationDate) {
-      score += 30;
+      score += config.weights.today_event;
       reasons.push('today_event');
     } else if (unit.event_date < publicationDate) {
-      score -= 40;
+      score += config.weights.past_event;
       reasons.push('past_event');
     } else if (daysBetween(publicationDate, unit.event_date) > 7) {
-      score -= 30;
+      score += config.weights.far_future_event;
       reasons.push('far_future_event');
     } else if (daysBetween(publicationDate, unit.event_date) > 3) {
-      score -= 55;
+      score += config.weights.too_early_event;
       reasons.push('too_early_event');
     }
   }
 
   if (publicationAge >= 0 && publicationAge <= 2) {
-    score += 20;
+    score += config.weights.fresh;
     reasons.push('fresh');
   } else if (publicationAge > 7) {
-    score -= 35;
+    score += config.weights.stale;
     reasons.push('stale');
   }
 
   if (unit.article_url && !unit.is_listing_page && isArticleLevelUrl(unit.article_url)) {
-    score += 15;
+    score += config.weights.article_url;
     reasons.push('article_url');
   } else if (unit.is_listing_page || !isArticleLevelUrl(unit.article_url)) {
-    score -= 25;
+    score += config.weights.weak_url;
     reasons.push('weak_url');
   }
 
   if (unit.village_confidence === 'low') {
-    score -= 60;
+    score += config.weights.low_village_confidence;
     reasons.push('low_village_confidence');
   } else if (unit.village_confidence === 'high') {
-    score += 10;
+    score += config.weights.high_village_confidence;
+    reasons.push('high_village_confidence');
   }
 
   if ((unit.quality_score ?? 0) < 40) {
-    score -= 40;
+    score += config.weights.below_quality_threshold;
     reasons.push('below_quality_threshold');
   }
 
   const mandatory =
-    score >= 95 &&
+    score >= config.mandatoryScore &&
     !reasons.includes('stale_sensitive') &&
     !reasons.includes('low_village_confidence') &&
     !reasons.includes('weak_url') &&
@@ -367,8 +493,9 @@ type ComposeEligibilityMode = 'strict' | 'thin';
 function isComposeEligible<T extends UnitForSelectionRanking>(
   row: RankedSelectionUnit<T>,
   mode: ComposeEligibilityMode,
+  config: SelectionRankingConfig,
 ): boolean {
-  if (row.score < (mode === 'thin' ? 25 : 70)) return false;
+  if (row.score < (mode === 'thin' ? config.composeThinMinScore : config.composeStrictMinScore)) return false;
   if (row.reasons.includes('static_directory_fact')) return false;
   if (row.reasons.includes('supporting_fragment')) return false;
   if (row.reasons.includes('cross_village_drift')) return false;
@@ -384,7 +511,7 @@ function isComposeEligible<T extends UnitForSelectionRanking>(
   ) {
     return false;
   }
-  if (row.reasons.includes('weak_url') && row.score < (mode === 'thin' ? 80 : 115)) return false;
+  if (row.reasons.includes('weak_url') && row.score < (mode === 'thin' ? config.weakUrlThinMinScore : config.weakUrlStrictMinScore)) return false;
   return true;
 }
 
@@ -515,4 +642,8 @@ function stemToken(token: string): string {
     .replace(/en$/, '')
     .replace(/er$/, '')
     .replace(/e$/, '');
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback;
 }

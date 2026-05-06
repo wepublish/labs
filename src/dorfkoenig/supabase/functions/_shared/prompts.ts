@@ -296,7 +296,7 @@ BULLET-REGELN:
   Kategorien zu füllen.
 - kind-Obergrenzen: lead max 1 · secondary max 2 · event max 2 · good_news max 1.
 - 1–2 kurze Sätze pro Bullet (insgesamt < 200 Zeichen).
-- emoji kommt aus der festen Palette (Redaktion wählt bei Unklarheit einen passenden Kandidaten).
+- emoji ist frei wählbar: Wähle ein präzises, thematisch passendes Emoji. Keine feste Palette.
 - text enthält KEIN führendes Emoji — das fügt das Rendering hinzu.
 
 ZITATION:

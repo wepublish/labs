@@ -36,11 +36,15 @@ Dorfkoenig is a web scout monitoring system for journalists that tracks URLs for
 - Filter units by location and/or topic
 - Semantic search across units
 - AI-powered article draft generation
+- Scouts and Uploads share a list-to-focused-detail flow
+- List-state inbox labels switch by source (`Scouts-Inbox`, `Uploads-Inbox`)
+- Inbox draft-check icon opens a vector-search modal with similarity scores
 
 ### Manual Upload
 - Upload text, photos, and PDFs as information units
 - Extracted via LLM, stored with embeddings
 - PDF/text review shows which selected units were deduplicated after save
+- Recent PDF uploads can be focused so the inbox shows only units from that PDF
 
 ### Bajour Village Newsletter (Feature-Flagged)
 - 3-step wizard: village select, generate draft, preview/send
@@ -95,10 +99,10 @@ dorfkoenig/
 │   └── __tests__/
 ├── routes/                  # Page components
 │   ├── Login.svelte
-│   ├── Manage.svelte       # (was Dashboard)
 │   ├── ScoutDetail.svelte
 │   ├── History.svelte
-│   └── Feed.svelte         # (was Compose)
+│   ├── Feed.svelte         # Scouts, uploads, unit search, drafting
+│   └── Drafts.svelte       # Saved Bajour drafts
 ├── supabase/                # Supabase configuration
 │   ├── config.toml
 │   ├── migrations/
@@ -228,9 +232,9 @@ npm run build:production
 | `/executions` | GET | List executions |
 | `/executions/:id` | GET | Get execution details |
 | `/manual-upload` | GET/POST | Upload text/photo/PDF as units; poll jobs and recent PDF history |
-| `/bajour-drafts` | GET/POST/PATCH | Bajour draft CRUD |
-| `/bajour-select-units` | POST | AI-select units for village |
-| `/bajour-generate-draft` | POST | Generate newsletter draft |
+| `/bajour-drafts` | GET/POST/PATCH | Bajour draft CRUD; returns persisted selection diagnostics when available |
+| `/bajour-select-units` | GET/PUT/DELETE/POST | Selection prompt CRUD plus AI-select units for village |
+| `/bajour-select-units/ranking` | GET/PUT/DELETE | Editable deterministic selection-ranking weights |
 | `/bajour-send-verification` | POST | Send draft to correspondents via WhatsApp |
 | `/bajour-whatsapp-webhook` | POST | WhatsApp callback webhook |
 | `/bajour-send-mailchimp` | POST | Aggregate verified drafts into Mailchimp campaign |
@@ -270,7 +274,8 @@ npm run build:production
 
 ### bajour_drafts
 - Village newsletter drafts with WhatsApp verification workflow
-- Verification status: ausstehend, bestätigt, abgelehnt
+- Verification status: ausstehend, bestätigt, abgelehnt, withheld
+- `selection_diagnostics` stores selected/rejected unit ranking details for editor debugging
 - 4-hour timeout auto-resolves to abgelehnt (silence = rejection)
 
 ## Scheduled Jobs

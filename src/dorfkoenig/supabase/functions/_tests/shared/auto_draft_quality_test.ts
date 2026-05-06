@@ -284,6 +284,38 @@ Deno.test('assessDraftQuality — accepts actionable no-link municipal service e
   assertEquals(result.decision, 'send');
 });
 
+Deno.test('assessDraftQuality — accepts no-link civic event with source date and clear institution', () => {
+  const result = assessDraftQuality({
+    draft: draft({
+      title: 'Honegger im Landrat',
+      bullets: [
+        {
+          emoji: '🏛️',
+          kind: 'lead',
+          text: 'Michael Honegger aus Arlesheim wird heute im Landrat angelobt.',
+          article_url: null,
+          source_domain: 'manual',
+          source_unit_ids: ['landrat'],
+        },
+      ],
+    }),
+    selectedUnits: [{
+      id: 'landrat',
+      statement: 'Michael Honegger aus Arlesheim wird am 7. Mai 2026 im Landrat angelobt.',
+      unit_type: 'event',
+      event_date: '2026-05-07',
+      article_url: null,
+      source_url: 'manual://pdf',
+      source_domain: 'manual',
+    }],
+    rankedSelection: [ranked({ id: 'landrat', score: 90, reasons: ['today_event', 'weak_url'] })],
+    selectedIds: ['landrat'],
+    context: resolveDraftRunContext({ zurichToday: '2026-05-06' }),
+  });
+
+  assertEquals(result.decision, 'send');
+});
+
 Deno.test('assessDraftQuality — still withholds vague no-link event without timing and place', () => {
   const result = assessDraftQuality({
     draft: draft({

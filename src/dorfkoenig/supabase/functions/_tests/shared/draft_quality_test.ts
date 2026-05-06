@@ -1,7 +1,7 @@
 /**
  * Unit tests for _shared/draft-quality.ts.
  *
- * Scaffolding tests (Phase 0): palette membership, banlist regex coverage.
+ * Scaffolding tests (Phase 0): emoji examples, banlist regex coverage.
  * Validator behaviour tests land with the validators themselves in Phase 1.
  */
 
@@ -21,7 +21,7 @@ import {
   AGNOSTIC_POSITIVE_SEEDS,
 } from '../../_shared/draft-quality.ts';
 
-Deno.test('emoji palette contains the approved closed set', () => {
+Deno.test('emoji examples contain the legacy set', () => {
   assertEquals(EMOJI_PALETTE.length, 39);
 });
 
@@ -31,10 +31,15 @@ Deno.test('isAllowedEmoji — palette members pass', () => {
   }
 });
 
-Deno.test('isAllowedEmoji — non-palette rejected', () => {
+Deno.test('isAllowedEmoji — model-selected emoji outside examples pass', () => {
   for (const e of ['🚀', '💡', '🔥', '📊', '👍']) {
-    assertFalse(isAllowedEmoji(e), `${e} should not be allowed`);
+    assert(isAllowedEmoji(e), `${e} should be allowed`);
   }
+});
+
+Deno.test('isAllowedEmoji — blank rejected', () => {
+  assertFalse(isAllowedEmoji(''));
+  assertFalse(isAllowedEmoji('   '));
 });
 
 Deno.test('findForbiddenPhrases — catches signature filler from feedback examples', () => {

@@ -807,18 +807,18 @@ if (extractUnits && (scout.location || scout.topic)) {
 
 ## Auto-Draft Pipeline
 
-Daily at 18:00 Europe/Zurich:
+Daily at 17:00 Europe/Zurich:
 1. pg_cron → dispatch_auto_drafts() → loops pilot villages
 2. Per village: bajour-auto-draft edge function
    a. Resolve run date and reader-facing publication date
    b. Idempotency check (village + publication date)
-   c. Select units (INFORMATION_SELECT_PROMPT + deterministic narrow fallback)
+   c. Select units (`INFORMATION_SELECT_PROMPT` + 48h publication-date news window + editable deterministic ranking from `user_settings.selection_ranking` + deterministic fallback)
    d. Generate draft (v2 bullet schema when enabled)
    e. Run validators and `_shared/auto-draft-quality.ts` gate
-   f. Save to bajour_drafts
+   f. Save to bajour_drafts, including `selection_diagnostics` with selected and rejected ranking details
    g. If clean: mark units used and send WhatsApp verification
    h. If weak: save as `verification_status='withheld'`, persist `quality_warnings`, email admins with Resend, and do not send WhatsApp
-   i. Log to auto_draft_runs
+   i. Log to auto_draft_runs, including a compact selection snapshot for fallback/debugging
 
 Daily at 22:00 Europe/Zurich:
 3. pg_cron → resolve_bajour_timeouts() — auto-rejects unresponded drafts (silence = rejection, any-reject-wins policy)

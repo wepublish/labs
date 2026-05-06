@@ -248,9 +248,10 @@ function hasSufficientEventContext(text: string, sourceUnits: ComposeUnit[]): bo
       .test(text);
   const hasSourceDate = sourceUnits.some((u) => Boolean(u.event_date));
   const hasTiming = hasExplicitDate || hasRelativeTiming || hasSourceDate;
+  const hasCivicContext = hasCivicOrSafetySignal(haystack);
   const hasPlaceOrService =
     /\b(?:Uhr|Restaurant|Kirche|Areal|Strasse|Straße|Weg|Gasse|Kreuzung|Kreuzungsbereich|Saal|Treffpunkt|Anmeldung|Start|Ort|Sperrung|Vollsperrung|Bauarbeiten|Baustelle|Kehricht|Abfall|Verwaltung|Schalter|Schule|Kindergarten|Wasser|Strom)\b/i
-      .test(haystack);
+      .test(haystack) || hasCivicContext;
   return hasTiming && hasPlaceOrService;
 }
 

@@ -41,6 +41,11 @@ describe('bajourApi', () => {
       title: 'Test',
       body: 'Draft body',
       selected_unit_ids: ['u-1'],
+      selection_diagnostics: {
+        selected_unit_ids: ['u-1'],
+        selected_units: [{ id: 'u-1', statement: 'Test unit', score: 80, reasons: ['fresh'] }],
+        rejected_top_units: [],
+      },
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -50,12 +55,19 @@ describe('bajourApi', () => {
         body: expect.stringContaining('"village_id":"riehen"'),
       })
     );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.selection_diagnostics.selected_units[0].score).toBe(80);
   });
 
   it('selectUnits() calls POST /bajour-select-units', async () => {
-    mockFetch.mockResolvedValue(createMockResponse({ data: { selected_unit_ids: ['u-1', 'u-2'] } }));
+    const diagnostics = {
+      selected_unit_ids: ['u-1', 'u-2'],
+      selected_units: [{ id: 'u-1', statement: 'Selected', score: 90, reasons: ['public_safety'] }],
+      rejected_top_units: [{ id: 'u-3', statement: 'Rejected', score: 20, reasons: ['weak_url'] }],
+    };
+    mockFetch.mockResolvedValue(createMockResponse({ data: { selected_unit_ids: ['u-1', 'u-2'], selection_diagnostics: diagnostics } }));
     const result = await bajourApi.selectUnits({ village_id: 'riehen' });
-    expect(result).toEqual({ selected_unit_ids: ['u-1', 'u-2'] });
+    expect(result).toEqual({ selected_unit_ids: ['u-1', 'u-2'], selection_diagnostics: diagnostics });
   });
 
   it('sendVerification() calls POST /bajour-send-verification with draft_id', async () => {

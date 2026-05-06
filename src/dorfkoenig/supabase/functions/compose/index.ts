@@ -14,7 +14,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { openrouter } from '../_shared/openrouter.ts';
 import { scrape } from '../_shared/firecrawl.ts';
-import { DRAFT_COMPOSE_PROMPT, formatUnitsByType } from '../_shared/prompts.ts';
+import { DRAFT_COMPOSE_PROMPT, DRAFT_COMPOSE_PROMPT_V2, formatUnitsByType } from '../_shared/prompts.ts';
 import { MAX_UNITS_PER_COMPOSE, MAX_SOURCE_CONTENT_CHARS } from '../_shared/constants.ts';
 
 interface GenerateRequest {
@@ -43,6 +43,14 @@ const MAX_LEN = 8000;
 // Lower bound keeps drafts minimally useful; upper bound keeps us under OpenRouter context limits.
 const MAX_UNITS_MIN = 3;
 const MAX_UNITS_MAX = 50;
+const FLAG_BULLET_SCHEMA = Deno.env.get('FEATURE_BULLET_SCHEMA') === 'true';
+
+function defaultComposePromptFor(url: URL): string {
+  const schema = url.searchParams.get('schema');
+  if (schema === 'v2') return DRAFT_COMPOSE_PROMPT_V2;
+  if (schema === 'auto' && FLAG_BULLET_SCHEMA) return DRAFT_COMPOSE_PROMPT_V2;
+  return DRAFT_COMPOSE_PROMPT;
+}
 
 async function loadLayer2Override(
   supabase: ReturnType<typeof createServiceClient>,
@@ -224,7 +232,7 @@ Deno.serve(async (req) => {
     if (endpoint === 'prompt') {
       if (req.method === 'GET') {
         const override = await loadLayer2Override(supabase, userId);
-        return jsonResponse({ data: { prompt: override ?? DRAFT_COMPOSE_PROMPT } });
+        return jsonResponse({ data: { prompt: override ?? defaultComposePromptFor(url) } });
       }
       if (req.method === 'PUT') {
         const { content } = await req.json() as { content?: unknown };
@@ -256,7 +264,7 @@ Deno.serve(async (req) => {
           console.error('user_prompts delete error:', deleteError);
           return errorResponse('Fehler beim Zurücksetzen des Prompts', 500);
         }
-        return jsonResponse({ data: { prompt: DRAFT_COMPOSE_PROMPT } });
+        return jsonResponse({ data: { prompt: defaultComposePromptFor(url) } });
       }
       return errorResponse('Methode nicht erlaubt', 405);
     }
@@ -272,10 +280,11 @@ Deno.serve(async (req) => {
     return errorResponse('Endpoint nicht gefunden', 404);
   } catch (error) {
     console.error('Compose error:', error);
-    if (error.message === 'Authentication required') {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });
 
@@ -415,7 +424,7 @@ ${LAYER_3_OUTPUT_FORMAT}`;
 
   let draft;
   try {
-    draft = JSON.parse(response.choices[0].message.content);
+    draft = JSON.parse(response.choices[0].message.content ?? '{}');
   } catch {
     return errorResponse('Fehler bei der Entwurfserstellung', 500);
   }

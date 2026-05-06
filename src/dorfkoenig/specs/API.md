@@ -777,6 +777,15 @@ List all Bajour drafts for the authenticated user.
       "verification_timeout_at": null,
       "whatsapp_message_ids": [],
       "quality_warnings": [],
+      "selection_diagnostics": {
+        "selected_unit_ids": ["uuid1", "uuid2"],
+        "selected_units": [
+          { "id": "uuid1", "score": 115, "reasons": ["fresh", "public_safety"], "statement": "..." }
+        ],
+        "rejected_top_units": [
+          { "id": "uuid3", "score": 20, "reasons": ["weak_url"], "statement": "..." }
+        ]
+      },
       "created_at": "2026-02-25T10:00:00Z",
       "updated_at": "2026-02-25T10:00:00Z"
     }
@@ -797,12 +806,14 @@ Create a new Bajour draft.
   "body": "Newsletter body text...",
   "selected_unit_ids": ["uuid1", "uuid2"],
   "custom_system_prompt": null,
-  "publication_date": "2026-04-08"
+  "publication_date": "2026-04-08",
+  "selection_diagnostics": null
 }
 ```
 
 **Notes:**
 - `publication_date`: Optional, defaults to today. `YYYY-MM-DD` format. Controls which date this draft is valid for (used by the News API).
+- `selection_diagnostics`: Optional compact audit from `/bajour-select-units`; shown in the draft UI when present. Drafts without diagnostics still expose `selected_unit_ids`, but rejected candidate ranking was not historically recorded.
 
 **Response:** `201 Created` — same shape as GET item.
 
@@ -817,7 +828,7 @@ Update an existing draft (only own drafts). Used for manual verification status 
 }
 ```
 
-**Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `publication_date`, `verification_status`.
+**Supported fields:** `title`, `body`, `village_id`, `village_name`, `selected_unit_ids`, `custom_system_prompt`, `publication_date`, `verification_status`, `selection_diagnostics`.
 
 `verification_status` may be `ausstehend`, `bestätigt`, `abgelehnt`, or `withheld`. `withheld` is set by the auto-draft quality gate for machine-blocked drafts.
 
@@ -836,6 +847,32 @@ Returns the current unit selection prompt.
 }
 ```
 
+### GET /bajour-select-units/ranking
+
+Returns the effective deterministic selection-ranking configuration and hardcoded defaults.
+
+**Response:**
+```json
+{
+  "data": {
+    "config": {
+      "weights": {
+        "public_safety": 35,
+        "weak_url": -25
+      },
+      "mandatoryScore": 95,
+      "composeStrictMinScore": 70,
+      "composeThinMinScore": 25,
+      "weakUrlStrictMinScore": 115,
+      "weakUrlThinMinScore": 80
+    },
+    "default_config": { "...": "same shape" }
+  }
+}
+```
+
+`PUT` saves `{ "config": ... }`; `DELETE` resets to defaults.
+
 ### POST /bajour-select-units
 
 AI-selects relevant information units for a village based on its scout's data.
@@ -844,15 +881,27 @@ AI-selects relevant information units for a village based on its scout's data.
 ```json
 {
   "village_id": "riehen",
-  "scout_id": "ba000000-0001-4000-a000-000000000001"
+  "publication_date": "2026-05-07",
+  "selection_hint": "Bevorzuge öffentliche Sicherheit"
 }
 ```
+
+The selector uses a fixed 48h news window anchored to `publication_date` (or the next valid publication date when omitted). `recency_days` is deprecated and ignored.
 
 **Response:**
 ```json
 {
   "data": {
-    "selected_unit_ids": ["uuid1", "uuid2", "uuid3"]
+    "selected_unit_ids": ["uuid1", "uuid2", "uuid3"],
+    "selection_diagnostics": {
+      "selected_units": [
+        { "id": "uuid1", "score": 115, "reasons": ["fresh", "public_safety"], "statement": "..." }
+      ],
+      "rejected_top_units": [
+        { "id": "uuid4", "score": 18, "reasons": ["weak_url"], "statement": "..." }
+      ],
+      "selection_response_preview": "{\"selected_unit_ids\":[...]}"
+    }
   }
 }
 ```

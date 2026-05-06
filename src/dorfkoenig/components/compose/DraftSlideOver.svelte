@@ -16,7 +16,7 @@
     zurichTodayIso,
   } from '../../supabase/functions/_shared/publication-calendar';
   import type { Draft } from '../../lib/types';
-  import type { BajourDraft, DraftBullet, QualityWarning, VerificationStatus } from '../../bajour/types';
+  import type { BajourDraft, DraftBullet, QualityWarning, SelectionDiagnostics, VerificationStatus } from '../../bajour/types';
 
   interface Props {
     open: boolean;
@@ -31,6 +31,7 @@
     unitIds?: string[];
     generatedAt?: string | null;
     initialSavedDraft?: BajourDraft | null;
+    selectionDiagnostics?: SelectionDiagnostics | null;
     onClose: () => void;
     onRetry: () => void;
     onRegenerate: (customPrompt: string | null) => void;
@@ -49,6 +50,7 @@
     unitIds = [],
     generatedAt = null,
     initialSavedDraft = null,
+    selectionDiagnostics = null,
     onClose,
     onRetry,
     onRegenerate,
@@ -73,6 +75,8 @@
     bullets?: DraftBullet[];
     notes_for_editor?: string[];
     quality_warnings?: QualityWarning[];
+    selection_diagnostics?: SelectionDiagnostics | null;
+    legacy_selected_unit_ids?: string[];
   };
 
   function parseLegacyMarkdownBullets(body: string): DraftBullet[] {
@@ -109,6 +113,8 @@
         bullets: sd.bullets_json.bullets,
         notes_for_editor: sd.bullets_json.notes_for_editor,
         quality_warnings: sd.quality_warnings || [],
+        selection_diagnostics: sd.selection_diagnostics || null,
+        legacy_selected_unit_ids: sd.selection_diagnostics ? [] : sd.selected_unit_ids,
       };
     }
 
@@ -124,6 +130,8 @@
         units_used: sd.selected_unit_ids.length,
         bullets: markdownBullets,
         quality_warnings: sd.quality_warnings || [],
+        selection_diagnostics: sd.selection_diagnostics || null,
+        legacy_selected_unit_ids: sd.selection_diagnostics ? [] : sd.selected_unit_ids,
       };
     }
 
@@ -161,8 +169,17 @@
       gaps: [],
       sources: [],
       word_count: 0,
-      units_used: 0,
+      units_used: sd.selected_unit_ids.length,
       quality_warnings: sd.quality_warnings || [],
+      selection_diagnostics: sd.selection_diagnostics || null,
+      legacy_selected_unit_ids: sd.selection_diagnostics ? [] : sd.selected_unit_ids,
+    };
+  }
+
+  function draftWithSelectionDiagnostics(d: Draft): DisplayDraft {
+    return {
+      ...d,
+      selection_diagnostics: selectionDiagnostics,
     };
   }
 
@@ -278,6 +295,7 @@
           selected_unit_ids: unitIds,
           custom_system_prompt: _customPrompt || null,
           publication_date: publicationDate,
+          selection_diagnostics: selectionDiagnostics,
         });
       }
       const updated = await bajourDrafts.updateVerificationStatus(savedDraft.id, status);
@@ -304,6 +322,7 @@
         selected_unit_ids: unitIds,
         custom_system_prompt: _customPrompt || null,
         publication_date: publicationDate,
+        selection_diagnostics: selectionDiagnostics,
       });
 
       try {
@@ -461,7 +480,7 @@
               />
             </div>
           {/if}
-          <DraftContent {draft} {generatedAt} />
+          <DraftContent draft={draftWithSelectionDiagnostics(draft)} {generatedAt} />
         {/if}
       </div>
 

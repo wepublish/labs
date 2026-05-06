@@ -12,10 +12,15 @@ import { openrouter } from '../_shared/openrouter.ts';
 import { buildInformationSelectPrompt, INFORMATION_SELECT_PROMPT, formatUnitsForSelection, UNIT_FOR_COMPOSE_COLUMNS } from '../_shared/prompts.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../_shared/constants.ts';
 import {
+  buildSelectionDiagnostics,
+  DEFAULT_SELECTION_RANKING_CONFIG,
   enforceMandatorySelection,
+  normalizeSelectionRankingConfig,
   rankSelectionCandidates,
   refineSelectionForCompose,
   selectDeterministicFallback,
+  validateSelectionRankingConfig,
+  type SelectionRankingConfig,
 } from '../_shared/selection-ranking.ts';
 import {
   addDaysIsoDate,
@@ -37,8 +42,10 @@ interface SelectUnitsRequest {
 }
 
 const PROMPT_KEY = 'information_select';
+const RANKING_KEY = 'selection_ranking';
 const MIN_LEN = 20;
 const MAX_LEN = 8000;
+const STRICT_RECENCY_DAYS = 2;
 
 async function loadPromptOverride(
   supabase: ReturnType<typeof createServiceClient>,
@@ -62,6 +69,19 @@ function validatePrompt(content: unknown): string | null {
   return null;
 }
 
+async function loadRankingConfig(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+): Promise<SelectionRankingConfig> {
+  const { data } = await supabase
+    .from('user_settings')
+    .select('value')
+    .eq('user_id', userId)
+    .eq('key', RANKING_KEY)
+    .maybeSingle();
+  return normalizeSelectionRankingConfig(data?.value ?? null);
+}
+
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -69,6 +89,48 @@ Deno.serve(async (req) => {
   try {
     const userId = requireUserId(req);
     const supabase = createServiceClient();
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const endpoint = pathParts.length > 1 ? pathParts[1] : null;
+
+    if (endpoint === 'ranking') {
+      if (req.method === 'GET') {
+        const config = await loadRankingConfig(supabase, userId);
+        return jsonResponse({ data: { config, default_config: DEFAULT_SELECTION_RANKING_CONFIG } });
+      }
+      if (req.method === 'PUT') {
+        const { config } = await req.json() as { config?: unknown };
+        const validationError = validateSelectionRankingConfig(config);
+        if (validationError) return errorResponse(validationError, 400, 'VALIDATION_ERROR');
+        const normalized = normalizeSelectionRankingConfig(config);
+        const { error: upsertError } = await supabase
+          .from('user_settings')
+          .upsert({
+            user_id: userId,
+            key: RANKING_KEY,
+            value: normalized,
+            updated_at: new Date().toISOString(),
+          });
+        if (upsertError) {
+          console.error('selection ranking upsert error:', upsertError);
+          return errorResponse('Fehler beim Speichern des Rankings', 500);
+        }
+        return jsonResponse({ data: { config: normalized, default_config: DEFAULT_SELECTION_RANKING_CONFIG } });
+      }
+      if (req.method === 'DELETE') {
+        const { error: deleteError } = await supabase
+          .from('user_settings')
+          .delete()
+          .eq('user_id', userId)
+          .eq('key', RANKING_KEY);
+        if (deleteError) {
+          console.error('selection ranking delete error:', deleteError);
+          return errorResponse('Fehler beim Zurücksetzen des Rankings', 500);
+        }
+        return jsonResponse({ data: { config: DEFAULT_SELECTION_RANKING_CONFIG, default_config: DEFAULT_SELECTION_RANKING_CONFIG } });
+      }
+      return errorResponse('Methode nicht erlaubt', 405);
+    }
 
     // GET: return the effective prompt (override or default) for UI display
     if (req.method === 'GET') {
@@ -113,8 +175,8 @@ Deno.serve(async (req) => {
     }
 
     const body: SelectUnitsRequest = await req.json();
-    const { village_id, recency_days, selection_hint } = body;
-    const recencyDays = recency_days ?? null;
+    const { village_id, selection_hint } = body;
+    const recencyDays = STRICT_RECENCY_DAYS;
     const hint = selection_hint?.trim();
 
     // Validate input
@@ -142,18 +204,16 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .eq('used_in_article', false);
 
-    if (recencyDays !== null) {
-      const newsStart = addDaysIsoDate(publicationDate, -recencyDays);
-      const backstop30d = `${addDaysIsoDate(publicationDate, -30)}T00:00:00Z`;
-      const eventEnd = addDaysIsoDate(publicationDate, 7);
-      query = query
-        .gte('created_at', backstop30d)
-        .or([
-          `and(unit_type.eq.event,event_date.gte.${publicationDate},event_date.lte.${eventEnd})`,
-          `and(unit_type.neq.event,publication_date.gte.${newsStart})`,
-          `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${newsStart}T00:00:00Z)`,
-        ].join(','));
-    }
+    const newsStart = addDaysIsoDate(publicationDate, -STRICT_RECENCY_DAYS);
+    const backstop30d = `${addDaysIsoDate(publicationDate, -30)}T00:00:00Z`;
+    const eventEnd = addDaysIsoDate(publicationDate, 7);
+    query = query
+      .gte('created_at', backstop30d)
+      .or([
+        `and(unit_type.eq.event,event_date.gte.${publicationDate},event_date.lte.${eventEnd})`,
+        `and(unit_type.neq.event,publication_date.gte.${newsStart})`,
+        `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${newsStart}T00:00:00Z)`,
+      ].join(','));
 
     const { data: units, error } = await query
       .order('event_date', { ascending: false, nullsFirst: false })
@@ -167,15 +227,16 @@ Deno.serve(async (req) => {
 
     if (!units || units.length === 0) {
       console.warn('No units found', { userId, village_id, recencyDays });
-      return jsonResponse({ data: { selected_unit_ids: [] } });
+      return jsonResponse({ data: { selected_unit_ids: [], selection_diagnostics: null } });
     }
 
+    const rankingConfig = await loadRankingConfig(supabase, userId);
     const rankedUnits = rankSelectionCandidates(units, {
       currentDate,
       publicationDate,
       maxCandidates: 80,
       villageId: village_id,
-    });
+    }, rankingConfig);
     const rankedRows = rankedUnits.map((row) => row.unit);
 
     // Format units for LLM
@@ -222,9 +283,18 @@ Deno.serve(async (req) => {
       selectedIds = selectDeterministicFallback(rankedUnits, MAX_UNITS_PER_COMPOSE);
     }
     selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE);
-    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE);
+    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, MAX_UNITS_PER_COMPOSE, rankingConfig);
+    const diagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds, rankingConfig);
 
-    return jsonResponse({ data: { selected_unit_ids: selectedIds } });
+    return jsonResponse({
+      data: {
+        selected_unit_ids: selectedIds,
+        selection_diagnostics: {
+          ...diagnostics,
+          selection_response_preview: response.choices[0].message.content?.slice(0, 1000) ?? null,
+        },
+      },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('bajour-select-units error:', message);

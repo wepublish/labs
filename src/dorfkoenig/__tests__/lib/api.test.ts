@@ -14,7 +14,7 @@ vi.stubEnv('VITE_SUPABASE_URL', 'https://test.supabase.co');
 vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key');
 
 // Import after mocks are in place
-const { api, scoutsApi, unitsApi, composeApi, executionsApi, ApiClientError } = await import('../../lib/api');
+const { api, scoutsApi, unitsApi, composeApi, settingsApi, executionsApi, ApiClientError } = await import('../../lib/api');
 const { getUserId } = await import('../../stores/auth');
 
 function createMockResponse(body: unknown, status = 200): Response {
@@ -488,6 +488,42 @@ describe('unitsApi', () => {
     expect(calledUrl).toContain('scout_id=scout-123');
   });
 
+  it('list() includes selected ids when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.list({ ids: ['u-1', 'u-2'], unused_only: false, limit: 2 });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('ids=u-1');
+    expect(calledUrl).toContain('ids=u-2');
+    expect(calledUrl).toContain('unused_only=false');
+    expect(calledUrl).toContain('limit=2');
+  });
+
+  it('lookupByIds() calls PostgREST with exact id filter and x-user-id header', async () => {
+    const id1 = 'edc397bb-2bab-4006-87df-e7f7ef6df793';
+    const id2 = '12cd3ed9-fdbc-445f-bacd-11caebe87460';
+    mockFetch.mockResolvedValue(createMockResponse([{ id: id1 }, { id: id2 }]));
+
+    const result = await unitsApi.lookupByIds([id1, id2, id1]);
+
+    expect(result).toEqual([{ id: id1 }, { id: id2 }]);
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('https://test.supabase.co/rest/v1/information_units?');
+    expect(decodeURIComponent(calledUrl)).toContain(`id=in.(${id1},${id2})`);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          'Authorization': 'Bearer test-anon-key',
+          'apikey': 'test-anon-key',
+          'x-user-id': 'test-user-123',
+        }),
+      })
+    );
+  });
+
   it('search() includes debug options when provided', async () => {
     mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
 
@@ -542,5 +578,91 @@ describe('composeApi', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.custom_system_prompt).toBeUndefined();
+  });
+});
+
+describe('settingsApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getUserId).mockReturnValue('test-user-123');
+  });
+
+  const rankingConfig = {
+    weights: {
+      fresh_sensitive: 45,
+      stale_sensitive: -80,
+      future_publication: -80,
+      static_directory_fact: -55,
+      supporting_fragment: -70,
+      cross_village_drift: -60,
+      public_safety: 35,
+      civic_utility: 25,
+      soft_filler: -25,
+      today_event: 30,
+      past_event: -40,
+      far_future_event: -30,
+      too_early_event: -55,
+      fresh: 20,
+      stale: -35,
+      article_url: 15,
+      weak_url: -25,
+      low_village_confidence: -60,
+      high_village_confidence: 10,
+      below_quality_threshold: -40,
+    },
+    mandatoryScore: 95,
+    composeStrictMinScore: 70,
+    composeThinMinScore: 25,
+    weakUrlStrictMinScore: 115,
+    weakUrlThinMinScore: 80,
+  };
+
+  it('getComposePrompt() requests the active auto-draft prompt default', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: { prompt: 'compose prompt' } }));
+
+    const result = await settingsApi.getComposePrompt();
+
+    expect(result.prompt).toBe('compose prompt');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/compose/prompt?schema=auto',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('getSelectionRanking() calls GET /bajour-select-units/ranking', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: { config: rankingConfig, default_config: rankingConfig } }));
+
+    const result = await settingsApi.getSelectionRanking();
+
+    expect(result.config.mandatoryScore).toBe(95);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/bajour-select-units/ranking',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('putSelectionRanking() sends config body', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: { config: rankingConfig, default_config: rankingConfig } }));
+
+    await settingsApi.putSelectionRanking(rankingConfig);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/bajour-select-units/ranking',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ config: rankingConfig }),
+      })
+    );
+  });
+
+  it('resetSelectionRanking() calls DELETE /bajour-select-units/ranking', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: { config: rankingConfig, default_config: rankingConfig } }));
+
+    await settingsApi.resetSelectionRanking();
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test.supabase.co/functions/v1/bajour-select-units/ranking',
+      expect.objectContaining({ method: 'DELETE' })
+    );
   });
 });

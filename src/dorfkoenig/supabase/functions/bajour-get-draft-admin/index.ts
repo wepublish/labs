@@ -59,6 +59,10 @@ Deno.serve(async (req) => {
       return errorResponse('Entwurf nicht gefunden', 404);
     }
 
+    if (!data.selection_diagnostics) {
+      data.selection_diagnostics = await loadRunSelectionDiagnostics(supabase, data.id, data.selected_unit_ids ?? []);
+    }
+
     return jsonResponse({ data });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -66,3 +70,41 @@ Deno.serve(async (req) => {
     return errorResponse(message, 500);
   }
 });
+
+async function loadRunSelectionDiagnostics(
+  supabase: ReturnType<typeof createServiceClient>,
+  draftId: string,
+  draftSelectedIds: string[],
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from('auto_draft_runs')
+    .select('candidate_snapshot, selected_unit_ids, mandatory_kept_ids, rejected_top_units, selection_response_preview')
+    .eq('draft_id', draftId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const candidateSnapshot = Array.isArray(data.candidate_snapshot) ? data.candidate_snapshot : [];
+  const selectedUnitIds = Array.isArray(data.selected_unit_ids)
+    ? data.selected_unit_ids.filter((id) => typeof id === 'string')
+    : draftSelectedIds;
+  const selected = new Set(selectedUnitIds);
+
+  return {
+    candidate_snapshot: candidateSnapshot,
+    selected_unit_ids: selectedUnitIds,
+    selected_units: candidateSnapshot.filter((row) =>
+      typeof row === 'object' && row !== null && selected.has(String((row as { id?: unknown }).id))
+    ),
+    mandatory_kept_ids: Array.isArray(data.mandatory_kept_ids) ? data.mandatory_kept_ids : [],
+    rejected_top_units: Array.isArray(data.rejected_top_units)
+      ? data.rejected_top_units
+      : candidateSnapshot
+          .filter((row) => typeof row === 'object' && row !== null && !selected.has(String((row as { id?: unknown }).id)))
+          .slice(0, 10),
+    selection_response_preview: typeof data.selection_response_preview === 'string'
+      ? data.selection_response_preview
+      : null,
+  };
+}

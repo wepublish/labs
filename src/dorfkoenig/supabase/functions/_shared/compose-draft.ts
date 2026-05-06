@@ -27,7 +27,6 @@ import {
 import {
   ANTI_PATTERNS,
   AGNOSTIC_POSITIVE_SEEDS,
-  EMOJI_PALETTE,
   runValidatorChain,
   type AntiPattern,
   type Bullet,
@@ -462,7 +461,7 @@ function fallbackEmoji(unit: UnitForCompose): string {
   if (/\b(sperrung|vollsperrung|baustelle|bauarbeiten|strasse|weg|verkehr)\b/i.test(text)) return '🚧';
   if (/\b(gemeinderat|landrat|verwaltung|wahl|kommission|behörde|nationalrat)\b/i.test(text)) return '🏛️';
   if (unit.unit_type === 'event') return '📅';
-  return (EMOJI_PALETTE as readonly string[]).includes('📍') ? '📍' : '🏠';
+  return '📍';
 }
 
 function hasCivicOrServiceSignal(statement: string): boolean {

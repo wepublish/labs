@@ -8,7 +8,7 @@
     loading: boolean;
     villages: Village[];
     prefilledLocation: string | null;
-    onrun: (villageName: string, recencyDays: number | null, selectionPrompt: string) => void;
+    onrun: (villageName: string, selectionPrompt: string) => void;
     onclose: () => void;
   }
 
@@ -19,14 +19,8 @@
   let selectedVillage = $state<string | null>(null);
   let lastPrefilledLocation = $state<string | null>(null);
 
-  let useRecencyFilter = $state(true);
-  let recencyDays = $state(3);
   let selectionPrompt = $state('');
   let dropdownEl: HTMLDivElement | undefined = $state();
-
-  let recencyLabel = $derived(
-    recencyDays === 1 ? '1 Tag' : `${recencyDays} Tage`
-  );
 
   $effect(() => {
     if (prefilledLocation === lastPrefilledLocation) return;
@@ -54,14 +48,11 @@
     if (!selectedVillage) return;
     onrun(
       selectedVillage,
-      useRecencyFilter ? recencyDays : null,
       selectionPrompt
     );
   }
 
   function handleReset() {
-    useRecencyFilter = true;
-    recencyDays = 3;
     selectionPrompt = '';
   }
 
@@ -110,37 +101,9 @@
       <span>Optionen</span>
     </div>
 
-    <!-- Recency toggle + slider -->
-    <div class="recency-section">
-      <div class="recency-header">
-        <label class="recency-toggle-label">
-          <input
-            type="checkbox"
-            class="recency-checkbox"
-            bind:checked={useRecencyFilter}
-          />
-          <span class="recency-toggle-track">
-            <span class="recency-toggle-thumb"></span>
-          </span>
-          Zeitraum
-        </label>
-        <span class="recency-value">{useRecencyFilter ? recencyLabel : 'Alle'}</span>
-      </div>
-      {#if useRecencyFilter}
-        <div class="recency-slider-row">
-          <span class="recency-bound">1T</span>
-          <input
-            id="ai-recency-slider"
-            type="range"
-            min="1"
-            max="7"
-            step="1"
-            bind:value={recencyDays}
-            class="recency-slider"
-          />
-          <span class="recency-bound">7T</span>
-        </div>
-      {/if}
+    <div class="recency-section-fixed">
+      <span>Zeitraum</span>
+      <strong>48h vor Erscheinung</strong>
     </div>
 
     <!-- Selection prompt -->
@@ -268,130 +231,23 @@
     background: var(--color-background);
   }
 
-  /* Recency section */
-  .recency-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .recency-header {
+  .recency-section-fixed {
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-
-  .recency-toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: var(--text-base-sm);
-    font-weight: 500;
-    color: var(--color-text);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .recency-checkbox {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .recency-toggle-track {
-    position: relative;
-    width: 32px;
-    height: 18px;
-    border-radius: 9px;
-    background: var(--color-border);
-    transition: background var(--transition-base);
-    flex-shrink: 0;
-  }
-
-  .recency-checkbox:checked + .recency-toggle-track {
-    background: var(--color-primary);
-  }
-
-  .recency-toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    transition: transform var(--transition-base);
-  }
-
-  .recency-checkbox:checked + .recency-toggle-track .recency-toggle-thumb {
-    transform: translateX(14px);
-  }
-
-  .recency-value {
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--color-primary);
-  }
-
-  .recency-slider-row {
-    display: flex;
-    align-items: center;
     gap: 0.625rem;
-  }
-
-  .recency-bound {
-    font-size: var(--text-xs);
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-sm);
     font-weight: 500;
-    color: var(--color-text-light);
-    flex-shrink: 0;
-    width: 1.25rem;
-    text-align: center;
+    color: var(--color-text-muted);
   }
 
-  .recency-slider {
-    flex: 1;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background: linear-gradient(
-      90deg,
-      var(--color-primary) 0%,
-      var(--color-primary) var(--fill, 33%),
-      rgba(234, 114, 110, 0.12) var(--fill, 33%),
-      rgba(234, 114, 110, 0.12) 100%
-    );
-    outline: none;
-    cursor: pointer;
-  }
-
-  .recency-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid var(--color-primary);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-    cursor: grab;
-    transition: box-shadow var(--transition-base), transform var(--transition-base);
-  }
-
-  .recency-slider::-webkit-slider-thumb:hover {
-    box-shadow: 0 0 0 4px rgba(234, 114, 110, 0.1), 0 1px 4px rgba(0, 0, 0, 0.12);
-  }
-
-  .recency-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid var(--color-primary);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-    cursor: grab;
+  .recency-section-fixed strong {
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
   }
 
   .prompt-section {

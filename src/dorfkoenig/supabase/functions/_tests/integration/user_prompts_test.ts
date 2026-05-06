@@ -3,6 +3,7 @@
  *
  * CRUD lives on the two existing edge functions that already own these prompts:
  *   - GET/PUT/DELETE /bajour-select-units        → information_select override
+ *   - GET/PUT/DELETE /bajour-select-units/ranking → selection_ranking setting
  *   - GET/PUT/DELETE /compose/prompt             → draft_compose_layer2 override
  *
  * Covers round-trip (PUT → GET), validation (length + placeholder), and reset-to-default
@@ -19,11 +20,13 @@ import {
   INFORMATION_SELECT_PROMPT,
 } from '../../_shared/prompts.ts';
 import { MAX_UNITS_PER_COMPOSE } from '../../_shared/constants.ts';
+import { DEFAULT_SELECTION_RANKING_CONFIG } from '../../_shared/selection-ranking.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const TEST_USER_ID = 'test-runner-user-prompts';
 const SELECT_URL = `${SUPABASE_URL}/functions/v1/bajour-select-units`;
+const SELECT_RANKING_URL = `${SUPABASE_URL}/functions/v1/bajour-select-units/ranking`;
 const COMPOSE_PROMPT_URL = `${SUPABASE_URL}/functions/v1/compose/prompt`;
 const COMPOSE_MAX_UNITS_URL = `${SUPABASE_URL}/functions/v1/compose/max-units`;
 
@@ -357,5 +360,97 @@ Deno.test({
     const res = await fetch(COMPOSE_MAX_UNITS_URL, { method: 'GET', headers: headers() });
     const body = await res.json();
     assertEquals(body.data.value, MAX_UNITS_PER_COMPOSE);
+  },
+});
+
+// ---------------------------------------------------------------------------
+// selection_ranking (bajour-select-units/ranking)
+// ---------------------------------------------------------------------------
+
+async function resetSelectionRanking(): Promise<void> {
+  await fetch(SELECT_RANKING_URL, { method: 'DELETE', headers: headers() });
+}
+
+Deno.test({
+  name: 'selection_ranking: PUT round-trip — GET reflects saved weights',
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    await resetSelectionRanking();
+    const edited = {
+      ...DEFAULT_SELECTION_RANKING_CONFIG,
+      weights: {
+        ...DEFAULT_SELECTION_RANKING_CONFIG.weights,
+        weak_url: -10,
+      },
+    };
+
+    const putRes = await fetch(SELECT_RANKING_URL, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ config: edited }),
+    });
+    assertEquals(putRes.status, 200);
+    const putBody = await putRes.json();
+    assertEquals(putBody.data.config.weights.weak_url, -10);
+
+    const getRes = await fetch(SELECT_RANKING_URL, { method: 'GET', headers: headers() });
+    const getBody = await getRes.json();
+    assertEquals(getBody.data.config.weights.weak_url, -10);
+
+    await resetSelectionRanking();
+  },
+});
+
+Deno.test({
+  name: 'selection_ranking: PUT out-of-range weight returns 400',
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const res = await fetch(SELECT_RANKING_URL, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({
+        config: {
+          ...DEFAULT_SELECTION_RANKING_CONFIG,
+          weights: {
+            ...DEFAULT_SELECTION_RANKING_CONFIG.weights,
+            weak_url: -250,
+          },
+        },
+      }),
+    });
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.error.code, 'VALIDATION_ERROR');
+    assertStringIncludes(body.error.message, 'zwischen');
+  },
+});
+
+Deno.test({
+  name: 'selection_ranking: DELETE reverts to hardcoded default',
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    await fetch(SELECT_RANKING_URL, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({
+        config: {
+          ...DEFAULT_SELECTION_RANKING_CONFIG,
+          weights: {
+            ...DEFAULT_SELECTION_RANKING_CONFIG.weights,
+            weak_url: -10,
+          },
+        },
+      }),
+    });
+
+    const delRes = await fetch(SELECT_RANKING_URL, { method: 'DELETE', headers: headers() });
+    assertEquals(delRes.status, 200);
+
+    const getRes = await fetch(SELECT_RANKING_URL, { method: 'GET', headers: headers() });
+    const body = await getRes.json();
+    assertEquals(body.data.config.weights.weak_url, DEFAULT_SELECTION_RANKING_CONFIG.weights.weak_url);
   },
 });

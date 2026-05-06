@@ -40,8 +40,10 @@ import type { DraftV2 } from '../_shared/draft-quality.ts';
 import { loadComposeFeedbackExamplesForVillage } from '../_shared/feedback-retrieval.ts';
 import {
   buildSelectionDiagnostics,
+  DEFAULT_SELECTION_RANKING_CONFIG,
   dedupeSelectionCandidates,
   enforceMandatorySelection,
+  normalizeSelectionRankingConfig,
   rankSelectionCandidates,
   refineSelectionForCompose,
 } from '../_shared/selection-ranking.ts';
@@ -55,6 +57,7 @@ import {
 import { signAdminDraftLink, buildAdminDraftUrl } from '../_shared/admin-link.ts';
 import { prepareUnitsForCompose } from '../_shared/story-candidates.ts';
 import { isWeekdayPublicationDate } from '../_shared/publication-calendar.ts';
+import { AUTO_DRAFT_BLOCKING_STATUSES } from '../_shared/auto-draft-idempotency.ts';
 
 const PUBLIC_APP_URL =
   Deno.env.get('PUBLIC_APP_URL') || 'https://wepublish.github.io/labs/dorfkoenig';
@@ -89,6 +92,7 @@ const QUALITY_THRESHOLD = 40;
 const MIN_BULLETS_FOR_PUBLISH = 1;
 /** Window (days) over which a previously-published unit suppresses repetition. */
 const PUBLISHED_DEDUP_WINDOW_DAYS = 14;
+const SELECTION_RANKING_KEY = 'selection_ranking';
 
 // --- Helpers ---
 
@@ -316,7 +320,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user_id)
       .eq('village_id', village_id)
       .eq('publication_date', publicationDate)
-      .neq('verification_status', 'abgelehnt')
+      .in('verification_status', [...AUTO_DRAFT_BLOCKING_STATUSES])
       .limit(1)
       .maybeSingle();
 
@@ -340,9 +344,15 @@ Deno.serve(async (req) => {
     runId = runData?.id ?? null;
 
     // --- 3. Select units (compound filter + quality gate when flagged) ---
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - RECENCY_DAYS);
-
+    const newsStart = addDaysIso(publicationDate, -RECENCY_DAYS);
+    const backstop30d = `${addDaysIso(publicationDate, -30)}T00:00:00Z`;
+    const eventStart = publicationDate;
+    const eventEnd = addDaysIso(publicationDate, 7);
+    const selectionDateFilter = [
+      `and(unit_type.eq.event,event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
+      `and(unit_type.neq.event,publication_date.gte.${newsStart})`,
+      `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${newsStart}T00:00:00Z)`,
+    ].join(',');
     let unitsQuery = supabase
       .from('information_units')
       .select('id, statement, unit_type, event_date, created_at, quality_score, publication_date, sensitivity, article_url, is_listing_page, source_domain, source_citation, village_confidence')
@@ -356,29 +366,21 @@ Deno.serve(async (req) => {
       .limit(100);
 
     if (FLAG_QUALITY_GATING) {
-      // §3.2.1 compound date filter: news units fresh within 7d of the
+      // §3.2.1 compound date filter: news units fresh within 48h of the
       // publication issue, event units near-term from the reader's issue date.
       // Event end-window tightened 2026-04-26 from +14d → +7d after Tom's
       // feedback that events 3–5 days out ("Veranstaltungen vom 27./28. April")
       // were surfaced too early in the 24. Apr. draft. A weekly newsletter that
       // lands the next morning gets the most reader value from this-week events;
       // farther-out items get re-surfaced on later runs as they enter the window.
-      const news7d = `${addDaysIso(publicationDate, -7)}T00:00:00Z`;
-      const backstop30d = `${addDaysIso(publicationDate, -30)}T00:00:00Z`;
-      const eventStart = publicationDate;
-      const eventEnd = addDaysIso(publicationDate, 7);
       unitsQuery = unitsQuery
         .gte('created_at', backstop30d)
-        .or(
-          [
-            `and(unit_type.eq.event,event_date.gte.${eventStart},event_date.lte.${eventEnd})`,
-            `and(unit_type.neq.event,publication_date.gte.${addDaysIso(publicationDate, -14)})`,
-            `and(unit_type.neq.event,publication_date.is.null,created_at.gte.${news7d})`,
-          ].join(','),
-        )
+        .or(selectionDateFilter)
         .gte('quality_score', QUALITY_THRESHOLD);
     } else {
-      unitsQuery = unitsQuery.gte('created_at', cutoffDate.toISOString());
+      unitsQuery = unitsQuery
+        .gte('created_at', backstop30d)
+        .or(selectionDateFilter);
     }
 
     const [
@@ -386,6 +388,7 @@ Deno.serve(async (req) => {
       { data: selectRow },
       { data: composeRow },
       { data: maxUnitsRow },
+      { data: rankingRow },
       { data: filteredCountRow },
     ] = await Promise.all([
       unitsQuery,
@@ -395,6 +398,8 @@ Deno.serve(async (req) => {
         .eq('user_id', user_id).eq('prompt_key', 'draft_compose_layer2').maybeSingle(),
       supabase.from('user_settings').select('value')
         .eq('user_id', user_id).eq('key', 'max_units_per_compose').maybeSingle(),
+      supabase.from('user_settings').select('value')
+        .eq('user_id', user_id).eq('key', SELECTION_RANKING_KEY).maybeSingle(),
       // When gating is on, also count rows BEFORE the quality filter to diagnose "all below threshold" empty path.
       FLAG_QUALITY_GATING
         ? supabase
@@ -403,7 +408,8 @@ Deno.serve(async (req) => {
             .eq('location->>city', village_id)
             .eq('user_id', user_id)
             .eq('used_in_article', false)
-            .gte('created_at', `${addDaysIso(publicationDate, -30)}T00:00:00Z`)
+            .gte('created_at', backstop30d)
+            .or(selectionDateFilter)
             .limit(20)
         : Promise.resolve({ data: null } as { data: null }),
     ]);
@@ -413,6 +419,7 @@ Deno.serve(async (req) => {
     const maxUnits = typeof maxUnitsRow?.value === 'number' && Number.isInteger(maxUnitsRow.value)
       ? maxUnitsRow.value
       : MAX_UNITS_PER_COMPOSE;
+    const rankingConfig = normalizeSelectionRankingConfig(rankingRow?.value ?? DEFAULT_SELECTION_RANKING_CONFIG);
 
     if (unitsError) throw new Error(`Unit query failed: ${unitsError.message}`);
 
@@ -467,7 +474,7 @@ Deno.serve(async (req) => {
     const candidateDedup = dedupeSelectionCandidates(units, {
       currentDate: runDate,
       publicationDate,
-    });
+    }, rankingConfig);
     const candidateUnits = candidateDedup.units;
     if (candidateDedup.rejected.length > 0) {
       console.log(
@@ -495,7 +502,7 @@ Deno.serve(async (req) => {
       publicationDate,
       maxCandidates: 80,
       villageId: village_id,
-    });
+    }, rankingConfig);
     const rankedUnitRows = rankedUnits.map((row) => row.unit);
     const formattedUnits = formatUnitsForSelection(rankedUnitRows, previouslyPublished);
 
@@ -534,17 +541,22 @@ Deno.serve(async (req) => {
       selectedIds = selectFallbackUnitIds(rankedUnits, maxUnits);
     }
     selectedIds = enforceMandatorySelection(selectedIds, rankedUnits, maxUnits);
-    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, maxUnits);
+    selectedIds = refineSelectionForCompose(selectedIds, rankedUnits, maxUnits, rankingConfig);
 
     if (runId) {
-      const diagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds);
+      const diagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds, rankingConfig);
       await supabase.from('auto_draft_runs')
         .update({
           candidate_snapshot: diagnostics.candidate_snapshot,
           selected_unit_ids: selectedIds,
           mandatory_kept_ids: diagnostics.mandatory_kept_ids,
           rejected_top_units: [
-            ...candidateDedup.rejected.slice(0, 10),
+            ...candidateDedup.rejected.slice(0, 10).map((row) => ({
+              ...row,
+              score: null,
+              reasons: ['near_duplicate'],
+              rejection_reason: 'near_duplicate',
+            })),
             ...diagnostics.rejected_top_units,
           ].slice(0, 20),
           selection_response_preview: selectionResponsePreview.slice(0, 1000),
@@ -588,6 +600,20 @@ Deno.serve(async (req) => {
     }
     const selectedUnits = prepareUnitsForCompose(orderedSelectedUnits, rankedUnits);
     selectedIds = selectedUnits.map((u) => u.id).filter((id): id is string => Boolean(id));
+    const finalRankDiagnostics = buildSelectionDiagnostics(rankedUnits, selectedIds, rankingConfig);
+    const finalSelectionDiagnostics = {
+      ...finalRankDiagnostics,
+      rejected_top_units: [
+        ...candidateDedup.rejected.slice(0, 10).map((row) => ({
+          ...row,
+          score: null,
+          reasons: ['near_duplicate'],
+          rejection_reason: 'near_duplicate',
+        })),
+        ...finalRankDiagnostics.rejected_top_units,
+      ].slice(0, 20),
+      selection_response_preview: selectionResponsePreview.slice(0, 1000),
+    };
 
     // Compose: either v1 (legacy markdown sections) or v2 (bullet schema) based on flag.
     let draftTitle: string;
@@ -704,6 +730,7 @@ Deno.serve(async (req) => {
         bullets_json: bulletsJson,
         quality_warnings: quality.warnings,
         selected_unit_ids: selectedIds,
+        selection_diagnostics: finalSelectionDiagnostics,
         publication_date: publicationDate,
         verification_status: verificationStatus,
         verification_resolved_at: verificationStatus === 'withheld' ? new Date().toISOString() : null,

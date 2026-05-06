@@ -17,6 +17,8 @@ Multi-app monorepo hosting Svelte 5 + TypeScript applications deployed to GitHub
 | `package.json` | Scripts and dependencies |
 | `README.md` | Full specification (security, patterns, API) |
 | `.env.example` | Required environment variables |
+| `src/dorfkoenig/CLAUDE.md` | Dorfkönig app-specific agent guide |
+| `src/dorfkoenig/supabase/CLAUDE.md` | Dorfkönig backend/Edge Function agent guide |
 
 ## Repository Structure
 
@@ -98,6 +100,7 @@ npm run new-app my-app
 Always run these before committing:
 
 ```bash
+npm run typecheck    # Svelte + TypeScript check
 npm run lint         # Must pass with 0 errors and 0 warnings
 npm run build        # Must succeed
 ```

@@ -2,6 +2,7 @@
 
 import { getUserId } from '../stores/auth';
 import type { ApiError } from './types';
+import type { SelectionRankingConfig } from '../bajour/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -57,6 +58,36 @@ async function request<T>(
   return result.data !== undefined ? result.data : result;
 }
 
+async function restRequest<T>(table: string, searchParams: URLSearchParams): Promise<T> {
+  const userId = getUserId();
+  if (!userId) {
+    throw new ApiClientError('Nicht authentifiziert', 401, 'UNAUTHORIZED');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${searchParams}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+      'x-user-id': userId,
+    },
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = result as ApiError | null;
+    throw new ApiClientError(
+      error?.error?.message || `HTTP ${response.status}`,
+      response.status,
+      error?.error?.code
+    );
+  }
+
+  return result as T;
+}
+
 export const api = {
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
 
@@ -101,6 +132,7 @@ export const unitsApi = {
     topic?: string;
     scout_id?: string;
     upload_job_id?: string;
+    ids?: string[];
     unused_only?: boolean;
     limit?: number;
     date_from?: string;
@@ -111,6 +143,9 @@ export const unitsApi = {
     if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.scout_id) searchParams.set('scout_id', params.scout_id);
     if (params?.upload_job_id) searchParams.set('upload_job_id', params.upload_job_id);
+    if (params?.ids) {
+      for (const id of params.ids) searchParams.append('ids', id);
+    }
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.date_from) searchParams.set('date_from', params.date_from);
@@ -134,6 +169,17 @@ export const unitsApi = {
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     return api.get<import('./types').InformationUnit[]>(`units/search?${searchParams}`);
+  },
+  lookupByIds: (ids: string[]) => {
+    if (ids.length === 0) return Promise.resolve([] as import('./types').InformationUnit[]);
+    const uniqueIds = [...new Set(ids)];
+    const searchParams = new URLSearchParams();
+    searchParams.set(
+      'select',
+      'id,statement,unit_type,entities,source_url,source_domain,source_title,location,topic,scout_id,source_type,file_path,created_at,used_in_article,event_date,occurrence_count'
+    );
+    searchParams.set('id', `in.(${uniqueIds.join(',')})`);
+    return restRequest<import('./types').InformationUnit[]>('information_units', searchParams);
   },
   markUsed: (unitIds: string[]) =>
     api.patch<{ marked_count: number }>('units/mark-used', { unit_ids: unitIds }),
@@ -243,7 +289,13 @@ export const settingsApi = {
   putSelectPrompt: (content: string) =>
     api.put<{ prompt: string }>('bajour-select-units', { content }),
   resetSelectPrompt: () => api.delete<{ prompt: string }>('bajour-select-units'),
-  getComposePrompt: () => api.get<{ prompt: string }>('compose/prompt'),
+  getSelectionRanking: () =>
+    api.get<{ config: SelectionRankingConfig; default_config: SelectionRankingConfig }>('bajour-select-units/ranking'),
+  putSelectionRanking: (config: SelectionRankingConfig) =>
+    api.put<{ config: SelectionRankingConfig; default_config: SelectionRankingConfig }>('bajour-select-units/ranking', { config }),
+  resetSelectionRanking: () =>
+    api.delete<{ config: SelectionRankingConfig; default_config: SelectionRankingConfig }>('bajour-select-units/ranking'),
+  getComposePrompt: () => api.get<{ prompt: string }>('compose/prompt?schema=auto'),
   putComposePrompt: (content: string) =>
     api.put<{ prompt: string }>('compose/prompt', { content }),
   resetComposePrompt: () => api.delete<{ prompt: string }>('compose/prompt'),

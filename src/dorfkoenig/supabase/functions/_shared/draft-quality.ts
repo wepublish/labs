@@ -3,16 +3,16 @@
  *
  * Scaffolding for the Dorfkönig draft quality overhaul (specs/DRAFT_QUALITY.md).
  *
- * Phase 0: palette, banlist, anti-pattern table. Validator implementations land in Phase 1.
+ * Phase 0: banlist, anti-pattern table, and legacy emoji examples.
  * Phase 1 adds: validateUrlWhitelist, validateForbiddenPhrases, validateEmojiPalette, validateKindCounts.
  */
 
 /**
- * Closed emoji palette (§3.1.2). Approved 2026-04-22.
+ * Legacy emoji examples (§3.1.2). Approved 2026-04-22.
  * Expanded 2026-04-26: feedback rows 4–5 used emojis the editor reached for
  * naturally (events, food, weather, lifestyle, transport, animals) that the
- * original 16-glyph palette stripped. Keep additions semantically distinct;
- * validateEmojiPalette still strips anything not in this list.
+ * original 16-glyph set stripped. Kept for examples and fallback style only;
+ * compose no longer constrains model-selected emojis to this list.
  */
 export const EMOJI_PALETTE = [
   // Original palette (approved 2026-04-22)
@@ -26,7 +26,7 @@ export const EMOJI_PALETTE = [
 ] as const;
 
 export function isAllowedEmoji(emoji: string): boolean {
-  return (EMOJI_PALETTE as readonly string[]).includes(emoji);
+  return emoji.trim().length > 0;
 }
 
 /**
@@ -246,22 +246,9 @@ export function validateForbiddenPhrases(draft: DraftV2): ValidationResult {
   return { draft: { ...draft, bullets }, warnings };
 }
 
-/** Strip emoji not in the approved palette. Bullet text survives. */
+/** Preserve model-selected emojis; the compose prompt already asks for a suitable emoji. */
 export function validateEmojiPalette(draft: DraftV2): ValidationResult {
-  const warnings: string[] = [];
-  const bullets = draft.bullets.map((b, i) => {
-    if (isAllowedEmoji(b.emoji)) return b;
-    warnings.push(`Emoji in Bullet ${i + 1} ersetzt (war "${b.emoji}", nicht in Palette)`);
-    // Default fallback by kind — closer to the gold style than an empty string.
-    const fallback: Record<BulletKind, string> = {
-      lead: '📍',
-      secondary: '📍',
-      event: '📅',
-      good_news: '✅',
-    };
-    return { ...b, emoji: fallback[b.kind] };
-  });
-  return { draft: { ...draft, bullets }, warnings };
+  return { draft, warnings: [] };
 }
 
 /** Enforce per-kind caps and the overall MAX_BULLETS_PER_DRAFT ceiling. */

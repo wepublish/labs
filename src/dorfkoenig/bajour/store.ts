@@ -3,7 +3,7 @@
 import { writable, get } from 'svelte/store';
 import { bajourApi } from './api';
 import { POLL_INTERVAL_MS } from '../lib/constants';
-import type { BajourDraft, VerificationStatus } from './types';
+import type { BajourDraft, SelectionDiagnostics, VerificationStatus } from './types';
 
 interface BajourDraftsState {
   drafts: BajourDraft[];
@@ -43,6 +43,7 @@ function createBajourDraftsStore() {
       selected_unit_ids: string[];
       custom_system_prompt?: string | null;
       publication_date?: string;
+      selection_diagnostics?: SelectionDiagnostics | null;
     }): Promise<BajourDraft> {
       const draft = await bajourApi.createDraft(data);
       update((s) => ({ ...s, drafts: [draft, ...s.drafts] }));
