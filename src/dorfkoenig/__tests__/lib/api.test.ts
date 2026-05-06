@@ -440,6 +440,16 @@ describe('unitsApi', () => {
     expect(calledUrl).toContain('scout_id=scout-123');
   });
 
+  it('list() includes upload_job_id query param when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.list({ upload_job_id: 'job-123', unused_only: false });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('upload_job_id=job-123');
+    expect(calledUrl).toContain('unused_only=false');
+  });
+
   it('search() includes topic query param when provided', async () => {
     mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
 
@@ -476,6 +486,17 @@ describe('unitsApi', () => {
 
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     expect(calledUrl).toContain('scout_id=scout-123');
+  });
+
+  it('search() includes debug options when provided', async () => {
+    mockFetch.mockResolvedValue(createMockResponse({ data: [] }));
+
+    await unitsApi.search('query', { unused_only: false, min_similarity: 0.18, limit: 3 });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('unused_only=false');
+    expect(calledUrl).toContain('min_similarity=0.18');
+    expect(calledUrl).toContain('limit=3');
   });
 });
 

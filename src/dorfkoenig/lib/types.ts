@@ -263,6 +263,10 @@ export interface NewspaperProcessingResult {
  *  can spot a re-upload of the same file before triggering another full parse. */
 export interface RecentPdfUpload {
   id: string;
+  storage_path?: string | null;
+  publication_date?: string | null;
+  source_url?: string | null;
+  source_citation?: SourceCitation | null;
   label: string | null;
   created_at: string;
   status: NewspaperJobStatus;

@@ -9,9 +9,10 @@
     selected: Set<string>;
     ontoggle: (id: string) => void;
     dimmed?: boolean;
+    readonly?: boolean;
   }
 
-  let { units, selected, ontoggle, dimmed = false }: Props = $props();
+  let { units, selected, ontoggle, dimmed = false, readonly = false }: Props = $props();
 
   let truncatedIds = $state(new Set<string>());
   let statementRefs = new Map<string, HTMLElement>();
@@ -88,10 +89,13 @@
         type="button"
         class="unit-card"
         class:selected={isSelected}
-        onclick={() => ontoggle(unit.id)}
+        class:readonly
+        onclick={() => {
+          if (!readonly) ontoggle(unit.id);
+        }}
         style="--strip-color: {getStripColor(unit.unit_type)}"
       >
-        {#if isSelected}
+        {#if isSelected && !readonly}
           <span class="check-mark"><Check size={10} strokeWidth={3} /></span>
         {/if}
 
@@ -203,6 +207,15 @@
   .unit-card:hover {
     border-color: var(--color-primary);
     box-shadow: 0 2px 8px rgba(234, 114, 110, 0.06);
+  }
+
+  .unit-card.readonly {
+    cursor: default;
+  }
+
+  .unit-card.readonly:hover {
+    border-color: var(--color-border);
+    box-shadow: none;
   }
 
   .unit-card:focus-visible {
