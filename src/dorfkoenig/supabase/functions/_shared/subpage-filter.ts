@@ -7,7 +7,7 @@
  * article routes, path traversal block, and a second-pass domain validator.
  */
 
-import { validateDomain } from './civic-utils.ts';
+import { validateDomain } from "./civic-utils.ts";
 
 export interface SubpageFilterOptions {
   /**
@@ -25,12 +25,13 @@ export function isLikelyArticleUrl(url: string): boolean {
   } catch {
     return false;
   }
-  const cleanPath = parsed.pathname.replace(/\/+$/, '');
+  const cleanPath = parsed.pathname.replace(/\/+$/, "");
   if (hasTraversal(cleanPath)) return false;
   if (hasStaticAsset(cleanPath)) return false;
+  if (isUtilityPath(cleanPath)) return false;
 
-  const segments = cleanPath.split('/').filter(Boolean);
-  const last = segments[segments.length - 1] ?? '';
+  const segments = cleanPath.split("/").filter(Boolean);
+  const last = segments[segments.length - 1] ?? "";
 
   if (/(^|-)ld\.\d+$/i.test(last)) return true;
   if (/^ld\.\d+$/i.test(last)) return true;
@@ -39,8 +40,28 @@ export function isLikelyArticleUrl(url: string): boolean {
   return false;
 }
 
-export function looksLikeListingPage(indexUrl: string, candidateUrls: string[]): boolean {
+export function looksLikeListingPage(
+  indexUrl: string,
+  candidateUrls: string[],
+): boolean {
   return candidateUrls.length > 0 && !isLikelyArticleUrl(indexUrl);
+}
+
+export function isStrictChildUrl(url: string, indexUrl: string): boolean {
+  let index: URL;
+  let parsed: URL;
+  try {
+    index = new URL(indexUrl);
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (normalizeHost(parsed.hostname) !== normalizeHost(index.hostname)) {
+    return false;
+  }
+  const indexPath = index.pathname.replace(/\/+$/, "");
+  const cleanPath = parsed.pathname.replace(/\/+$/, "");
+  return cleanPath.startsWith(indexPath + "/");
 }
 
 /**
@@ -65,10 +86,10 @@ export function filterSubpageUrls(
     return [];
   }
   const indexHost = normalizeHost(index.hostname);
-  const indexPath = index.pathname.replace(/\/+$/, '');
+  const indexPath = index.pathname.replace(/\/+$/, "");
   const allowSameHostArticles = options.allowSameHostArticles ?? true;
 
-  return links.filter((url) => {
+  const validLinks = links.filter((url) => {
     let parsed: URL;
     try {
       parsed = new URL(url);
@@ -76,23 +97,37 @@ export function filterSubpageUrls(
       return false;
     }
     if (normalizeHost(parsed.hostname) !== indexHost) return false;
-    const cleanPath = parsed.pathname.replace(/\/+$/, '');
+    const cleanPath = parsed.pathname.replace(/\/+$/, "");
     if (hasTraversal(cleanPath)) return false;
     if (hasStaticAsset(cleanPath)) return false;
+    if (isUtilityPath(cleanPath)) return false;
     if (!validateDomain(parsed.hostname).valid) return false;
-    if (cleanPath.startsWith(indexPath + '/')) return true;
-    return allowSameHostArticles && isLikelyArticleUrl(url);
+    return true;
   });
+
+  const strictChildren = validLinks.filter((url) => {
+    return isStrictChildUrl(url, indexUrl);
+  });
+  if (strictChildren.length > 0) return strictChildren;
+
+  return allowSameHostArticles
+    ? validLinks.filter((url) => isLikelyArticleUrl(url))
+    : [];
 }
 
 function normalizeHost(host: string): string {
-  return host.toLowerCase().replace(/^www\./, '');
+  return host.toLowerCase().replace(/^www\./, "");
 }
 
 function hasTraversal(path: string): boolean {
-  return path.includes('..') || path.toLowerCase().includes('%2e%2e');
+  return path.includes("..") || path.toLowerCase().includes("%2e%2e");
 }
 
 function hasStaticAsset(path: string): boolean {
-  return /\.(css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|map|xml|json)$/i.test(path);
+  return /\.(css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|map|xml|json)$/i
+    .test(path);
+}
+
+function isUtilityPath(path: string): boolean {
+  return /\/(ical|rss)\.php$/i.test(path);
 }

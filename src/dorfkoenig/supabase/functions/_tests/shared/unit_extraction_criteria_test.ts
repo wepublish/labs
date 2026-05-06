@@ -3,7 +3,7 @@ import {
   assertStringIncludes,
 } from 'https://deno.land/std@0.220.0/assert/mod.ts';
 import { buildWebExtractionPrompt, WEB_EXTRACTION_PROMPT_VERSION } from '../../_shared/web-extraction-prompt.ts';
-import { filterCriteriaMatchedWebUnits } from '../../_shared/unit-extraction.ts';
+import { filterCriteriaMatchedWebUnits, prepareWebExtractionContent } from '../../_shared/unit-extraction.ts';
 
 const matchingUnit = {
   statement: 'Der Gemeinderat Aesch bewilligte am 20. April 2026 einen Veloweg.',
@@ -75,4 +75,25 @@ Deno.test('filterCriteriaMatchedWebUnits preserves all units when criteria are e
 
   assertEquals(filterCriteriaMatchedWebUnits(units, '').length, 2);
   assertEquals(filterCriteriaMatchedWebUnits(units, null).length, 2);
+});
+
+Deno.test('prepareWebExtractionContent centers Weblication article body by URL slug', () => {
+  const boilerplate = 'Navigation\n'.repeat(2_000);
+  const body = [
+    '# Saison-Abo für unsere Badi zu gewinnen',
+    '',
+    '06.05.2026',
+    '',
+    'Für die Saison 2026 können Sie Ihr Saison-Abo gewinnen.',
+  ].join('\n');
+  const content = `${boilerplate}\n${body}`;
+
+  const prepared = prepareWebExtractionContent(
+    content,
+    'https://www.arlesheim.ch/de/aktuelles/aktuelle_meldungen/Saison-Abo-fuer-unsere-Badi-zu-gewinnen.php',
+  );
+
+  assertStringIncludes(prepared, '# Saison-Abo für unsere Badi zu gewinnen');
+  assertStringIncludes(prepared, 'Für die Saison 2026');
+  assertEquals(prepared.length <= 12_000, true);
 });

@@ -9,6 +9,42 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireUserId } from '../_shared/supabase-client.ts';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../_shared/constants.ts';
 
+interface ScoutJoin {
+  id?: string;
+  name: string;
+  url?: string | null;
+  criteria: string | null;
+}
+
+interface UnitJoin {
+  id: string;
+  statement: string;
+  unit_type: string;
+  entities: string[];
+  created_at: string;
+}
+
+function readScoutJoin(value: unknown): ScoutJoin | null {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row || typeof row !== 'object') return null;
+  const record = row as Record<string, unknown>;
+  if (typeof record.name !== 'string') return null;
+  return {
+    id: typeof record.id === 'string' ? record.id : undefined,
+    name: record.name,
+    url: typeof record.url === 'string' ? record.url : null,
+    criteria: typeof record.criteria === 'string' ? record.criteria : null,
+  };
+}
+
+function readUnitJoin(value: unknown): UnitJoin[] {
+  const rows = Array.isArray(value) ? value : [value];
+  return rows.filter((row): row is UnitJoin => {
+    if (!row || typeof row !== 'object') return false;
+    return typeof (row as { id?: unknown }).id === 'string';
+  });
+}
+
 Deno.serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -35,10 +71,11 @@ Deno.serve(async (req) => {
     return await listExecutions(supabase, userId, url);
   } catch (error) {
     console.error('Executions error:', error);
-    if (error.message === 'Authentication required') {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === 'Authentication required') {
       return errorResponse('Authentifizierung erforderlich', 401, 'UNAUTHORIZED');
     }
-    return errorResponse(error.message, 500);
+    return errorResponse(message, 500);
   }
 });
 
@@ -73,7 +110,8 @@ async function listExecutions(
       error_message,
       created_at,
       scouts!inner (
-        name
+        name,
+        criteria
       )
     `,
       { count: 'exact' }
@@ -98,22 +136,26 @@ async function listExecutions(
   }
 
   // Flatten the scout name
-  const executions = (data || []).map((e) => ({
-    id: e.id,
-    scout_id: e.scout_id,
-    scout_name: (e.scouts as { name: string })?.name,
-    status: e.status,
-    started_at: e.started_at,
-    completed_at: e.completed_at,
-    change_status: e.change_status,
-    criteria_matched: e.criteria_matched,
-    is_duplicate: e.is_duplicate,
-    notification_sent: e.notification_sent,
-    units_extracted: e.units_extracted,
-    merged_existing_count: e.merged_existing_count,
-    summary_text: e.summary_text,
-    error_message: e.error_message,
-  }));
+  const executions = (data || []).map((e) => {
+    const scout = readScoutJoin(e.scouts);
+    return {
+      id: e.id,
+      scout_id: e.scout_id,
+      scout_name: scout?.name,
+      scout_criteria: scout?.criteria ?? null,
+      status: e.status,
+      started_at: e.started_at,
+      completed_at: e.completed_at,
+      change_status: e.change_status,
+      criteria_matched: e.criteria_matched,
+      is_duplicate: e.is_duplicate,
+      notification_sent: e.notification_sent,
+      units_extracted: e.units_extracted,
+      merged_existing_count: e.merged_existing_count,
+      summary_text: e.summary_text,
+      error_message: e.error_message,
+    };
+  });
 
   return jsonResponse({
     data: executions,
@@ -140,7 +182,8 @@ async function getExecution(
       scouts (
         id,
         name,
-        url
+        url,
+        criteria
       )
     `
     )
@@ -172,11 +215,19 @@ async function getExecution(
     .eq('execution_id', executionId)
     .order('extracted_at', { ascending: true });
 
+  const scout = readScoutJoin(execution.scouts);
+  const units = [...new Map(
+    ((occurrences || []) as Array<{ information_units: unknown }>)
+      .flatMap((occurrence) => readUnitJoin(occurrence.information_units))
+      .map((unit) => [unit.id, unit] as const),
+  ).values()];
+
   return jsonResponse({
     data: {
       id: execution.id,
       scout_id: execution.scout_id,
-      scout: execution.scouts,
+      scout,
+      scout_criteria: scout?.criteria ?? null,
       status: execution.status,
       started_at: execution.started_at,
       completed_at: execution.completed_at,
@@ -191,12 +242,7 @@ async function getExecution(
       scrape_duration_ms: execution.scrape_duration_ms,
       summary_text: execution.summary_text,
       error_message: execution.error_message,
-      units: [...new Map(
-        (occurrences || [])
-          .map((occurrence) => occurrence.information_units)
-          .filter(Boolean)
-          .map((unit) => [unit.id, unit] as const),
-      ).values()],
+      units,
     },
   });
 }

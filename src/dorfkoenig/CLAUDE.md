@@ -140,8 +140,8 @@ Scheduling:
 
 | Type | Key Fields |
 |------|-----------|
-| `Scout` | id, user_id, name, url, criteria, location, topic, frequency, is_active, notification_email, provider?, content_hash?, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text? |
-| `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted |
+| `Scout` | id, user_id, name, url, criteria, location, location_mode, topic, frequency, is_active, provider?, content_hash?, scout_type, root_domain?, tracked_urls?, last_execution_status?, last_criteria_matched?, last_change_status?, last_summary_text?, last_units_extracted?, last_merged_existing_count?, last_is_duplicate? |
+| `Execution` | id, scout_id, status, change_status, criteria_matched, is_duplicate, summary_text, units_extracted, merged_existing_count?, scout_criteria? |
 | `InformationUnit` | id, statement, unit_type (fact/event/entity_update), entities[], location, topic, source_url, used_in_article |
 | `Draft` | title, headline, sections[], gaps[], sources[], word_count |
 | `TestResult` | scrape_result, criteria_analysis, would_notify, would_extract_units, provider?, content_hash? |
@@ -187,6 +187,8 @@ Type-safe helpers: `scoutsApi`, `unitsApi`, `composeApi`, `settingsApi`, `execut
 Frontend source browsing uses the same two-state pattern for Scouts and Uploads. In list state the inbox headings are source-specific (`Scouts-Inbox`, `Uploads-Inbox`); after focusing a single Scout/PDF the heading collapses to `Inbox`.
 
 Legacy draft selection audits first use `units?ids=...`; if the deployed Edge Function does not yet support exact ID lookup, `DraftContent.svelte` falls back to `unitsApi.lookupByIds()`, a direct PostgREST read with the same `x-user-id` auth header.
+
+Scout execution rows must use `lib/execution-labels.ts` for labels and color tones. The shared precedence is: running/failed infrastructure states, unchanged pages, explicit-criteria misses (`Nicht relevant`), newly saved units (`Neue Einheiten`), deduped or duplicate units (`Bereits bekannt`), then changed pages with no saved/deduped units (`Nichts Verwertbares`). Keep `ScoutCard`, `ScoutRunLog`, and `ExecutionCard` aligned through that helper.
 
 ## Routing (`App.svelte`)
 

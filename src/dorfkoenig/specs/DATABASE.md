@@ -42,6 +42,8 @@ CREATE TABLE scouts (
     -- Topic (comma-separated, e.g. "Stadtentwicklung, Verkehr")
     -- At least one of location or topic is required
     topic TEXT,
+    location_mode TEXT NOT NULL DEFAULT 'manual',
+    -- Values: 'manual' | 'auto'
 
     -- Scheduling
     frequency TEXT NOT NULL DEFAULT 'daily',
@@ -52,9 +54,6 @@ CREATE TABLE scouts (
     last_run_at TIMESTAMPTZ,
     consecutive_failures INTEGER NOT NULL DEFAULT 0,
 
-    -- Email notification
-    notification_email TEXT,
-
     -- Provider detection (set by double-probe on first test)
     provider TEXT,
     -- Values: 'firecrawl' (baseline persisted, use changeTracking) |
@@ -64,13 +63,19 @@ CREATE TABLE scouts (
     content_hash TEXT,
     -- SHA-256 of normalized markdown content
 
+    -- Scout type
+    scout_type TEXT NOT NULL DEFAULT 'web',
+    -- Values: 'web' | 'civic'
+    root_domain TEXT,
+    tracked_urls TEXT[],
+
     -- Timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Constraints
     CONSTRAINT valid_frequency CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly')),
-    CONSTRAINT valid_url CHECK (url ~ '^https?://'),
+    CONSTRAINT valid_url CHECK (url IS NULL OR url ~ '^https?://'),
     CONSTRAINT scouts_criteria_length CHECK (char_length(criteria) <= 1000)
 );
 
@@ -125,6 +130,7 @@ CREATE TABLE scout_executions (
 
     -- Metadata
     units_extracted INTEGER DEFAULT 0,
+    merged_existing_count INTEGER NOT NULL DEFAULT 0,
     scrape_duration_ms INTEGER,
 
     -- Timestamps

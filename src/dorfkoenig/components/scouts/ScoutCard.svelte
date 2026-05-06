@@ -5,7 +5,8 @@
   import { scouts } from '../../stores/scouts';
   import { executionsApi } from '../../lib/api';
   import { formatRelativeTime, FREQUENCY_OPTIONS_EXTENDED } from '../../lib/constants';
-  import type { Scout } from '../../lib/types';
+  import { executionOutcome } from '../../lib/execution-labels';
+  import type { Execution, Scout } from '../../lib/types';
 
   interface Props {
     scout: Scout;
@@ -92,19 +93,41 @@
   // Strip color: green=matched, red=error/failed, gray=no change/pending
   type StripColor = 'green' | 'red' | 'gray';
 
+  function lastExecution(): Execution | null {
+    if (!scout.last_execution_status) return null;
+    return {
+      id: `last-${scout.id}`,
+      scout_id: scout.id,
+      status: scout.last_execution_status,
+      started_at: scout.last_run_at ?? '',
+      completed_at: scout.last_run_at,
+      change_status: scout.last_change_status ?? null,
+      criteria_matched: scout.last_criteria_matched ?? null,
+      is_duplicate: scout.last_is_duplicate ?? false,
+      duplicate_similarity: null,
+      notification_sent: false,
+      notification_error: null,
+      units_extracted: scout.last_units_extracted ?? 0,
+      merged_existing_count: scout.last_merged_existing_count ?? 0,
+      summary_text: scout.last_summary_text ?? null,
+      error_message: null,
+      scout_criteria: scout.criteria,
+    };
+  }
+
+  let lastOutcome = $derived.by(() => {
+    const execution = lastExecution();
+    return execution ? executionOutcome(execution, scout.criteria) : null;
+  });
+
   function getStripColor(): StripColor {
     if (scout.last_execution_status === 'failed' || scout.consecutive_failures > 0) return 'red';
-    if (scout.last_criteria_matched === true) return 'green';
+    if (lastOutcome?.kind === 'new_units') return 'green';
     return 'gray';
   }
 
   function getStatusLabel(): string {
-    const exec = scout.last_execution_status;
-    if (!exec) return 'Ausstehend';
-    if (exec === 'failed') return 'Fehlgeschlagen';
-    if (scout.last_criteria_matched === true) return 'Treffer';
-    if (scout.last_change_status === 'same') return 'Keine Änderung';
-    return 'Kein Treffer';
+    return lastOutcome?.label ?? 'Ausstehend';
   }
 
   let stripColor = $derived(getStripColor());

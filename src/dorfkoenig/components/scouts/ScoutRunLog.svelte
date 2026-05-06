@@ -1,14 +1,16 @@
 <script lang="ts">
   import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-svelte';
   import { executionsApi } from '../../lib/api';
+  import { executionOutcome } from '../../lib/execution-labels';
   import type { Execution, InformationUnit } from '../../lib/types';
 
   interface Props {
     scoutId: string;
+    criteria?: string | null;
     refreshKey?: number;
   }
 
-  let { scoutId, refreshKey = 0 }: Props = $props();
+  let { scoutId, criteria = null, refreshKey = 0 }: Props = $props();
 
   let executions = $state<Execution[]>([]);
   let loading = $state(false);
@@ -62,30 +64,6 @@
     if (!Number.isFinite(durationMs) || durationMs < 0) return '—';
     if (durationMs < 60_000) return `${Math.round(durationMs / 1000)}s`;
     return `${Math.round(durationMs / 60_000)}m`;
-  }
-
-  function statusLabel(execution: Execution): string {
-    if (execution.status === 'running') return 'Läuft';
-    if (execution.status === 'failed') return 'Fehler';
-    if (execution.change_status === 'same') return 'Unverändert';
-    if (execution.criteria_matched) return 'Treffer';
-    return 'Geändert';
-  }
-
-  function resultLabel(execution: Execution): string {
-    if (execution.status === 'failed') return 'Fehler';
-    if (execution.status === 'running') return 'Wird geprüft';
-    if (execution.change_status === 'same') return 'Keine neue relevante Änderung';
-    if (execution.criteria_matched) return 'Kriterien erfüllt';
-    return 'Kriterien nicht erfüllt';
-  }
-
-  function statusTone(execution: Execution): string {
-    if (execution.status === 'running') return 'running';
-    if (execution.status === 'failed') return 'failed';
-    if (execution.change_status === 'same') return 'same';
-    if (execution.criteria_matched) return 'matched';
-    return 'changed';
   }
 
   function countLabel(execution: Execution): string {
@@ -160,7 +138,8 @@
         {@const detail = detailById.get(execution.id)}
         {@const detailError = detailErrorById.get(execution.id)}
         {@const isExpanded = expandedId === execution.id}
-        {@const tone = statusTone(execution)}
+        {@const outcome = executionOutcome(execution, criteria)}
+        {@const tone = outcome.tone}
         <li class="log-row tone-{tone}">
           <button class="log-summary" type="button" onclick={() => toggleExecution(execution)}>
             <div class="summary-top">
@@ -171,8 +150,8 @@
                   <ChevronRight size={15} />
                 {/if}
               </span>
-              <span class="log-status status-chip-{tone}">{statusLabel(execution)}</span>
-              <span class="log-result">{resultLabel(execution)}</span>
+              <span class="log-status status-chip-{tone}">{outcome.label}</span>
+              <span class="log-result">{outcome.detail}</span>
             </div>
             <div class="summary-meta">
               <span>{formatTime(execution.started_at)}</span>
@@ -324,6 +303,11 @@
     --log-tone: #9ca3af;
   }
 
+  .log-row.tone-known {
+    --log-tone: #d97706;
+    background: rgba(217, 119, 6, 0.035);
+  }
+
   .log-row.tone-changed,
   .log-row.tone-running {
     --log-tone: #d97706;
@@ -409,6 +393,12 @@
     border-color: var(--color-border);
     background: var(--color-surface-muted);
     color: var(--color-text-muted);
+  }
+
+  .status-chip-known {
+    border-color: rgba(217, 119, 6, 0.22);
+    background: rgba(217, 119, 6, 0.1);
+    color: #92400e;
   }
 
   .status-chip-changed,

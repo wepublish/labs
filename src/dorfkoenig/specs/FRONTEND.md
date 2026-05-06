@@ -28,6 +28,7 @@ src/dorfkoenig/
 │   ├── supabase.ts         # Supabase client
 │   ├── api.ts              # API wrapper functions
 │   ├── types.ts            # TypeScript interfaces
+│   ├── execution-labels.ts # Shared scout execution outcome labels
 │   └── constants.ts        # App constants
 │
 ├── stores/
@@ -512,8 +513,10 @@ The layout includes a sticky navbar with:
   `newspaper_jobs.extracted_units`; the modal finalizes selected UIDs and shows
   `dedup_summary` after save so editors can see which units were deduplicated.
 - **Scout run logs**: expanded scout cards lazy-load the latest three
-  `scout_executions` rows and show compact status, time, unit, duplicate, and
-  error/summary details. The full history remains under `#/scout/{id}` and
+  `scout_executions` rows and show compact outcome labels, time, unit counts,
+  duplicate/merge counts, and error/summary details. `ScoutCard`,
+  `ScoutRunLog`, and `ExecutionCard` must all derive their visible labels from
+  `lib/execution-labels.ts`. The full history remains under `#/scout/{id}` and
   `#/history`.
 
 ```svelte
@@ -1045,6 +1048,24 @@ Inbox search bars include a `DraftCoverageModal` trigger. The modal accepts past
 
 ---
 
+## Scout Execution Outcomes
+
+`lib/execution-labels.ts` is the single frontend source of truth for scout run
+labels, tones, and compact badge variants. The helper keeps the math readable:
+
+1. `running` / `failed` infrastructure states win first.
+2. `change_status === 'same'` is always `Keine Änderung` / `Seite unverändert`.
+3. Explicit criteria with `criteria_matched === false` is `Nicht relevant`.
+4. `units_extracted > 0` is `Neue Einheiten`.
+5. `merged_existing_count > 0` or `is_duplicate` is `Bereits bekannt`.
+6. A changed page with no saved or merged units is `Nichts Verwertbares`.
+
+Empty criteria means "Jede Änderung"; those scouts skip the `Nicht relevant`
+branch and show whether the changed page produced new, already-known, or no
+usable units.
+
+---
+
 ## API Client
 
 ### lib/api.ts
@@ -1140,17 +1161,20 @@ export interface Scout {
   id: string;
   user_id: string;
   name: string;
-  url: string;
+  url: string | null;
   criteria: string;
   location: Location | null;
+  location_mode: 'manual' | 'auto';
   topic?: string | null;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
   is_active: boolean;
   last_run_at: string | null;
   consecutive_failures: number;
-  notification_email: string | null;
   provider?: string | null;        // 'firecrawl' | 'firecrawl_plain'
   content_hash?: string | null;    // SHA-256 for hash-based change detection
+  scout_type: 'web' | 'civic';
+  root_domain?: string | null;
+  tracked_urls?: string[] | null;
   created_at: string;
   updated_at: string;
   // Last execution data (joined from scout_executions)
@@ -1158,6 +1182,9 @@ export interface Scout {
   last_criteria_matched?: boolean | null;
   last_change_status?: 'changed' | 'same' | 'error' | 'first_run' | null;
   last_summary_text?: string | null;
+  last_units_extracted?: number | null;
+  last_merged_existing_count?: number | null;
+  last_is_duplicate?: boolean | null;
 }
 
 export interface Location {
@@ -1173,7 +1200,8 @@ export interface Execution {
   id: string;
   scout_id: string;
   scout_name?: string;
-  scout?: { name: string; url: string };
+  scout?: { name: string; url: string; criteria?: string | null };
+  scout_criteria?: string | null;
   status: 'running' | 'completed' | 'failed';
   started_at: string;
   completed_at: string | null;
@@ -1184,6 +1212,7 @@ export interface Execution {
   notification_sent: boolean;
   notification_error: string | null;
   units_extracted: number;
+  merged_existing_count?: number;
   scrape_duration_ms?: number | null;
   summary_text: string | null;
   error_message: string | null;

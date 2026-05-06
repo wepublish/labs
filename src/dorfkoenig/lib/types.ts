@@ -38,6 +38,9 @@ export interface Scout {
   last_criteria_matched?: boolean | null;
   last_change_status?: 'changed' | 'same' | 'error' | 'first_run' | null;
   last_summary_text?: string | null;
+  last_units_extracted?: number | null;
+  last_merged_existing_count?: number | null;
+  last_is_duplicate?: boolean | null;
 }
 
 export interface ScoutCreateInput {
@@ -117,7 +120,9 @@ export interface Execution {
   scout?: {
     name: string;
     url: string;
+    criteria?: string | null;
   };
+  scout_criteria?: string | null;
   status: 'running' | 'completed' | 'failed';
   started_at: string;
   completed_at: string | null;
