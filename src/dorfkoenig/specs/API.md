@@ -74,26 +74,32 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
         "state": "Berlin",
         "country": "Germany"
       },
+      "location_mode": "manual",
       "topic": "Stadtentwicklung, Verkehr",
       "frequency": "daily",
       "is_active": true,
       "last_run_at": "2024-01-15T10:30:00Z",
       "consecutive_failures": 0,
-      "notification_email": "user@example.com",
       "provider": "firecrawl",
       "content_hash": null,
+      "scout_type": "web",
+      "root_domain": null,
+      "tracked_urls": null,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-15T10:30:00Z",
       "last_execution_status": "completed",
       "last_criteria_matched": true,
       "last_change_status": "changed",
-      "last_summary_text": "Neue Bauvorhaben in Berlin-Mitte wurden angekündigt."
+      "last_summary_text": "Neue Bauvorhaben in Berlin-Mitte wurden angekündigt.",
+      "last_units_extracted": 3,
+      "last_merged_existing_count": 0,
+      "last_is_duplicate": false
     }
   ]
 }
 ```
 
-> **Note:** The `last_execution_*` fields are joined from the most recent `scout_executions` row for each scout. They are not stored on the `scouts` table itself. Scouts with no executions will have `null` for all four fields.
+> **Note:** The `last_*` execution fields are joined from the most recent `scout_executions` row for each scout. They are not stored on the `scouts` table itself. Scouts with no executions will have `null` for these fields. The frontend maps them through `lib/execution-labels.ts` so list cards and run logs share the same outcome labels.
 
 ### POST /scouts
 
@@ -116,8 +122,9 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
     "latitude": 52.52,
     "longitude": 13.405
   },
-  "frequency": "daily",
-  "notification_email": "user@example.com"
+  "location_mode": "manual",
+  "scout_type": "web",
+  "frequency": "daily"
 }
 ```
 
@@ -126,9 +133,11 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
 - `url`: Required, valid HTTP(S) URL
 - `criteria`: Required, 0-1000 characters (empty allowed for monitor-all mode)
 - `location`: Optional, JSONB object (at least one of `location` or `topic` is required)
+- `location_mode`: Optional, `manual` or `auto` (defaults to `manual`)
 - `topic`: Optional, comma-separated string (at least one of `location` or `topic` is required)
+- `scout_type`: Optional, `web` or `civic` (defaults to `web`)
+- `root_domain` / `tracked_urls`: Required for civic scouts
 - `frequency`: Required, one of: `daily`, `weekly`, `biweekly`, `monthly`
-- `notification_email`: Optional, valid email format
 
 **Response:** `201 Created`
 ```json
@@ -619,6 +628,7 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
       "id": "uuid",
       "scout_id": "uuid",
       "scout_name": "Berlin News Monitor",
+      "scout_criteria": "Neuigkeiten zu Bauvorhaben",
       "status": "completed",
       "started_at": "2024-01-15T10:30:00Z",
       "completed_at": "2024-01-15T10:30:45Z",
@@ -627,6 +637,7 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
       "is_duplicate": false,
       "notification_sent": true,
       "units_extracted": 3,
+      "merged_existing_count": 0,
       "summary_text": "Neue Bauvorhaben in Berlin-Mitte wurden angekündigt."
     }
   ],
@@ -656,8 +667,10 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
     "scout_id": "uuid",
     "scout": {
       "name": "Berlin News Monitor",
-      "url": "https://www.berlin.de/aktuelles/"
+      "url": "https://www.berlin.de/aktuelles/",
+      "criteria": "Neuigkeiten zu Bauvorhaben"
     },
+    "scout_criteria": "Neuigkeiten zu Bauvorhaben",
     "status": "completed",
     "started_at": "2024-01-15T10:30:00Z",
     "completed_at": "2024-01-15T10:30:45Z",
@@ -668,6 +681,7 @@ x-user-id: 493c6d51531c7444365b0ec094bc2d67
     "notification_sent": true,
     "notification_error": null,
     "units_extracted": 3,
+    "merged_existing_count": 0,
     "scrape_duration_ms": 2500,
     "summary_text": "Neue Bauvorhaben in Berlin-Mitte wurden angekündigt.",
     "error_message": null,

@@ -44,6 +44,7 @@ import gemeindenJson from './gemeinden.json' with { type: 'json' };
 
 const villages = gemeindenJson as Village[];
 const VILLAGE_IDS = villages.map((v) => v.id);
+const WEB_EXTRACTION_CONTENT_LIMIT = 12_000;
 
 interface UnitExtractionParams {
   scoutId?: string | null;
@@ -98,6 +99,16 @@ export function filterCriteriaMatchedWebUnits(
   return units.filter((unit) => unit.criteriaMatch !== false);
 }
 
+export function prepareWebExtractionContent(content: string, sourceUrl: string): string {
+  if (content.length <= WEB_EXTRACTION_CONTENT_LIMIT) return content;
+
+  const anchor = findSourceUrlAnchor(content, sourceUrl);
+  if (anchor === null) return content.slice(0, WEB_EXTRACTION_CONTENT_LIMIT);
+
+  const start = Math.max(0, anchor - 1_500);
+  return content.slice(start, start + WEB_EXTRACTION_CONTENT_LIMIT);
+}
+
 export async function extractInformationUnits(
   supabase: ReturnType<typeof createServiceClient>,
   content: string,
@@ -131,6 +142,67 @@ function filterByLocation(units: ProcessedUnit[], city?: string | null): Process
   if (!city) return units;
   const expected = normalizeCity(city);
   return units.filter((unit) => unit.location?.city && normalizeCity(unit.location.city) === expected);
+}
+
+function findSourceUrlAnchor(content: string, sourceUrl: string): number | null {
+  const tokens = sourceUrlTokens(sourceUrl);
+  if (tokens.length < 2) return null;
+
+  let bestIndex = -1;
+  let bestScore = 0;
+  const headingPattern = /^#{1,3}\s+(.+)$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = headingPattern.exec(content)) !== null) {
+    const score = tokenScore(match[1], tokens);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = match.index;
+    }
+  }
+
+  if (bestScore >= 2) return bestIndex;
+
+  const lowered = normalizeSearchText(content);
+  for (const token of tokens) {
+    const index = lowered.indexOf(token);
+    if (index >= 0) return index;
+  }
+  return null;
+}
+
+function sourceUrlTokens(sourceUrl: string): string[] {
+  let parsed: URL;
+  try {
+    parsed = new URL(sourceUrl);
+  } catch {
+    return [];
+  }
+
+  const path = decodeURIComponent(parsed.pathname)
+    .split('/')
+    .at(-1)
+    ?.replace(/\.(php|html?|aspx)$/i, '') ?? '';
+
+  return normalizeSearchText(path)
+    .split(/\s+/)
+    .filter((token) =>
+      token.length >= 4 &&
+      !['html', 'php', 'quot', 'unsere', 'fuer', 'de'].includes(token)
+    );
+}
+
+function tokenScore(value: string, tokens: string[]): number {
+  const text = normalizeSearchText(value);
+  return tokens.filter((token) => text.includes(token)).length;
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase('de-CH')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function buildFallbackLocationUnits(
@@ -260,7 +332,7 @@ async function extractUnitsAuto(
     const response = await openrouter.chat({
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: buildUserMessage(content.slice(0, 12000)) },
+        { role: 'user', content: buildUserMessage(prepareWebExtractionContent(content, params.sourceUrl)) },
       ],
       temperature: 0.1,
       max_tokens: 4000,

@@ -29,6 +29,9 @@ export const SELECTION_RANKING_REASON_KEYS = [
   'static_directory_fact',
   'supporting_fragment',
   'cross_village_drift',
+  'sports_club_drift',
+  'undated_non_event',
+  'regional_soft_event',
   'public_safety',
   'civic_utility',
   'soft_filler',
@@ -64,6 +67,9 @@ export const DEFAULT_SELECTION_RANKING_CONFIG: SelectionRankingConfig = {
     static_directory_fact: -55,
     supporting_fragment: -70,
     cross_village_drift: -60,
+    sports_club_drift: -90,
+    undated_non_event: -70,
+    regional_soft_event: -45,
     public_safety: 35,
     civic_utility: 25,
     soft_filler: -25,
@@ -166,7 +172,8 @@ const CIVIC = [
 const SOFT_FILLER = [
   'geburtstag', 'hochzeit', 'gratuliert', 'verein', 'club', 'jubiläum',
   'kaffee', 'tombola', 'jassturnier', 'chorkonzert', 'laufgruppe',
-  'schnupperlektion', 'ausstellung', 'konzert', 'markt',
+  'schnupperlektion', 'probelektion', 'rhythmik', 'ausstellung', 'konzert',
+  'markt', 'führung', 'führungen', 'arealführung', 'arealführungen',
 ];
 
 const STATIC_DIRECTORY = [
@@ -327,9 +334,7 @@ export function refineSelectionForCompose<T extends UnitForSelectionRanking>(
     }
   }
 
-  return preferred.length > 0
-    ? preferred.slice(0, composeCap)
-    : selectedIds.slice(0, Math.max(1, composeCap));
+  return preferred.slice(0, composeCap);
 }
 
 export function buildSelectionDiagnostics<T extends UnitForSelectionRanking>(
@@ -413,6 +418,10 @@ function rankOne<T extends UnitForSelectionRanking>(
     score += config.weights.cross_village_drift;
     reasons.push('cross_village_drift');
   }
+  if (villageId && hasSportsClubDrift(text, villageId)) {
+    score += config.weights.sports_club_drift;
+    reasons.push('sports_club_drift');
+  }
 
   if (containsAny(text, PUBLIC_SAFETY) && !staticDirectoryFact) {
     score += config.weights.public_safety;
@@ -425,6 +434,14 @@ function rankOne<T extends UnitForSelectionRanking>(
   if (containsAny(text, SOFT_FILLER)) {
     score += config.weights.soft_filler;
     reasons.push('soft_filler');
+  }
+  if (isUndatedNonEvent(unit)) {
+    score += config.weights.undated_non_event;
+    reasons.push('undated_non_event');
+  }
+  if (isRegionalSoftEvent(unit, text, villageId)) {
+    score += config.weights.regional_soft_event;
+    reasons.push('regional_soft_event');
   }
 
   if (unit.event_date) {
@@ -480,6 +497,9 @@ function rankOne<T extends UnitForSelectionRanking>(
     !reasons.includes('static_directory_fact') &&
     !reasons.includes('supporting_fragment') &&
     !reasons.includes('cross_village_drift') &&
+    !reasons.includes('sports_club_drift') &&
+    !reasons.includes('undated_non_event') &&
+    !reasons.includes('regional_soft_event') &&
     !reasons.includes('too_early_event') &&
     !reasons.includes('far_future_event') &&
     !reasons.includes('future_publication') &&
@@ -499,6 +519,9 @@ function isComposeEligible<T extends UnitForSelectionRanking>(
   if (row.reasons.includes('static_directory_fact')) return false;
   if (row.reasons.includes('supporting_fragment')) return false;
   if (row.reasons.includes('cross_village_drift')) return false;
+  if (row.reasons.includes('sports_club_drift')) return false;
+  if (row.reasons.includes('undated_non_event')) return false;
+  if (row.reasons.includes('regional_soft_event')) return false;
   if (row.reasons.includes('too_early_event') && !isThinUsefulEvent(row)) return false;
   if (row.reasons.includes('far_future_event')) return false;
   if (row.reasons.includes('future_publication')) return false;
@@ -506,8 +529,7 @@ function isComposeEligible<T extends UnitForSelectionRanking>(
   if (
     row.reasons.includes('soft_filler') &&
     !row.reasons.includes('public_safety') &&
-    !row.reasons.includes('civic_utility') &&
-    !(mode === 'thin' && isArticleBacked(row.unit))
+    !row.reasons.includes('civic_utility')
   ) {
     return false;
   }
@@ -544,6 +566,8 @@ function hasCrossVillageDrift(text: string, villageId: string): boolean {
   const aliases: Record<string, string[]> = {
     arlesheim: ['arlesheim'],
     muenchenstein: ['münchenstein', 'muenchenstein'],
+    basel: ['basel'],
+    birsfelden: ['birsfelden'],
     reinach: ['reinach'],
     aesch: ['aesch'],
     allschwil: ['allschwil'],
@@ -559,6 +583,45 @@ function hasCrossVillageDrift(text: string, villageId: string): boolean {
     .filter(([id]) => id !== villageId)
     .some(([, names]) => names.some((name) => text.includes(name)));
   return otherVillageMentioned && !mentionsCurrent;
+}
+
+function hasSportsClubDrift(text: string, villageId: string): boolean {
+  if (!/\b(fc|sc|sv|tv|bc)\s+[a-zäöü]+/i.test(text)) return false;
+  const aliases: Record<string, string[]> = {
+    arlesheim: ['arlesheim'],
+    muenchenstein: ['münchenstein', 'muenchenstein'],
+    reinach: ['reinach'],
+    aesch: ['aesch'],
+    allschwil: ['allschwil'],
+    binningen: ['binningen'],
+    bottmingen: ['bottmingen'],
+    muttenz: ['muttenz'],
+    pratteln: ['pratteln'],
+    riehen: ['riehen'],
+  };
+  const current = aliases[villageId] ?? [villageId];
+  const mentionsCurrent = current.some((name) => text.includes(name));
+  return !mentionsCurrent;
+}
+
+function isUndatedNonEvent(unit: UnitForSelectionRanking): boolean {
+  return unit.unit_type !== 'event' && !unit.publication_date;
+}
+
+function isRegionalSoftEvent(
+  unit: UnitForSelectionRanking,
+  text: string,
+  villageId?: string,
+): boolean {
+  if (unit.unit_type !== 'event') return false;
+  if (unit.publication_date) return false;
+  if (!containsAny(text, SOFT_FILLER)) return false;
+  const domain = (unit.source_domain ?? '').toLowerCase();
+  if (!domain) return false;
+  if (villageId && domain.includes(villageId.replace('muenchenstein', 'muenchenstein'))) {
+    return false;
+  }
+  return true;
 }
 
 function compareDateDesc(a: UnitForSelectionRanking, b: UnitForSelectionRanking): number {

@@ -5,40 +5,47 @@
  * POST: triggered by pg_cron dispatch or manual run. Auth: service role or x-user-id.
  */
 
-import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
-import { createServiceClient, type Scout } from '../_shared/supabase-client.ts';
-import { requireInternalRequest } from '../_shared/internal-auth.ts';
-import { firecrawl } from '../_shared/firecrawl.ts';
-import { embeddings } from '../_shared/embeddings.ts';
-import { resend } from '../_shared/resend.ts';
+import { errorResponse, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { createServiceClient, type Scout } from "../_shared/supabase-client.ts";
+import { requireInternalRequest } from "../_shared/internal-auth.ts";
+import { firecrawl } from "../_shared/firecrawl.ts";
+import { embeddings } from "../_shared/embeddings.ts";
+import { resend } from "../_shared/resend.ts";
 import {
-  DEDUP_THRESHOLD,
   DEDUP_LOOKBACK_DAYS,
+  DEDUP_THRESHOLD,
   PHASE_B_TOTAL_BUDGET_MS,
   PRIMARY_EXTRACTION_TIMEOUT_MS,
   PRIMARY_PAGE_SCRAPE_TIMEOUT_MS,
   SUBPAGE_EXTRACTION_TIMEOUT_MS,
   SUBPAGE_SCRAPE_TIMEOUT_MS,
-} from '../_shared/constants.ts';
-import { extractInformationUnits } from '../_shared/unit-extraction.ts';
-import { updateExecutionFailed } from '../_shared/execution-helpers.ts';
-import { analyzeCriteria, summarizeContent } from '../_shared/criteria-analysis.ts';
+} from "../_shared/constants.ts";
+import { extractInformationUnits } from "../_shared/unit-extraction.ts";
+import { updateExecutionFailed } from "../_shared/execution-helpers.ts";
+import {
+  analyzeCriteria,
+  summarizeContent,
+} from "../_shared/criteria-analysis.ts";
 import {
   extractLinksFromHtml,
   firecrawlDelay,
-} from '../_shared/civic-utils.ts';
-import { filterSubpageUrls, looksLikeListingPage } from '../_shared/subpage-filter.ts';
+} from "../_shared/civic-utils.ts";
+import {
+  filterSubpageUrls,
+  isStrictChildUrl,
+  looksLikeListingPage,
+} from "../_shared/subpage-filter.ts";
 
 const SUBPAGE_FETCH_CAP = 10;
 
-const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
-  .split(',')
+const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "")
+  .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
 function appendWarning(current: string | null, next: string): string {
   if (!current) return next;
-  if (current.split(',').includes(next)) return current;
+  if (current.split(",").includes(next)) return current;
   return `${current},${next}`;
 }
 
@@ -65,64 +72,77 @@ Deno.serve(async (req) => {
 
   try {
     const body: ExecuteRequest = await req.json();
-    const { scoutId, skipNotification = false, extractUnits = true, forceExtract = false } = body;
+    const {
+      scoutId,
+      skipNotification = false,
+      extractUnits = true,
+      forceExtract = false,
+    } = body;
     executionId = body.executionId;
 
     if (!scoutId) {
-      return errorResponse('Scout ID erforderlich', 400);
+      return errorResponse("Scout ID erforderlich", 400);
     }
 
     // Fetch scout
     const { data: fetchedScout, error: scoutError } = await supabase
-      .from('scouts')
-      .select('*')
-      .eq('id', scoutId)
+      .from("scouts")
+      .select("*")
+      .eq("id", scoutId)
       .single();
 
     if (scoutError || !fetchedScout) {
-      return errorResponse('Scout nicht gefunden', 404);
+      return errorResponse("Scout nicht gefunden", 404);
     }
     scout = fetchedScout;
 
     // Only web scouts use this pipeline; civic scouts use execute-civic-scout
     if (!scout.url) {
-      return errorResponse('Scout hat keine URL (falscher Scout-Typ?)', 400);
+      return errorResponse("Scout hat keine URL (falscher Scout-Typ?)", 400);
     }
 
     // Create execution record if not provided
     if (!executionId) {
       // Check for existing running execution
       const { data: running } = await supabase
-        .from('scout_executions')
-        .select('id')
-        .eq('scout_id', scoutId)
-        .eq('status', 'running')
-        .gte('started_at', new Date(Date.now() - 10 * 60 * 1000).toISOString())
+        .from("scout_executions")
+        .select("id")
+        .eq("scout_id", scoutId)
+        .eq("status", "running")
+        .gte("started_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
         .single();
 
       if (running) {
-        return errorResponse('Eine Ausführung läuft bereits', 409, 'EXECUTION_RUNNING');
+        return errorResponse(
+          "Eine Ausführung läuft bereits",
+          409,
+          "EXECUTION_RUNNING",
+        );
       }
 
       const { data: newExec, error: execError } = await supabase
-        .from('scout_executions')
+        .from("scout_executions")
         .insert({
           scout_id: scoutId,
           user_id: scout.user_id,
-          status: 'running',
+          status: "running",
         })
         .select()
         .single();
 
       if (execError) {
-        console.error('Create execution error:', execError);
-        return errorResponse('Fehler beim Erstellen der Ausführung', 500);
+        console.error("Create execution error:", execError);
+        return errorResponse("Fehler beim Erstellen der Ausführung", 500);
       }
 
       executionId = newExec.id;
     }
 
-    console.log(`[${executionId}] Starting execution for scout: ${scout.name} (provider: ${scout.provider || 'default'})`);
+    console.log(
+      `[${executionId}] Starting execution for scout: ${scout.name} (provider: ${
+        scout.provider || "default"
+      })`,
+    );
 
     // =========================================================================
     // STEP 1: SCRAPE (provider-aware)
@@ -130,7 +150,7 @@ Deno.serve(async (req) => {
 
     // firecrawl_plain: scrape without changeTracking, use hash comparison
     // firecrawl or null (legacy): scrape with changeTracking
-    const useChangeTracking = scout.provider !== 'firecrawl_plain';
+    const useChangeTracking = scout.provider !== "firecrawl_plain";
 
     const scrapeResult = await firecrawl.scrapePrimaryPageResilient({
       url: scout.url,
@@ -144,19 +164,24 @@ Deno.serve(async (req) => {
     if (!scrapeResult.success) {
       console.error(`[${executionId}] Scrape failed:`, scrapeResult.error);
       await supabase
-        .from('scout_executions')
+        .from("scout_executions")
         .update({
           scrape_strategy: scrapeResult.strategy,
           scrape_attempts: scrapeResult.attempts,
           scrape_warning: scrapeResult.warning,
           scrape_duration_ms: scrapeDurationMs,
         })
-        .eq('id', executionId);
-      await updateExecutionFailed(supabase, executionId!, scout, scrapeResult.error!);
+        .eq("id", executionId);
+      await updateExecutionFailed(
+        supabase,
+        executionId!,
+        scout,
+        scrapeResult.error!,
+      );
       return jsonResponse({
         data: {
           execution_id: executionId,
-          status: 'failed',
+          status: "failed",
           error: scrapeResult.error,
         },
       });
@@ -168,107 +193,109 @@ Deno.serve(async (req) => {
     let changeStatus: string;
     let newHash: string | null = null;
 
-    if (scout.provider === 'firecrawl_plain') {
+    if (scout.provider === "firecrawl_plain") {
       // Hash-based change detection
-      newHash = await firecrawl.computeContentHash(scrapeResult.markdown || '');
+      newHash = await firecrawl.computeContentHash(scrapeResult.markdown || "");
       if (!scout.content_hash) {
         // First run for firecrawl_plain — store hash and exit
-        changeStatus = 'first_run';
+        changeStatus = "first_run";
 
         if (forceExtract) {
-          console.log(`[${executionId}] Forced extraction: continuing past firecrawl_plain first-run baseline`);
+          console.log(
+            `[${executionId}] Forced extraction: continuing past firecrawl_plain first-run baseline`,
+          );
         } else {
           await supabase
-            .from('scout_executions')
+            .from("scout_executions")
             .update({
-              status: 'completed',
+              status: "completed",
               completed_at: new Date().toISOString(),
-              change_status: 'first_run',
-              summary_text: 'Baseline gespeichert',
+              change_status: "first_run",
+              summary_text: "Baseline gespeichert",
               scrape_duration_ms: scrapeDurationMs,
               scrape_strategy: scrapeResult.strategy,
               scrape_attempts: scrapeResult.attempts,
               scrape_warning: scrapeWarning,
             })
-            .eq('id', executionId);
+            .eq("id", executionId);
 
           await supabase
-            .from('scouts')
+            .from("scouts")
             .update({
               last_run_at: new Date().toISOString(),
               consecutive_failures: 0,
               content_hash: newHash,
             })
-            .eq('id', scoutId);
+            .eq("id", scoutId);
 
           const durationMs = Date.now() - startTime;
           return jsonResponse({
             data: {
               execution_id: executionId,
-              status: 'completed',
-              change_status: 'first_run',
+              status: "completed",
+              change_status: "first_run",
               criteria_matched: false,
               is_duplicate: false,
               notification_sent: false,
               units_extracted: 0,
               duration_ms: durationMs,
-              summary: 'Baseline gespeichert',
+              summary: "Baseline gespeichert",
             },
           });
         }
       } else if (newHash === scout.content_hash) {
-        changeStatus = 'same';
+        changeStatus = "same";
       } else {
-        changeStatus = 'changed';
+        changeStatus = "changed";
       }
     } else {
       // Firecrawl changeTracking-based detection (default/legacy)
-      if (scrapeResult.changeStatus === 'new') {
-        changeStatus = 'first_run';
-      } else if (scrapeResult.changeStatus === 'same') {
-        changeStatus = 'same';
+      if (scrapeResult.changeStatus === "new") {
+        changeStatus = "first_run";
+      } else if (scrapeResult.changeStatus === "same") {
+        changeStatus = "same";
       } else {
         // 'changed', 'removed', or null (API didn't return it) → treat as changed
-        changeStatus = 'changed';
+        changeStatus = "changed";
       }
     }
 
     // Early exit if content hasn't changed
-    if (changeStatus === 'same' && !forceExtract) {
+    if (changeStatus === "same" && !forceExtract) {
       await supabase
-        .from('scout_executions')
+        .from("scout_executions")
         .update({
-          status: 'completed',
+          status: "completed",
           completed_at: new Date().toISOString(),
-          change_status: 'same',
-          summary_text: 'Keine Änderungen erkannt',
+          change_status: "same",
+          summary_text: "Keine Änderungen erkannt",
           scrape_duration_ms: scrapeDurationMs,
           scrape_strategy: scrapeResult.strategy,
           scrape_attempts: scrapeResult.attempts,
           scrape_warning: scrapeWarning,
         })
-        .eq('id', executionId);
+        .eq("id", executionId);
 
       await supabase
-        .from('scouts')
+        .from("scouts")
         .update({
           last_run_at: new Date().toISOString(),
           consecutive_failures: 0,
         })
-        .eq('id', scoutId);
+        .eq("id", scoutId);
 
       const durationMs = Date.now() - startTime;
       return jsonResponse({
         data: {
           execution_id: executionId,
-          status: 'completed',
-          change_status: 'same',
+          status: "completed",
+          change_status: "same",
           criteria_matched: false,
           is_duplicate: false,
           notification_sent: false,
           units_extracted: 0,
           duration_ms: durationMs,
-          summary: 'Keine Änderungen erkannt',
+          summary: "Keine Änderungen erkannt",
         },
       });
     }
@@ -279,20 +306,26 @@ Deno.serve(async (req) => {
 
     // Fetch recent findings for context
     const { data: recentExecutions } = await supabase
-      .from('scout_executions')
-      .select('summary_text')
-      .eq('scout_id', scoutId)
-      .eq('status', 'completed')
-      .not('summary_text', 'is', null)
-      .order('created_at', { ascending: false })
+      .from("scout_executions")
+      .select("summary_text")
+      .eq("scout_id", scoutId)
+      .eq("status", "completed")
+      .not("summary_text", "is", null)
+      .order("created_at", { ascending: false })
       .limit(5);
 
-    const recentFindings = recentExecutions?.map((e) => e.summary_text).filter(Boolean) || [];
+    const recentFindings = recentExecutions?.map((e) =>
+      e.summary_text
+    ).filter(Boolean) || [];
 
     const hasCriteria = !!scout.criteria?.trim();
 
     const analysis = hasCriteria
-      ? await analyzeCriteria(scrapeResult.markdown!, scout.criteria, recentFindings)
+      ? await analyzeCriteria(
+        scrapeResult.markdown!,
+        scout.criteria,
+        recentFindings,
+      )
       : await summarizeContent(scrapeResult.markdown!, recentFindings);
 
     // =========================================================================
@@ -306,18 +339,20 @@ Deno.serve(async (req) => {
     if (analysis.matches && analysis.summary) {
       summaryEmbedding = await embeddings.generate(analysis.summary);
 
-      const { data: dedupResult } = await supabase.rpc('check_duplicate_execution', {
-        p_scout_id: scoutId,
-        p_embedding: summaryEmbedding,
-        p_threshold: DEDUP_THRESHOLD,
-        p_lookback_days: DEDUP_LOOKBACK_DAYS,
-      });
+      const { data: dedupResult } = await supabase.rpc(
+        "check_duplicate_execution",
+        {
+          p_scout_id: scoutId,
+          p_embedding: summaryEmbedding,
+          p_threshold: DEDUP_THRESHOLD,
+          p_lookback_days: DEDUP_LOOKBACK_DAYS,
+        },
+      );
 
       if (dedupResult && dedupResult.length > 0) {
         isDuplicate = dedupResult[0].is_duplicate;
         duplicateSimilarity = dedupResult[0].max_similarity;
       }
-
     }
 
     // =========================================================================
@@ -325,7 +360,7 @@ Deno.serve(async (req) => {
     // =========================================================================
 
     await supabase
-      .from('scout_executions')
+      .from("scout_executions")
       .update({
         change_status: changeStatus,
         criteria_matched: analysis.matches,
@@ -338,7 +373,7 @@ Deno.serve(async (req) => {
         scrape_attempts: scrapeResult.attempts,
         scrape_warning: scrapeWarning,
       })
-      .eq('id', executionId);
+      .eq("id", executionId);
 
     // =========================================================================
     // STEP 6: EXTRACT UNITS (Phase A)
@@ -347,19 +382,30 @@ Deno.serve(async (req) => {
     let mergedExistingCount = 0;
     let indexIsListingPage = false;
 
-    const locationMode = (scout.location_mode as 'manual' | 'auto' | null) ?? 'manual';
+    const locationMode = (scout.location_mode as "manual" | "auto" | null) ??
+      "manual";
     // Auto-mode scouts don't need a scout.location — the LLM assigns per unit.
-    const hasScope = locationMode === 'auto' || scout.location || scout.topic;
+    const hasScope = locationMode === "auto" || scout.location || scout.topic;
     const indexLinks = scrapeResult.rawHtml
       ? extractLinksFromHtml(scrapeResult.rawHtml, scout.url)
       : [];
     const candidateUrls = indexLinks.length > 0
-      ? filterSubpageUrls(indexLinks.map(([url]) => url), scout.url)
+      ? [
+        ...new Set(
+          filterSubpageUrls(indexLinks.map(([url]) => url), scout.url),
+        ),
+      ]
       : [];
-    const deterministicListingPage = looksLikeListingPage(scout.url, candidateUrls);
-    const skipPrimaryExtraction = locationMode === 'manual' && deterministicListingPage;
+    const deterministicListingPage = looksLikeListingPage(
+      scout.url,
+      candidateUrls,
+    );
+    const skipPrimaryExtraction = locationMode === "manual" &&
+      deterministicListingPage;
 
-    if (extractUnits && analysis.matches && hasScope && !skipPrimaryExtraction) {
+    if (
+      extractUnits && analysis.matches && hasScope && !skipPrimaryExtraction
+    ) {
       try {
         const result = await extractInformationUnits(
           supabase,
@@ -384,7 +430,9 @@ Deno.serve(async (req) => {
         console.error(`[${executionId}] Unit extraction failed:`, error);
         // Continue without units
       }
-    } else if (extractUnits && analysis.matches && hasScope && skipPrimaryExtraction) {
+    } else if (
+      extractUnits && analysis.matches && hasScope && skipPrimaryExtraction
+    ) {
       indexIsListingPage = true;
       console.log(
         `[${executionId}] Primary extraction skipped: manual-location page looks like a listing (${candidateUrls.length} article candidates)`,
@@ -398,7 +446,10 @@ Deno.serve(async (req) => {
       (indexIsListingPage || deterministicListingPage) &&
       !scrapeResult.rawHtml
     ) {
-      scrapeWarning = appendWarning(scrapeWarning, 'phase_b_skipped_raw_html_unavailable');
+      scrapeWarning = appendWarning(
+        scrapeWarning,
+        "phase_b_skipped_raw_html_unavailable",
+      );
       console.warn(`[${executionId}] Phase B skipped: raw HTML unavailable`);
     }
 
@@ -418,15 +469,18 @@ Deno.serve(async (req) => {
       try {
         // 3. Dedup against already-seen subpage URLs (derived from stored units).
         const { data: seenRows } = await supabase
-          .from('unit_occurrences')
-          .select('source_url')
-          .eq('scout_id', scout.id)
-          .not('source_url', 'is', null);
+          .from("unit_occurrences")
+          .select("source_url")
+          .eq("scout_id", scout.id)
+          .not("source_url", "is", null);
         const seen = new Set<string>(
           (seenRows ?? []).map((r) => r.source_url as string),
         );
 
-        const fresh = candidateUrls.filter((url) => !seen.has(url)).slice(0, SUBPAGE_FETCH_CAP);
+        const fresh = candidateUrls.filter((url) => !seen.has(url)).slice(
+          0,
+          SUBPAGE_FETCH_CAP,
+        );
 
         console.log(
           `[${executionId}] Phase B: ${indexLinks.length} links, ${candidateUrls.length} candidates, ${fresh.length} new (cap ${SUBPAGE_FETCH_CAP})`,
@@ -450,51 +504,75 @@ Deno.serve(async (req) => {
           const subUrl = fresh[i];
           if (i > 0) await firecrawlDelay();
 
-          const scrapeBudgetMs = PHASE_B_TOTAL_BUDGET_MS - (Date.now() - phaseBStartedAt);
+          const scrapeBudgetMs = PHASE_B_TOTAL_BUDGET_MS -
+            (Date.now() - phaseBStartedAt);
           if (scrapeBudgetMs <= 0) {
-            console.log(`[${executionId}] Phase B budget exhausted before subpage scrape ${subUrl}`);
+            console.log(
+              `[${executionId}] Phase B budget exhausted before subpage scrape ${subUrl}`,
+            );
             break;
           }
 
           const subScrape = await firecrawl.scrape({
             url: subUrl,
-            formats: ['markdown'],
+            formats: ["markdown"],
             timeout: Math.min(SUBPAGE_SCRAPE_TIMEOUT_MS, scrapeBudgetMs),
           });
 
           if (!subScrape.success || !subScrape.markdown) {
             subpagesFailed++;
-            console.warn(`[${executionId}] Phase B subpage scrape failed: ${subUrl} — ${subScrape.error}`);
+            console.warn(
+              `[${executionId}] Phase B subpage scrape failed: ${subUrl} — ${subScrape.error}`,
+            );
             continue;
           }
 
           try {
-            const extractionBudgetMs = PHASE_B_TOTAL_BUDGET_MS - (Date.now() - phaseBStartedAt);
+            const extractionBudgetMs = PHASE_B_TOTAL_BUDGET_MS -
+              (Date.now() - phaseBStartedAt);
             if (extractionBudgetMs <= 0) {
-              console.log(`[${executionId}] Phase B budget exhausted before subpage extraction ${subUrl}`);
+              console.log(
+                `[${executionId}] Phase B budget exhausted before subpage extraction ${subUrl}`,
+              );
               break;
             }
 
-            const subLocationMode = locationMode === 'manual' && deterministicListingPage
-              ? 'auto'
+            const subpageInheritsManualLocation = locationMode === "manual" &&
+              deterministicListingPage &&
+              isStrictChildUrl(subUrl, scout.url);
+            const subLocationMode = locationMode === "manual" &&
+                deterministicListingPage &&
+                !subpageInheritsManualLocation
+              ? "auto"
               : locationMode;
-            const subResult = await extractInformationUnits(supabase, subScrape.markdown, {
-              scoutId: scout.id,
-              userId: scout.user_id,
-              executionId: executionId!,
-              sourceUrl: subUrl,
-              location: subLocationMode === 'auto' ? null : scout.location,
-              topic: scout.topic,
-              locationMode: subLocationMode,
-              criteria: scout.criteria,
-              locationFilterCity: locationMode === 'manual' && deterministicListingPage
-                ? scout.location?.city ?? null
-                : null,
-              extractionTimeoutMs: Math.min(SUBPAGE_EXTRACTION_TIMEOUT_MS, extractionBudgetMs),
-            });
+            const subResult = await extractInformationUnits(
+              supabase,
+              subScrape.markdown,
+              {
+                scoutId: scout.id,
+                userId: scout.user_id,
+                executionId: executionId!,
+                sourceUrl: subUrl,
+                location: subLocationMode === "auto" ? null : scout.location,
+                topic: scout.topic,
+                locationMode: subLocationMode,
+                criteria: scout.criteria,
+                locationFilterCity: locationMode === "manual" &&
+                    deterministicListingPage &&
+                    !subpageInheritsManualLocation
+                  ? scout.location?.city ?? null
+                  : null,
+                extractionTimeoutMs: Math.min(
+                  SUBPAGE_EXTRACTION_TIMEOUT_MS,
+                  extractionBudgetMs,
+                ),
+              },
+            );
             if (subResult.isListingPage) {
               // Single-hop: skip nested listings, do not recurse.
-              console.log(`[${executionId}] Phase B: skipping nested listing ${subUrl}`);
+              console.log(
+                `[${executionId}] Phase B: skipping nested listing ${subUrl}`,
+              );
               continue;
             }
             subpageUnits += subResult.insertedCount;
@@ -502,7 +580,10 @@ Deno.serve(async (req) => {
             subpagesProcessed++;
           } catch (error) {
             subpagesFailed++;
-            console.error(`[${executionId}] Phase B extraction failed for ${subUrl}:`, error);
+            console.error(
+              `[${executionId}] Phase B extraction failed for ${subUrl}:`,
+              error,
+            );
           }
         }
 
@@ -538,13 +619,14 @@ Deno.serve(async (req) => {
 
       const emailResult = await resend.sendEmail({
         to: ADMIN_EMAILS,
-        subject: `Scout-Alarm: ${scout.name}${scout.location?.city ? ` (${scout.location.city})` : ''}`,
+        subject: `Scout-Alarm: ${scout.name}${
+          scout.location?.city ? ` (${scout.location.city})` : ""
+        }`,
         html: emailHtml,
       });
 
       notificationSent = emailResult.success;
       notificationError = emailResult.error || null;
-
     }
 
     // =========================================================================
@@ -566,18 +648,18 @@ Deno.serve(async (req) => {
     }
 
     await supabase
-      .from('scouts')
+      .from("scouts")
       .update(scoutUpdate)
-      .eq('id', scoutId);
+      .eq("id", scoutId);
 
     // =========================================================================
     // STEP 9: FINALIZE AND RETURN
     // =========================================================================
 
     await supabase
-      .from('scout_executions')
+      .from("scout_executions")
       .update({
-        status: 'completed',
+        status: "completed",
         completed_at: new Date().toISOString(),
         notification_sent: notificationSent,
         notification_error: notificationError,
@@ -585,7 +667,7 @@ Deno.serve(async (req) => {
         merged_existing_count: mergedExistingCount,
         scrape_warning: scrapeWarning,
       })
-      .eq('id', executionId);
+      .eq("id", executionId);
 
     const durationMs = Date.now() - startTime;
     console.log(`[${executionId}] Execution completed in ${durationMs}ms`);
@@ -593,7 +675,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       data: {
         execution_id: executionId,
-        status: 'completed',
+        status: "completed",
         change_status: changeStatus,
         criteria_matched: analysis.matches,
         is_duplicate: isDuplicate,
@@ -604,16 +686,22 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error('Execute scout error:', error);
+    console.error("Execute scout error:", error);
     if (executionId && scout) {
       const message = error instanceof Error ? error.message : String(error);
       try {
         await updateExecutionFailed(supabase, executionId, scout, message);
       } catch (finalizeError) {
-        console.error(`[${executionId}] Failed to finalize execution after top-level error:`, finalizeError);
+        console.error(
+          `[${executionId}] Failed to finalize execution after top-level error:`,
+          finalizeError,
+        );
       }
       return errorResponse(message, 500);
     }
-    return errorResponse(error instanceof Error ? error.message : String(error), 500);
+    return errorResponse(
+      error instanceof Error ? error.message : String(error),
+      500,
+    );
   }
 });

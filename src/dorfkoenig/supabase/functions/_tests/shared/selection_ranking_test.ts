@@ -348,6 +348,107 @@ Deno.test('rankSelectionCandidates penalizes cross-village drift and supporting 
   assert(ranked.find((row) => row.unit.id === 'tram-passengers')?.reasons.includes('supporting_fragment'));
 });
 
+Deno.test('rankSelectionCandidates penalizes stale undated civic facts', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'ortskern',
+      statement: 'Zur Teilzonenplanung Siedlung Ortskern sind aktuell einige Stimmrechtsbeschwerden hängig.',
+      unit_type: 'fact',
+      event_date: '2026-05-05',
+      created_at: '2026-05-05T18:31:31Z',
+      publication_date: null,
+      quality_score: 65,
+      article_url: 'https://www.arlesheim.ch/de/politik/informationsveranstaltungen-ortskernentwicklung.php',
+      is_listing_page: false,
+      village_confidence: 'high',
+      source_domain: 'arlesheim.ch',
+    },
+  ], {
+    currentDate: '2026-05-06',
+    publicationDate: '2026-05-07',
+    villageId: 'arlesheim',
+  });
+
+  assert(ranked[0].reasons.includes('undated_non_event'));
+  assertEquals(ranked[0].mandatory, false);
+  assertEquals(refineSelectionForCompose(['ortskern'], ranked, 8), []);
+});
+
+Deno.test('rankSelectionCandidates penalizes sports-club drift without current village mention', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'concordia',
+      statement: 'Der FC Concordia Basel spielte am Sonntag gegen den FC Birsfelden und gewann 6:3.',
+      unit_type: 'fact',
+      event_date: '2026-05-05',
+      publication_date: '2026-05-05',
+      quality_score: 85,
+      article_url: 'https://www.blick.ch/autoren/ralph-donghi-id15067851.html',
+      is_listing_page: false,
+      village_confidence: 'high',
+      source_domain: 'blick.ch',
+    },
+  ], {
+    currentDate: '2026-05-06',
+    publicationDate: '2026-05-07',
+    villageId: 'muenchenstein',
+  });
+
+  assert(ranked[0].reasons.includes('sports_club_drift'));
+  assert(ranked[0].reasons.includes('cross_village_drift'));
+  assert(ranked[0].reasons.includes('weak_url'));
+  assertEquals(refineSelectionForCompose(['concordia'], ranked, 8), []);
+});
+
+Deno.test('rankSelectionCandidates penalizes low-context regional soft events', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'walzwerk',
+      statement: 'Am 9. Mai 2026 finden im Walzwerkareal Arealführungen statt.',
+      unit_type: 'event',
+      event_date: '2026-05-09',
+      publication_date: null,
+      quality_score: 55,
+      article_url: 'https://openhouse-basel.org/orte/walzwerk-2026/',
+      is_listing_page: false,
+      village_confidence: 'high',
+      source_domain: 'walzwerk.ch',
+    },
+  ], {
+    currentDate: '2026-05-06',
+    publicationDate: '2026-05-07',
+    villageId: 'muenchenstein',
+  });
+
+  assert(ranked[0].reasons.includes('soft_filler'));
+  assert(ranked[0].reasons.includes('regional_soft_event'));
+  assertEquals(refineSelectionForCompose(['walzwerk'], ranked, 8), []);
+});
+
+Deno.test('rankSelectionCandidates excludes soft probe lessons from compose backfill', () => {
+  const ranked = rankSelectionCandidates([
+    {
+      id: 'senior-rhythmik',
+      statement: 'Die kostenlose Probelektion Senioren-Rhythmik findet am 9. Mai in der Aula des Schulhauses Lange Heid statt.',
+      unit_type: 'event',
+      event_date: '2026-05-09',
+      publication_date: '2026-05-06',
+      quality_score: 100,
+      article_url: 'https://www.muenchenstein.ch/aktuellesinformationen/2867227#',
+      is_listing_page: false,
+      village_confidence: 'high',
+      source_domain: 'muenchenstein.ch',
+    },
+  ], {
+    currentDate: '2026-05-06',
+    publicationDate: '2026-05-07',
+    villageId: 'muenchenstein',
+  });
+
+  assert(ranked[0].reasons.includes('soft_filler'));
+  assertEquals(refineSelectionForCompose(['senior-rhythmik'], ranked, 8), []);
+});
+
 Deno.test('refineSelectionForCompose drops weak context and caps compose inputs', () => {
   const ranked = rankSelectionCandidates([
     {
@@ -437,7 +538,7 @@ Deno.test('refineSelectionForCompose backfills thin local-news runs with soft ev
     villageId: 'muenchenstein',
   });
 
-  assertEquals(refineSelectionForCompose(['kehricht'], ranked, 8), ['kehricht', 'laufgruppe', 'jass']);
+  assertEquals(refineSelectionForCompose(['kehricht'], ranked, 8), ['kehricht']);
 });
 
 Deno.test('refineSelectionForCompose can backfill near-future article-backed events on thin days', () => {
@@ -550,5 +651,5 @@ Deno.test('refineSelectionForCompose recovers from weak LLM picks with top local
     villageId: 'muenchenstein',
   });
 
-  assertEquals(refineSelectionForCompose(['future-football'], ranked, 8), ['laufgruppe', 'jass', 'walzwerk']);
+  assertEquals(refineSelectionForCompose(['future-football'], ranked, 8), []);
 });

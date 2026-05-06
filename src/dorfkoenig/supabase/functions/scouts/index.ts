@@ -108,7 +108,7 @@ async function listScouts(supabase: ReturnType<typeof createServiceClient>, user
   const scoutIds = scouts.map(s => s.id);
   const { data: executions } = await supabase
     .from('scout_executions')
-    .select('scout_id, status, criteria_matched, change_status, summary_text, completed_at')
+    .select('scout_id, status, criteria_matched, change_status, summary_text, units_extracted, merged_existing_count, is_duplicate, completed_at')
     .in('scout_id', scoutIds)
     .order('started_at', { ascending: false })
     .limit(scoutIds.length * 3);
@@ -119,6 +119,9 @@ async function listScouts(supabase: ReturnType<typeof createServiceClient>, user
     criteria_matched: boolean | null;
     change_status: string | null;
     summary_text: string | null;
+    units_extracted: number | null;
+    merged_existing_count: number | null;
+    is_duplicate: boolean | null;
   }>();
 
   if (executions) {
@@ -129,6 +132,9 @@ async function listScouts(supabase: ReturnType<typeof createServiceClient>, user
           criteria_matched: exec.criteria_matched,
           change_status: exec.change_status,
           summary_text: exec.summary_text,
+          units_extracted: exec.units_extracted,
+          merged_existing_count: exec.merged_existing_count,
+          is_duplicate: exec.is_duplicate,
         });
       }
     }
@@ -143,6 +149,9 @@ async function listScouts(supabase: ReturnType<typeof createServiceClient>, user
       last_criteria_matched: lastExec?.criteria_matched ?? null,
       last_change_status: lastExec?.change_status ?? null,
       last_summary_text: lastExec?.summary_text ?? null,
+      last_units_extracted: lastExec?.units_extracted ?? null,
+      last_merged_existing_count: lastExec?.merged_existing_count ?? null,
+      last_is_duplicate: lastExec?.is_duplicate ?? null,
     };
   });
 

@@ -595,7 +595,7 @@
                     onruncomplete={refreshRunLog}
                   />
                 </div>
-                <ScoutRunLog scoutId={selectedScout.id} refreshKey={runLogRefreshKey} />
+                <ScoutRunLog scoutId={selectedScout.id} criteria={selectedScout.criteria} refreshKey={runLogRefreshKey} />
               </div>
             {:else}
               <div class="scouts-grid">

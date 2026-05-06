@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Badge } from '../ui/primitives';
   import { formatRelativeTime } from '../../lib/constants';
+  import { executionOutcome } from '../../lib/execution-labels';
   import type { Execution } from '../../lib/types';
 
   interface Props {
@@ -9,6 +10,7 @@
   }
 
   let { execution, compact = false }: Props = $props();
+  let outcome = $derived(executionOutcome(execution));
 </script>
 
 <div class="execution-card" class:compact>
@@ -26,15 +28,7 @@
     {/if}
 
     <div class="execution-badges">
-      {#if execution.status === 'failed'}
-        <Badge variant="error">Fehlgeschlagen</Badge>
-      {:else if execution.change_status === 'same'}
-        <Badge variant="neutral">Unverandert</Badge>
-      {:else if execution.criteria_matched}
-        <Badge variant="matched">Kriterien erfullt</Badge>
-      {:else}
-        <Badge variant="neutral">Keine Treffer</Badge>
-      {/if}
+      <Badge variant={outcome.badgeVariant}>{outcome.label}</Badge>
 
       {#if execution.is_duplicate}
         <Badge variant="duplicate">Duplikat</Badge>

@@ -26,6 +26,8 @@ Dorfkoenig is a web scout monitoring system for journalists that tracks URLs for
 - 0.85 cosine similarity threshold
 - Prevents duplicate notifications
 - pgvector-powered semantic comparison
+- Scout run logs distinguish unchanged pages, new units, already-known units,
+  criteria misses, and changed pages with no usable extraction output
 
 ### Information Unit Extraction
 - Atomic facts extracted via LLM
@@ -299,7 +301,7 @@ npm run build:production
 ### Common Issues
 
 1. **Scout not running**: Check consecutive_failures < 3, is_active = true
-2. **No notifications**: Verify notification_email set, not duplicate
+2. **No notifications**: Verify `ADMIN_EMAILS` is configured, criteria matched, and the run is not a duplicate
 3. **Scrape failing**: Check Firecrawl API key, URL accessibility
 4. **pg_cron not working**: Verify Vault secrets configured
 

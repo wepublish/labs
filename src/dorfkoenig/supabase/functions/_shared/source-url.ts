@@ -21,6 +21,7 @@ export function isArticleLevelUrl(url?: string | null): boolean {
     const parsed = new URL(url);
     const path = parsed.pathname.toLowerCase();
     if (GENERIC_PATHS.has(path)) return false;
+    if (/\/(autor|autoren|author|authors)\//i.test(path)) return false;
     const segments = path.split('/').filter(Boolean);
     if (segments.length >= 2) return true;
     if (segments.length === 1) return true;

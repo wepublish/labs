@@ -372,7 +372,12 @@ const { error } = await supabase
 
 ## Step 6: Extract Units
 
-Extract atomic information units if location or topic is provided.
+Extract atomic information units when criteria match and the scout has a usable
+scope: manual location/topic, or auto-location mode. Each extracted fact is
+written through canonical-unit upsert, so the run stores two counts:
+`units_extracted` for newly inserted canonical units and
+`merged_existing_count` for already-known canonical units that received new
+provenance.
 
 ### Implementation
 
@@ -530,81 +535,19 @@ Worst case per run: 1 index scrape + 10 subpage scrapes = 11 Firecrawl credits, 
 
 ## Step 7: Send Notification
 
-Send email notification via Resend if not a duplicate.
+Send email notification via Resend if criteria match and the run summary is not
+a duplicate. Per-scout email recipients were removed; recipients come
+from the `ADMIN_EMAILS` Edge Function secret.
 
 ### Implementation
 
 ```typescript
-// execute-scout/notify.ts
 import { resend } from '../_shared/resend.ts';
 
-interface NotificationParams {
-  email: string;
-  scoutName: string;
-  summary: string;
-  keyFindings: string[];
-  sourceUrl: string;
-  location?: { city: string };
-}
-
-export async function sendNotification(
-  params: NotificationParams
-): Promise<{ success: boolean; error?: string }> {
-  const { email, scoutName, summary, keyFindings, sourceUrl, location } = params;
-
-  const locationLabel = location?.city ? ` (${location.city})` : '';
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0; }
-    .content { padding: 24px; background: #f9fafb; }
-    .summary { font-size: 18px; margin-bottom: 16px; }
-    .findings { background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
-    .findings li { margin-bottom: 8px; }
-    .cta { display: inline-block; background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; }
-    .footer { padding: 16px; text-align: center; color: #6b7280; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Scout-Alarm: ${scoutName}${locationLabel}</h1>
-  </div>
-  <div class="content">
-    <p class="summary">${summary}</p>
-    ${keyFindings.length > 0 ? `
-    <div class="findings">
-      <h3>Kernpunkte:</h3>
-      <ul>
-        ${keyFindings.map(f => `<li>${f}</li>`).join('')}
-      </ul>
-    </div>
-    ` : ''}
-    <a href="${sourceUrl}" class="cta">Quelle ansehen</a>
-  </div>
-  <div class="footer">
-    <p>Diese E-Mail wurde automatisch von Dorfkoenig gesendet.</p>
-  </div>
-</body>
-</html>`;
-
-  try {
-    await resend.emails.send({
-      from: 'Dorfkoenig <noreply@resend.dev>',
-      to: email,
-      subject: `Scout-Alarm: ${scoutName}${locationLabel}`,
-      html,
-    });
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
+const ADMIN_EMAILS = (Deno.env.get('ADMIN_EMAILS') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 ```
 
 ### Notification Logic
@@ -612,27 +555,32 @@ export async function sendNotification(
 ```typescript
 // Only notify if:
 // 1. Criteria matched
-// 2. Not a duplicate
+// 2. Not a duplicate summary
 // 3. Not skipped by caller
-// 4. Email is configured
+// 4. Admin notification email is configured
 
 if (
   analysis.matches &&
   !dedupResult.isDuplicate &&
   !skipNotification &&
-  scout.notification_email
+  ADMIN_EMAILS.length > 0
 ) {
-  const notifyResult = await sendNotification({
-    email: scout.notification_email,
+  const emailHtml = resend.buildScoutAlertEmail({
     scoutName: scout.name,
     summary: analysis.summary,
     keyFindings: analysis.keyFindings,
     sourceUrl: scout.url,
-    location: scout.location,
+    locationCity: scout.location?.city,
+  });
+
+  const notifyResult = await resend.sendEmail({
+    to: ADMIN_EMAILS,
+    subject: `Scout-Alarm: ${scout.name}`,
+    html: emailHtml,
   });
 
   notificationSent = notifyResult.success;
-  notificationError = notifyResult.error;
+  notificationError = notifyResult.error || null;
 }
 ```
 
@@ -688,6 +636,19 @@ return {
 };
 ```
 
+### UI Outcome Labels
+
+The raw execution fields are intentionally separate from editor-facing labels.
+The frontend derives visible labels in `lib/execution-labels.ts` with this
+precedence:
+
+1. Running/failed infrastructure state.
+2. `change_status === 'same'` → `Keine Änderung`.
+3. Explicit criteria miss → `Nicht relevant`.
+4. `units_extracted > 0` → `Neue Einheiten`.
+5. `merged_existing_count > 0` or `is_duplicate` → `Bereits bekannt`.
+6. Changed page with no saved/deduped units → `Nichts Verwertbares`.
+
 ---
 
 ## Preview Mode (Test)
@@ -706,29 +667,24 @@ Preview mode runs the pipeline without side effects:
 export async function testScout(scoutId: string): Promise<PreviewResult> {
   const scout = await getScout(scoutId);
 
-  // Scrape without change tracking
-  const scrapeResult = await scrapeUrl(scout.url, scoutId, true);
+  // Double-probe detects Firecrawl provider mode and returns first-call content.
+  const { provider, scrapeResult } = await firecrawl.doubleProbe(scout.url, `${userId}#${scoutId}`);
 
-  // Analyze criteria
-  const analysis = await analyzeCriteria(
-    scrapeResult.content,
-    scout.criteria,
-    [] // No recent findings for preview
-  );
+  const hasCriteria = !!scout.criteria?.trim();
+  const criteriaAnalysis = hasCriteria
+    ? await analyzeCriteria(scrapeResult.markdown, scout.criteria)
+    : null;
 
   return {
     scrape_result: {
       title: scrapeResult.title,
-      content_preview: scrapeResult.content.slice(0, 500),
-      word_count: scrapeResult.metadata.wordCount,
+      content_preview: scrapeResult.markdown.slice(0, 500),
+      word_count: scrapeResult.markdown.split(/\s+/).length,
     },
-    criteria_analysis: {
-      matches: analysis.matches,
-      summary: analysis.summary,
-      key_findings: analysis.keyFindings,
-    },
-    would_notify: analysis.matches && !!scout.notification_email,
+    criteria_analysis: criteriaAnalysis,
+    would_notify: hasCriteria ? (criteriaAnalysis?.matches ?? false) : true,
     would_extract_units: !!(scout.location || scout.topic),
+    provider,
   };
 }
 ```
