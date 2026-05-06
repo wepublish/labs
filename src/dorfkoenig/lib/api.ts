@@ -100,6 +100,7 @@ export const unitsApi = {
     location_city?: string;
     topic?: string;
     scout_id?: string;
+    upload_job_id?: string;
     unused_only?: boolean;
     limit?: number;
     date_from?: string;
@@ -109,6 +110,7 @@ export const unitsApi = {
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.scout_id) searchParams.set('scout_id', params.scout_id);
+    if (params?.upload_job_id) searchParams.set('upload_job_id', params.upload_job_id);
     if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.date_from) searchParams.set('date_from', params.date_from);
@@ -121,12 +123,16 @@ export const unitsApi = {
     topic?: string;
     scout_id?: string;
     min_similarity?: number;
+    unused_only?: boolean;
+    limit?: number;
   }) => {
     const searchParams = new URLSearchParams({ q: query });
     if (params?.location_city) searchParams.set('location_city', params.location_city);
     if (params?.topic) searchParams.set('topic', params.topic);
     if (params?.scout_id) searchParams.set('scout_id', params.scout_id);
     if (params?.min_similarity) searchParams.set('min_similarity', String(params.min_similarity));
+    if (params?.unused_only !== undefined) searchParams.set('unused_only', String(params.unused_only));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
     return api.get<import('./types').InformationUnit[]>(`units/search?${searchParams}`);
   },
   markUsed: (unitIds: string[]) =>
@@ -193,6 +199,9 @@ export const manualUploadApi = {
     api.get<import('./types').NewspaperJob>(`manual-upload?job=${encodeURIComponent(jobId)}`),
 
   recentPdfs: (limit = 5) =>
+    api.get<import('./types').RecentPdfUpload[]>(`manual-upload?recent=${limit}`),
+
+  listPdfs: (limit = 20) =>
     api.get<import('./types').RecentPdfUpload[]>(`manual-upload?recent=${limit}`),
 
   finalizePdf: (jobId: string, selectedUids: string[]) =>

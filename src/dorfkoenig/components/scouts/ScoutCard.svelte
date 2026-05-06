@@ -109,6 +109,7 @@
 
   let stripColor = $derived(getStripColor());
   let statusLabel = $derived(getStatusLabel());
+  let sourceLabel = $derived(scout.scout_type === 'civic' ? scout.root_domain : scout.url);
 </script>
 
 <div
@@ -164,6 +165,13 @@
       </div>
     </div>
   </div>
+
+  {#if sourceLabel}
+    <div class="card-source">
+      <span class="source-label">Quelle</span>
+      <span class="source-url" title={sourceLabel}>{sourceLabel}</span>
+    </div>
+  {/if}
 
   <!-- Collapsed: Line 2 — status + time -->
   <div class="card-line2">
@@ -320,6 +328,28 @@
     color: var(--color-text-muted);
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  .card-source {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-light);
+  }
+
+  .source-label {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .source-url {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Status pill — visible at rest, fades on hover when actions appear */

@@ -71,10 +71,12 @@ async function listUnits(
   const topic = url.searchParams.get('topic');
   const unusedOnly = url.searchParams.get('unused_only') !== 'false';
   const scoutId = url.searchParams.get('scout_id');
+  const uploadJobId = url.searchParams.get('upload_job_id');
   const limit = Math.min(parseInt(url.searchParams.get('limit') || String(DEFAULT_UNITS_PAGE_SIZE)), MAX_PAGE_SIZE);
   const offset = parseInt(url.searchParams.get('offset') || '0');
   const dateFrom = url.searchParams.get('date_from');
   const dateTo = url.searchParams.get('date_to');
+  let scopedUnitIds: string[] | null = null;
 
   let query = supabase
     .from('information_units')
@@ -109,18 +111,56 @@ async function listUnits(
       return errorResponse('Fehler beim Laden der Scout-Einheiten', 500);
     }
 
-    const scopedUnitIds = [...new Set((occurrenceRows ?? []).map((row) => row.unit_id as string))];
-    if (scopedUnitIds.length === 0) {
-      return jsonResponse({
-        data: [],
-        meta: {
-          total: 0,
-          limit,
-          offset,
-        },
-      });
+    scopedUnitIds = intersectUnitScopes(
+      scopedUnitIds,
+      [...new Set((occurrenceRows ?? []).map((row) => row.unit_id as string))]
+    );
+  }
+
+  if (uploadJobId) {
+    const { data: job, error: jobError } = await supabase
+      .from('newspaper_jobs')
+      .select('id, storage_path')
+      .eq('id', uploadJobId)
+      .eq('user_id', userId)
+      .eq('source_type', 'manual_pdf')
+      .maybeSingle();
+
+    if (jobError) {
+      console.error('Upload job lookup error:', jobError);
+      return errorResponse('Upload konnte nicht geladen werden', 500);
+    }
+    if (!job) {
+      return errorResponse('Upload nicht gefunden', 404, 'NOT_FOUND');
     }
 
+    const storagePath = (job.storage_path as string | null) ?? null;
+    if (!storagePath) {
+      scopedUnitIds = [];
+    } else {
+      const { data: occurrenceRows, error: occurrenceError } = await supabase
+        .from('unit_occurrences')
+        .select('unit_id')
+        .eq('user_id', userId)
+        .eq('source_type', 'manual_pdf')
+        .eq('file_path', storagePath);
+
+      if (occurrenceError) {
+        console.error('Upload occurrence filter error:', occurrenceError);
+        return errorResponse('Fehler beim Laden der Upload-Einheiten', 500);
+      }
+
+      scopedUnitIds = intersectUnitScopes(
+        scopedUnitIds,
+        [...new Set((occurrenceRows ?? []).map((row) => row.unit_id as string))]
+      );
+    }
+  }
+
+  if (scopedUnitIds) {
+    if (scopedUnitIds.length === 0) {
+      return emptyListResponse(limit, offset);
+    }
     query = query.in('id', scopedUnitIds);
   }
 
@@ -172,6 +212,23 @@ async function listUnits(
     data: enriched,
     meta: {
       total: count || 0,
+      limit,
+      offset,
+    },
+  });
+}
+
+function intersectUnitScopes(current: string[] | null, next: string[]): string[] {
+  if (current === null) return next;
+  const nextSet = new Set(next);
+  return current.filter((id) => nextSet.has(id));
+}
+
+function emptyListResponse(limit: number, offset: number): Response {
+  return jsonResponse({
+    data: [],
+    meta: {
+      total: 0,
       limit,
       offset,
     },

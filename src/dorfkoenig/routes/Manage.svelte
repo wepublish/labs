@@ -2,14 +2,18 @@
   import { onMount } from 'svelte';
   import { scouts } from '../stores/scouts';
   import ScoutCard from '../components/scouts/ScoutCard.svelte';
+  import UploadsManagePanel from '../components/uploads/UploadsManagePanel.svelte';
   import PanelFilterBar from '../components/ui/PanelFilterBar.svelte';
   import { Loading } from '@shared/components';
   import { EmptyState } from '../components/ui/primitives';
-  import { Radar } from 'lucide-svelte';
+  import { Radar, Upload } from 'lucide-svelte';
   import { showScoutModal } from '../stores/ui';
   import type { Scout } from '../lib/types';
 
+  type ManageMode = 'scouts' | 'uploads';
+
   // Filter state
+  let activeMode = $state<ManageMode>('scouts');
   let selectedLocation = $state<string | null>(null);
   let selectedTopic = $state<string | null>(null);
   let selectedScout = $state<string | null>(null);
@@ -106,21 +110,50 @@
 
 <h1 class="visually-hidden">Scouts verwalten</h1>
 
-<PanelFilterBar
-  {locationOptions}
-  {topicOptions}
-  {selectedLocation}
-  {selectedTopic}
-  onLocationChange={(v) => { selectedLocation = v; selectedScout = null; }}
-  onTopicChange={(v) => { selectedTopic = v; selectedScout = null; }}
-  scoutOptions={scoutNameOptions}
-  {selectedScout}
-  onScoutChange={(v) => { selectedScout = v; }}
-  loading={$scouts.loading}
-/>
+<div class="manage-mode-bar" role="tablist" aria-label="Verwaltungsbereich">
+  <button
+    class="mode-tab"
+    class:active={activeMode === 'scouts'}
+    type="button"
+    role="tab"
+    aria-selected={activeMode === 'scouts'}
+    onclick={() => { activeMode = 'scouts'; }}
+  >
+    <Radar size={15} />
+    <span>Scouts</span>
+  </button>
+  <button
+    class="mode-tab"
+    class:active={activeMode === 'uploads'}
+    type="button"
+    role="tab"
+    aria-selected={activeMode === 'uploads'}
+    onclick={() => { activeMode = 'uploads'; }}
+  >
+    <Upload size={15} />
+    <span>Uploads</span>
+  </button>
+</div>
+
+{#if activeMode === 'scouts'}
+  <PanelFilterBar
+    {locationOptions}
+    {topicOptions}
+    {selectedLocation}
+    {selectedTopic}
+    onLocationChange={(v) => { selectedLocation = v; selectedScout = null; }}
+    onTopicChange={(v) => { selectedTopic = v; selectedScout = null; }}
+    scoutOptions={scoutNameOptions}
+    {selectedScout}
+    onScoutChange={(v) => { selectedScout = v; }}
+    loading={$scouts.loading}
+  />
+{/if}
 
 <div class="panel-content">
-  {#if $scouts.loading && $scouts.scouts.length === 0}
+  {#if activeMode === 'uploads'}
+    <UploadsManagePanel />
+  {:else if $scouts.loading && $scouts.scouts.length === 0}
     <Loading label="Scouts laden..." />
   {:else if $scouts.error}
     <div class="error-message" aria-live="polite">{$scouts.error}</div>
@@ -151,6 +184,40 @@
 </div>
 
 <style>
+  .manage-mode-bar {
+    display: flex;
+    gap: 0.25rem;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .mode-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-background);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color var(--transition-base), color var(--transition-base), background var(--transition-base);
+  }
+
+  .mode-tab:hover,
+  .mode-tab.active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .mode-tab.active {
+    background: rgba(234, 114, 110, 0.08);
+  }
+
   .panel-content {
     display: flex;
     flex-direction: column;

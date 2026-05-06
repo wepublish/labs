@@ -916,7 +916,8 @@
     flex-direction: column;
     gap: 1rem;
     flex: 1 1 auto;
-    overflow: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     min-height: 0;
   }
 

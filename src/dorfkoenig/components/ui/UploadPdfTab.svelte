@@ -6,7 +6,6 @@
     AlertTriangle,
     Clock,
     ListChecks,
-    Info,
     ChevronDown,
     ChevronRight,
   } from 'lucide-svelte';
@@ -108,13 +107,8 @@
     return r.status === 'review_pending' || r.status === 'processing' || r.status === 'storing';
   }
 
-  function canOpenDetails(r: RecentPdfUpload): boolean {
-    return canResume(r) || r.status === 'completed';
-  }
-
   function actionLabel(r: RecentPdfUpload): string {
     if (r.status === 'review_pending') return 'Prüfen';
-    if (r.status === 'completed') return 'Details';
     return 'Öffnen';
   }
 
@@ -213,12 +207,12 @@
               <span class="recent-meta">{formatDate(r.created_at)} · {progressLabel(r)}</span>
             </div>
             <span class="recent-status">{stageLabel(r)}</span>
-            {#if canOpenDetails(r)}
+            {#if canResume(r)}
               <button
                 class="recent-action"
                 type="button"
-                aria-label="Upload öffnen"
-                title="Upload öffnen"
+                aria-label={actionLabel(r) === 'Prüfen' ? 'Upload prüfen' : 'Upload öffnen'}
+                title={actionLabel(r) === 'Prüfen' ? 'Upload prüfen' : 'Upload öffnen'}
                 onclick={(e) => {
                   e.stopPropagation();
                   onresumejob?.(r.id);
@@ -226,8 +220,6 @@
               >
                 {#if r.status === 'review_pending'}
                   <ListChecks size={14} />
-                {:else if r.status === 'completed'}
-                  <Info size={14} />
                 {:else}
                   <Clock size={14} />
                 {/if}
