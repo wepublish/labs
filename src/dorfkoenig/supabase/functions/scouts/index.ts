@@ -496,7 +496,7 @@ async function runScout(
 
   // Trigger execution function asynchronously (route by scout type)
   const projectUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const serviceKey = Deno.env.get('INTERNAL_FUNCTION_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const executeFn = scout.scout_type === 'civic' ? 'execute-civic-scout' : 'execute-scout';
 
   const finalizeDispatchFailure = async (message: string) => {

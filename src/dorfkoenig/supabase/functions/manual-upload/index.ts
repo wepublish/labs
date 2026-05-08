@@ -586,7 +586,7 @@ async function handleFileConfirm(
 
     // Trigger process-newspaper (fire-and-forget with flush delay)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const serviceKey = Deno.env.get('INTERNAL_FUNCTION_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const triggerPromise = triggerProcessNewspaper({
       supabase,
