@@ -242,7 +242,8 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 ### Edge Function Secrets (Dashboard > Settings > Edge Functions)
 - `OPENROUTER_API_KEY` -- LLM via OpenRouter (model: `openai/gpt-4o-mini`)
 - `FIRECRAWL_API_KEY` -- Web scraping + change tracking
-- `RESEND_API_KEY` -- Email notifications
+- `EMAIL_ALERTS_ENABLED` -- Set to `true` to enable email alerts. Default unset/false disables all email delivery.
+- `RESEND_API_KEY` -- Email notifications, required only when email alerts are enabled
 - `MAILCHIMP_API_KEY` -- Mailchimp API key for Bajour newsletter campaigns (server: `us21`)
 - `MAILCHIMP_SERVER` -- Mailchimp data center (`us21`)
 - `WHATSAPP_PHONE_NUMBER_ID` -- WhatsApp Business phone number ID
@@ -251,7 +252,7 @@ Stores use `writable`/`derived` from `svelte/store` (not runes). Subscribe in co
 - `WHATSAPP_WEBHOOK_VERIFY_TOKEN` -- Webhook handshake token
 - `BAJOUR_CORRESPONDENTS` -- JSON mapping village IDs → correspondent arrays
 - `NEWS_API_TOKEN` -- Shared secret for the public `/news` API endpoint
-- `ADMIN_EMAILS` -- Comma-separated admin mailboxes that receive Bajour draft-rejection, empty-path, and withheld-draft alerts. Defaults (if unset) to `samuel.hufschmid@bajour.ch,ernst.field@bajour.ch,tom@wepublish.ch,lukas@wepublish.ch,elias@wepublish.ch`.
+- `ADMIN_EMAILS` -- Comma-separated admin mailboxes for Bajour draft-rejection, empty-path, and withheld-draft alerts when `EMAIL_ALERTS_ENABLED=true`. Defaults (if unset) to `samuel.hufschmid@bajour.ch,ernst.field@bajour.ch,tom@wepublish.ch,lukas@wepublish.ch,elias@wepublish.ch`.
 - `ADMIN_LINK_SECRET` -- HMAC-SHA256 secret for signed admin draft deep-links. Generate with `openssl rand -hex 32`. Rotating invalidates all outstanding admin links.
 - `PUBLIC_APP_URL` -- Base URL of the deployed app (default `https://wepublish.github.io/labs/dorfkoenig`). Used to build admin draft links.
 
