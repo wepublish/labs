@@ -1,0 +1,46 @@
+{
+  "name": "wepublish-cms-mcp",
+  "version": "0.1.0",
+  "description": "Read-only MCP server for We.Publish CMS diagnostics (curated tools over the admin GraphQL API).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "wepublish-cms-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "prebuild": "npm run codegen",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "start:http": "node dist/http.js",
+    "dev": "tsx src/index.ts",
+    "dev:http": "tsx src/http.ts",
+    "pretypecheck": "npm run codegen",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run codegen",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "codegen": "graphql-codegen --config codegen.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "express": "^5.2.1",
+    "graphql": "^16.9.0",
+    "graphql-request": "^7.1.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.3",
+    "@graphql-codegen/typescript": "^4.1.2",
+    "@graphql-codegen/typescript-graphql-request": "^6.2.0",
+    "@graphql-codegen/typescript-operations": "^4.4.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "prettier": "^3.8.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

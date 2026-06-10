@@ -1,0 +1,16 @@
+query CheckMemberPlans {
+  memberPlans(take: 100) {
+    totalCount
+    nodes {
+      id
+      name
+      slug
+      active
+      amountPerMonthMin
+      currency
+      availablePaymentMethods {
+        paymentMethodIDs
+      }
+    }
+  }
+}

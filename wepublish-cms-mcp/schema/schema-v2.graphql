@@ -1,0 +1,4368 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+enum AIProviderType {
+  V0
+}
+
+union Action = ArticleCreatedAction | AuthorCreatedAction | CommentCreatedAction | EventCreatedAction | PageCreatedAction | PollStartedAction | SubscriptionCreatedAction | UserCreatedAction
+
+enum ActionType {
+  ArticleCreated
+  AuthorCreated
+  CommentCreated
+  EventCreated
+  PageCreated
+  PollStarted
+  SubscriptionCreated
+  UserCreated
+}
+
+type AllowedSettingVals {
+  boolChoice: Boolean
+  stringChoice: [String!]
+}
+
+enum AnalyticsProviderType {
+  GOOGLE
+}
+
+type Article implements HasOptionalPaywall & HasOptionalPeerLc {
+  createdAt: DateTime!
+  disableComments: Boolean!
+  draft: ArticleRevision
+  hidden: Boolean!
+  id: String!
+  latest: ArticleRevision!
+  likes: Int!
+  modifiedAt: DateTime!
+  paywall: Paywall
+  paywallId: String
+  peer: Peer
+  peerArticleId: String
+  peerId: String
+  pending: ArticleRevision
+  previewUrl: String!
+  published: ArticleRevision
+  publishedAt: DateTime
+  shared: Boolean!
+  slug: String
+  tags: [Tag!]!
+  trackingPixels: [TrackingPixel!]!
+  url: String!
+}
+
+type ArticleCreatedAction implements BaseAction & HasArticleLc {
+  actionType: ActionType!
+  article: Article!
+  articleId: String!
+  date: DateTime!
+}
+
+input ArticleFilter {
+  authors: [String!]
+  body: String
+  draft: Boolean
+  excludeIds: [String!]
+  ids: [String!]
+  includeHidden: Boolean
+  lead: String
+  peerId: String
+  pending: Boolean
+  preTitle: String
+  publicationDateFrom: DateFilter
+  publicationDateTo: DateFilter
+  published: Boolean
+  shared: Boolean
+  tags: [String!]
+  tagsNotIn: [String!]
+  title: String
+}
+
+type ArticleNavigationLink implements BaseNavigationLink & HasArticle {
+  article: Article!
+  articleID: String!
+  createdAt: DateTime!
+  id: String!
+  label: String!
+  modifiedAt: DateTime!
+  type: NavigationLinkType!
+}
+
+type ArticleRevision implements HasBlockContent {
+  authors: [Author!]!
+  blocks: [BlockContent!]!
+  breaking: Boolean!
+  canonicalUrl: String
+  createdAt: DateTime!
+  hideAuthor: Boolean!
+  id: String!
+  image: Image
+  imageID: String
+  lead: String
+  preTitle: String
+  properties: [Property!]!
+  publishedAt: DateTime
+  seoTitle: String
+  socialMediaAuthors: [Author!]!
+  socialMediaDescription: String
+  socialMediaImage: Image
+  socialMediaImageID: String
+  socialMediaTitle: String
+  title: String
+}
+
+enum ArticleSort {
+  CreatedAt
+  ModifiedAt
+  PublishedAt
+}
+
+type ArticleTeaser implements BaseTeaser & HasImage & HasOptionalArticle {
+  article: Article
+  articleID: String
+  image: Image
+  imageID: String
+  lead: String
+  preTitle: String
+  title: String
+  type: String!
+}
+
+input ArticleTeaserInput {
+  articleID: String
+  imageID: String
+  lead: String
+  preTitle: String
+  title: String
+}
+
+type Author implements HasImage & HasOptionalPeerLc {
+  bio: RichText
+  createdAt: DateTime!
+  hideOnArticle: Boolean!
+  hideOnTeam: Boolean!
+  hideOnTeaser: Boolean!
+  id: String!
+  image: Image
+  imageID: String
+  jobTitle: String
+  links: [AuthorLink!]!
+  modifiedAt: DateTime!
+  name: String!
+  peer: Peer
+  peerId: String
+  slug: Slug!
+  tags: [Tag!]!
+  url: String!
+}
+
+type AuthorCreatedAction implements BaseAction & HasAuthor {
+  actionType: ActionType!
+  author: Author!
+  authorId: String!
+  date: DateTime!
+}
+
+input AuthorFilter {
+  hideOnTeam: Boolean
+  name: String
+  tagIds: [String!]
+}
+
+type AuthorLink {
+  title: String!
+  url: String!
+}
+
+input AuthorLinkInput {
+  title: String!
+  url: String!
+}
+
+"""Sorting options for authors"""
+enum AuthorSort {
+  CreatedAt
+  ModifiedAt
+  Name
+}
+
+type AvailablePaymentMethod {
+  forceAutoRenewal: Boolean!
+  paymentMethodIDs: [String!]!
+  paymentMethods: [PaymentMethod!]!
+  paymentPeriodicities: [PaymentPeriodicity!]!
+}
+
+input AvailablePaymentMethodInput {
+  forceAutoRenewal: Boolean!
+  paymentMethodIDs: [String!]!
+  paymentPeriodicities: [PaymentPeriodicity!]!
+}
+
+type Banner {
+  actions: [BannerAction!]
+  active: Boolean!
+  collapsible: Boolean!
+  cta: String
+  delay: Int!
+  hideForMinutes: Int!
+  html: String
+  id: String!
+  image: Image
+  imageId: String
+  showForLoginStatus: LoginStatus!
+  showOnArticles: Boolean!
+  showOnPages: [PageModel!]
+  text: String!
+  title: String!
+}
+
+type BannerAction {
+  id: String!
+  label: String!
+  role: BannerActionRole!
+  style: String!
+  url: String!
+}
+
+enum BannerActionRole {
+  CANCEL
+  OTHER
+  PRIMARY
+}
+
+enum BannerDocumentType {
+  ARTICLE
+  PAGE
+}
+
+interface BaseAction {
+  actionType: ActionType!
+  date: DateTime!
+}
+
+interface BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+}
+
+interface BaseCrowdfundingGoal {
+  amount: Float!
+  createdAt: DateTime!
+  description: String
+  id: String!
+  modifiedAt: DateTime!
+  title: String!
+}
+
+interface BaseNavigationLink {
+  createdAt: DateTime!
+  id: String!
+  label: String!
+  modifiedAt: DateTime!
+  type: NavigationLinkType!
+}
+
+interface BaseTeaser implements HasImage {
+  image: Image
+  imageID: String
+  lead: String
+  preTitle: String
+  title: String
+  type: String!
+}
+
+interface BaseToken {
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+}
+
+interface BaseUser {
+  active: Boolean!
+  firstName: String
+  flair: String
+  id: String!
+  image: Image
+  name: String!
+  properties: [Property!]!
+  roleIDs: [String!]!
+  userImageID: String
+}
+
+type BildwurfAdBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  zoneID: String
+}
+
+input BildwurfAdBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  zoneID: String
+}
+
+union BlockContent = BildwurfAdBlock | BreakBlock | CommentBlock | CrowdfundingBlock | EventBlock | FacebookPostBlock | FacebookVideoBlock | FlexBlock | HTMLBlock | IFrameBlock | ImageBlock | ImageGalleryBlock | InstagramPostBlock | ListicleBlock | PolisConversationBlock | PollBlock | QuoteBlock | RichTextBlock | SoundCloudTrackBlock | StreamableVideoBlock | SubscribeBlock | TeaserGridBlock | TeaserGridFlexBlock | TeaserListBlock | TeaserSlotsBlock | TikTokVideoBlock | TitleBlock | TwitterTweetBlock | UnknownBlock | VimeoVideoBlock | YouTubeVideoBlock
+
+input BlockContentInput {
+  bildwurfAd: BildwurfAdBlockInput
+  comment: CommentBlockInput
+  crowdfunding: CrowdfundingBlockInput
+  embed: IFrameBlockInput
+  event: EventBlockInput
+  facebookPost: FacebookPostBlockInput
+  facebookVideo: FacebookVideoBlockInput
+  flexBlock: FlexBlockInput
+  html: HTMLBlockInput
+  image: ImageBlockInput
+  imageGallery: ImageGalleryBlockInput
+  instagramPost: InstagramPostBlockInput
+  linkPageBreak: BreakBlockInput
+  listicle: ListicleBlockInput
+  polisConversation: PolisConversationBlockInput
+  poll: PollBlockInput
+  quote: QuoteBlockInput
+  richText: RichTextBlockInput
+  soundCloudTrack: SoundCloudTrackBlockInput
+  streamableVideo: StreamableVideoBlockInput
+  subscribe: SubscribeBlockInput
+  teaserGrid: TeaserGridBlockInput
+  teaserGridFlex: TeaserGridFlexBlockInput
+  teaserList: TeaserListBlockInput
+  teaserSlots: TeaserSlotsBlockInput
+  tikTokVideo: TikTokVideoBlockInput
+  title: TitleBlockInput
+  twitterTweet: TwitterTweetBlockInput
+  vimeoVideo: VimeoVideoBlockInput
+  youTubeVideo: YouTubeVideoBlockInput
+}
+
+type BlockStyle {
+  blocks: [EditorBlockType!]!
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+}
+
+enum BlockType {
+  BildwurfAd
+  Comment
+  Crowdfunding
+  Embed
+  Event
+  FacebookPost
+  FacebookVideo
+  FlexBlock
+  HTML
+  Image
+  ImageGallery
+  InstagramPost
+  LinkPageBreak
+  Listicle
+  PolisConversation
+  Poll
+  Quote
+  RichText
+  SoundCloudTrack
+  StreamableVideo
+  Subscribe
+  TeaserGrid
+  TeaserGridFlex
+  TeaserList
+  TeaserSlots
+  TikTokVideo
+  Title
+  TwitterTweet
+  VimeoVideo
+  YouTubeVideo
+}
+
+type BlockWithAlignment implements HasOneBlockContent {
+  alignment: FlexAlignment!
+  block: BlockContent
+}
+
+input BlockWithAlignmentInput {
+  alignment: FlexAlignmentInput!
+  block: BlockContentInput
+}
+
+type BreakBlock implements BaseBlock & HasImage {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  hideButton: Boolean
+  image: Image
+  imageID: String
+  linkTarget: String
+  linkText: String
+  linkURL: String
+  richText: RichText!
+  text: String
+  type: BlockType!
+}
+
+input BreakBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  hideButton: Boolean
+  imageID: String
+  linkTarget: String
+  linkText: String
+  linkURL: String
+  richText: RichText!
+  text: String
+}
+
+type CalculatedRating {
+  answer: CommentRatingSystemAnswer!
+  count: Int!
+  mean: Float!
+  total: Int!
+}
+
+enum CaptchaType {
+  CfTurnstile
+  HCaptcha
+}
+
+type Challenge {
+  challenge: String
+  challengeID: String
+  type: CaptchaType!
+  validUntil: Date
+}
+
+input ChallengeInput {
+  challengeID: String!
+  challengeSolution: String!
+}
+
+enum ChallengeProviderType {
+  HCAPTCHA
+  TURNSTILE
+}
+
+type Chat {
+  chatId: String!
+  message: String!
+}
+
+"""A hexadecimal color value (#RRGGBB)"""
+scalar Color
+
+type Comment implements HasOptionalUser {
+  authorType: CommentAuthorType!
+  calculatedRatings: [CalculatedRating!]!
+  children: [Comment!]!
+  createdAt: DateTime!
+  featured: Boolean
+  guestUserImage: Image
+  guestUserImageID: String
+  guestUsername: String
+  id: String!
+  itemID: String!
+  itemType: CommentItemType!
+  lead: String
+  modifiedAt: DateTime!
+  overriddenRatings: [OverriddenRating!]!
+  parentComment: Comment
+  parentID: String
+  rejectionReason: CommentRejectionReason
+  revisions: [CommentRevision!]!
+  source: String
+  state: CommentState!
+  tags: [Tag!]!
+  text: RichText
+  title: String
+  url: String!
+  user: User
+  userID: String
+  userRatings: [CommentRating!]!
+}
+
+enum CommentAuthorType {
+  author
+  guestUser
+  team
+  verifiedUser
+}
+
+type CommentBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  comments: [Comment!]!
+  disabled: Boolean
+  filter: CommentBlockFilter!
+  type: BlockType!
+}
+
+type CommentBlockFilter {
+  comments: [String!]
+  item: String
+  tags: [String!]
+}
+
+input CommentBlockFilterInput {
+  comments: [String!] = []
+  item: String
+  tags: [String!] = []
+}
+
+input CommentBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  filter: CommentBlockFilterInput!
+}
+
+type CommentCreatedAction implements BaseAction & HasComment {
+  actionType: ActionType!
+  comment: Comment!
+  commentId: String!
+  date: DateTime!
+}
+
+input CommentFilter {
+  item: String
+  itemID: String
+  itemType: CommentItemType
+  states: [CommentState!]
+  tags: [String!]
+}
+
+enum CommentItemType {
+  article
+  page
+}
+
+type CommentRating {
+  answer: CommentRatingSystemAnswer!
+  commentId: String!
+  createdAt: DateTime!
+  disabled: Boolean
+  fingerprint: String
+  id: String!
+  modifiedAt: DateTime!
+  userId: String
+  value: Int!
+}
+
+type CommentRatingSystem {
+  answers: [CommentRatingSystemAnswer!]!
+  id: String!
+  name: String
+}
+
+type CommentRatingSystemAnswer {
+  answer: String
+  id: String!
+  ratingSystemId: String!
+  type: RatingSystemType!
+}
+
+enum CommentRejectionReason {
+  misconduct
+  spam
+}
+
+type CommentRevision {
+  createdAt: DateTime!
+  lead: String
+  text: RichText
+  title: String
+}
+
+input CommentRevisionInput {
+  lead: String
+  text: RichText
+  title: String
+}
+
+enum CommentSort {
+  CreatedAt
+  ModifiedAt
+  Rating
+}
+
+enum CommentState {
+  approved
+  pendingApproval
+  pendingUserChanges
+  rejected
+}
+
+type Consent {
+  createdAt: DateTime!
+  defaultValue: Boolean!
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+  slug: String!
+}
+
+input ConsentFilter {
+  defaultValue: Boolean
+  name: String
+  slug: String
+}
+
+input CreateBannerActionInput {
+  label: String!
+  role: BannerActionRole!
+  style: String!
+  url: String!
+}
+
+input CreateBannerInput {
+  actions: [CreateBannerActionInput!]
+  active: Boolean!
+  collapsible: Boolean!
+  cta: String
+  delay: Int!
+  hideForMinutes: Int!
+  html: String
+  imageId: String
+  showForLoginStatus: LoginStatus!
+  showOnArticles: Boolean!
+  showOnPages: [PageModelInput!]
+  text: String!
+  title: String!
+}
+
+input CreateCrowdfundingGoalInput {
+  amount: Float!
+  description: String
+  title: String!
+}
+
+input CreateCrowdfundingInput {
+  additionalRevenue: Float
+  countSubscriptionsFrom: DateTime
+  countSubscriptionsUntil: DateTime
+  goalType: CrowdfundingGoalType!
+  goals: [CreateCrowdfundingGoalInput!]
+  memberPlans: [CreateCrowdfundingMemberPlan!]
+  name: String!
+}
+
+input CreateCrowdfundingMemberPlan {
+  id: String!
+}
+
+input CreateExternalAppInput {
+  description: String
+  icon: String
+  name: String!
+  target: ExternalAppsTarget!
+  url: String!
+}
+
+type CreateSubscriptionInfo {
+  discountPercent: Float
+  voucherValid: Boolean
+}
+
+type Crowdfunding {
+  activeGoal: CrowdfundingGoalWithProgress
+  additionalRevenue: Float
+  countSubscriptionsFrom: DateTime
+  countSubscriptionsUntil: DateTime
+  createdAt: DateTime!
+  goalType: CrowdfundingGoalType!
+  goals: [CrowdfundingGoal!]!
+  id: String!
+  memberPlans: [MemberPlan!]!
+  modifiedAt: DateTime!
+  name: String!
+  revenue: Float
+  subscriptions: Int
+}
+
+type CrowdfundingBlock implements BaseBlock & HasOptionalCrowdfunding {
+  blockStyle: String
+  blockStyleName: String
+  crowdfunding: Crowdfunding
+  crowdfundingId: String
+  disabled: Boolean
+  type: BlockType!
+}
+
+input CrowdfundingBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  crowdfundingId: String
+  disabled: Boolean
+}
+
+type CrowdfundingGoal implements BaseCrowdfundingGoal {
+  amount: Float!
+  createdAt: DateTime!
+  description: String
+  id: String!
+  modifiedAt: DateTime!
+  title: String!
+}
+
+enum CrowdfundingGoalType {
+  Revenue
+  Subscription
+}
+
+type CrowdfundingGoalWithProgress implements BaseCrowdfundingGoal {
+  amount: Float!
+  createdAt: DateTime!
+  description: String
+  id: String!
+  modifiedAt: DateTime!
+  progress: Float
+  title: String!
+}
+
+enum Currency {
+  CHF
+  EUR
+}
+
+type CustomTeaser implements BaseTeaser & HasImage {
+  contentUrl: String
+  image: Image
+  imageID: String
+  lead: String
+  openInNewTab: Boolean
+  preTitle: String
+  properties: [Property!]
+  title: String
+  type: String!
+}
+
+input CustomTeaserInput {
+  contentUrl: String
+  imageID: String
+  lead: String
+  openInNewTab: Boolean
+  preTitle: String
+  properties: [PropertyInput!] = []
+  title: String
+}
+
+type DailyPredictedSubscriptionRenewalCount {
+  high: Int!
+  low: Int!
+  perDayHighProbability: Int!
+  perDayLowProbability: Int!
+  total: Int!
+}
+
+type DailySubscriptionStats {
+  createdSubscriptionCount: Int!
+  createdSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  date: String!
+  deactivatedSubscriptionCount: Int!
+  deactivatedSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  endingSubscriptionCount: Int!
+  endingSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  overdueSubscriptionCount: Int!
+  overdueSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  predictedSubscriptionRenewalCount: DailyPredictedSubscriptionRenewalCount!
+  predictedSubscriptionRenewalUsersHighProbability: [DailySubscriptionStatsUser!]!
+  predictedSubscriptionRenewalUsersLowProbability: [DailySubscriptionStatsUser!]!
+  renewedSubscriptionCount: Int!
+  renewedSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  replacedSubscriptionCount: Int!
+  replacedSubscriptionUsers: [DailySubscriptionStatsUser!]!
+  totalActiveSubscriptionCount: Int!
+}
+
+type DailySubscriptionStatsUser {
+  email: String!
+  firstName: String
+  id: String!
+  name: String!
+  subscriptionID: String
+}
+
+type DashboardInvoice {
+  amount: Int!
+  dueAt: DateTime!
+  memberPlan: String
+  paidAt: DateTime
+}
+
+type DashboardSubscription {
+  deactivationDate: DateTime
+  endsAt: DateTime
+  memberPlan: String!
+  monthlyAmount: Int!
+  paymentPeriodicity: PaymentPeriodicity!
+  reasonForDeactivation: SubscriptionDeactivationReason
+  renewsAt: DateTime
+  startsAt: DateTime!
+}
+
+"""
+A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar Date
+
+input DateFilter {
+  comparison: DateFilterComparison!
+  date: DateTime
+}
+
+enum DateFilterComparison {
+  Equal
+  GreaterThan
+  GreaterThanOrEqual
+  LowerThan
+  LowerThanOrEqual
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type DeletePollVotesResult {
+  count: Int!
+}
+
+type Document {
+  createdAt: DateTime!
+  description: String
+  extension: String!
+  fileSize: Int!
+  filename: String
+  id: String!
+  mimeType: String!
+  modifiedAt: DateTime!
+  thumbnailURL: String
+  title: String
+  url: String!
+}
+
+input DocumentFilter {
+  title: String
+}
+
+enum DocumentSort {
+  CreatedAt
+  ModifiedAt
+}
+
+type DocumentStorageUsage {
+  documentCount: Int!
+  limitBytes: Float!
+  usedBytes: Float!
+}
+
+enum EditorBlockType {
+  Comment
+  Crowdfunding
+  Embed
+  Event
+  FlexBlock
+  HTML
+  Image
+  ImageGallery
+  LinkPageBreak
+  Listicle
+  Poll
+  Quote
+  RichText
+  Subscribe
+  TeaserGrid1
+  TeaserGrid6
+  TeaserGridFlex
+  TeaserList
+  TeaserSlots
+  Title
+}
+
+type Event {
+  createdAt: DateTime!
+  description: RichText
+  endsAt: DateTime
+  externalSourceId: String
+  externalSourceName: String
+  id: String!
+  image: Image
+  imageId: String
+  lead: String
+  location: String
+  modifiedAt: DateTime!
+  name: String!
+  startsAt: DateTime!
+  status: EventStatus!
+  tags: [Tag!]
+  url: String!
+}
+
+type EventBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  events: [Event!]!
+  filter: EventBlockFilter!
+  type: BlockType!
+}
+
+type EventBlockFilter {
+  events: [String!]
+  tags: [String!]
+}
+
+input EventBlockFilterInput {
+  events: [String!] = []
+  tags: [String!] = []
+}
+
+input EventBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  filter: EventBlockFilterInput!
+}
+
+type EventCreatedAction implements BaseAction & HasEventLc {
+  actionType: ActionType!
+  date: DateTime!
+  event: Event!
+  eventId: String!
+}
+
+input EventFilter {
+  from: DateTime
+  location: String
+  name: String
+  tags: [String!]
+  to: DateTime
+  upcomingOnly: Boolean
+}
+
+type EventFromSource {
+  createdAt: DateTime!
+  description: RichText
+  endsAt: DateTime
+  externalSourceId: String
+  externalSourceName: String
+  id: String!
+  imageUrl: String
+  lead: String
+  location: String
+  modifiedAt: DateTime!
+  name: String!
+  startsAt: DateTime!
+  status: EventStatus!
+}
+
+enum EventSort {
+  CreatedAt
+  EndsAt
+  ModifiedAt
+  StartsAt
+}
+
+enum EventStatus {
+  Cancelled
+  Postponed
+  Rescheduled
+  Scheduled
+}
+
+type EventTeaser implements BaseTeaser & HasImage & HasOptionalEvent {
+  event: Event
+  eventID: String
+  image: Image
+  imageID: String
+  lead: String
+  preTitle: String
+  title: String
+  type: String!
+}
+
+input EventTeaserInput {
+  eventID: String
+  imageID: String
+  lead: String
+  preTitle: String
+  title: String
+}
+
+type ExternalApp {
+  createdAt: DateTime!
+  description: String
+  icon: String
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+  target: ExternalAppsTarget!
+  url: String!
+}
+
+input ExternalAppFilter {
+  description: String
+  id: String
+  name: String
+  target: ExternalAppsTarget
+}
+
+type ExternalAppToken {
+  expiresAt: DateTime!
+  token: String!
+}
+
+enum ExternalAppsTarget {
+  BLANK
+  IFRAME
+}
+
+type ExternalNavigationLink implements BaseNavigationLink {
+  createdAt: DateTime!
+  id: String!
+  label: String!
+  modifiedAt: DateTime!
+  type: NavigationLinkType!
+  url: String
+}
+
+type FacebookPostBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  postID: String
+  type: BlockType!
+  userID: String
+}
+
+input FacebookPostBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  postID: String
+  userID: String
+}
+
+type FacebookVideoBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  userID: String
+  videoID: String
+}
+
+input FacebookVideoBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  userID: String
+  videoID: String
+}
+
+type FlexAlignment {
+  h: Int!
+  i: String!
+  static: Boolean
+  w: Int!
+  x: Int!
+  y: Int!
+}
+
+input FlexAlignmentInput {
+  h: Int!
+  i: String!
+  static: Boolean
+  w: Int!
+  x: Int!
+  y: Int!
+}
+
+type FlexBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  blocks: [BlockWithAlignment!]!
+  disabled: Boolean
+  type: BlockType!
+}
+
+input FlexBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  blocks: [BlockWithAlignmentInput!]!
+  disabled: Boolean
+}
+
+type FlexTeaser {
+  alignment: FlexAlignment!
+  teaser: Teaser
+}
+
+input FlexTeaserInput {
+  alignment: FlexAlignmentInput!
+  teaser: TeaserInput
+}
+
+type FullPoll {
+  answers: [PollAnswer!]!
+  closedAt: DateTime
+  externalVoteSources: [PollExternalVoteSource!]!
+  id: String!
+  infoText: RichText
+  opensAt: DateTime!
+  question: String
+}
+
+"""Setting Value"""
+scalar GraphQLSettingValueType
+
+type HTMLBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  html: String
+  type: BlockType!
+}
+
+input HTMLBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  html: String
+}
+
+interface HasArticle {
+  article: Article!
+  articleID: String!
+}
+
+interface HasArticleLc {
+  article: Article!
+  articleId: String!
+}
+
+interface HasAuthor {
+  author: Author!
+  authorId: String!
+}
+
+interface HasBlockContent {
+  blocks: [BlockContent!]!
+}
+
+interface HasComment {
+  comment: Comment!
+  commentId: String!
+}
+
+interface HasEventLc {
+  event: Event!
+  eventId: String!
+}
+
+interface HasImage {
+  image: Image
+  imageID: String
+}
+
+interface HasImageLc {
+  image: Image
+  imageId: String
+}
+
+interface HasMemberPlan {
+  memberPlan: MemberPlan!
+  memberPlanID: String!
+}
+
+interface HasMemberPlanLc {
+  memberPlan: MemberPlan!
+  memberPlanId: String!
+}
+
+interface HasOneBlockContent {
+  block: BlockContent
+}
+
+interface HasOptionalArticle {
+  article: Article
+  articleID: String
+}
+
+interface HasOptionalCrowdfunding {
+  crowdfunding: Crowdfunding
+  crowdfundingId: String
+}
+
+interface HasOptionalEvent {
+  event: Event
+  eventID: String
+}
+
+interface HasOptionalPage {
+  page: Page
+  pageID: String
+}
+
+interface HasOptionalPaywall {
+  paywall: Paywall
+  paywallId: String
+}
+
+interface HasOptionalPeerLc {
+  peer: Peer
+  peerId: String
+}
+
+interface HasOptionalPoll {
+  poll: FullPoll
+  pollId: String
+}
+
+interface HasOptionalSubscription {
+  subscription: PublicSubscription
+  subscriptionID: String
+}
+
+interface HasOptionalUser {
+  user: User
+  userID: String
+}
+
+interface HasPage {
+  page: Page!
+  pageID: String!
+}
+
+interface HasPageLc {
+  page: Page!
+  pageId: String!
+}
+
+interface HasPaymentMethod {
+  paymentMethod: PaymentMethod!
+  paymentMethodID: String!
+}
+
+interface HasPoll {
+  poll: FullPoll!
+  pollId: String!
+}
+
+interface HasSubscriptionLc {
+  subscription: PublicSubscription!
+  subscriptionId: String!
+}
+
+interface HasUser {
+  user: User!
+  userID: String!
+}
+
+interface HasUserLc {
+  user: User!
+  userId: String!
+}
+
+type IFrameBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  height: Int
+  sandbox: String
+  styleCustom: String
+  title: String
+  type: BlockType!
+  url: String
+  width: Int
+}
+
+input IFrameBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  height: Int
+  sandbox: String
+  styleCustom: String
+  title: String
+  url: String
+  width: Int
+}
+
+type Image implements HasOptionalPeerLc {
+  createdAt: DateTime!
+  description: String
+  extension: String!
+  fileSize: Int!
+  filename: String
+  focalPointX: Float!
+  focalPointY: Float!
+  format: String!
+  height: Int!
+  id: String!
+  license: String
+  link: String
+  mimeType: String!
+  modifiedAt: DateTime!
+  peer: Peer
+  peerId: String
+  source: String
+  tags: [String!]!
+  title: String
+  transformURL(input: ImageTransformation): String
+  url: String!
+  width: Int!
+}
+
+type ImageBlock implements BaseBlock & HasImage {
+  blockStyle: String
+  blockStyleName: String
+  caption: String
+  disabled: Boolean
+  image: Image
+  imageID: String
+  linkUrl: String
+  type: BlockType!
+}
+
+input ImageBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  caption: String
+  disabled: Boolean
+  imageID: String
+  linkUrl: String
+}
+
+input ImageFilter {
+  tags: [String!]
+  title: String
+}
+
+type ImageGalleryBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  images: [ImageGalleryImage!]!
+  type: BlockType!
+}
+
+input ImageGalleryBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  images: [ImageGalleryImageInput!]!
+}
+
+type ImageGalleryImage implements HasImage {
+  caption: String
+  image: Image
+  imageID: String
+}
+
+input ImageGalleryImageInput {
+  caption: String
+  imageID: String
+}
+
+enum ImageRotation {
+  Auto
+  Rotate0
+  Rotate90
+  Rotate180
+  Rotate270
+}
+
+enum ImageSort {
+  CreatedAt
+  ModifiedAt
+}
+
+input ImageTransformation {
+  blur: Boolean
+  grayscale: Boolean
+  height: Int
+  negate: Boolean
+  rotation: ImageRotation
+  sharpen: Boolean
+  width: Int
+}
+
+input ImportArticleOptions {
+  importAuthors: Boolean
+  importContentImages: Boolean
+  importTags: Boolean
+}
+
+input ImportedEventFilter {
+  from: String
+  location: String
+  name: String
+  providers: [String]
+  to: String
+}
+
+enum ImportedEventSort {
+  CREATED_AT
+  ENDS_AT
+  MODIFIED_AT
+  STARTS_AT
+}
+
+type InstagramPostBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  postID: String
+  type: BlockType!
+}
+
+input InstagramPostBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  postID: String
+}
+
+type Invoice implements HasOptionalSubscription {
+  canceledAt: DateTime
+  createdAt: DateTime!
+  currency: Currency!
+  description: String
+  dueAt: DateTime!
+  id: String!
+  items: [InvoiceItem!]!
+  mail: String!
+  manuallySetAsPaidByUser: User
+  manuallySetAsPaidByUserId: String
+  modifiedAt: DateTime!
+  paidAt: DateTime
+  scheduledDeactivationAt: DateTime!
+  subscription: PublicSubscription
+  subscriptionID: String
+  total: Int!
+}
+
+type InvoiceConnection {
+  nodes: [Invoice!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input InvoiceFilter {
+  canceledAt: DateFilter
+  mail: String
+  paidAt: DateFilter
+  subscriptionID: String
+  userID: String
+}
+
+type InvoiceItem {
+  amount: Int!
+  createdAt: DateTime!
+  description: String
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+  quantity: Int!
+  total: Int!
+}
+
+input InvoiceItemInput {
+  amount: Int!
+  description: String
+  name: String!
+  quantity: Int!
+}
+
+enum InvoiceSort {
+  CreatedAt
+  ModifiedAt
+  PaidAt
+}
+
+"""
+The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSONObject
+
+type ListicleBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  items: [ListicleItem!]!
+  type: BlockType!
+}
+
+input ListicleBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  items: [ListicleItemInput!]!
+}
+
+type ListicleItem implements HasImage {
+  image: Image
+  imageID: String
+  richText: RichText!
+  title: String
+}
+
+input ListicleItemInput {
+  imageID: String
+  richText: RichText!
+  title: String
+}
+
+enum LoginStatus {
+  ALL
+  LOGGED_IN
+  LOGGED_OUT
+  PAYWALL_BYPASSED
+  SUBSCRIBED
+  UNSUBSCRIBED
+}
+
+type MailPlaceholderGroupModel {
+  event: String!
+  placeholders: [MailPlaceholderModel!]!
+}
+
+type MailPlaceholderModel {
+  example: String!
+  key: String!
+}
+
+type MailProviderModel {
+  name: String!
+
+  """Provider type (e.g. MAILCHIMP, MAILGUN, SLACK)"""
+  type: String
+}
+
+enum MailProviderType {
+  MAILCHIMP
+  MAILGUN
+  SLACK
+}
+
+type MailTemplateContentModel {
+  html: String!
+  subject: String
+}
+
+input MailTemplateCreateInput {
+  description: String
+  html: String!
+  name: String!
+  subject: String
+}
+
+type MailTemplateRef {
+  id: String!
+  name: String!
+}
+
+input MailTemplateUpdateInput {
+  description: String
+  html: String!
+  name: String!
+  subject: String
+}
+
+type MailTemplateWithUrlAndStatusModel {
+  """HTML content of the template fetched from the mail provider"""
+  content: MailTemplateContentModel!
+  description: String
+  externalMailTemplateId: String!
+  id: String!
+  name: String!
+  remoteMissing: Boolean!
+  status: String!
+  url: String!
+}
+
+type MailchimpInterestGroup {
+  id: String!
+  name: String!
+}
+
+type MailchimpList {
+  id: String!
+  memberCount: Int!
+  name: String!
+}
+
+type MailchimpMergeField {
+  name: String!
+  tag: String!
+  type: String!
+}
+
+type MailchimpSyncDryRunChange {
+  email: String!
+  interests: JSONObject!
+  isNew: Boolean!
+  mergeFields: JSONObject!
+  previousInterests: JSONObject
+  previousMergeFields: JSONObject
+}
+
+type MailchimpSyncDryRunResult {
+  changes: [MailchimpSyncDryRunChange!]!
+  skippedCount: Int!
+  totalUserCount: Int!
+  updatedCount: Int!
+}
+
+type MailchimpSyncErrorList {
+  nodes: [MailchimpSyncErrorType!]!
+  totalCount: Int!
+}
+
+type MailchimpSyncErrorType {
+  createdAt: DateTime!
+  email: String!
+  errorMessage: String!
+  id: String!
+  statusCode: Int
+  syncProviderId: String!
+  userId: String!
+}
+
+type MailchimpSyncProgressType {
+  errorMessage: String
+  errors: Int!
+  finishedAt: DateTime
+  processed: Int!
+  skipped: Int!
+  startedAt: DateTime!
+  status: String!
+  total: Int!
+  updated: Int!
+}
+
+type MemberPlan implements HasImage {
+  active: Boolean!
+  amountPerMonthMax: Int
+  amountPerMonthMin: Int!
+  amountPerMonthTarget: Int
+  availablePaymentMethods: [AvailablePaymentMethod!]!
+  confirmationPage: Page
+  confirmationPageId: String
+  currency: Currency!
+  description: RichText
+  extendable: Boolean!
+  externalReward: String
+  failPage: Page
+  failPageId: String
+  id: String!
+  image: Image
+  imageID: String
+  maxCount: Int
+  migrateToTargetPaymentMethod: PaymentMethod
+  migrateToTargetPaymentMethodID: String
+  name: String!
+  productType: ProductType!
+  shortDescription: RichText
+  slug: String!
+  successPage: Page
+  successPageId: String
+  tags: [String!]
+}
+
+input MemberPlanFilter {
+  active: Boolean
+  name: String
+  productType: ProductType
+  tags: [String!]
+}
+
+enum MemberPlanSort {
+  CreatedAt
+  ModifiedAt
+}
+
+type Mutation {
+  """Adds a new comment made by you."""
+  addUserComment(challenge: ChallengeInput, guestUsername: String, itemID: String!, itemType: CommentItemType!, parentID: String, text: RichText!, title: String): Comment!
+
+  """Approves a comment"""
+  approveComment(id: String!): Comment!
+
+  """Cancels a subscription."""
+  cancelSubscription(
+    id: String!
+    reason: SubscriptionDeactivationReason!
+
+    """
+    When true, suppress the subscription-deactivation mail. Useful for bulk migrations of already-cancelled subscriptions.
+    """
+    skipMail: Boolean
+  ): PublicSubscription!
+
+  """
+  This mutation allows to update the user's subscription by taking an input of type UserSubscription and throws an error if the user doesn't already have a subscription. Updating user subscriptions will set deactivation to null
+  """
+  cancelUserSubscription(id: String!): PublicSubscription
+
+  """Confirms a pending email change for the logged-in user."""
+  confirmEmailChange(newEmail: String!): SensitiveDataUser!
+
+  """Creates an article."""
+  createArticle(authorIds: [String!]!, blocks: [BlockContentInput!]!, breaking: Boolean!, canonicalUrl: String, disableComments: Boolean!, hidden: Boolean!, hideAuthor: Boolean!, imageID: String, lead: String, likes: Int, paywallId: String, preTitle: String, properties: [PropertyInput!]!, seoTitle: String, shared: Boolean!, slug: String, socialMediaAuthorIds: [String!]!, socialMediaDescription: String, socialMediaImageID: String, socialMediaTitle: String, tagIds: [String!]!, title: String): Article!
+
+  """Creates a new author."""
+  createAuthor(bio: RichText, hideOnArticle: Boolean!, hideOnTeam: Boolean!, hideOnTeaser: Boolean!, imageID: String, jobTitle: String, links: [AuthorLinkInput!]!, name: String!, slug: Slug!, tagIds: [String!]!): Author!
+  createBanner(input: CreateBannerInput!): Banner!
+
+  """Creates a new block style."""
+  createBlockStyle(blocks: [EditorBlockType!]!, name: String!): BlockStyle!
+
+  """Creates a comment for any user"""
+  createComment(itemID: String!, itemType: CommentItemType!, lead: String, parentID: String, tagIds: [String!], text: RichText): Comment!
+
+  "\n      Create a new consent.\n    "
+  createConsent(defaultValue: Boolean!, name: String!, slug: String!): Consent!
+
+  """Create a new crowdfunding"""
+  createCrowdfunding(input: CreateCrowdfundingInput!): Crowdfunding!
+
+  """Creates a new event."""
+  createEvent(description: RichText, endsAt: DateTime, imageId: String, lead: String, location: String, name: String!, startsAt: DateTime!, status: EventStatus! = Scheduled, tagIds: [String!]): Event!
+
+  """Creates a new external app."""
+  createExternalApp(input: CreateExternalAppInput!): ExternalApp!
+
+  """
+  Generates a short-lived JWT token for authenticating with an external app.
+  """
+  createExternalAppToken(externalAppId: String!): ExternalAppToken!
+
+  """Creates a new invoice."""
+  createInvoice(currency: Currency!, description: String, dueAt: DateTime!, items: [InvoiceItemInput!]!, mail: String!, manuallySetAsPaidByUserId: String, scheduledDeactivationAt: DateTime!, subscriptionID: String): Invoice!
+
+  """Returns a JWT that can be used to login as another user."""
+  createJWTForUser(expiresInMinutes: Float!, userId: String!): SessionWithToken!
+
+  """Returns a JWT that is valid for 1min for the current logged in user."""
+  createJWTForWebsiteLogin: SessionWithToken!
+  createMailTemplate(input: MailTemplateCreateInput!): MailTemplateWithUrlAndStatusModel!
+
+  """Creates a new memberplan."""
+  createMemberPlan(active: Boolean!, amountPerMonthMax: Int, amountPerMonthMin: Int!, amountPerMonthTarget: Int, availablePaymentMethods: [AvailablePaymentMethodInput!]!, confirmationPageId: String, currency: Currency!, description: RichText, extendable: Boolean!, externalReward: String, failPageId: String, imageID: String, maxCount: Int, migrateToTargetPaymentMethodID: String, name: String!, productType: ProductType!, shortDescription: RichText, slug: String!, successPageId: String, tags: [String!]): MemberPlan!
+
+  """Creates a new navigation."""
+  createNavigation(key: String!, links: [NavigationLinkInput!]!, name: String!): Navigation!
+
+  """Creates an page."""
+  createPage(blocks: [BlockContentInput!]!, description: String, hidden: Boolean!, imageID: String, properties: [PropertyInput!]!, slug: String, socialMediaDescription: String, socialMediaImageID: String, socialMediaTitle: String, tagIds: [String!]!, title: String): Page!
+
+  """
+  This mutation allows to create payment by taking an input of type PaymentFromInvoiceInput.
+  """
+  createPaymentFromInvoice(input: PaymentFromInvoiceInput!): Payment
+
+  """This mutation allows to create payment by referencing a subscription."""
+  createPaymentFromSubscription(failureURL: String, subscriptionId: String, successURL: String): Payment
+
+  """Creates a new payment method."""
+  createPaymentMethod(active: Boolean!, description: String!, gracePeriod: Int!, imageId: String, name: String!, paymentProviderID: String!, slug: Slug!): PaymentMethod!
+
+  """Creates a paywall."""
+  createPaywall(active: Boolean!, alternativeSubscribeUrl: String, anyMemberPlan: Boolean!, bypassTokens: [String!]!, circumventDescription: RichText, description: RichText, fadeout: Boolean!, hideContentAfter: Int!, memberPlanIds: [String!]!, name: String, upgradeCircumventDescription: RichText, upgradeDescription: RichText): Paywall!
+
+  """Creates a new peer."""
+  createPeer(hostURL: String!, information: RichText, isDisabled: Boolean, name: String!, slug: String!, token: String!): Peer!
+
+  """Creates a new poll."""
+  createPoll(closedAt: DateTime, infoText: RichText, opensAt: DateTime!, question: String): FullPoll!
+
+  """Creates a new poll answer."""
+  createPollAnswer(answer: String, pollId: String!): PollAnswer!
+
+  """Creates a new external vote source."""
+  createPollExternalVoteSource(pollId: String!, source: String): PollExternalVoteSource!
+
+  """Creates a rating system answer."""
+  createRatingSystemAnswer(answer: String, ratingSystemId: String!, type: RatingSystemType!): CommentRatingSystemAnswer!
+  createSession(email: String!, password: String!, totpToken: String): SessionWithToken!
+  createSessionWithJWT(jwt: String!, totpToken: String): SessionWithToken!
+
+  """Creates a new subscription."""
+  createSubscription(autoRenew: Boolean!, extendable: Boolean!, memberPlanID: String!, monthlyAmount: Int!, paidUntil: DateTime, paymentMethodID: String!, paymentPeriodicity: PaymentPeriodicity!, properties: [PropertyInput!]!, startsAt: DateTime!, userID: String!): PublicSubscription!
+
+  """Create a new subscription flow"""
+  createSubscriptionFlow(autoRenewal: [Boolean!]!, memberPlanId: String!, paymentMethodIds: [String!]!, periodicities: [PaymentPeriodicity!]!): [SubscriptionFlowModel!]!
+
+  """Create a subscription interval"""
+  createSubscriptionInterval(daysAwayFromEnding: Int, event: SubscriptionEvent!, mailTemplateId: String, subscriptionFlowId: String!): [SubscriptionFlowModel!]!
+
+  """Creates a new tag."""
+  createTag(color: Color, description: RichText, main: Boolean! = false, tag: String, type: TagType!): Tag!
+
+  """Creates a token and returns it's secret once."""
+  createToken(name: String!): TokenWithSecret!
+
+  """Creates a new user."""
+  createUser(
+    active: Boolean!
+    address: UserAddressInput
+    birthday: DateTime
+    email: String!
+    emailVerifiedAt: DateTime
+    firstName: String
+    flair: String
+    name: String!
+    note: String
+    password: String
+    properties: [PropertyInput!]!
+    roleIDs: [String!]!
+
+    """
+    When true, suppress the ACCOUNT_CREATION welcome email. Useful for bulk imports and scripted user creation.
+    """
+    skipMail: Boolean
+    totpExempt: Boolean
+    userImageID: String
+  ): SensitiveDataUser!
+
+  "\n      Creates a new userConsent based on input.\n      Returns created userConsent.\n    "
+  createUserConsent(consentId: String!, userId: String!, value: Boolean!): UserConsent!
+
+  """Creates a new userrole."""
+  createUserRole(description: String, name: String!, permissionIDs: [String!]!): UserRole!
+
+  """Allows authenticated users to create additional subscriptions"""
+  createUserSubscription(autoRenew: Boolean!, deactivateSubscriptionId: String, failureURL: String, memberPlanID: String, memberPlanSlug: Slug, monthlyAmount: Int!, paymentMethodID: String, paymentMethodSlug: Slug, paymentPeriodicity: PaymentPeriodicity!, subscriptionProperties: [PropertyInput!], successURL: String, voucher: String): Payment!
+
+  """
+  Allows guests and authenticated users to create additional subscriptions
+  """
+  createUserSubscriptionWithConfirmation(autoRenew: Boolean!, memberPlanID: String, memberPlanSlug: Slug, monthlyAmount: Int!, paymentMethodID: String, paymentMethodSlug: Slug, paymentPeriodicity: PaymentPeriodicity!, subscriptionProperties: [PropertyInput!], userId: String, voucher: String): Boolean!
+
+  """Creates a new voucher."""
+  createVoucher(code: String!, discountPercent: Int!, memberPlanId: String!, validFrom: DateTime!, validTo: DateTime!): Voucher!
+
+  """Deletes all sync errors for a config so all contacts will be retried."""
+  deleteAllMailchimpSyncErrors(configId: String!): Boolean!
+
+  """Deletes an article."""
+  deleteArticle(id: String!): String!
+
+  """Deletes an existing author."""
+  deleteAuthor(id: String!): Author!
+  deleteBanner(id: String!): Boolean
+
+  """Deletes an existing block style."""
+  deleteBlockStyle(id: String!): BlockStyle!
+
+  """Deletes a comment"""
+  deleteComment(id: String!): Comment!
+
+  "\n      Deletes an existing consent.\n    "
+  deleteConsent(id: String!): Consent!
+  deleteCrowdfunding(id: String!): Boolean
+
+  """Deletes an existing document."""
+  deleteDocument(id: String!): String!
+
+  """Deletes an existing event."""
+  deleteEvent(id: String!): Event!
+
+  """Deletes an external app."""
+  deleteExternalApp(id: String!): ExternalApp!
+
+  """Deletes an existing image."""
+  deleteImage(id: String!): String!
+
+  """Deletes an existing invoice."""
+  deleteInvoice(id: String!): Invoice!
+  deleteMailTemplate(id: ID!): MailTemplateWithUrlAndStatusModel!
+
+  """Deletes a single sync error so the contact will be retried."""
+  deleteMailchimpSyncError(id: String!): Boolean!
+
+  """Deletes an existing memberplan."""
+  deleteMemberPlan(id: String!): MemberPlan!
+
+  """Deletes an existing navigation."""
+  deleteNavigation(id: String!): Navigation!
+
+  """Deletes an page."""
+  deletePage(id: String!): String!
+
+  """Deletes an existing payment method."""
+  deletePaymentMethod(id: String!): PaymentMethod!
+
+  """Deletes a paywall."""
+  deletePaywall(id: String!): Paywall!
+
+  """Deletes an existing peer."""
+  deletePeer(id: String!): String!
+
+  """Deletes an existing poll."""
+  deletePoll(id: String!): FullPoll!
+
+  """Deletes an existing poll answer."""
+  deletePollAnswer(id: String!): PollAnswer!
+
+  """Deletes an existing external vote source."""
+  deletePollExternalVoteSource(id: String!): PollExternalVoteSource!
+
+  """Delete poll votes"""
+  deletePollVotes(ids: [String!]!): DeletePollVotesResult!
+
+  """Deletes a rating system answer."""
+  deleteRatingSystemAnswer(id: String!): CommentRatingSystemAnswer!
+
+  """Deletes an existing subscription."""
+  deleteSubscription(id: String!): PublicSubscription!
+
+  """Delete an existing subscription flow"""
+  deleteSubscriptionFlow(id: String!): [SubscriptionFlowModel!]!
+
+  """Delete an existing subscription interval"""
+  deleteSubscriptionInterval(id: String!): [SubscriptionFlowModel!]!
+
+  """Deletes an existing tag."""
+  deleteTag(id: String!): Tag!
+
+  """Deletes a token."""
+  deleteToken(id: String!): Token!
+
+  """Deletes an existing user."""
+  deleteUser(id: String!): SensitiveDataUser!
+
+  "\n      Delete an existing userConsent by id.\n      Returns deleted userConsent.\n    "
+  deleteUserConsent(id: String!): UserConsent!
+
+  """Deletes an existing userrole."""
+  deleteUserRole(id: String!): UserRole!
+
+  """Deletes an existing voucher."""
+  deleteVoucher(id: String!): Voucher!
+
+  """Dislikes an article."""
+  dislikeArticle(id: String!): Article!
+
+  """
+  Simulates a mailchimp sync without making changes. Returns what would be updated.
+  """
+  dryRunMailchimpSync(id: String!, limit: Int): MailchimpSyncDryRunResult!
+
+  """Duplicates an article."""
+  duplicateArticle(id: String!): Article!
+
+  """Duplicates an page."""
+  duplicatePage(id: String!): Page!
+
+  """
+  Enables two-factor authentication for the current user after verifying the TOTP token.
+  """
+  enableTotp(totpToken: String!): Boolean!
+
+  """Allows authenticated users to extend existing subscriptions"""
+  extendUserSubscription(failureURL: String, subscriptionId: String!, successURL: String): Payment!
+
+  """
+  Generates a TOTP setup for the current user. Returns a QR code and secret for authenticator app configuration.
+  """
+  generateTotpSetup(
+    """
+    Set to true when called from a website to use the site name instead of "We.Publish CMS" in the authenticator app.
+    """
+    website: Boolean
+  ): TotpSetup!
+
+  "\n      Creates and event based on data from importable events list and an id and provider.\n      Also, uploads an image to WePublish Image library.\n    "
+  importEvent(id: String!, source: String!): String!
+
+  """Imports an article from a peer as a draft."""
+  importPeerArticle(articleId: String!, options: ImportArticleOptions! = {importAuthors: true, importContentImages: true, importTags: true}, peerId: String!): Article!
+
+  """Imports a subscription."""
+  importSubscription(
+    autoRenew: Boolean!
+    extendable: Boolean!
+    memberPlanID: String!
+    monthlyAmount: Int!
+    paidUntil: DateTime
+    paymentMethodID: String!
+    paymentPeriodicity: PaymentPeriodicity!
+    properties: [PropertyInput!]!
+
+    """
+    When true, suppress any subscription / invoice mail dispatched as part of this import. Useful for bulk migrations.
+    """
+    skipMail: Boolean
+    startsAt: DateTime!
+    userID: String!
+  ): PublicSubscription!
+
+  """Likes an article."""
+  likeArticle(id: String!): Article!
+
+  """Marks an invoice as paid."""
+  markInvoiceAsPaid(id: String!): Invoice!
+
+  """Publishes an article at the given time."""
+  publishArticle(id: String!, publishedAt: DateTime!): Article!
+
+  """Publishes an page at the given time."""
+  publishPage(id: String!, publishedAt: DateTime!): Page!
+
+  """
+  This mutation allows to rate a comment. Supports logged in and anonymous
+  """
+  rateComment(answerId: String!, commentId: String!, value: Int!): Comment!
+
+  """
+  This mutation registers a new member by providing name, email, and other required information.
+  """
+  registerMember(address: UserAddressInput, birthday: DateTime, challengeAnswer: ChallengeInput!, email: String!, firstName: String, flair: String, name: String!, password: String): Registration!
+
+  """Rejects a comment"""
+  rejectComment(id: String!, rejectionReason: CommentRejectionReason!): Comment!
+
+  """Renews a subscription."""
+  renewSubscription(id: String!): PublicSubscription!
+
+  """Requests the user to change the comment's content"""
+  requestChangesOnComment(id: String!, rejectionReason: CommentRejectionReason!): Comment!
+
+  """
+  Requests an email change. A confirmation link is sent to the current email address.
+  """
+  requestEmailChange(newEmail: String!): Boolean!
+
+  """Resets the password of a user."""
+  resetPassword(id: String!, password: String): SensitiveDataUser!
+
+  """
+  Resets the password using a token from the password reset email. Does not create a session.
+  """
+  resetPasswordWithToken(password: String!, token: String!): Boolean!
+
+  """
+  Resets the two-factor authentication configuration for a user. The user will need to set up 2FA again on next login.
+  """
+  resetUserTotp(userId: String!): Boolean!
+
+  """This mutation revokes and deletes the active session."""
+  revokeActiveSession: Boolean!
+
+  """
+  This mutation sends a login link to the email if the user exists. Method will always return email address
+  """
+  sendJWTLogin(email: String!): String!
+
+  """
+  Sends a password reset email with a scoped JWT token. Always returns the email to prevent enumeration.
+  """
+  sendPasswordResetEmail(email: String!): String!
+
+  """
+  This mutation sends a login link to the email if the user exists. Method will always return email address
+  """
+  sendWebsiteLogin(email: String!): String!
+  syncTemplates: Boolean
+
+  """Sends a test email for the given event"""
+  testSystemMail(event: UserEvent!): Boolean!
+
+  """Triggers a mailchimp sync in the background."""
+  triggerMailchimpSync(id: String!): Boolean!
+
+  """Unpublishes all revisions of an article."""
+  unpublishArticle(id: String!): Article!
+
+  """Unpublishes all revisions of an page."""
+  unpublishPage(id: String!): Page!
+
+  """Updates an existing AI provider setting."""
+  updateAISetting(apiKey: String, id: String, name: String, systemPrompt: String): SettingAIProvider!
+
+  """Updates an existing analytics provider setting."""
+  updateAnalyticsProviderSetting(articlePrefix: String, credentials: SettingAnalyticsCredentialsInput, id: String, name: String, property: String): SettingAnalyticsProvider!
+
+  """Updates an article."""
+  updateArticle(authorIds: [String!]!, blocks: [BlockContentInput!]!, breaking: Boolean!, canonicalUrl: String, disableComments: Boolean!, hidden: Boolean!, hideAuthor: Boolean!, id: String!, imageID: String, lead: String, likes: Int, paywallId: String, preTitle: String, properties: [PropertyInput!]!, seoTitle: String, shared: Boolean!, slug: String, socialMediaAuthorIds: [String!]!, socialMediaDescription: String, socialMediaImageID: String, socialMediaTitle: String, tagIds: [String!]!, title: String): Article!
+
+  """Updates an existing author."""
+  updateAuthor(bio: RichText, hideOnArticle: Boolean, hideOnTeam: Boolean, hideOnTeaser: Boolean, id: String!, imageID: String, jobTitle: String, links: [AuthorLinkInput!], name: String, slug: Slug, tagIds: [String!]): Author!
+  updateBanner(input: UpdateBannerInput!): Banner!
+
+  """Updates an existing block style."""
+  updateBlockStyle(blocks: [EditorBlockType!], id: String!, name: String): BlockStyle!
+
+  """Updates an existing challenge provider setting."""
+  updateChallengeProviderSetting(id: String, name: String, secret: String, siteKey: String): SettingChallengeProvider!
+
+  """Update any existing comment"""
+  updateComment(featured: Boolean, guestUserImageID: String, guestUsername: String, id: String!, ratingOverrides: [OverriddenRatingInput!], revision: CommentRevisionInput, source: String, tagIds: [String!], userID: String): Comment!
+
+  "\n      Updates an existing consent.\n    "
+  updateConsent(defaultValue: Boolean, id: String!, name: String, slug: String): Consent!
+
+  """Updates a single crowdfunding"""
+  updateCrowdfunding(input: UpdateCrowdfundingInput!): Crowdfunding!
+
+  """Updates the current logged in user."""
+  updateCurrentUser(address: UserAddressInput, birthday: DateTime, challengeAnswer: ChallengeInput, firstName: String, flair: String, name: String, password: String): SensitiveDataUser!
+
+  """Updates an existing document."""
+  updateDocument(description: String, id: String!, title: String): Document!
+
+  """Updates an existing event."""
+  updateEvent(description: RichText, endsAt: DateTime, id: String!, imageId: String, lead: String, location: String, name: String, startsAt: DateTime, status: EventStatus = Scheduled, tagIds: [String!]): Event!
+
+  """Updates an existing external app."""
+  updateExternalApp(description: String, icon: String, id: String!, name: String, target: ExternalAppsTarget, url: String): ExternalApp!
+
+  """Updates an existing image."""
+  updateImage(description: String, filename: String, focalPointX: Float = 0.5, focalPointY: Float = 0.5, id: String!, license: String, link: String, source: String, tags: [String!], title: String): Image!
+
+  """Updates an existing invoice."""
+  updateInvoice(currency: Currency, description: String, dueAt: DateTime, id: String!, items: [InvoiceItemInput!], mail: String, manuallySetAsPaidByUserId: String, scheduledDeactivationAt: DateTime, subscriptionID: String): Invoice!
+
+  """Updates an existing mail provider setting."""
+  updateMailProviderSetting(apiKey: String, fromAddress: String, id: String, mailchimp_baseURL: String, mailgun_baseDomain: String, mailgun_mailDomain: String, name: String, replyToAddress: String, slack_webhookURL: String, webhookEndpointSecret: String): SettingMailProvider!
+  updateMailTemplate(id: ID!, input: MailTemplateUpdateInput!): MailTemplateWithUrlAndStatusModel!
+
+  """Updates an existing memberplan."""
+  updateMemberPlan(active: Boolean, amountPerMonthMax: Int, amountPerMonthMin: Int, amountPerMonthTarget: Int, availablePaymentMethods: [AvailablePaymentMethodInput!], confirmationPageId: String, currency: Currency, description: RichText, extendable: Boolean, externalReward: String, failPageId: String, id: String!, imageID: String, maxCount: Int, migrateToTargetPaymentMethodID: String, name: String, productType: ProductType, shortDescription: RichText, slug: String, successPageId: String, tags: [String!]): MemberPlan!
+
+  """Updates an existing navigation."""
+  updateNavigation(id: String!, key: String!, links: [NavigationLinkInput!]!, name: String!): Navigation!
+
+  """Updates an page."""
+  updatePage(blocks: [BlockContentInput!]!, description: String, hidden: Boolean!, id: String!, imageID: String, properties: [PropertyInput!]!, slug: String, socialMediaDescription: String, socialMediaImageID: String, socialMediaTitle: String, tagIds: [String!]!, title: String): Page!
+
+  """
+  This mutation allows to update the user's password by entering the new password. The repeated new password gives an error if the passwords don't match or if the user is not authenticated.
+  """
+  updatePassword(password: String!, passwordRepeated: String!): SensitiveDataUser!
+
+  """Updates an existing payment method."""
+  updatePaymentMethod(active: Boolean, description: String, gracePeriod: Int, id: String!, imageId: String, name: String, paymentProviderID: String, slug: Slug): PaymentMethod!
+
+  """Updates an existing payment provider setting."""
+  updatePaymentProviderSetting(apiKey: String, bexio_accountId: Float, bexio_countryId: Float, bexio_invoiceMailBodyNewMembership: String, bexio_invoiceMailBodyRenewalMembership: String, bexio_invoiceMailSubjectNewMembership: String, bexio_invoiceMailSubjectRenewalMembership: String, bexio_invoiceTemplateNewMembership: String, bexio_invoiceTemplateRenewalMembership: String, bexio_invoiceTitleNewMembership: String, bexio_invoiceTitleRenewalMembership: String, bexio_markInvoiceAsOpen: Boolean, bexio_taxId: Float, bexio_unitId: Float, bexio_userId: Float, id: String, mollie_apiBaseUrl: String, mollie_methods: [PaymentMethodMollie!], name: String, offSessionPayments: Boolean, payrexx_instancename: String, payrexx_pm: [PayrexxPM!], payrexx_psp: [PayrexxPSP!], payrexx_vatrate: String, stripe_methods: [StripePaymentMethod!], webhookEndpointSecret: String): SettingPaymentProvider!
+
+  """Updates a paywall."""
+  updatePaywall(active: Boolean, alternativeSubscribeUrl: String, anyMemberPlan: Boolean, bypassTokens: [String!], circumventDescription: RichText, description: RichText, fadeout: Boolean, hideContentAfter: Int, id: String!, memberPlanIds: [String!], name: String, upgradeCircumventDescription: RichText, upgradeDescription: RichText): Paywall!
+
+  """Updates an existing peer."""
+  updatePeer(hostURL: String, id: String!, information: RichText, isDisabled: Boolean, name: String, slug: String, token: String): Peer!
+
+  """Updates the peer profile of the current media."""
+  updatePeerProfile(callToActionImageID: String!, callToActionImageURL: String, callToActionText: RichText!, callToActionURL: String!, logoID: String!, name: String!, squareLogoId: String!, themeColor: Color!, themeFontColor: Color!): PeerProfile!
+
+  """Updates an existing poll."""
+  updatePoll(answers: [PollAnswerInput!]!, closedAt: DateTime, externalVoteSources: [PollExternalVoteSourceInput!]!, id: String!, infoText: RichText, opensAt: DateTime, question: String): FullPoll!
+
+  """Update the comment rating system."""
+  updateRatingSystem(answers: [UpdateCommentRatingSystemAnswerInput!], id: String!, name: String): CommentRatingSystem!
+
+  """Updates an existing setting."""
+  updateSetting(name: SettingName!, value: GraphQLSettingValueType): Setting!
+
+  """Updates an existing subscription."""
+  updateSubscription(autoRenew: Boolean, extendable: Boolean, id: String!, memberPlanID: String, monthlyAmount: Int, paidUntil: DateTime, paymentMethodID: String, paymentPeriodicity: PaymentPeriodicity, properties: [PropertyInput!], startsAt: DateTime, userID: String): PublicSubscription!
+
+  """Update an existing subscription flow"""
+  updateSubscriptionFlow(autoRenewal: [Boolean!], id: String!, paymentMethodIds: [String!], periodicities: [PaymentPeriodicity!]): [SubscriptionFlowModel!]!
+
+  """Update an existing subscription interval"""
+  updateSubscriptionInterval(daysAwayFromEnding: Int, id: String!, mailTemplateId: String): [SubscriptionFlowModel!]!
+
+  """Updates an existing sync provider setting."""
+  updateSyncProviderSetting(enabled: Boolean, id: String!, mailchimp_apiKey: String, mailchimp_defaultInterestGroupIds: [String!], mailchimp_extensions: JSONObject, mailchimp_interestGroupMappings: [JSONObject!], mailchimp_listId: String, mailchimp_mergeFieldMappings: [JSONObject!], name: String): SettingSyncProvider!
+
+  """Updates an existing mail flow"""
+  updateSystemMail(event: UserEvent!, mailTemplateId: String!): [SystemMailModel!]!
+
+  """Updates an existing tag."""
+  updateTag(color: Color, description: RichText, id: String!, main: Boolean = false, tag: String, type: TagType): Tag!
+
+  """Updates an existing tracking pixel setting."""
+  updateTrackingPixelSetting(id: String, name: String, prolitteris_memberNr: String, prolitteris_onlyPaidContentAccess: Boolean, prolitteris_password: String, prolitteris_publisherInternalKeyDomain: String, prolitteris_usePublisherInternalKey: Boolean, prolitteris_username: String): SettingTrackingPixelProvider!
+
+  """Updates an existing user."""
+  updateUser(active: Boolean, address: UserAddressInput, birthday: DateTime, email: String, emailVerifiedAt: DateTime, firstName: String, flair: String, id: String, name: String, note: String, properties: [PropertyInput!], roleIDs: [String!], totpExempt: Boolean, userImageID: String): SensitiveDataUser!
+
+  """Updates a comment you made."""
+  updateUserComment(id: String!, lead: String, text: RichText, title: String): Comment!
+
+  "\n      Updates an existing userConsent based on input.\n      Returns updated userConsent.\n    "
+  updateUserConsent(id: String!, value: Boolean!): UserConsent!
+
+  """Updates an existing userrole."""
+  updateUserRole(description: String, id: String!, name: String, permissionIDs: [String!]): UserRole!
+
+  """
+  This mutation allows to update the user's subscription by taking an input of type UserSubscription and throws an error if the user doesn't already have a subscription. Updating user subscriptions will set deactivation to null
+  """
+  updateUserSubscription(id: String!, input: UpdateUserSubscriptionInput!): PublicSubscription
+
+  """Updates an existing voucher."""
+  updateVoucher(code: String, discountPercent: Int, id: String!, memberPlanId: String, validFrom: DateTime, validTo: DateTime): Voucher!
+
+  """"""
+  upgradeUserSubscription(failureURL: String, memberPlanId: String!, monthlyAmount: Int!, paymentMethodId: String!, subscriptionId: String!, successURL: String): Payment!
+
+  """Uploads a new document."""
+  uploadDocument(description: String, file: Upload!, filename: String, title: String): Document!
+
+  """Uploads a new image."""
+  uploadImage(description: String, file: Upload!, filename: String, focalPointX: Float! = 0.5, focalPointY: Float! = 0.5, license: String, link: String, source: String, tags: [String!]!, title: String): Image!
+
+  """This mutation allows to upload and update the user's profile image."""
+  uploadUserProfileImage(description: String, file: Upload!, filename: String, focalPointX: Float! = 0.5, focalPointY: Float! = 0.5, license: String, link: String, source: String, tags: [String!]!, title: String): SensitiveDataUser
+
+  """
+  This mutation allows to vote on a poll (or update one's decision). Supports logged in and anonymous
+  """
+  voteOnPoll(answerId: String!): PollVote
+}
+
+type Navigation {
+  createdAt: DateTime!
+  id: String!
+  key: String!
+  links: [BaseNavigationLink!]!
+  modifiedAt: DateTime!
+  name: String!
+}
+
+input NavigationLinkInput {
+  articleID: String
+  label: String!
+  pageID: String
+  type: String!
+  url: String
+}
+
+enum NavigationLinkType {
+  Article
+  External
+  Page
+}
+
+type OverriddenRating {
+  answerId: String!
+  value: Int
+}
+
+input OverriddenRatingInput {
+  answerId: String!
+  value: Int
+}
+
+type Page {
+  createdAt: DateTime!
+  draft: PageRevision
+  hidden: Boolean!
+  id: String!
+  latest: PageRevision!
+  modifiedAt: DateTime!
+  pending: PageRevision
+  previewUrl: String!
+  published: PageRevision
+  publishedAt: DateTime
+  slug: String
+  tags: [Tag!]!
+  url: String!
+}
+
+type PageCreatedAction implements BaseAction & HasPageLc {
+  actionType: ActionType!
+  date: DateTime!
+  page: Page!
+  pageId: String!
+}
+
+input PageFilter {
+  description: String
+  draft: Boolean
+  includeHidden: Boolean
+  pending: Boolean
+  publicationDateFrom: DateFilter
+  publicationDateTo: DateFilter
+  published: Boolean
+  tags: [String!]
+  title: String
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type PageModel {
+  id: String!
+}
+
+input PageModelInput {
+  id: String!
+}
+
+type PageNavigationLink implements BaseNavigationLink & HasPage {
+  createdAt: DateTime!
+  id: String!
+  label: String!
+  modifiedAt: DateTime!
+  page: Page!
+  pageID: String!
+  type: NavigationLinkType!
+}
+
+type PageRevision implements HasBlockContent {
+  blocks: [BlockContent!]!
+  createdAt: DateTime!
+  description: String
+  id: String!
+  image: Image
+  imageID: String
+  properties: [Property!]!
+  publishedAt: DateTime
+  socialMediaDescription: String
+  socialMediaImage: Image
+  socialMediaImageID: String
+  socialMediaTitle: String
+  title: String
+}
+
+enum PageSort {
+  CreatedAt
+  ModifiedAt
+  PublishedAt
+}
+
+type PageTeaser implements BaseTeaser & HasImage & HasOptionalPage {
+  image: Image
+  imageID: String
+  lead: String
+  page: Page
+  pageID: String
+  preTitle: String
+  title: String
+  type: String!
+}
+
+input PageTeaserInput {
+  imageID: String
+  lead: String
+  pageID: String
+  preTitle: String
+  title: String
+}
+
+type PaginatedArticles {
+  nodes: [Article!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedAuthors {
+  nodes: [Author!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedComments {
+  nodes: [Comment!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedDocuments {
+  nodes: [Document!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedEvents {
+  nodes: [Event!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedEventsFromSources {
+  nodes: [EventFromSource!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedImages {
+  nodes: [Image!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedMemberPlans {
+  nodes: [MemberPlan!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedPages {
+  nodes: [Page!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedPeerArticles {
+  nodes: [PeerArticle!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedPollVotes {
+  nodes: [PollVote!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedPolls {
+  nodes: [Poll!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedSensitiveDataUsers {
+  nodes: [SensitiveDataUser!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedTags {
+  nodes: [Tag!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedUserRoles {
+  nodes: [UserRole!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedVouchers {
+  nodes: [Voucher!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type Payment implements HasPaymentMethod {
+  id: String!
+  intentSecret: String!
+  paymentMethod: PaymentMethod!
+  paymentMethodID: String!
+  state: PaymentState!
+}
+
+input PaymentFromInvoiceInput {
+  failureURL: String
+  invoiceID: String!
+  paymentMethodID: String
+  paymentMethodSlug: Slug
+  successURL: String
+}
+
+type PaymentMethod implements HasImageLc {
+  active: Boolean!
+  createdAt: DateTime!
+  description: String!
+  gracePeriod: Int!
+  id: String!
+  image: Image
+  imageId: String
+  modifiedAt: DateTime!
+  name: String!
+  paymentProvider: PaymentProvider
+  paymentProviderID: String!
+  slug: Slug!
+}
+
+enum PaymentMethodMollie {
+  ALMA
+  APPLEPAY
+  BACS
+  BANCOMATPAY
+  BANCONTACT
+  BANKTRANSFER
+  BELFIUS
+  BILLIE
+  BLIK
+  CREDITCARD
+  DIRECTDEBIT
+  EPS
+  GIFTCARD
+  IDEAL
+  IN3
+  KBC
+  KLARNA
+  KLARNAPAYLATER
+  KLARNAPAYNOW
+  KLARNASLICEIT
+  MYBANK
+  PAYPAL
+  PAYSAFECARD
+  PRZELEWY24
+  RIVERTY
+  SATISPAY
+  TRUSTLY
+  TWINT
+  VOUCHER
+}
+
+enum PaymentPeriodicity {
+  biannual
+  biennial
+  lifetime
+  monthly
+  quarterly
+  yearly
+}
+
+type PaymentProvider {
+  id: String!
+  name: String
+}
+
+type PaymentProviderCustomer {
+  customerID: String!
+  paymentProviderID: String!
+}
+
+enum PaymentProviderType {
+  BEXIO
+  MOLLIE
+  NO_CHARGE
+  PAYREXX
+  PAYREXX_SUBSCRIPTION
+  STRIPE
+  STRIPE_CHECKOUT
+}
+
+enum PaymentState {
+  canceled
+  created
+  declined
+  paid
+  processing
+  requiresUserAction
+  submitted
+}
+
+enum PayrexxPM {
+  ALIPAY
+  AMAZON_PAY
+  AMERICAN_EXPRESS
+  APPLE_PAY
+  BANCONTACT
+  BANK_TRANSFER
+  CARTES_BANCAIRES
+  CRYPTO
+  DINERS_CLUB
+  DISCOVER
+  EPS
+  GIROPAY
+  GOOGLE_PAY
+  IDEAL
+  INVOICE
+  JCB
+  KLARNA
+  MAESTRO
+  MASTERCARD
+  PAYPAL
+  PAY_BY_BANK
+  POST_FINANCE_PAY
+  POWERPAY
+  PREPAYMENT
+  SAMSUNG_PAY
+  SEPA_DIRECT_DEBIT
+  SWISSCOM_PAY
+  TWINT
+  UNIONPAY
+  VERD_CASH
+  VISA
+  V_PAY
+  WECHAT_PAY
+}
+
+enum PayrexxPSP {
+  AMAZON_PAY
+  BARZAHLEN_VIACASH
+  BRAINTREE
+  CCAVENUE
+  CEMBRAPAY
+  CLEARHAUS_ACQUIRING
+  COINBASE
+  CONCARDIS_BASIC
+  CONCARDIS_PAYENGINE
+  CONCARDIS_PAY_ENGINE
+  DATATRANS
+  GIROPAY
+  INVOICE
+  KLARNA
+  MOLLIE
+  OGONE_ALIAS_GATEWAY
+  OGONE_BASIC
+  PAYONE
+  PAYPAL
+  PAYREXX_PAY
+  PAYREXX_PAYMENTS_BY_STRIPE
+  PAYREXX_PAY_PLUS
+  PAYSAFECASH
+  POINTS_PAY
+  POSTFINANCE_ALIAS_GATEWAY
+  POSTFINANCE_CHECKOUT
+  POSTFINANCE_ECOMMERCE
+  POWERPAY
+  REKA
+  SAFERPAY
+  SKRILL
+  STRIPE
+  SWISSBILLING
+  TWINT
+  UTRUST
+  VIVEUM
+  VORKASSE
+  VRPAY
+  WIRPAY
+  WORLDPAY
+}
+
+type Paywall {
+  active: Boolean!
+  alternativeSubscribeUrl: String
+  anyMemberPlan: Boolean!
+  bypasses: [PaywallBypass!]!
+  circumventDescription: RichText
+  createdAt: DateTime!
+  description: RichText
+  fadeout: Boolean!
+  hideContentAfter: Int!
+  id: String!
+  memberPlans: [MemberPlan!]!
+  modifiedAt: DateTime!
+  name: String
+  upgradeCircumventDescription: RichText
+  upgradeDescription: RichText
+}
+
+type PaywallBypass {
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  paywallId: String!
+  token: String!
+}
+
+type Peer {
+  createdAt: DateTime!
+  hostURL: String!
+  id: String!
+  information: RichText
+  isDisabled: Boolean
+  modifiedAt: DateTime!
+  name: String!
+  profile: RemotePeerProfile
+  slug: String!
+  token: String!
+}
+
+type PeerArticle implements HasOptionalPeerLc {
+  createdAt: DateTime!
+  id: String!
+  latest: PeerArticleRevision!
+  modifiedAt: DateTime!
+  peer: Peer
+  peerId: String
+  publishedAt: DateTime!
+  slug: String
+  url: String!
+}
+
+input PeerArticleFilter {
+  authors: [String!]
+  body: String
+  excludeIds: [String!]
+  ids: [String!]
+  lead: String
+  peerId: String
+  preTitle: String
+  publicationDateFrom: DateFilter
+  publicationDateTo: DateFilter
+  tags: [String!]
+  title: String
+}
+
+type PeerArticleRevision {
+  id: String!
+  image: PeerImage
+  lead: String
+  preTitle: String
+  seoTitle: String
+  title: String
+}
+
+type PeerImage {
+  createdAt: DateTime!
+  description: String
+  extension: String!
+  fileSize: Int!
+  filename: String
+  focalPointX: Float!
+  focalPointY: Float!
+  format: String!
+  height: Int!
+  id: String!
+  l: String
+  lSquare: String
+  license: String
+  link: String
+  m: String
+  mSquare: String
+  mimeType: String!
+  modifiedAt: DateTime!
+  peer: Peer
+  peerId: String
+  s: String
+  sSquare: String
+  source: String
+  tags: [String!]!
+  title: String
+  url: String!
+  width: Int!
+  xl: String
+  xlSquare: String
+  xs: String
+  xsSquare: String
+  xxl: String
+  xxlSquare: String
+  xxs: String
+  xxsSquare: String
+}
+
+type PeerProfile {
+  callToActionImage: Image
+  callToActionImageID: String
+  callToActionImageURL: String
+  callToActionText: RichText!
+  callToActionURL: String!
+  hostURL: String!
+  logo: Image
+  logoID: String
+  name: String!
+  squareLogo: Image
+  squareLogoId: String
+  themeColor: Color!
+  themeFontColor: Color!
+  websiteURL: String!
+}
+
+type PeriodicJob {
+  createdAt: DateTime!
+  date: DateTime!
+  error: String
+  executionTime: DateTime
+  finishedWithError: DateTime
+  id: String!
+  modifiedAt: DateTime!
+  successfullyFinished: DateTime
+  tries: Float!
+}
+
+type Permission {
+  deprecated: Boolean!
+  description: String!
+  id: String!
+}
+
+type Phrase {
+  articles: PaginatedArticles!
+  pages: PaginatedPages!
+}
+
+type PolisConversationBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  conversationID: String
+  disabled: Boolean
+  type: BlockType!
+}
+
+input PolisConversationBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  conversationID: String
+  disabled: Boolean
+}
+
+type Poll {
+  closedAt: DateTime
+  id: String!
+  infoText: RichText
+  opensAt: DateTime!
+  question: String
+}
+
+type PollAnswer {
+  answer: String
+  id: String!
+  pollId: String!
+  votes: Int!
+}
+
+type PollAnswerInVote {
+  answer: String!
+  id: String!
+}
+
+input PollAnswerInput {
+  answer: String
+  id: String!
+}
+
+type PollBlock implements BaseBlock & HasOptionalPoll {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  poll: FullPoll
+  pollId: String
+  type: BlockType!
+}
+
+input PollBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  pollId: String
+}
+
+type PollExternalVote {
+  amount: VoteValue!
+  answerId: String!
+  id: String!
+}
+
+input PollExternalVoteInput {
+  amount: VoteValue!
+  id: String!
+}
+
+type PollExternalVoteSource {
+  id: String!
+  source: String
+  voteAmounts: [PollExternalVote!]!
+}
+
+input PollExternalVoteSourceInput {
+  id: String!
+  source: String
+  voteAmounts: [PollExternalVoteInput!]!
+}
+
+input PollFilter {
+  openOnly: Boolean
+}
+
+enum PollSort {
+  CreatedAt
+  ModifiedAt
+  OpensAt
+}
+
+type PollStartedAction implements BaseAction & HasPoll {
+  actionType: ActionType!
+  date: DateTime!
+  poll: FullPoll!
+  pollId: String!
+}
+
+type PollVote {
+  answer: PollAnswerInVote!
+  answerId: String!
+  createdAt: DateTime!
+  disabled: Boolean!
+  fingerprint: String
+  id: String!
+  pollId: String!
+  userId: String
+}
+
+input PollVoteFilter {
+  answerIds: [String!]
+  fingerprint: String
+  from: DateTime
+  pollId: String
+  to: DateTime
+  userId: String
+}
+
+enum PollVoteSort {
+  CreatedAt
+}
+
+enum ProductType {
+  Donation
+  Subscription
+}
+
+type Property {
+  key: String!
+  public: Boolean!
+  value: String!
+}
+
+input PropertyInput {
+  id: String
+  key: String!
+  public: Boolean!
+  value: String!
+}
+
+type PublicSubscription implements HasMemberPlan & HasPaymentMethod & HasUser {
+  autoRenew: Boolean!
+  canExtend: Boolean!
+  confirmed: Boolean!
+  createdAt: DateTime!
+  currency: Currency!
+  deactivation: SubscriptionDeactivation
+  extendable: Boolean!
+  externalReward: String
+  id: String!
+  isActive: Boolean!
+  memberPlan: MemberPlan!
+  memberPlanID: String!
+  modifiedAt: DateTime!
+  monthlyAmount: Int!
+  paidUntil: DateTime
+  paymentMethod: PaymentMethod!
+  paymentMethodID: String!
+  paymentPeriodicity: PaymentPeriodicity!
+  periods: [SubscriptionPeriod!]!
+  properties: [Property!]!
+  startsAt: DateTime!
+  url: String!
+  user: User!
+  userID: String!
+}
+
+type PublicSubscriptionConnection {
+  nodes: [PublicSubscription!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type Query {
+  """Returns latest actions"""
+  actions: [Action!]!
+
+  "\n      Returns all active subscribers.\n      Includes subscribers with a cancelled but not run out subscription.\n    "
+  activeSubscribers: [DashboardSubscription!]!
+
+  """Returns a single AI provider setting by id."""
+  aiSetting(id: String!): SettingAIProvider!
+
+  """Returns all AI provider settings."""
+  aiSettings(filter: SettingAIProviderFilter): [SettingAIProvider!]!
+
+  """Returns a single analytics provider setting by id."""
+  analyticsProviderSetting(id: String!): SettingAnalyticsProvider!
+
+  """Returns all analytics provider settings."""
+  analyticsProviderSettings(filter: SettingAnalyticsProviderFilter): [SettingAnalyticsProvider!]!
+
+  """Returns an article by id or slug."""
+  article(id: String, slug: String): Article!
+
+  """Returns a paginated list of articles based on the filters given."""
+  articles(cursorId: String, filter: ArticleFilter, order: SortOrder = Descending, skip: Int = 0, sort: ArticleSort = PublishedAt, take: Int = 10): PaginatedArticles!
+
+  """Get an author by ID or slug"""
+  author(id: String, slug: String): Author
+
+  """Get a paginated list of authors with optional filtering and sorting"""
+  authors(cursorId: String, filter: AuthorFilter, order: SortOrder = Descending, skip: Int, sort: AuthorSort = ModifiedAt, take: Int): PaginatedAuthors!
+  banner(id: String!): Banner!
+  banners(skip: Int!, take: Int!): [Banner!]!
+
+  """Returns a list of block styles."""
+  blockStyles: [BlockStyle!]!
+
+  """
+  This query generates a challenge which can be used to access protected endpoints.
+  """
+  challenge: Challenge!
+
+  """Returns a single challenge provider setting by id."""
+  challengeProviderSetting(id: String!): SettingChallengeProvider!
+
+  """Returns all challenge provider settings."""
+  challengeProviderSettings(filter: SettingChallengeProviderFilter): [SettingChallengeProvider!]!
+
+  """
+  Check the status of an invoice and update with information from the payment provider
+  """
+  checkInvoiceStatus(id: String!): Invoice!
+
+  """
+  Checks whether a given email requires a TOTP code for login. Always returns true to prevent user enumeration.
+  """
+  checkLoginOtp(email: String!): Boolean!
+
+  """Returns a comment by id."""
+  comment(id: String!): Comment!
+
+  """Returns a paginated list of comments based on the filters given."""
+  comments(cursorId: String, filter: CommentFilter, order: SortOrder = Descending, skip: Int = 0, sort: CommentSort = ModifiedAt, take: Int = 10): PaginatedComments!
+
+  """Returns a sorted and nested list of comments for an item."""
+  commentsForItem(itemId: String!, itemType: CommentItemType!, order: SortOrder = Descending, sort: CommentSort = Rating): [Comment!]!
+
+  "\n      Returns a consent by id.\n    "
+  consent(id: String!): Consent!
+
+  "\n      Returns all consents.\n    "
+  consents(filter: ConsentFilter): [Consent!]!
+
+  """
+  Gives the user some information about the subscription they are about to create
+  """
+  createSubscriptionInfo(memberPlanId: String!, voucher: String): CreateSubscriptionInfo!
+
+  """Get a single crowdfunding by id"""
+  crowdfunding(id: String!): Crowdfunding!
+
+  """Returns a list of crowdfundings."""
+  crowdfundings: [Crowdfunding!]!
+
+  "\n      Returns daily stats in a given timeframe.\n    "
+  dailySubscriptionStats(end: DateTime, memberPlanIds: [String!], start: DateTime!): [DailySubscriptionStats!]!
+
+  """Returns a document by id."""
+  document(id: String!): Document!
+
+  """Returns the current document storage usage and limit."""
+  documentStorageUsage: DocumentStorageUsage!
+
+  """Returns a paginated list of documents based on the filters given."""
+  documents(cursorId: String, filter: DocumentFilter, order: SortOrder = Descending, skip: Int = 0, sort: DocumentSort = ModifiedAt, take: Int = 10): PaginatedDocuments!
+
+  """Returns an event by id."""
+  event(id: String!): Event!
+
+  "\n      Returns a list of Importable Event Providers\n    "
+  eventProviders: [String!]!
+
+  """Returns a paginated list of events based on the filters given."""
+  events(cursorId: String, filter: EventFilter, order: SortOrder = Ascending, skip: Int = 0, sort: EventSort = StartsAt, take: Int = 10): PaginatedEvents!
+
+  "\n      Returns the expected revenue for the time period given.\n      Excludes cancelled or manually set as paid invoices.\n    "
+  expectedRevenue(end: DateTime, start: DateTime!): [DashboardInvoice!]!
+
+  """Returns a single external app by id. Requires authentication."""
+  externalApp(id: String!): ExternalApp!
+
+  """Returns all external apps. Requires authentication."""
+  externalApps(filter: ExternalAppFilter): [ExternalApp!]!
+
+  """Returns images by tag."""
+  getImagesByTag(tag: String!): [Image!]!
+
+  "\n      Returns the most viewed articles in descending order.\n    "
+  hotAndTrending(start: DateTime, take: Int = 10): [Article!]!
+
+  """Returns a image by id."""
+  image(id: String!): Image!
+
+  """Returns a paginated list of images based on the filters given."""
+  images(cursorId: String, filter: ImageFilter, order: SortOrder = Descending, skip: Int = 0, sort: ImageSort = ModifiedAt, take: Int = 10): PaginatedImages!
+
+  "\n      Returns a more detailed version of a single importable event, by id and source.\n    "
+  importedEvent(filter: SingleEventFilter!): EventFromSource!
+
+  "\n      Returns a list of imported events from external sources, transformed to match our model.\n    "
+  importedEvents(filter: ImportedEventFilter, order: Int, skip: Int, sort: ImportedEventSort, take: Int): PaginatedEventsFromSources!
+
+  "\n      Returns a list of external source ids of already imported events.\n    "
+  importedEventsIds: [String!]!
+
+  """Returns a invoice by id."""
+  invoice(id: String!): Invoice!
+
+  """Returns a paginated list of invoices based on the filters given."""
+  invoices(cursorId: String, filter: InvoiceFilter, order: SortOrder = Ascending, skip: Int = 0, sort: InvoiceSort = ModifiedAt, take: Int = 10): InvoiceConnection!
+
+  """Returns a single mail provider setting by id."""
+  mailProviderSetting(id: String!): SettingMailProvider!
+
+  """Returns all mail provider settings."""
+  mailProviderSettings(filter: SettingMailProviderFilter): [SettingMailProvider!]!
+
+  """Return a single mail template"""
+  mailTemplate(id: ID!): MailTemplateWithUrlAndStatusModel!
+
+  """Return all available mail placeholders grouped by event"""
+  mailTemplatePlaceholders: [MailPlaceholderGroupModel!]!
+
+  """Return all mail templates"""
+  mailTemplates: [MailTemplateWithUrlAndStatusModel!]!
+
+  """Fetches available interest groups for a Mailchimp list."""
+  mailchimpInterestGroups(configId: String!, listId: String!): [MailchimpInterestGroup!]!
+
+  """Fetches available Mailchimp lists/audiences for a sync config."""
+  mailchimpLists(configId: String!): [MailchimpList!]!
+
+  """Fetches available merge fields for a Mailchimp list."""
+  mailchimpMergeFields(configId: String!, listId: String!): [MailchimpMergeField!]!
+
+  """Returns sync errors for a given config."""
+  mailchimpSyncErrors(configId: String!, skip: Int, take: Int): MailchimpSyncErrorList!
+
+  """Returns the current sync progress for a config."""
+  mailchimpSyncProgress(configId: String!): MailchimpSyncProgressType
+
+  """This query returns the user."""
+  me: SensitiveDataUser
+
+  """Returns a memberplan by id or slug."""
+  memberPlan(id: String, slug: Slug): MemberPlan!
+
+  """Returns a paginated list of memberplans based on the filters given."""
+  memberPlans(cursorId: String, filter: MemberPlanFilter, order: SortOrder = Ascending, skip: Int = 0, sort: MemberPlanSort = ModifiedAt, take: Int = 10): PaginatedMemberPlans!
+
+  """Returns a navigation by id."""
+  navigation(id: String!): Navigation!
+
+  """Returns a list of navigations."""
+  navigations: [Navigation!]!
+
+  "\n      Returns all new deactivations in a given timeframe.\n      This considers the time the deactivation was made, not when the subscription runs out.\n    "
+  newDeactivations(end: DateTime, start: DateTime!): [DashboardSubscription!]!
+
+  "\n      Returns all new subscribers in a given timeframe.\n      Includes already deactivated ones.\n    "
+  newSubscribers(end: DateTime, start: DateTime!): [DashboardSubscription!]!
+
+  """Returns an page by id or slug."""
+  page(id: String, slug: String): Page!
+
+  """Returns a paginated list of pages based on the filters given."""
+  pages(cursorId: String, filter: PageFilter, order: SortOrder = Descending, skip: Int = 0, sort: PageSort = PublishedAt, take: Int = 10): PaginatedPages!
+
+  """Returns a payment method by id"""
+  paymentMethod(id: String!): PaymentMethod!
+
+  """Returns all payment methods"""
+  paymentMethods: [PaymentMethod!]!
+
+  """Returns a single payment provider setting by id."""
+  paymentProviderSetting(id: String!): SettingPaymentProvider!
+
+  """Returns all payment provider settings."""
+  paymentProviderSettings(filter: SettingPaymentProviderFilter): [SettingPaymentProvider!]!
+
+  """Returns all payment providers"""
+  paymentProviders: [PaymentProvider!]!
+
+  """Returns an paywall by id."""
+  paywall(id: String!): Paywall!
+
+  """Returns a list of paywalls based on the filters given."""
+  paywalls: [Paywall!]!
+
+  """
+  This query takes either the ID or the slug and returns the peer profile.
+  """
+  peer(id: String, slug: String): Peer
+
+  """Returns a paginated list of peer articles based on the filters given."""
+  peerArticles(filter: PeerArticleFilter, order: SortOrder = Descending, skip: Int = 0, sort: ArticleSort = PublishedAt, take: Int = 10): PaginatedPeerArticles!
+
+  """This query returns the peer profile."""
+  peerProfile: PeerProfile!
+
+  """Returns a list of all peers."""
+  peers: [Peer!]!
+  periodicJobLog(skip: Int, take: Int = 10): [PeriodicJob!]!
+
+  """Returns a list of all permissions."""
+  permissions: [Permission!]!
+
+  """
+  This query performs a fulltext search on titles and blocks of articles/phrases and returns all matching ones.
+  """
+  phrase(articleSort: ArticleSort! = PublishedAt, order: SortOrder! = Descending, pageSort: PageSort! = PublishedAt, query: String!, skip: Int! = 0, take: Int! = 10): Phrase!
+  poll(id: String!): FullPoll!
+
+  """Returns a paginated list of poll votes"""
+  pollVotes(cursorId: String, filter: PollVoteFilter, order: SortOrder = Ascending, skip: Int = 0, sort: PollVoteSort = CreatedAt, take: Int = 10): PaginatedPollVotes!
+
+  """Returns a paginated list of polls based on the filters given."""
+  polls(cursorId: String, filter: PollFilter, order: SortOrder = Descending, skip: Int = 0, sort: PollSort = OpensAt, take: Int = 10): PaginatedPolls!
+  primaryBanner(documentId: String!, documentType: BannerDocumentType!, hasPaywallBypass: Boolean!, hasSubscription: Boolean!, loggedIn: Boolean!): Banner
+  promptHTML(chatId: String, query: String!): Chat!
+  provider: MailProviderModel!
+
+  """This query returns the comment rating system."""
+  ratingSystem: CommentRatingSystem!
+
+  """Returns a remote peer profile based on hostURL and token supplied."""
+  remotePeerProfile(hostURL: String!, token: String!): RemotePeerProfile!
+
+  "\n      Returns all renewing subscribers in a given timeframe.\n    "
+  renewingSubscribers(end: DateTime, start: DateTime!): [DashboardSubscription!]!
+
+  "\n      Returns the revenue generated for the time period given.\n      Only includes paid invoices that have not been manually paid.\n    "
+  revenue(end: DateTime, start: DateTime!): [DashboardInvoice!]!
+
+  "\n      Returns a single setting by name.\n    "
+  setting(name: String!): Setting!
+
+  "\n      Returns a single setting by id.\n    "
+  settingById(id: String!): Setting!
+
+  "\n      Returns all settings.\n    "
+  settings(filter: SettingFilter): [Setting!]!
+  stats: Stats
+
+  """Returns a subscription by id."""
+  subscription(id: String!): PublicSubscription!
+
+  """Returns all subscription flows"""
+  subscriptionFlows(defaultFlowOnly: Boolean!, memberPlanId: String): [SubscriptionFlowModel!]!
+
+  """Returns a paginated list of subscriptions based on the filters given."""
+  subscriptions(cursorId: String, filter: SubscriptionFilter, order: SortOrder = Ascending, skip: Int = 0, sort: SubscriptionSort = ModifiedAt, take: Int = 10): PublicSubscriptionConnection!
+
+  """Returns a paginated list of subscriptions based on the filters given."""
+  subscriptionsAsCsv(autoRenew: Boolean, cancellationDateFrom: DateFilter, cancellationDateTo: DateFilter, deactivationDateFrom: DateFilter, deactivationDateTo: DateFilter, deactivationReason: String, extendable: Boolean, memberPlanID: String, paidUntilFrom: DateFilter, paidUntilTo: DateFilter, paymentMethodID: String, paymentPeriodicity: PaymentPeriodicity, startsAtFrom: DateFilter, startsAtTo: DateFilter, subscriptionIDs: [String!], userHasAddress: Boolean, userID: String, userIDs: [String!]): String!
+
+  """Returns a single sync provider setting by id."""
+  syncProviderSetting(id: String!): SettingSyncProvider!
+
+  """Returns all sync provider settings."""
+  syncProviderSettings(filter: SettingSyncProviderFilter): [SettingSyncProvider!]!
+
+  """Returns all mail flows"""
+  systemMails: [SystemMailModel!]!
+
+  """Returns an tag by id or tag."""
+  tag(id: String, tag: String, type: TagType): Tag!
+
+  """This query returns a list of tags"""
+  tags(
+    """Cursor for pagination"""
+    cursorId: String
+
+    """Filter for tags"""
+    filter: TagFilter
+
+    """Sort order"""
+    order: SortOrder = Descending
+
+    """Number of items to skip"""
+    skip: Int! = 0
+
+    """Field to sort by"""
+    sort: TagSort! = CreatedAt
+
+    """Number of items to fetch"""
+    take: Int! = 10
+  ): PaginatedTags!
+
+  """Returns a list of all tokens."""
+  tokens: [Token!]!
+
+  """Returns a single tracking pixel setting by id."""
+  trackingPixelSetting(id: String!): SettingTrackingPixelProvider!
+
+  """Returns all tracking pixel settings."""
+  trackingPixelSettings(filter: SettingTrackingPixelFilter): [SettingTrackingPixelProvider!]!
+
+  """"""
+  upgradeUserSubscriptionInfo(memberPlanId: String!, subscriptionId: String!): UpgradeSubscription!
+
+  """Returns a user by id."""
+  user(id: String!): SensitiveDataUser!
+
+  "\n      Returns a single userConsent by id.\n    "
+  userConsent(id: String!): UserConsent!
+
+  "\n      Returns a list of userConsents. Possible to filter.\n    "
+  userConsents(name: String, slug: String, value: Boolean): [UserConsent!]!
+
+  """Get all invoices for the authenticated user"""
+  userInvoices: [Invoice!]!
+  userPollVote(pollId: String!): String
+
+  """Returns a userrole by id."""
+  userRole(id: String!): UserRole!
+
+  """Returns a paginated list of userroles based on the filters given."""
+  userRoles(cursorId: String, filter: UserRoleFilter, order: SortOrder = Ascending, skip: Int = 0, sort: UserRoleSort = CreatedAt, take: Int = 10): PaginatedUserRoles!
+
+  """This query returns the subscriptions of the authenticated user."""
+  userSubscriptions: [PublicSubscription!]!
+
+  """Returns a paginated list of users based on the filters given."""
+  users(
+    """Cursor for pagination"""
+    cursorId: String
+
+    """Filter for users"""
+    filter: UserFilter
+
+    """Sort order"""
+    order: SortOrder = Descending
+
+    """Number of items to skip"""
+    skip: Int! = 0
+
+    """Field to sort by"""
+    sort: UserSort! = CreatedAt
+
+    """Number of items to fetch"""
+    take: Int! = 10
+  ): PaginatedSensitiveDataUsers!
+  versionInformation: VersionInformation!
+
+  """Returns an voucher by id or voucher."""
+  voucher(id: String!): Voucher!
+
+  """This query returns a list of vouchers"""
+  vouchers(
+    """Cursor for pagination"""
+    cursorId: String
+
+    """Filter for vouchers"""
+    filter: VoucherFilter
+
+    """Sort order"""
+    order: SortOrder = Descending
+
+    """Number of items to skip"""
+    skip: Int! = 0
+
+    """Field to sort by"""
+    sort: VoucherSort! = CreatedAt
+
+    """Number of items to fetch"""
+    take: Int! = 10
+  ): PaginatedVouchers!
+}
+
+type QuoteBlock implements BaseBlock & HasImage {
+  author: String
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  image: Image
+  imageID: String
+  quote: String
+  type: BlockType!
+}
+
+input QuoteBlockInput {
+  author: String
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  imageID: String
+  quote: String
+}
+
+enum RatingSystemType {
+  star
+}
+
+type Registration {
+  session: SessionWithTokenWithoutUser!
+  user: SensitiveDataUser!
+}
+
+type RemotePeerProfile {
+  callToActionImage: PeerImage
+  callToActionImageID: String
+  callToActionImageURL: String
+  callToActionText: RichText!
+  callToActionURL: String!
+  hostURL: String!
+  logo: PeerImage
+  logoID: String
+  name: String!
+  squareLogo: PeerImage
+  squareLogoId: String
+  themeColor: Color!
+  themeFontColor: Color!
+  websiteURL: String!
+}
+
+scalar RichText
+
+type RichTextBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  richText: RichText!
+  type: BlockType!
+}
+
+input RichTextBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  richText: RichText!
+}
+
+type SensitiveDataUser implements BaseUser {
+  active: Boolean!
+  address: UserAddress
+  birthday: DateTime
+  createdAt: DateTime!
+  email: String!
+  emailVerifiedAt: DateTime
+  firstName: String
+  flair: String
+  id: String!
+  image: Image
+  lastLogin: DateTime
+  modifiedAt: DateTime!
+  name: String!
+  note: String
+  paymentProviderCustomers: [PaymentProviderCustomer!]
+  pendingEmail: String
+  permissions: [String!]!
+  properties: [Property!]!
+  roleIDs: [String!]!
+  roles: [UserRole!]!
+  subscriptionCount: Int!
+
+  """Whether two-factor authentication is enabled for this user."""
+  totpEnabled: Boolean!
+
+  """
+  Whether this user is exempt from the two-factor authentication requirement.
+  """
+  totpExempt: Boolean!
+  userImageID: String
+}
+
+type SessionWithToken {
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  token: String!
+
+  """
+  Whether the user has two-factor authentication enabled. If true and the user is an admin, the client must verify TOTP before proceeding.
+  """
+  totpEnabled: Boolean!
+  user: SensitiveDataUser!
+}
+
+type SessionWithTokenWithoutUser {
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  token: String!
+}
+
+type Setting {
+  id: String!
+  name: SettingName!
+  settingRestriction: SettingRestriction
+  value: GraphQLSettingValueType
+}
+
+type SettingAIProvider implements SettingProvider {
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  name: String
+  systemPrompt: String
+  type: AIProviderType!
+}
+
+input SettingAIProviderFilter {
+  id: String
+  name: String
+  type: AIProviderType
+}
+
+input SettingAnalyticsCredentialsInput {
+  client_email: String!
+  client_id: String!
+  private_key: String!
+  private_key_id: String!
+  project_id: String!
+  type: String!
+}
+
+type SettingAnalyticsProvider implements SettingProvider {
+  articlePrefix: String
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  name: String
+  property: String
+  type: AnalyticsProviderType!
+}
+
+input SettingAnalyticsProviderFilter {
+  id: String
+  name: String
+  type: AnalyticsProviderType
+}
+
+type SettingChallengeProvider implements SettingProvider {
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  name: String
+  type: ChallengeProviderType!
+}
+
+input SettingChallengeProviderFilter {
+  id: String
+  name: String
+  type: ChallengeProviderType
+}
+
+input SettingFilter {
+  name: String
+}
+
+type SettingMailProvider implements SettingProvider {
+  createdAt: DateTime!
+  fromAddress: String
+  id: String!
+  lastLoadedAt: DateTime!
+  mailchimp_baseURL: String
+  mailgun_baseDomain: String
+  mailgun_mailDomain: String
+  modifiedAt: DateTime!
+  name: String
+  replyToAddress: String
+  slack_webhookURL: String
+  type: MailProviderType!
+}
+
+input SettingMailProviderFilter {
+  id: String
+  name: String
+  type: MailProviderType
+}
+
+enum SettingName {
+  ALLOW_COMMENT_EDITING
+  ALLOW_GUEST_COMMENTING
+  ALLOW_GUEST_COMMENT_RATING
+  ALLOW_GUEST_POLL_VOTING
+  COMMENT_CHAR_LIMIT
+  MAIL_PROVIDER_NAME
+  MAKE_ACTIVE_SUBSCRIBERS_API_PUBLIC
+  MAKE_EXPECTED_REVENUE_API_PUBLIC
+  MAKE_NEW_DEACTIVATIONS_API_PUBLIC
+  MAKE_NEW_SUBSCRIBERS_API_PUBLIC
+  MAKE_RENEWING_SUBSCRIBERS_API_PUBLIC
+  MAKE_REVENUE_API_PUBLIC
+  NEW_ARTICLE_PAYWALL
+  NEW_ARTICLE_PEERING
+  PEERING_TIMEOUT_MS
+  RESET_PASSWORD_JWT_EXPIRES_MIN
+  SEND_LOGIN_JWT_EXPIRES_MIN
+  SHOW_PENDING_WHEN_NOT_PUBLISHED
+}
+
+type SettingPaymentProvider implements SettingProvider {
+  bexio_accountId: Float
+  bexio_countryId: Float
+  bexio_invoiceMailBodyNewMembership: String
+  bexio_invoiceMailBodyRenewalMembership: String
+  bexio_invoiceMailSubjectNewMembership: String
+  bexio_invoiceMailSubjectRenewalMembership: String
+  bexio_invoiceTemplateNewMembership: String
+  bexio_invoiceTemplateRenewalMembership: String
+  bexio_invoiceTitleNewMembership: String
+  bexio_invoiceTitleRenewalMembership: String
+  bexio_markInvoiceAsOpen: Boolean
+  bexio_taxId: Float
+  bexio_unitId: Float
+  bexio_userId: Float
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  mollie_apiBaseUrl: String
+  mollie_methods: [PaymentMethodMollie!]
+  name: String
+  offSessionPayments: Boolean
+  payrexx_instancename: String
+  payrexx_pm: [PayrexxPM!]
+  payrexx_psp: [PayrexxPSP!]
+  payrexx_vatrate: String
+  stripe_methods: [StripePaymentMethod!]
+  type: PaymentProviderType!
+}
+
+input SettingPaymentProviderFilter {
+  id: String
+  name: String
+  type: PaymentProviderType
+}
+
+interface SettingProvider {
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  name: String
+}
+
+type SettingRestriction {
+  allowedValues: AllowedSettingVals
+  inputLength: Int
+  maxValue: Int
+  minValue: Int
+}
+
+type SettingSyncProvider implements SettingProvider {
+  createdAt: DateTime!
+  enabled: Boolean
+  id: String!
+  lastLoadedAt: DateTime!
+  lastSyncAt: DateTime
+  lastSyncError: String
+  mailchimp_defaultInterestGroupIds: [String!]
+  mailchimp_extensions: JSONObject
+  mailchimp_interestGroupMappings: [JSONObject!]
+  mailchimp_listId: String
+  mailchimp_mergeFieldMappings: [JSONObject!]
+  modifiedAt: DateTime!
+  name: String
+  type: SyncProviderType!
+}
+
+input SettingSyncProviderFilter {
+  enabled: Boolean
+  id: String
+  name: String
+  type: SyncProviderType
+}
+
+input SettingTrackingPixelFilter {
+  id: String
+  name: String
+  type: TrackingPixelProviderType
+}
+
+type SettingTrackingPixelProvider implements SettingProvider {
+  createdAt: DateTime!
+  id: String!
+  lastLoadedAt: DateTime!
+  modifiedAt: DateTime!
+  name: String
+  prolitteris_memberNr: String
+  prolitteris_onlyPaidContentAccess: Boolean
+  prolitteris_publisherInternalKeyDomain: String
+  prolitteris_usePublisherInternalKey: Boolean
+  prolitteris_username: String
+  type: TrackingPixelProviderType!
+}
+
+input SingleEventFilter {
+  id: String!
+  source: String!
+}
+
+scalar Slug
+
+enum SortOrder {
+  Ascending
+  Descending
+}
+
+type SoundCloudTrackBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  trackID: String
+  type: BlockType!
+}
+
+input SoundCloudTrackBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  trackID: String
+}
+
+type Stats {
+  articlesCount: Int!
+  authorsCount: Int!
+  firstArticleDate: DateTime
+}
+
+type StreamableVideoBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  videoID: String
+}
+
+input StreamableVideoBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  videoID: String
+}
+
+enum StripePaymentMethod {
+  ACSS_DEBIT
+  AFTERPAY_CLEARPAY
+  ALIPAY
+  AU_BECS_DEBIT
+  BACS_DEBIT
+  BANCONTACT
+  BOLETO
+  CARD
+  EPS
+  FPX
+  GIROPAY
+  GRABPAY
+  IDEAL
+  KLARNA
+  KONBINI
+  OXXO
+  P24
+  PAYNOW
+  SEPA_DEBIT
+  SOFORT
+  US_BANK_ACCOUNT
+  WECHAT_PAY
+}
+
+type SubscribeBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  fields: [SubscribeBlockField!]!
+  memberPlanIds: [String!]
+  memberPlans: [MemberPlan!]!
+  type: BlockType!
+}
+
+enum SubscribeBlockField {
+  Address
+  Birthday
+  EmailRepeated
+  FirstName
+  Password
+  PasswordRepeated
+}
+
+input SubscribeBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  fields: [SubscribeBlockField!]! = [FirstName, Password, PasswordRepeated, Address]
+  memberPlanIds: [String!]
+}
+
+type SubscriptionCreatedAction implements BaseAction & HasSubscriptionLc {
+  actionType: ActionType!
+  date: DateTime!
+  subscription: PublicSubscription!
+  subscriptionId: String!
+}
+
+type SubscriptionDeactivation {
+  date: DateTime!
+  reason: SubscriptionDeactivationReason!
+}
+
+enum SubscriptionDeactivationReason {
+  invoiceNotPaid
+  none
+  userReplacedSubscription
+  userSelfDeactivated
+}
+
+enum SubscriptionEvent {
+  CONFIRM_SUBSCRIPTION
+  CUSTOM
+  DEACTIVATION_BY_USER
+  DEACTIVATION_UNPAID
+  INVOICE_CREATION
+  RENEWAL_FAILED
+  RENEWAL_SUCCESS
+  SUBSCRIBE
+}
+
+input SubscriptionFilter {
+  autoRenew: Boolean
+  cancellationDateFrom: DateFilter
+  cancellationDateTo: DateFilter
+  deactivationDateFrom: DateFilter
+  deactivationDateTo: DateFilter
+  deactivationReason: String
+  extendable: Boolean
+  memberPlanID: String
+  paidUntilFrom: DateFilter
+  paidUntilTo: DateFilter
+  paymentMethodID: String
+  paymentPeriodicity: PaymentPeriodicity
+  startsAtFrom: DateFilter
+  startsAtTo: DateFilter
+  subscriptionIDs: [String!]
+  userHasAddress: Boolean
+  userID: String
+  userIDs: [String!]
+}
+
+type SubscriptionFlowModel {
+  autoRenewal: [Boolean!]!
+  default: Boolean!
+  id: String!
+  intervals: [SubscriptionInterval!]!
+  memberPlan: MemberPlan
+  numberOfSubscriptions: Int!
+  paymentMethods: [PaymentMethod!]!
+  periodicities: [PaymentPeriodicity!]!
+}
+
+type SubscriptionInterval {
+  daysAwayFromEnding: Int
+  event: SubscriptionEvent!
+  id: String!
+  mailTemplate: MailTemplateRef
+}
+
+type SubscriptionPeriod {
+  amount: Float!
+  createdAt: DateTime!
+  endsAt: DateTime!
+  id: String!
+  invoiceID: String!
+  isPaid: Boolean!
+  modifiedAt: DateTime!
+  paymentPeriodicity: PaymentPeriodicity!
+  startsAt: DateTime!
+}
+
+enum SubscriptionSort {
+  CreatedAt
+  ModifiedAt
+}
+
+enum SyncProviderType {
+  MAILCHIMP
+}
+
+type SystemMailModel {
+  event: UserEvent!
+  mailTemplate: MailTemplateRef
+}
+
+type Tag {
+  color: Color
+  description: RichText
+  id: String!
+  main: Boolean!
+  tag: String
+  type: TagType!
+  url: String!
+}
+
+input TagFilter {
+  tag: String
+  tags: [String!]
+  type: TagType
+}
+
+enum TagSort {
+  CreatedAt
+  ModifiedAt
+  Tag
+}
+
+"""Type of tag."""
+enum TagType {
+  Article
+  Author
+  Comment
+  Event
+  Page
+}
+
+union Teaser = ArticleTeaser | CustomTeaser | EventTeaser | PageTeaser
+
+type TeaserGridBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  numColumns: Int!
+  teasers: [Teaser]!
+  title: String
+  type: BlockType!
+}
+
+input TeaserGridBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  numColumns: Int!
+  teasers: [TeaserInput]!
+  title: String
+}
+
+type TeaserGridFlexBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  flexTeasers: [FlexTeaser!]!
+  title: String
+  type: BlockType!
+}
+
+input TeaserGridFlexBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  flexTeasers: [FlexTeaserInput!]!
+  title: String
+}
+
+input TeaserInput {
+  article: ArticleTeaserInput
+  custom: CustomTeaserInput
+  event: EventTeaserInput
+  page: PageTeaserInput
+}
+
+type TeaserListBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  filter: TeaserListBlockFilter!
+  skip: Int
+  sort: TeaserListBlockSort
+  take: Int
+  teaserType: TeaserType!
+  teasers: [Teaser]!
+  title: String
+  type: BlockType!
+}
+
+type TeaserListBlockFilter {
+  tagObjects: [Tag!]!
+  tags: [String!]
+}
+
+input TeaserListBlockFilterInput {
+  tags: [String!] = []
+}
+
+input TeaserListBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  filter: TeaserListBlockFilterInput!
+  skip: Int
+  sort: TeaserListBlockSort
+  take: Int
+  teaserType: TeaserType!
+  title: String
+}
+
+enum TeaserListBlockSort {
+  HotAndTrending
+  PublishedAt
+  UpdatedAt
+}
+
+type TeaserSlot {
+  teaser: Teaser
+  type: TeaserSlotType!
+}
+
+input TeaserSlotInput {
+  teaser: TeaserInput
+  type: TeaserSlotType! = Autofill
+}
+
+enum TeaserSlotType {
+  Autofill
+  Manual
+}
+
+type TeaserSlotsAutofillConfig implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  enabled: Boolean!
+  filter: TeaserListBlockFilter
+  sort: TeaserListBlockSort
+  teaserType: TeaserType
+  type: BlockType!
+}
+
+input TeaserSlotsAutofillConfigInput {
+  enabled: Boolean!
+  filter: TeaserListBlockFilterInput
+  sort: TeaserListBlockSort
+  teaserType: TeaserType
+}
+
+type TeaserSlotsBlock implements BaseBlock {
+  autofillConfig: TeaserSlotsAutofillConfig!
+  autofillTeasers: [Teaser!]!
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  slots: [TeaserSlot!]!
+  teasers: [Teaser]!
+  title: String
+  type: BlockType!
+}
+
+input TeaserSlotsBlockInput {
+  autofillConfig: TeaserSlotsAutofillConfigInput!
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  slots: [TeaserSlotInput!]!
+  title: String
+}
+
+enum TeaserType {
+  Article
+  Custom
+  Event
+  Page
+}
+
+type TikTokVideoBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  userID: String
+  videoID: String
+}
+
+input TikTokVideoBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  userID: String
+  videoID: String
+}
+
+type TitleBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  lead: String
+  preTitle: String
+  title: String
+  type: BlockType!
+}
+
+input TitleBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  lead: String
+  preTitle: String
+  title: String
+}
+
+type Token implements BaseToken {
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+}
+
+type TokenWithSecret implements BaseToken {
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+  token: String!
+}
+
+type TotpSetup {
+  """Base32 encoded TOTP secret"""
+  secret: String!
+
+  """OTPAuth URI for authenticator apps"""
+  uri: String!
+}
+
+type TrackingPixel {
+  error: String
+  id: String!
+  pixelUid: String
+  trackingPixelMethod: TrackingPixelMethod!
+  uri: String
+}
+
+type TrackingPixelMethod {
+  id: String!
+  trackingPixelProviderID: String!
+  trackingPixelProviderType: TrackingPixelProviderType!
+}
+
+enum TrackingPixelProviderType {
+  prolitteris
+}
+
+type TwitterTweetBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  tweetID: String
+  type: BlockType!
+  userID: String
+}
+
+input TwitterTweetBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  tweetID: String
+  userID: String
+}
+
+type UnknownBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+}
+
+input UpdateBannerInput {
+  actions: [CreateBannerActionInput!]
+  active: Boolean!
+  collapsible: Boolean!
+  cta: String
+  delay: Int!
+  hideForMinutes: Int!
+  html: String
+  id: String!
+  imageId: String
+  showForLoginStatus: LoginStatus!
+  showOnArticles: Boolean!
+  showOnPages: [PageModelInput!]
+  text: String!
+  title: String!
+}
+
+input UpdateCommentRatingSystemAnswerInput {
+  answer: String
+  id: String!
+  type: RatingSystemType
+}
+
+input UpdateCrowdfundingInput {
+  additionalRevenue: Float
+  countSubscriptionsFrom: DateTime
+  countSubscriptionsUntil: DateTime
+  goalType: CrowdfundingGoalType
+  goals: [CreateCrowdfundingGoalInput!]
+  id: String!
+  memberPlans: [CreateCrowdfundingMemberPlan!]
+  name: String
+}
+
+input UpdateUserSubscriptionInput {
+  autoRenew: Boolean!
+  id: String!
+  memberPlanID: String!
+  monthlyAmount: Int!
+  paymentMethodID: String!
+  paymentPeriodicity: PaymentPeriodicity!
+}
+
+type UpgradeSubscription {
+  discountAmount: Float!
+}
+
+"""The `Upload` scalar type represents a file upload."""
+scalar Upload
+
+type User implements BaseUser {
+  active: Boolean!
+  firstName: String
+  flair: String
+  id: String!
+  image: Image
+  name: String!
+  note: String
+  properties: [Property!]!
+  roleIDs: [String!]!
+  userImageID: String
+}
+
+type UserAddress {
+  city: String
+  company: String
+  country: String
+  streetAddress: String
+  streetAddress2: String
+  streetAddress2Number: String
+  streetAddressNumber: String
+  zipCode: String
+}
+
+input UserAddressInput {
+  city: String
+  company: String
+  country: String
+  streetAddress: String
+  streetAddress2: String
+  streetAddress2Number: String
+  streetAddressNumber: String
+  zipCode: String
+}
+
+type UserConsent {
+  consent: Consent!
+  createdAt: DateTime!
+  id: String!
+  modifiedAt: DateTime!
+  user: User!
+  value: Boolean!
+}
+
+type UserCreatedAction implements BaseAction & HasUserLc {
+  actionType: ActionType!
+  date: DateTime!
+  user: User!
+  userId: String!
+}
+
+enum UserEvent {
+  ACCOUNT_CREATION
+  EMAIL_CHANGE
+  LOGIN_LINK
+  PASSWORD_RESET
+  TEST_MAIL
+}
+
+input UserFilter {
+  name: String
+  text: String
+  userRole: [String!]
+}
+
+type UserRole {
+  createdAt: DateTime!
+  description: String
+  id: String!
+  modifiedAt: DateTime!
+  name: String!
+  permissionIDs: [String!]!
+  permissions: [Permission!]!
+  systemRole: Boolean!
+}
+
+input UserRoleFilter {
+  name: String
+}
+
+enum UserRoleSort {
+  CreatedAt
+  ModifiedAt
+}
+
+enum UserSort {
+  CreatedAt
+  FirstName
+  ModifiedAt
+  Name
+}
+
+type VersionInformation {
+  version: String!
+}
+
+type VimeoVideoBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  videoID: String
+}
+
+input VimeoVideoBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  videoID: String
+}
+
+"""A valid vote value"""
+scalar VoteValue
+
+type Voucher implements HasMemberPlanLc {
+  code: String!
+  createdAt: DateTime!
+  discountPercent: Int!
+  id: String!
+  memberPlan: MemberPlan!
+  memberPlanId: String!
+  modifiedAt: DateTime!
+  validFrom: DateTime!
+  validTo: DateTime!
+}
+
+input VoucherFilter {
+  from: DateTime
+  memberPlans: [String!]
+  to: DateTime
+}
+
+enum VoucherSort {
+  CreatedAt
+  Discount
+  ModifiedAt
+}
+
+type YouTubeVideoBlock implements BaseBlock {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  type: BlockType!
+  videoID: String
+}
+
+input YouTubeVideoBlockInput {
+  blockStyle: String
+  blockStyleName: String
+  disabled: Boolean
+  videoID: String
+}

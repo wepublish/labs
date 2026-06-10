@@ -1,0 +1,16 @@
+query CheckNavDomainBranding {
+  navigations {
+    key
+    name
+    links {
+      __typename
+    }
+  }
+  peerProfile {
+    name
+    websiteURL
+    hostURL
+    themeColor
+    logoID
+  }
+}

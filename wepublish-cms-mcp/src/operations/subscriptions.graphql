@@ -1,0 +1,10 @@
+query CheckSubscriptionSetup {
+  subscriptions(take: 1) {
+    totalCount
+  }
+  activeSubscribers {
+    memberPlan
+    monthlyAmount
+    paymentPeriodicity
+  }
+}

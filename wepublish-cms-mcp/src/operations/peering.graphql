@@ -1,0 +1,9 @@
+query CheckPeeringStatus {
+  peers {
+    id
+    name
+    slug
+    hostURL
+    isDisabled
+  }
+}

@@ -1,0 +1,13 @@
+query GetSiteProfile {
+  peerProfile {
+    name
+    websiteURL
+    hostURL
+    themeColor
+    themeFontColor
+    logoID
+    squareLogoId
+    callToActionURL
+    callToActionImageID
+  }
+}
