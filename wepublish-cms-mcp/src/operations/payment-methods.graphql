@@ -1,0 +1,9 @@
+query CheckPaymentSetup {
+  paymentMethods {
+    id
+    name
+    slug
+    active
+    paymentProviderID
+  }
+}
