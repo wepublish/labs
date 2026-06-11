@@ -119,16 +119,35 @@ docker compose ps
 docker logs docker-ragflow-cpu-1 --tail 50
 docker logs docker-tei-cpu-1 --tail 50
 
-# restart — ALWAYS pass every -f file; compose recreates services without
-# overrides that are omitted (TEI would come back with OOM-ing defaults):
-docker compose -f docker-compose.yml -f docker-compose-tei.yml \
-  -f docker-compose-mcp.yml --env-file .env up -d
+# restart — a bare up -d is correct: COMPOSE_FILE in .env carries the local
+# override files (docker-compose-tei.yml, docker-compose-mcp.yml) automatically
+docker compose up -d
 ```
 
-- **Memory is the scarce resource** (TEI + Elasticsearch + RAGFlow ≈ the whole
-  box). TEI batch caps live in `docker-compose-tei.yml`; the ES limit is
-  `MEM_LIMIT` in `.env`. If the kernel OOM-kills things after a config change,
-  those two are the dials.
+- **Memory is managed and capped** (adversarially reviewed 2026-06-11): TEI 6g,
+  RAGFlow 6g, ES 3g with a pinned 1g heap (`ES_JAVA_OPTS` in `.env`) and
+  `memswap_limit` so ES never swaps. 3 GB swapfile as host-level insurance.
+  Measured steady state: ~7.3 of 15.6 GiB. The dials: TEI flags in
+  `docker-compose-tei.yml` (do NOT set `--max-client-batch-size` below 16 —
+  RAGFlow sends embed batches of 16 — and keep the `tei-sentence-bert-config.json`
+  mount: it clamps inputs to 2048 tokens, preventing a TEI queue livelock),
+  `MEM_LIMIT` + `ES_JAVA_OPTS` in `.env`.
+- **Watchdog**: root cron runs `/opt/ragflow-deploy/watchdog.py` every 5 min →
+  atomic status JSON at `/opt/ragflow-deploy/health-status.json` (container
+  states, OOM/restart deltas, disk, and a *digestion probe* — documents stuck
+  in parsing, the failure liveness checks miss). `wp-kb health` displays it and
+  flags staleness. A companion poller on hermes01 (`/opt/kb-watch/`) probes
+  end-to-end through the tunnel and posts Slack alerts on state transitions
+  once `SLACK_ALERT_CHANNEL` is set in `/opt/kb-watch/kb-watch.env`.
+- **Backups**: nightly `mysqldump` cron → `/opt/ragflow-deploy/backups/`
+  (14-day rotation). MySQL holds users/API keys/dataset configs — NOT
+  re-derivable; chunks ARE (re-ingest from sources). Ship dumps off-box
+  (Hetzner Storage Box) before relying on them for disaster recovery.
+- **If memory pressure returns**: documented fallback is swapping the embedding
+  model to `intfloat/multilingual-e5-base` (~1.5 GiB TEI at default flags) —
+  declined for now because RAGFlow never sends the `query:`/`passage:` prefixes
+  e5 expects, costing retrieval quality; bge-m3 is prefix-free. Cheap to revisit
+  while datasets are small (recreate datasets + re-ingest).
 - **Key rotation**: mint a new key via the API (`POST /api/v1/system/tokens`,
   session login required) or rerun the configure script; update
   `/opt/ragflow-deploy/ragflow-api-key.txt`, `docker-compose-mcp.yml`

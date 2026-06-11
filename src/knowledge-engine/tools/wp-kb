@@ -52,6 +52,19 @@ def ds_by_name(name):
 cmd, args = sys.argv[1], sys.argv[2:]
 
 if cmd == "health":
+    import time
+    try:
+        with open("/opt/ragflow-deploy/health-status.json") as f:
+            w = json.load(f)
+        age = int(time.time()) - w.get("generated_at", 0)
+        stale = " (STALE — watchdog not running?)" if age > 2 * w.get("interval_s", 300) else ""
+        print(f"=== watchdog: {w['status']}{stale} (seq {w['seq']}, {age}s ago) ===")
+        for r in w.get("reasons", []):
+            print(f"  ! {r}")
+        print(f"  disk {w.get('disk_pct')}% used, {w.get('mem_available_mb')} MiB RAM free, "
+              f"oom_kills_total={w.get('oom_kill_total')}")
+    except FileNotFoundError:
+        print("=== watchdog: no status file (cron not activated) ===")
     print("=== containers ===", flush=True)
     subprocess.run(["docker", "compose", "ps", "--format", "table {{.Name}}\t{{.Status}}"],
                    cwd="/opt/ragflow/docker")
