@@ -47,6 +47,18 @@
     "ingested": "2026-06-11",
     "sha": "392d11b7139bd1ee8c485d880b2ce98cc479cbacea40274fdb92ab1edc683b0a"
   },
+  "apps-in-the-monorepo-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ef8cd534659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "b06b5bebe6fbdd0a22f110aa55345eda9ba3c28b4048d1d06b334a12d0ab99b0"
+  },
+  "article-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "105df34c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "844841a04ecfad82a9478a2a5c7b8af7511769b1ba3d46f5638dbd37d68a900a"
+  },
   "artikel-erstellen-und-bearbeiten-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "1959d446659211f1936c8ba3f0b2a214",
@@ -59,17 +71,35 @@
     "ingested": "2026-06-11",
     "sha": "113885a336d9026d4f47edb254e8894f07767dfb9c7e3ee7ecf2facaf63a7b2d"
   },
+  "author-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "10f69c8c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "fc078f7b73a83dbdb4e5a049c4d3b9cb64a7f90e6d15f17165e938a141fe8dd9"
+  },
   "autor-innen-verwalten-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "1ec5f52c659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "e8d12afc65462817119148429f02ab4213e2ab52f9a32225739c389bf5b33f70"
   },
+  "bajour-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "1e2ad49a659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "78f37be5f830b67b5ef06f4bacac881c294b2e6f1fbaae936b4fe493972d351c"
+  },
   "banner-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "27359960659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "f5c60156b2f94feca6b9804ff6829ff2567b8a825ff9295d81607c1bbd920866"
+  },
+  "banner-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1190ef9e659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8449206cca4e286769e87bc359a1d7df745c66d9a202ceae9a902ee2eae4805c"
   },
   "beispiele-f-r-mailtemplates-publisher-dokumentation.md": {
     "dataset": "public",
@@ -94,6 +124,12 @@
     "doc_id": "212e322a659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "6a9a97d4ed6130d1a6c1fd027f9ac2c25cb83b3d94158eb3963938aabcf89548"
+  },
+  "ber-uns-die-we-publish-foundation.md": {
+    "dataset": "public",
+    "doc_id": "81c4fe6e659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "00e20b2c4d5d4af297cea53d279304a36bc4ef52842f5ea505d54fc2ce472857"
   },
   "bexio-publisher-dokumentation.md": {
     "dataset": "public",
@@ -143,6 +179,12 @@
     "ingested": "2026-06-11",
     "sha": "b68c7c1a6cf505fd7f9a930eea172e967593dec1707030d7f375578da4cbcffd"
   },
+  "blocks-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "122aabca659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "87f89bc3e33185d2c7b0e9d5f2fa7fd1fb9c480e7d0c28468a4ba7d3b3840dd5"
+  },
   "breaking-changes-developers.md": {
     "dataset": "public",
     "doc_id": "531727f6659211f1936c8ba3f0b2a214",
@@ -155,6 +197,36 @@
     "ingested": "2026-06-11",
     "sha": "846ddd95cffafb6fe9a303bf11ca9265f7b9e4a9cf647ec16e0f5bb70ce0b4c2"
   },
+  "code-conventions-for-contributions-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "e98b95b2659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "b9905dae8bc3606ef468947ff871241e7f54c1f85981c913c0ad68f92e526042"
+  },
+  "code-organization-of-the-monorepo-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ebf2855e659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "55ca0e532b302c41a38fded76eb9a9711c1b2ed5ea600151557fe53731d25c37"
+  },
+  "comment-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "12c42458659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "75c5d4ab9d1a8160ae8bd80f35e43fe334867c35b4e3c48aa8bed4d0733f9374"
+  },
+  "commenting-conventions-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ec8bee4c659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "51515f87322eb3dbbb6e0b878a57c101164a14637d213388a1115cba2016f942"
+  },
+  "consent-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "135de8d6659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a2b23bd56e841abb61386e26263d2e8e40be4c76142d77ed4ba38d53815f6dff"
+  },
   "cookbook-developers.md": {
     "dataset": "public",
     "doc_id": "514920f0659211f1936c8ba3f0b2a214",
@@ -166,6 +238,12 @@
     "doc_id": "333d14a4659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "6cad31b81a23ec20be13e23a73323e9236bbfc0fb88c9680f1f8190c72f7aefd"
+  },
+  "crowdfunding-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "13f7a9ee659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9b9ada3d4f3a410358aa031ae3a558435a2534bf4ff93b0796439ed28331cea7"
   },
   "database-with-prisma-developers.md": {
     "dataset": "public",
@@ -184,6 +262,24 @@
     "doc_id": "45ddfc68659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "077f950993de5394249f5f6ddc50fc3bcfbc2df0c468afcad7d52ea9071b1305"
+  },
+  "deployments-guide-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "edbfa268659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "686a1581f9563b6ebcb680c3434fa0a9cfa17822255ff7c218947db5302ea4e0"
+  },
+  "developer-how-tos-docs-readme-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "eb592670659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "e9fb1b839881f51a428d98b5a55e8e1318fb2787db84a2d20a77f571d7408fad"
+  },
+  "development-workflow-agent-context-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ea256ee4659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "952d678cc7bca39839b79c189d80af2c47ce533403e100b08b1e87a5ee0c3c04"
   },
   "dokumente-verwalten-publisher-dokumentation.md": {
     "dataset": "public",
@@ -227,11 +323,29 @@
     "ingested": "2026-06-11",
     "sha": "7ee7ac1fe6c4c0773b81eb77ffd88fefc9cc9f61424142fdff6dd4945dff2144"
   },
+  "email-templates-guide-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "eef3225e659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8590a3b7bfe9494a42852e21752cbc6c00b3245961ed2dcf16335338f7984ada"
+  },
+  "event-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "14912646659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "244c33ee890c524d1597d2b9c2ceed300f56ef194cb63cc1d8145d6ba6202405"
+  },
   "events-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "209407f4659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "a9c68e626fc0e4dfbfa1e8ed5e7a0da6d7cbc5e9c7b0db5feeec4c43bf843987"
+  },
+  "external-apps-ai-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "152aba7c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "cfaf204dee98b1a76e6084d528e7474cd32d087ef46e4a555a8901a47199a6c6"
   },
   "external-apps-token-authentication-developers.md": {
     "dataset": "public",
@@ -281,6 +395,12 @@
     "ingested": "2026-06-11",
     "sha": "9b5404209c326c9ef0993fda3c0fc9f510e8e29cb4ac0fceaaa2d2d9d26f4c26"
   },
+  "hauptstadt-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "1f5e5670659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "09c3215903fb230af86250526aba9d7a489314240ad32358444777a90ae64882"
+  },
   "hcaptcha-developers.md": {
     "dataset": "public",
     "doc_id": "4e479d0a659211f1936c8ba3f0b2a214",
@@ -292,6 +412,12 @@
     "doc_id": "363ebd92659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "e3402a131fc2f17a2c0e3a54b2f6fd7104cd340a9cee277cbd93581692cebac1"
+  },
+  "image-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "15c434ae659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "5817f3e5bd9e08ca9295013a42e2dc4dd9386633d87896db4e98530212f800db"
   },
   "integrationen-konfigurieren-publisher-dokumentation.md": {
     "dataset": "public",
@@ -335,6 +461,18 @@
     "ingested": "2026-06-11",
     "sha": "ea4c1ce74cc1d8af9110a21a192a2dc09bf36c162ef8d45ba0c5ea33d3348826"
   },
+  "llms-full-txt-public-agent-knowledge-pack.md": {
+    "dataset": "public",
+    "doc_id": "7ff45616659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "ba1241d4b047e9ce92fa5a77eace5c563d327d1cdcb9af0d178175625d7a91c4"
+  },
+  "llms-txt-public-agent-context-map.md": {
+    "dataset": "public",
+    "doc_id": "7f551038659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "1d561db9915df044ec7e6e3455037b3d43ef0b460a8476863e9771506a802bdb"
+  },
   "login-registrierung-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "2869903e659211f1936c8ba3f0b2a214",
@@ -346,6 +484,12 @@
     "doc_id": "3d72c8b0659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "89a85b34e3e2c490e4605dc691745c546e16d90e1d1014f380a6b9a712b9bcba"
+  },
+  "mail-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "165da33c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "bbe38d4ddc76fad48954edada113a741378790d3a0c46c7dec244bdbc5b49590"
   },
   "mailchimp-publisher-dokumentation.md": {
     "dataset": "public",
@@ -365,6 +509,12 @@
     "ingested": "2026-06-11",
     "sha": "104e8174f9359aaecb69552b42de076a511f8345434ffc4f8a22deb0e5a35ed6"
   },
+  "member-plan-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "16f75784659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "36af1bcfc198f4b1ea3c45660f76dc9fbd79bd8be514852dcf35879567887486"
+  },
   "membership-paywall-developers.md": {
     "dataset": "public",
     "doc_id": "441017fe659211f1936c8ba3f0b2a214",
@@ -376,6 +526,12 @@
     "doc_id": "1a8e0094659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "085aefeb8306136f29c1bc43e42102f8ec5f352210f65011c3bafa39fd486095"
+  },
+  "monorepo-architecture-agent-context-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "e8f1be9c659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "13b0cf98d3acab2cfc69386a8e0bb3d601fc522cb1b825892f5a7cba463f1f24"
   },
   "monorepo-struktur-developers.md": {
     "dataset": "public",
@@ -389,11 +545,23 @@
     "ingested": "2026-06-11",
     "sha": "710c3bdf0ef437012110ccc93c6785fed00e7d174982519258f9f45294fef57a"
   },
+  "navigation-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1790d922659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "04a736e4f910a8549addd7f053ae52e92faa8a6a1499ab7778c6d0071ffdeb5d"
+  },
   "neue-website-einrichten-developers.md": {
     "dataset": "public",
     "doc_id": "3e0ca200659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "5841dd049bc389e49b67baba415cbe40fffcb5052d4c603aec3961549d7b79e2"
+  },
+  "newsroom-onboarding-launch-readiness-checklist.md": {
+    "dataset": "internal",
+    "doc_id": "05082364659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0950785f13c7b4df37d531a1ed57de98e3a510a02851fe414c95d61031555816"
   },
   "onboarding-publisher-dokumentation.md": {
     "dataset": "public",
@@ -401,11 +569,23 @@
     "ingested": "2026-06-11",
     "sha": "8ba2f241e91d618c214f1de23a050ecff4ee082e7111a9b9e495495452ed4bab"
   },
+  "page-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "182aaade659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0b6a00490c93ca5441f6daf17d97e66c7cd180f47f478ade0ea4e02a2675fae7"
+  },
   "paket-referenz-developers.md": {
     "dataset": "public",
     "doc_id": "471214ca659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "8b734dfa11c8c4066ffa5dc8eaa61cae1eae042a53479908627d251f4211ddab"
+  },
+  "payment-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "18c429e8659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "3f0923395f05a88aeed67866d0ffa8d1ccc517d8557b1e5e2c3752e3759c9f12"
   },
   "paywall-publisher-dokumentation.md": {
     "dataset": "public",
@@ -413,17 +593,35 @@
     "ingested": "2026-06-11",
     "sha": "52db6b19beb48bb3ce20ab7d680d94920f59474c4988ad5af29ac22e18c5c5e0"
   },
+  "paywall-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "195e014e659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f8e570fe7fbbd10fe05b5f104d0d285f9c4801671a62680e09c6974b757f9cc8"
+  },
   "peering-artikel-sharing-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "299da972659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "79ba6d61b7f323d8472d57e114ab2a6a980db53c0762005df306c1f5c53a0b82"
   },
+  "peering-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "19f807b2659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "017c07fa2b9a3600782de15d381c9ab81c111acc7d039031980bf078b6addc8d"
+  },
   "plugins-und-integrationen-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "36d87b80659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "db6faa3eb1dd7064add52ac86db832d29abb1a17c747e0a2155851181ee85d3e"
+  },
+  "poll-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1a913c0c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9e8c54c109bbea31175011e2ed694940f8038e7f17a348272c63b1a8fff66aa7"
   },
   "prolitteris-publisher-dokumentation.md": {
     "dataset": "public",
@@ -436,6 +634,12 @@
     "doc_id": "35a4d150659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "9b31d0b9b35e75add423fdcc670a7ce26738ec05e00e32d9fa7b4cf00f1095b9"
+  },
+  "release-process-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ee597cc6659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "2a2851349ad0ebd3d52d1735f45ffaefc3633cd0262627dfd43c817d201397a1"
   },
   "richtext-rendering-developers.md": {
     "dataset": "public",
@@ -467,6 +671,12 @@
     "ingested": "2026-06-11",
     "sha": "a11663fe2c6de9e5c65bc3eaf299ecf09dc3f212facdacc2382e0d302b633d24"
   },
+  "settings-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1b2afc2a659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "d92f83fe66e70dcc1a6f73f1f2fb62ab05948c44bb2ad750d9fe8a1b68c9b53e"
+  },
   "slotteasersloader-developers.md": {
     "dataset": "public",
     "doc_id": "4b4747b8659211f1936c8ba3f0b2a214",
@@ -485,11 +695,35 @@
     "ingested": "2026-06-11",
     "sha": "3a93b76d947135d6d8d1a2ba289d9fbac63f1edb0418a8a4e8a8ea856ff82500"
   },
+  "subscription-flows-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1bc47c7e659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "43103b7ef44789a61f77d85cc05074a0e98e6dbca5ce5f455e79905e1a5606cf"
+  },
+  "subscription-invoice-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1c5e1550659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c7857e917073f4fd2e854e7cd3e65d2b18b12f7991e0338787a11cdda747311c"
+  },
+  "support-boundaries-refusals-and-answer-contract.md": {
+    "dataset": "internal",
+    "doc_id": "03de0fb2659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "dce6d0b7b9a94a1795501c8ef58015a181ba00e24ff67c2b1308b0b9572a1716"
+  },
   "systemmails-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "316efd18659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "feb7760437bec7e1a75f21ddf6c50e269b3ed0f871280b110a205e3866ca307c"
+  },
+  "tag-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1cf7ef2c659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a53c67cfcce01f574b69d63e91d43a9d2e73aa7214b78ce77a0f99dec97e7552"
   },
   "tags-publisher-dokumentation.md": {
     "dataset": "public",
@@ -497,11 +731,35 @@
     "ingested": "2026-06-11",
     "sha": "feeae8f828c0d283a53b25b5bcb0092e5666acf492b127e69dc8abb3a26aaaf6"
   },
+  "tech-stack-overview-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "eabf7606659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "5b560f90a6a8eb509de7c379b4527ab9f8583f0dd17c65066ab2cd5aced66cd6"
+  },
+  "teilnehmende-medien-das-we-publish-netzwerk.md": {
+    "dataset": "public",
+    "doc_id": "812ab4da659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0c5f8d989b1fcac621e5c2c155854f77346491af8ef59a4fc18792c9984c72cc"
+  },
+  "testing-guide-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "ed259e66659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "1a201d3a8a5c8f0c152f6e7cb199e40fb84d05f0590695fd81f52036e9543ce6"
+  },
   "theming-styling-developers.md": {
     "dataset": "public",
     "doc_id": "410ecb36659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "0b6d48bfed77fc8f68d9d68ef14f2490b1019df9a43cb61c6f6ddc6e8847a981"
+  },
+  "ticket-and-pr-conventions-support-to-developer-routing.md": {
+    "dataset": "internal",
+    "doc_id": "046e9686659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c67790abcdd310cc1397d9da479598f971bb9007c2f79e20a5fead73690f59d1"
   },
   "tokens-zugriffsschl-ssel-publisher-dokumentation.md": {
     "dataset": "public",
@@ -521,6 +779,12 @@
     "ingested": "2026-06-11",
     "sha": "057011bc8b587e8395d90a3634b15edce62f67e9a288b2a1f1db6b5311c4f346"
   },
+  "tsri-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "1ec46bf0659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "91adf328f152a228abb32f1d6432e6996b2958e14e3047dea23cd8667a58a5f0"
+  },
   "turnstile-developers.md": {
     "dataset": "public",
     "doc_id": "4daea320659211f1936c8ba3f0b2a214",
@@ -538,6 +802,12 @@
     "doc_id": "4845cb8e659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "9b7a92f0ca371478214aa016b56541b7e40ba6499672a2366f127fb35d0e985d"
+  },
+  "user-auth-we-publish-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1d91879a659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "187da7efac7cba81ac369830a24763c6faac0b29c73ad3bd0a89d1aa4a8830cb"
   },
   "user-redaktions-benutzer-innen-publisher-dokumentation.md": {
     "dataset": "public",
@@ -563,17 +833,65 @@
     "ingested": "2026-06-11",
     "sha": "f2c2b14eba26c5f79b30ed5130878140b44055597a82583bc81128530f3ed892"
   },
+  "we-develop-werkzeugkasten-integrationen-ki-exoskelett.md": {
+    "dataset": "public",
+    "doc_id": "80926d1a659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "134aa70bcaa64394280be576b1a691a79b466c90c1b89f4e6a615dbd20b46506"
+  },
+  "we-publish-ai-stack-what-runs-where.md": {
+    "dataset": "internal",
+    "doc_id": "05a18e00659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "59471054dae833b83d63d97cd5a5367bff4313891ecfe0132c8ad030ac397e60"
+  },
+  "we-publish-api-domain-overview-api-reference.md": {
+    "dataset": "internal",
+    "doc_id": "1038ce50659511f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f4ce4662de296145b34fc0256bf642c15cc329580f883ed12f9291f6f9214cc9"
+  },
+  "we-share-artikel-sharing-und-netzwerk.md": {
+    "dataset": "public",
+    "doc_id": "825ea668659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "480bdc1b5e1e496f986c69b03a2314bff0275b0ac1cbd848c52150188f180aac"
+  },
+  "we-start-angebot-f-r-neue-medien.md": {
+    "dataset": "public",
+    "doc_id": "82f51404659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "31a7250019b2f75ced630414a1b830fa262b0d7adcd92e57f5e76036ebd3c6b5"
+  },
   "website-builder-developers.md": {
     "dataset": "public",
     "doc_id": "3ba66d2a659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "e47f46ca57af37a96075ba43cfef84006ce2e8c5c76b7e60376dff22386456cf"
   },
+  "website-builder-usage-guide-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "f0262fea659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "1db3056a07a74405f675b2673e9070ad80604ecdef7c404a146bbaedc8330269"
+  },
   "website-konfiguration-developers.md": {
     "dataset": "public",
     "doc_id": "3ea71bd2659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "04aa93adbf68626262b98bd048ac004808f85f7e0fcdc93234c59361b3a224ce"
+  },
+  "wepublish-monorepo-readme-overview-setup-scripts-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "e7c1ae10659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "aa719669ff97c46c699d38a3d28c2b8d3795068106c5604004bb0a5a004e4817"
+  },
+  "wepublish-repo-faq-wepublish-repo.md": {
+    "dataset": "public",
+    "doc_id": "e8590c7e659411f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "3e2371bbd67181392ed28e0564ef7adfd38bd567355016108a62ccd01db11186"
   },
   "willkommen-bei-we-publish-start.md": {
     "dataset": "public",

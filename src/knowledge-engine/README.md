@@ -19,6 +19,23 @@ content works), served by a TEI sidecar. RAGFlow has **no chat LLM** — it only
 retrieves; answer generation happens in Hermes (OpenRouter). Datasets
 (namespaces): `public`, `internal`, `newsroom:{slug}`.
 
+## What's in the KB (populated 2026-06-11)
+
+| Dataset | Docs | Content |
+|---|---|---|
+| `public` | 125 | All 103 published GitBook pages (60 German publisher docs, 41 developer guides — ingested from the `gitbook-wepublish-doc` repo, not scraped), `llms.txt` + `llms-full.txt` (from wepublish/wepublish#2802), 5 marketing pages (network directory, integrations, foundation), 15 monorepo docs (README, FAQ, `.ai/*`, `docs/*`, Website Builder usage) — all `confirmed`/`wepublish-docs` |
+| `internal` | 31 | 24 generated API domain references (`api_reference`, from SDL+Prisma @7a2e66b), 3 newsroom implementation profiles (`implementation_profile`: bajour, tsri, hauptstadt), 4 ops docs (support boundaries, ticket/PR conventions, onboarding checklist, AI-stack overview) — generated content is `likely` + commit-tagged |
+| `newsroom:bajour` | 0 | pilot newsroom (renamed from `newsroom:pilot`, same ID); filled via chat-driven `kb-ingest` once the channel goes live |
+
+**Refresh procedure:** re-clone the sources (`gitbook-wepublish-doc`, `wepublish`), re-run
+the manifests with `tools/kb-bulk --manifest ingest/manifest-*.json --root ...` — idempotent,
+only changed documents are re-ingested (`ingest/state.json` carries content hashes). For the
+generated content, regenerate the markdown in `ingest/api-reference/` + `ingest/newsroom-profiles/`
+against the new commit first, then re-run. Retrieval quality gate: `ingest/eval-questions.md`
+(32-question DE/EN/FR set, 30/32 at `vector_similarity_weight 0.7` — the value `kb-retrieve`
+and `wp-kb` pass per request; the MCP path runs at the 0.3 dataset default and is weaker on
+German/French phrasing).
+
 ## Access model — read this before wiring anything
 
 The RAGFlow API key is **tenant-wide**: it reads and writes *all* datasets,

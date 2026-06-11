@@ -49,6 +49,10 @@ def main():
         "dataset_ids": targets,
         "page_size": a.top_n,
         "similarity_threshold": a.min_score,
+        # 0.7 beats the 0.3 dataset default on German + cross-lingual French queries
+        # (32-question eval, 2026-06-11: 24/32 -> 30/32). bge-m3's vector side carries
+        # multilingual retrieval; pure term-matching loses to German morphology.
+        "vector_similarity_weight": 0.7,
     }).encode()
     req = urllib.request.Request(
         f"{base.rstrip('/')}/api/v1/retrieval", data=body, method="POST",

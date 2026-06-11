@@ -24,19 +24,20 @@ Superseded by the full plan: **`specs/plans/2026-06-11-001-feat-kb-population-pl
 context, per-newsroom implementation profiles for devs; GitBook ingested from its
 backing repo instead of a scrape). Unit checklist:
 
-- [ ] U1 Data-structure amendment (`api_reference` + `implementation_profile` types,
-      `repo_path`/`commit` tags; derived-code-knowledge boundary in spec + kb-ingest)
-- [ ] U2 `kb-bulk` manifest-driven ingest tool (idempotent, dry-run, batched parse)
-- [ ] U3 Public corpus → `public` (~115 docs: gitbook-wepublish-doc repo, llms.txt
-      from #2802 branch, ~6 marketing pages)
-- [ ] U4 Repo/CMS knowledge → `public` (README, FAQ, `.ai/*`, `docs/*`, usage.mdx)
-- [ ] U5 Generated API domain references → `internal` (~20-25 docs from SDL + Prisma)
-- [ ] U6 Newsroom implementation profiles → `internal` (3-profile pilot → Tom review
-      → all 18)
-- [ ] U7 Internal ops seed → `internal` (boundaries, ticket/PR conventions,
-      onboarding checklist, AI-stack overview)
-- [ ] U8 Retrieval eval DE/EN/FR (~30 questions, ≥90% public hit bar)
-- [ ] U9 Bookkeeping (this file, kb-setup-log.json, README "What's in the KB")
+- [x] U1 Data-structure amendment — DONE 2026-06-11 (deployed to hermes01, canary-validated)
+- [x] U2 `kb-bulk` ingest tool — DONE (pagination bug found+fixed on first 100+-doc run)
+- [x] U3 Public corpus → `public` — DONE: 110 docs (103 GitBook + llms.txt ×2 + 5 marketing)
+- [x] U4 Repo/CMS knowledge → `public` — DONE: 15 docs, commit-tagged @7a2e66b
+- [x] U5 API domain references → `internal` — DONE: 24 generated docs, SDL-verified
+- [ ] U6 Newsroom implementation profiles — **3/18: bajour, tsri, hauptstadt ingested;
+      AWAITING TOM'S FORMAT/ACCURACY REVIEW** (`ingest/newsroom-profiles/`), then
+      generate + ingest the remaining 15
+- [x] U7 Internal ops seed → `internal` — DONE: 4 docs as `likely`; Tom review → re-tag
+      `confirmed` (re-run with reviewed_by once read)
+- [x] U8 Retrieval eval — DONE: 30/32, public-answerable 96% (`ingest/eval-questions.md`);
+      `vector_similarity_weight 0.7` adopted in kb-retrieve + wp-kb
+- [x] U9 Bookkeeping — DONE (this file, kb-setup-log.json, README)
+- [ ] Copy the reviewed bajour profile into `newsroom:bajour` when its channel goes live
 
 ## Before the first newsroom channel goes live (isolation prerequisites)
 

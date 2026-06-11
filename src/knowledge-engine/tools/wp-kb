@@ -83,8 +83,10 @@ elif cmd == "query":
     text, names = args[0], args[1:]
     ids = [ds_by_name(n)["id"] for n in names] if names else [d["id"] for d in datasets()]
     # retrieval-only deployment: never pass keyword:true (no chat LLM configured)
+    # vector weight 0.7: eval-validated for German/French queries (see ingest/eval-questions.md)
     res = http("POST", "/api/v1/retrieval",
-               {"question": text, "dataset_ids": ids, "top_k": 1024, "page_size": 10})
+               {"question": text, "dataset_ids": ids, "top_k": 1024, "page_size": 10,
+                "vector_similarity_weight": 0.7})
     print(json.dumps(res, indent=2))
 
 elif cmd == "ingest":
