@@ -29,11 +29,11 @@ backing repo instead of a scrape). Unit checklist:
 - [x] U3 Public corpus → `public` — DONE: 110 docs (103 GitBook + llms.txt ×2 + 5 marketing)
 - [x] U4 Repo/CMS knowledge → `public` — DONE: 15 docs, commit-tagged @7a2e66b
 - [x] U5 API domain references → `internal` — DONE: 24 generated docs, SDL-verified
-- [ ] U6 Newsroom implementation profiles — **3/18: bajour, tsri, hauptstadt ingested;
-      AWAITING TOM'S FORMAT/ACCURACY REVIEW** (`ingest/newsroom-profiles/`), then
-      generate + ingest the remaining 15
-- [x] U7 Internal ops seed → `internal` — DONE: 4 docs as `likely`; Tom review → re-tag
-      `confirmed` (re-run with reviewed_by once read)
+- [x] U6 Newsroom implementation profiles — DONE 2026-06-11: Tom approved the pilot
+      format; all 17 newsroom apps profiled + ingested (`apps/wepublish-site` excluded —
+      marketing site, not a newsroom; `bka` documented as a deployment-disabled stub)
+- [x] U7 Internal ops seed → `internal` — DONE: 4 docs, reviewed by Tom 2026-06-11 →
+      re-ingested as `confirmed`/`reviewed_by: tom`
 - [x] U8 Retrieval eval — DONE: 30/32, public-answerable 96% (`ingest/eval-questions.md`);
       `vector_similarity_weight 0.7` adopted in kb-retrieve + wp-kb
 - [x] U9 Bookkeeping — DONE (this file, kb-setup-log.json, README)

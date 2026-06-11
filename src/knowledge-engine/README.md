@@ -24,7 +24,7 @@ retrieves; answer generation happens in Hermes (OpenRouter). Datasets
 | Dataset | Docs | Content |
 |---|---|---|
 | `public` | 125 | All 103 published GitBook pages (60 German publisher docs, 41 developer guides — ingested from the `gitbook-wepublish-doc` repo, not scraped), `llms.txt` + `llms-full.txt` (from wepublish/wepublish#2802), 5 marketing pages (network directory, integrations, foundation), 15 monorepo docs (README, FAQ, `.ai/*`, `docs/*`, Website Builder usage) — all `confirmed`/`wepublish-docs` |
-| `internal` | 31 | 24 generated API domain references (`api_reference`, from SDL+Prisma @7a2e66b), 3 newsroom implementation profiles (`implementation_profile`: bajour, tsri, hauptstadt), 4 ops docs (support boundaries, ticket/PR conventions, onboarding checklist, AI-stack overview) — generated content is `likely` + commit-tagged |
+| `internal` | 45 | 24 generated API domain references (`api_reference`, from SDL+Prisma @7a2e66b), 17 newsroom implementation profiles (`implementation_profile` — every `apps/<slug>/` in the monorepo; bka is a deployment-disabled stub, documented as such), 4 ops docs (support boundaries, ticket/PR conventions, onboarding checklist, AI-stack overview — `confirmed`, reviewed by Tom) — generated content is `likely` + commit-tagged |
 | `newsroom:bajour` | 0 | pilot newsroom (renamed from `newsroom:pilot`, same ID); filled via chat-driven `kb-ingest` once the channel goes live |
 
 **Refresh procedure:** re-clone the sources (`gitbook-wepublish-doc`, `wepublish`), re-run

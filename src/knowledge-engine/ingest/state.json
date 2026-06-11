@@ -83,6 +83,12 @@
     "ingested": "2026-06-11",
     "sha": "e8d12afc65462817119148429f02ab4213e2ab52f9a32225739c389bf5b33f70"
   },
+  "babanews-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "f73d8302659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "b4c349f34800b3c7715bebbeb1bebf0e62c69d3281f77ffa813e2ab65dd99f73"
+  },
   "bajour-we-publish-implementation-profile.md": {
     "dataset": "internal",
     "doc_id": "1e2ad49a659511f1936c8ba3f0b2a214",
@@ -148,6 +154,12 @@
     "doc_id": "1f5f9fba659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "f19c0f170250121298f531dcb94f6a6ae85c0390fb2e448c63d9fbacf748169f"
+  },
+  "bka-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "f7db542e659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "83e6930ba295e86d796c306427be5ec58673495b229585aec90a017d3c43ce0d"
   },
   "bl-cke-standard-massgeschneidert-publisher-dokumentation.md": {
     "dataset": "public",
@@ -245,6 +257,12 @@
     "ingested": "2026-06-11",
     "sha": "9b9ada3d4f3a410358aa031ae3a558435a2534bf4ff93b0796439ed28331cea7"
   },
+  "cultur-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "f87501fa659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "ce677ec735a9ad6a00a3610899aea8d659951f9a05345738e5c6e6cf04ef4ef3"
+  },
   "database-with-prisma-developers.md": {
     "dataset": "public",
     "doc_id": "4a139d38659211f1936c8ba3f0b2a214",
@@ -304,6 +322,12 @@
     "doc_id": "18bf7b12659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "c7a592620f809a52d01925dfc9bb9c302b223f3533cfab6ac95e031c654abecf"
+  },
+  "eenews-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "f90dee92659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "08a346fb8f9084fc8ab868db1cdb2d3392e5aeba869a1cde273cb3ff98d974e3"
   },
   "eigenen-block-erstellen-developers.md": {
     "dataset": "public",
@@ -365,6 +389,12 @@
     "ingested": "2026-06-11",
     "sha": "9bbcfabd7b7e31ef4f688dc5209add8d4186364437858fdcb13403deae8da1c7"
   },
+  "fazetten-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "f9a7bdf6659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "83e043b9a40f7da2323dda95d74f65bd495db9f0911370cc6c0f010a07824ed8"
+  },
   "features-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "1659166c659211f1936c8ba3f0b2a214",
@@ -377,11 +407,23 @@
     "ingested": "2026-06-11",
     "sha": "df0356a8e37a3c9c71f4c0ce0ea7d6c9dabb4be70af7734dfdfbedd974ad51c4"
   },
+  "flimmer-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fa411d34659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "ee44db2ff670de1893f37d4f31df8f420170e64b8d056750a40ec9b5340631c4"
+  },
   "framework-bersicht-developers.md": {
     "dataset": "public",
     "doc_id": "3c3f1174659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "655bf22e4503c2fb28a01d9d0955085d42dfa23ec16a11a8a3cc93010dbd925f"
+  },
+  "ganzgraz-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fadba9a8659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "d408968cba812a08451cbdb1402c631f5dce16cd21c062fab2ab365e7d808a62"
   },
   "get-started-developers.md": {
     "dataset": "public",
@@ -394,6 +436,12 @@
     "doc_id": "16f2ba42659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "9b5404209c326c9ef0993fda3c0fc9f510e8e29cb4ac0fceaaa2d2d9d26f4c26"
+  },
+  "gruppetto-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fb7532a8659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "707df13a782081f793dbb396c015e37c9f69d6627d88f4193fc07fe67312544c"
   },
   "hauptstadt-we-publish-implementation-profile.md": {
     "dataset": "internal",
@@ -509,6 +557,12 @@
     "ingested": "2026-06-11",
     "sha": "104e8174f9359aaecb69552b42de076a511f8345434ffc4f8a22deb0e5a35ed6"
   },
+  "mannschaft-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fc0e5942659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "4c1a9edcc15baf82cd185bcc42aff617cd3e9c1762b7a0046b26ed61117ced33"
+  },
   "member-plan-we-publish-api-reference.md": {
     "dataset": "internal",
     "doc_id": "16f75784659511f1936c8ba3f0b2a214",
@@ -539,6 +593,12 @@
     "ingested": "2026-06-11",
     "sha": "0aa2ba01f311c8f57fe173a6745650a83906dfd24d1eb6209ca9b3a567c05490"
   },
+  "munotgloeggli-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fca825b8659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "3f23c6bc904349e11f021c0d5d0e7013ee63c057c473aa1699cca518edb0e02d"
+  },
   "navigation-logo-publisher-dokumentation.md": {
     "dataset": "public",
     "doc_id": "27cf5758659211f1936c8ba3f0b2a214",
@@ -559,7 +619,7 @@
   },
   "newsroom-onboarding-launch-readiness-checklist.md": {
     "dataset": "internal",
-    "doc_id": "05082364659511f1936c8ba3f0b2a214",
+    "doc_id": "fb4251ca659811f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "0950785f13c7b4df37d531a1ed57de98e3a510a02851fe414c95d61031555816"
   },
@@ -568,6 +628,12 @@
     "doc_id": "182596aa659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "8ba2f241e91d618c214f1de23a050ecff4ee082e7111a9b9e495495452ed4bab"
+  },
+  "onlinereports-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fd421cfe659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "257a15501cef3ab09da4fdd25a7c4847336a78ced64efa648ab09fef0f0c7d95"
   },
   "page-we-publish-api-reference.md": {
     "dataset": "internal",
@@ -634,6 +700,12 @@
     "doc_id": "35a4d150659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "9b31d0b9b35e75add423fdcc670a7ce26738ec05e00e32d9fa7b4cf00f1095b9"
+  },
+  "reflekt-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fddba7ca659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c9fc9de3cc3bb988636a831dd6d970efd3c2d1a4d9bc1bebf1b5b1ffc65898e0"
   },
   "release-process-wepublish-repo.md": {
     "dataset": "public",
@@ -709,7 +781,7 @@
   },
   "support-boundaries-refusals-and-answer-contract.md": {
     "dataset": "internal",
-    "doc_id": "03de0fb2659511f1936c8ba3f0b2a214",
+    "doc_id": "fa15dd76659811f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "dce6d0b7b9a94a1795501c8ef58015a181ba00e24ff67c2b1308b0b9572a1716"
   },
@@ -757,7 +829,7 @@
   },
   "ticket-and-pr-conventions-support-to-developer-routing.md": {
     "dataset": "internal",
-    "doc_id": "046e9686659511f1936c8ba3f0b2a214",
+    "doc_id": "faaa8110659811f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "c67790abcdd310cc1397d9da479598f971bb9007c2f79e20a5fead73690f59d1"
   },
@@ -841,7 +913,7 @@
   },
   "we-publish-ai-stack-what-runs-where.md": {
     "dataset": "internal",
-    "doc_id": "05a18e00659511f1936c8ba3f0b2a214",
+    "doc_id": "fbdb88e0659811f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "59471054dae833b83d63d97cd5a5367bff4313891ecfe0132c8ad030ac397e60"
   },
@@ -899,6 +971,12 @@
     "ingested": "2026-06-11",
     "sha": "bf3e5410164b5e17390ec9d0d46e8f2c8f6724c7f68343106c8ef1198a076d90"
   },
+  "wnti-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "fe74cea0659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "2d7bd5c9062c5e20b736afc8936dc9a8233e158c89ced42fcdf788ab64ff8164"
+  },
   "writing-tests-api-developers.md": {
     "dataset": "public",
     "doc_id": "4aadd678659211f1936c8ba3f0b2a214",
@@ -934,5 +1012,11 @@
     "doc_id": "4ee14f0e659211f1936c8ba3f0b2a214",
     "ingested": "2026-06-11",
     "sha": "950eaf8c8b067fa799e343be556c5eaa1258b0a214099d56e576efcc5a398af1"
+  },
+  "zwoelf-we-publish-implementation-profile.md": {
+    "dataset": "internal",
+    "doc_id": "ff0e6998659c11f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "2bcc8effc3648121a28c61fc38673b776f6c915f14a37b2bd7c8871a0d168cc9"
   }
 }
