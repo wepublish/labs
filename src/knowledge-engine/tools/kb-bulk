@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""kb-bulk — manifest-driven bulk ingestion into the We.Publish RAGFlow KB (onyx01).
+
+Same transport model as wp-kb: all API calls run ON the box over SSH (RAGFlow is
+loopback-bound). The manifest is the refresh contract: re-running re-ingests only
+documents whose content changed (sha256 in a local state file + document name on box).
+
+  kb-bulk --dry-run                 # print the full plan, zero writes
+  kb-bulk                           # ingest everything in the manifest
+  kb-bulk --filter developers/      # only manifest entries whose file matches
+  kb-bulk --root gitbook=/tmp/gitbook-wepublish-doc --root main=/tmp/wepublish-main
+
+Manifest (src/knowledge-engine/ingest/manifest.json) — list of entries:
+  {"file": "gitbook:developers/api/README.md",   # "<root>:<relpath>" or path relative to ingest/
+   "title": "Developer API overview",            # unique; becomes the document name
+   "dataset": "public", "type": "doc",
+   "source": "https://docs.wepublish.ch/developers/api",
+   "owner": "wepublish-docs", "confidence": "confirmed", "reviewed_by": "wepublish-docs",
+   "newsroom": "", "repo_path": "", "commit": ""} # optional fields may be omitted
+
+Fail-closed rules (mirror kb-ingest/push_chunk.py):
+  - type in the schema enum; confidence in {confirmed, likely, unverified}
+  - confidence=confirmed requires reviewed_by
+  - api_reference / implementation_profile require repo_path + commit
+  - duplicate titles are an error; empty files are an error
+"""
+
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+INGEST_DIR = os.path.normpath(os.path.join(HERE, "..", "ingest"))
+DEFAULT_MANIFEST = os.path.join(INGEST_DIR, "manifest.json")
+STATE_FILE = os.path.join(INGEST_DIR, "state.json")
+HOST = os.environ.get("HOST", "onyx01.wepublish.cloud")
+SSH_KEY = os.environ.get("SSH_KEY", os.path.expanduser("~/.ssh/wepublish_hetzner_ed25519"))
+SSH = ["ssh", "-i", SSH_KEY, "-o", "ConnectTimeout=15", "-o", "BatchMode=yes", f"root@{HOST}"]
+SCP = ["scp", "-q", "-i", SSH_KEY, "-o", "ConnectTimeout=15", "-o", "BatchMode=yes"]
+
+VALID_TYPES = {"doc", "support_pattern", "decision", "media_profile", "setup_summary",
+               "architecture", "issue_summary", "api_reference", "implementation_profile"}
+DERIVED_TYPES = {"api_reference", "implementation_profile"}
+VALID_CONFIDENCE = {"confirmed", "likely", "unverified"}
+PARSE_BATCH = 10  # docs per parse trigger — keep TEI/ES inside the reviewed memory envelope
+
+# Runs on onyx01. Reads a job JSON; resolves datasets; lists existing docs by name;
+# deletes+reuploads changed docs; uploads new ones; sets meta; parses in batches,
+# polling run-status between batches. Prints one JSON report line at the end.
+REMOTE_PY = r'''
+import json, sys, time, uuid, urllib.request, urllib.error, os
+
+BASE = "http://127.0.0.1:9380"
+KEY = open("/opt/ragflow-deploy/ragflow-api-key.txt").read().strip()
+
+def http(method, path, body=None, raw=None, ctype="application/json"):
+    data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
+    req = urllib.request.Request(BASE + path, data=data, method=method)
+    req.add_header("Authorization", "Bearer " + KEY)
+    req.add_header("Content-Type", ctype)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        return json.loads(e.read() or b"{}")
+
+job = json.load(open(sys.argv[1]))
+src_dir = sys.argv[2]
+batch_size = int(sys.argv[3])
+
+datasets = http("GET", "/api/v1/datasets?page_size=100").get("data") or []
+ds_ids = {d["name"]: d["id"] for d in datasets}
+missing = sorted({i["dataset"] for i in job} - set(ds_ids))
+if missing:
+    sys.exit("[kb-bulk] unknown datasets on box: %s (have %s)" % (missing, sorted(ds_ids)))
+
+def existing_docs(ds_id):
+    out, page = {}, 1
+    while True:
+        r = http("GET", "/api/v1/datasets/%s/documents?page=%d&page_size=100" % (ds_id, page))
+        data = r.get("data") or {}
+        docs = data.get("docs") if isinstance(data, dict) else data
+        if not docs:
+            break
+        for d in docs:
+            out[d["name"]] = d["id"]
+        if isinstance(data, dict) and len(out) >= data.get("total", 0):
+            break
+        page += 1
+    return out
+
+existing = {name: existing_docs(ds_id) for name, ds_id in ds_ids.items()
+            if name in {i["dataset"] for i in job}}
+
+report = {"uploaded": [], "replaced": [], "skipped": [], "failed": []}
+to_parse = {}  # ds_id -> [doc_id]
+
+for item in job:
+    ds_id = ds_ids[item["dataset"]]
+    fname = item["fname"]
+    try:
+        if item["action"] == "skip":
+            report["skipped"].append(fname)
+            continue
+        old_id = existing[item["dataset"]].get(fname)
+        if old_id:
+            http("DELETE", "/api/v1/datasets/%s/documents" % ds_id, {"ids": [old_id]})
+        content = open(os.path.join(src_dir, fname), "rb").read()
+        boundary = uuid.uuid4().hex
+        body = (("--%s\r\nContent-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
+                 "Content-Type: text/markdown\r\n\r\n") % (boundary, fname)).encode() \
+               + content + ("\r\n--%s--\r\n" % boundary).encode()
+        up = http("POST", "/api/v1/datasets/%s/documents" % ds_id, raw=body,
+                  ctype="multipart/form-data; boundary=" + boundary)
+        docs = up.get("data") or []
+        if up.get("code") != 0 or not docs:
+            report["failed"].append({"fname": fname, "stage": "upload", "resp": str(up)[:200]})
+            continue
+        doc_id = docs[0]["id"]
+        mu = http("PUT", "/api/v1/datasets/%s/documents/%s" % (ds_id, doc_id),
+                  {"meta_fields": item["meta"]})
+        if mu.get("code") != 0:
+            report["failed"].append({"fname": fname, "stage": "meta", "resp": str(mu)[:200]})
+            continue
+        to_parse.setdefault(ds_id, []).append(doc_id)
+        report["replaced" if old_id else "uploaded"].append(fname)
+        item["doc_id"] = doc_id
+    except Exception as e:  # keep going; report at the end
+        report["failed"].append({"fname": fname, "stage": "exception", "resp": str(e)[:200]})
+
+def wait_parsed(ds_id, ids, timeout=900):
+    deadline = time.time() + timeout
+    pending = set(ids)
+    while pending and time.time() < deadline:
+        time.sleep(10)
+        r = http("GET", "/api/v1/datasets/%s/documents?page=1&page_size=100" % ds_id)
+        data = r.get("data") or {}
+        docs = data.get("docs") if isinstance(data, dict) else data
+        for d in docs or []:
+            if d["id"] in pending and d.get("run") in ("DONE", "FAIL", "3", "4"):
+                if d.get("run") in ("FAIL", "4"):
+                    report["failed"].append({"fname": d["name"], "stage": "parse", "resp": "run=FAIL"})
+                pending.discard(d["id"])
+    return pending
+
+for ds_id, ids in to_parse.items():
+    for i in range(0, len(ids), batch_size):
+        batch = ids[i:i + batch_size]
+        pr = http("POST", "/api/v1/datasets/%s/chunks" % ds_id, {"document_ids": batch})
+        if pr.get("code") != 0:
+            report["failed"].append({"fname": str(batch), "stage": "parse-trigger", "resp": str(pr)[:200]})
+            continue
+        stuck = wait_parsed(ds_id, batch)
+        for s in stuck:
+            report["failed"].append({"fname": s, "stage": "parse", "resp": "timeout 900s"})
+
+doc_ids = {i["fname"]: i.get("doc_id") for i in job if i.get("doc_id")}
+print("KB_BULK_REPORT " + json.dumps({"report": report, "doc_ids": doc_ids}))
+'''
+
+
+def die(msg):
+    print(f"[kb-bulk][FATAL] {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def slug(title):
+    s = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:80]
+    return s + ".md"
+
+
+def load_entries(manifest_path, roots, filt):
+    entries = json.load(open(manifest_path))
+    seen, out = {}, []
+    for n, e in enumerate(entries):
+        where = f"manifest[{n}] ({e.get('title', '?')})"
+        for req in ("file", "title", "dataset", "type", "source", "owner", "confidence"):
+            if not e.get(req):
+                die(f"{where}: missing required field '{req}'")
+        if e["type"] not in VALID_TYPES:
+            die(f"{where}: type must be one of {sorted(VALID_TYPES)}")
+        if e["confidence"] not in VALID_CONFIDENCE:
+            die(f"{where}: confidence must be one of {sorted(VALID_CONFIDENCE)}")
+        if e["confidence"] == "confirmed" and not e.get("reviewed_by"):
+            die(f"{where}: confidence=confirmed requires reviewed_by")
+        if e["type"] in DERIVED_TYPES and not (e.get("repo_path") and e.get("commit")):
+            die(f"{where}: derived type {e['type']} requires repo_path + commit")
+        fname = slug(e["title"])
+        if fname in seen:
+            die(f"{where}: title collides with {seen[fname]!r} (both slug to {fname})")
+        seen[fname] = e["title"]
+        if ":" in e["file"] and not os.path.isabs(e["file"]):
+            root, rel = e["file"].split(":", 1)
+            if root not in roots:
+                die(f"{where}: unknown root '{root}' — pass --root {root}=<path>")
+            path = os.path.join(roots[root], rel)
+        else:
+            path = os.path.join(INGEST_DIR, e["file"])
+        if filt and filt not in e["file"]:
+            continue
+        if not os.path.isfile(path):
+            die(f"{where}: file not found: {path}")
+        content = open(path, "rb").read()
+        if not content.strip():
+            die(f"{where}: file is empty: {path}")
+        e["_path"], e["fname"] = path, fname
+        e["sha"] = hashlib.sha256(content).hexdigest()
+        out.append(e)
+    return out
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    p.add_argument("--root", action="append", default=[], metavar="NAME=PATH")
+    p.add_argument("--filter", default="", help="only entries whose 'file' contains this")
+    p.add_argument("--dry-run", action="store_true")
+    a = p.parse_args()
+
+    roots = dict(r.split("=", 1) for r in a.root)
+    entries = load_entries(a.manifest, roots, a.filter)
+    if not entries:
+        die("manifest selected zero entries")
+
+    state = json.load(open(STATE_FILE)) if os.path.exists(STATE_FILE) else {}
+    today = datetime.date.today().isoformat()
+    job = []
+    for e in entries:
+        meta = {"type": e["type"], "source": e["source"], "confidence": e["confidence"],
+                "owner": e["owner"], "last_updated": today}
+        for opt in ("newsroom", "repo_path", "commit", "reviewed_by"):
+            if e.get(opt):
+                meta[opt] = e[opt]
+        action = "skip" if state.get(e["fname"], {}).get("sha") == e["sha"] else "ingest"
+        job.append({"fname": e["fname"], "dataset": e["dataset"], "meta": meta,
+                    "action": action, "_path": e["_path"], "sha": e["sha"]})
+
+    n_ingest = sum(1 for j in job if j["action"] == "ingest")
+    print(f"[kb-bulk] {len(job)} entries selected: {n_ingest} to ingest, {len(job) - n_ingest} unchanged (skip)")
+    for j in job:
+        print(f"  {j['action']:<6} {j['dataset']:<16} {j['meta']['type']:<22} {j['fname']}")
+    if a.dry_run:
+        print("[kb-bulk] dry-run: no writes performed")
+        return
+    if n_ingest == 0:
+        print("[kb-bulk] nothing to do")
+        return
+
+    with tempfile.TemporaryDirectory() as td:
+        tar_path = os.path.join(td, "kb-bulk.tar.gz")
+        with tarfile.open(tar_path, "w:gz") as tar:
+            for j in job:
+                if j["action"] == "ingest":
+                    tar.add(j["_path"], arcname=j["fname"])
+        job_path = os.path.join(td, "job.json")
+        with open(job_path, "w") as f:
+            json.dump([{k: v for k, v in j.items() if not k.startswith("_") and k != "sha"}
+                       for j in job], f)
+        py_path = os.path.join(td, "remote.py")
+        with open(py_path, "w") as f:
+            f.write(REMOTE_PY)
+        subprocess.run(SCP + [tar_path, job_path, py_path, f"root@{HOST}:/tmp/"], check=True)
+        r = subprocess.run(SSH + ["mkdir -p /tmp/kb-bulk-src && rm -rf /tmp/kb-bulk-src/* && "
+                                  "tar xzf /tmp/kb-bulk.tar.gz -C /tmp/kb-bulk-src && "
+                                  f"python3 /tmp/remote.py /tmp/job.json /tmp/kb-bulk-src {PARSE_BATCH}; "
+                                  "rm -rf /tmp/kb-bulk-src /tmp/kb-bulk.tar.gz /tmp/job.json /tmp/remote.py"],
+                           capture_output=True, text=True)
+        print(r.stdout, end="")
+        if r.stderr.strip():
+            print(r.stderr, file=sys.stderr, end="")
+
+    m = re.search(r"KB_BULK_REPORT (.*)", r.stdout)
+    if not m:
+        die("no report from box — treat the run as failed, nothing recorded in state")
+    out = json.loads(m.group(1))
+    rep, doc_ids = out["report"], out["doc_ids"]
+    for j in job:
+        if j["fname"] in doc_ids and not any(
+                f.get("fname") == j["fname"] for f in rep["failed"] if isinstance(f, dict)):
+            state[j["fname"]] = {"sha": j["sha"], "doc_id": doc_ids[j["fname"]],
+                                 "dataset": j["dataset"], "ingested": today}
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2, sort_keys=True)
+    print(f"[kb-bulk] uploaded={len(rep['uploaded'])} replaced={len(rep['replaced'])} "
+          f"skipped={len(rep['skipped'])} failed={len(rep['failed'])}")
+    for fail in rep["failed"]:
+        print(f"  FAIL {fail}", file=sys.stderr)
+    sys.exit(1 if rep["failed"] else 0)
+
+
+if __name__ == "__main__":
+    main()
