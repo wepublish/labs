@@ -17,15 +17,26 @@ the Slack app settings (App Manifest → paste → reinstall). One action unbloc
       `echo critical > /opt/kb-watch/state && bash /opt/kb-watch/kb-watch.sh`
       → expect the ✅ recovery message in `#dev-aldus`
 
-## Next session: populate the KB (the actual remaining work)
+## Populate the KB (the actual remaining work)
 
-- [ ] Index `llms.txt` / `llms-full.txt` + public docs → `public` dataset
-      (wepublish/wepublish#2802 must be deployed for the live URLs; can also ingest
-      from the repo files directly)
-- [ ] Doc-scrape (docs.wepublish.ch / GitBook) → `public` / `internal`
-- [ ] Seed `internal` with We.Publish operational knowledge (chat-driven via kb-ingest)
-- [ ] Newsroom knowledge → `newsroom:pilot` (tagged `newsroom-asserted`/`unverified`)
-- [ ] After first real content: spot-check retrieval quality (German + French queries)
+Superseded by the full plan: **`specs/plans/2026-06-11-001-feat-kb-population-plan.md`**
+(scope widened 2026-06-11: thorough repo/CMS/docs understanding, Hermes PR/ticket
+context, per-newsroom implementation profiles for devs; GitBook ingested from its
+backing repo instead of a scrape). Unit checklist:
+
+- [ ] U1 Data-structure amendment (`api_reference` + `implementation_profile` types,
+      `repo_path`/`commit` tags; derived-code-knowledge boundary in spec + kb-ingest)
+- [ ] U2 `kb-bulk` manifest-driven ingest tool (idempotent, dry-run, batched parse)
+- [ ] U3 Public corpus → `public` (~115 docs: gitbook-wepublish-doc repo, llms.txt
+      from #2802 branch, ~6 marketing pages)
+- [ ] U4 Repo/CMS knowledge → `public` (README, FAQ, `.ai/*`, `docs/*`, usage.mdx)
+- [ ] U5 Generated API domain references → `internal` (~20-25 docs from SDL + Prisma)
+- [ ] U6 Newsroom implementation profiles → `internal` (3-profile pilot → Tom review
+      → all 18)
+- [ ] U7 Internal ops seed → `internal` (boundaries, ticket/PR conventions,
+      onboarding checklist, AI-stack overview)
+- [ ] U8 Retrieval eval DE/EN/FR (~30 questions, ≥90% public hit bar)
+- [ ] U9 Bookkeeping (this file, kb-setup-log.json, README "What's in the KB")
 
 ## Before the first newsroom channel goes live (isolation prerequisites)
 
