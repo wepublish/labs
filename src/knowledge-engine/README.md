@@ -132,13 +132,15 @@ docker compose up -d
   RAGFlow sends embed batches of 16 — and keep the `tei-sentence-bert-config.json`
   mount: it clamps inputs to 2048 tokens, preventing a TEI queue livelock),
   `MEM_LIMIT` + `ES_JAVA_OPTS` in `.env`.
-- **Watchdog**: root cron runs `/opt/ragflow-deploy/watchdog.py` every 5 min →
+- **Watchdog**: root cron runs `/opt/ragflow-deploy/watchdog.py` every 10 min →
   atomic status JSON at `/opt/ragflow-deploy/health-status.json` (container
   states, OOM/restart deltas, disk, and a *digestion probe* — documents stuck
   in parsing, the failure liveness checks miss). `wp-kb health` displays it and
   flags staleness. A companion poller on hermes01 (`/opt/kb-watch/`) probes
-  end-to-end through the tunnel and posts Slack alerts on state transitions
-  once `SLACK_ALERT_CHANNEL` is set in `/opt/kb-watch/kb-watch.env`.
+  end-to-end through the tunnel every 10 min, always logs to journal, and posts
+  to Slack ONLY on state transitions (down → alert, recovered → all-clear; never
+  periodic pings) — channel set via `SLACK_ALERT_CHANNEL` in
+  `/opt/kb-watch/kb-watch.env` (`#dev-aldus`).
 - **Backups**: nightly `mysqldump` cron → `/opt/ragflow-deploy/backups/`
   (14-day rotation). MySQL holds users/API keys/dataset configs — NOT
   re-derivable; chunks ARE (re-ingest from sources). Ship dumps off-box
