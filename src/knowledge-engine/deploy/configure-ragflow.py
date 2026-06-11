@@ -20,7 +20,7 @@ Stdlib only (urllib) — no pip installs on the box.
 NOTE: steps 2-4 are reconstructed from the bake-off; verify on the first real run
 against the resized box and adjust endpoint shapes if a RAGFlow upgrade moved them.
 """
-import argparse, json, subprocess, sys, time, urllib.request, urllib.error
+import argparse, json, os, subprocess, sys, time, urllib.request, urllib.error
 
 STATE_DIR = "/opt/ragflow-deploy"
 DATASETS = ["public", "internal", "newsroom:pilot"]
@@ -127,12 +127,13 @@ def main():
             warn(f"dataset '{name}' not created: {st} {body} "
                  f"(if it's the embedding model, confirm TEI_MODEL matches {EMBEDDING})")
 
-    # ---- persist + print ----
+    # ---- persist (root-only file; never echoed) ----
     key_path = f"{STATE_DIR}/ragflow-api-key.txt"
     try:
-        with open(key_path, "w") as f:
+        fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             f.write(api_key + "\n")
-        log(f"API key written to {key_path}")
+        log(f"API key written to {key_path} (mode 600)")
     except OSError as e:
         warn(f"could not write {key_path}: {e}")
 
@@ -140,7 +141,7 @@ def main():
     print(f"base_url:   {base}")
     print(f"datasets:   {', '.join(DATASETS)}")
     print(f"embedding:  {EMBEDDING}")
-    print(f"API key:    {api_key}")
+    print(f"API key:    ...{api_key[-6:]} (full key only in {key_path})")
     print("Hermes uses this Bearer key against /api/v1/retrieval (no keyword:true).")
 
 
