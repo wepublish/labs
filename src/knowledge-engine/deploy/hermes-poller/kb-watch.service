@@ -1,0 +1,5 @@
+[Unit]
+Description=KB engine end-to-end probe (onyx01 via tunnel)
+[Service]
+Type=oneshot
+ExecStart=/opt/kb-watch/kb-watch.sh

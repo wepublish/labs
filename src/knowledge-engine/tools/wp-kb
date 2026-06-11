@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# wp-kb — thin CLI for the We.Publish RAGFlow knowledge base on onyx01.
+#
+# All API calls run ON the box over SSH (RAGFlow is loopback-bound there), so any
+# agent holding the SSH key can use this — no tunnel, no local key file needed.
+# Retrieval-only MCP is separate (see `wp-kb tunnel` + .mcp.json "ragflow-kb").
+#
+#   wp-kb health                      # containers + dataset/doc/chunk audit + MCP probe
+#   wp-kb datasets                    # raw dataset list (JSON)
+#   wp-kb query "<text>" [ds ...]     # /retrieval against named datasets (default: all)
+#   wp-kb ingest <file> <dataset>     # upload a document + trigger parsing
+#   wp-kb tunnel                      # background SSH tunnel 127.0.0.1:9382 (MCP)
+set -euo pipefail
+HOST="${HOST:-onyx01.wepublish.cloud}"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/wepublish_hetzner_ed25519}"
+SSH=(ssh -i "$SSH_KEY" -o ConnectTimeout=15 -o BatchMode=yes "root@$HOST")
+SCP=(scp -i "$SSH_KEY" -o ConnectTimeout=15 -o BatchMode=yes)
+
+die() { printf '\033[1;31m[wp-kb]\033[0m %s\n' "$*" >&2; exit 1; }
+
+cmd="${1:-}"; shift || true
+
+remote_py() {  # remote_py <subcommand> [args...] — runs the embedded python on the box
+  "${SSH[@]}" "python3 - $(printf '%q ' "$@")" <<'PYEOF'
+import json, sys, urllib.request, urllib.error, uuid, subprocess, os
+
+BASE = "http://127.0.0.1:9380"
+KEY = open("/opt/ragflow-deploy/ragflow-api-key.txt").read().strip()
+AUTH = {"Authorization": f"Bearer {KEY}"}
+
+def http(method, path, body=None, headers=None, raw=None, ctype="application/json"):
+    data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
+    req = urllib.request.Request(BASE + path, data=data, method=method)
+    req.add_header("Content-Type", ctype)
+    for k, v in {**AUTH, **(headers or {})}.items():
+        req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        return json.loads(e.read() or b"{}")
+
+def datasets():
+    return http("GET", "/api/v1/datasets?page_size=100").get("data") or []
+
+def ds_by_name(name):
+    for d in datasets():
+        if d.get("name") == name:
+            return d
+    sys.exit(f"[wp-kb] no dataset named {name!r}; have: {[d['name'] for d in datasets()]}")
+
+cmd, args = sys.argv[1], sys.argv[2:]
+
+if cmd == "health":
+    import time
+    try:
+        with open("/opt/ragflow-deploy/health-status.json") as f:
+            w = json.load(f)
+        age = int(time.time()) - w.get("generated_at", 0)
+        stale = " (STALE — watchdog not running?)" if age > 2 * w.get("interval_s", 300) else ""
+        print(f"=== watchdog: {w['status']}{stale} (seq {w['seq']}, {age}s ago) ===")
+        for r in w.get("reasons", []):
+            print(f"  ! {r}")
+        print(f"  disk {w.get('disk_pct')}% used, {w.get('mem_available_mb')} MiB RAM free, "
+              f"oom_kills_total={w.get('oom_kill_total')}")
+    except FileNotFoundError:
+        print("=== watchdog: no status file (cron not activated) ===")
+    print("=== containers ===", flush=True)
+    subprocess.run(["docker", "compose", "ps", "--format", "table {{.Name}}\t{{.Status}}"],
+                   cwd="/opt/ragflow/docker")
+    print("=== datasets ===")
+    for d in datasets():
+        print(f"  {d['name']:<18} docs={d.get('document_count', 0):<5} chunks={d.get('chunk_count', 0)}")
+    print("=== mcp ===")
+    rc = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                         "http://127.0.0.1:9382/mcp"], capture_output=True, text=True)
+    print(f"  :9382/mcp -> HTTP {rc.stdout or 'unreachable'}")
+
+elif cmd == "datasets":
+    print(json.dumps(datasets(), indent=2))
+
+elif cmd == "query":
+    text, names = args[0], args[1:]
+    ids = [ds_by_name(n)["id"] for n in names] if names else [d["id"] for d in datasets()]
+    # retrieval-only deployment: never pass keyword:true (no chat LLM configured)
+    res = http("POST", "/api/v1/retrieval",
+               {"question": text, "dataset_ids": ids, "top_k": 1024, "page_size": 10})
+    print(json.dumps(res, indent=2))
+
+elif cmd == "ingest":
+    path, name = args[0], args[1]   # path already scp'd to the box by the wrapper
+    ds = ds_by_name(name)
+    boundary = uuid.uuid4().hex
+    fname = os.path.basename(path)
+    with open(path, "rb") as f:
+        content = f.read()
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; "
+            f"filename=\"{fname}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+            ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
+    up = http("POST", f"/api/v1/datasets/{ds['id']}/documents", raw=body,
+              ctype=f"multipart/form-data; boundary={boundary}")
+    if up.get("code") != 0:
+        sys.exit(f"[wp-kb] upload failed: {up}")
+    doc_ids = [d["id"] for d in up.get("data") or []]
+    print(f"uploaded {fname} -> {name} (doc ids: {doc_ids})")
+    parse = http("POST", f"/api/v1/datasets/{ds['id']}/chunks", {"document_ids": doc_ids})
+    print("parse triggered" if parse.get("code") == 0 else f"parse trigger failed: {parse}")
+
+else:
+    sys.exit(f"[wp-kb] unknown remote command: {cmd}")
+PYEOF
+}
+
+case "$cmd" in
+  health|datasets) remote_py "$cmd" ;;
+  query)
+    [ $# -ge 1 ] || die 'usage: wp-kb query "<text>" [dataset ...]'
+    remote_py query "$@" ;;
+  ingest)
+    [ $# -eq 2 ] || die 'usage: wp-kb ingest <file> <dataset>'
+    [ -f "$1" ] || die "no such file: $1"
+    dest="/tmp/wp-kb-$(basename "$1")"
+    "${SCP[@]}" "$1" "root@$HOST:$dest"
+    remote_py ingest "$dest" "$2"
+    "${SSH[@]}" "rm -f $(printf '%q' "$dest")" ;;
+  tunnel)
+    ssh -i "$SSH_KEY" -o BatchMode=yes -fN -L 9382:127.0.0.1:9382 "root@$HOST" \
+      && echo "[wp-kb] tunnel up: MCP at http://127.0.0.1:9382/mcp (kill: pkill -f 'L 9382:127.0.0.1:9382')" ;;
+  *) die "usage: wp-kb {health|datasets|query|ingest|tunnel}" ;;
+esac
