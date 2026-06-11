@@ -158,8 +158,15 @@ docker compose up -d
 - **Scaling**: if real multi-newsroom ingest load arrives, resize to CPX51
   (32 GB) in the Hetzner console — no config change needed, the stack just
   gets headroom.
-- Deploy scripts + full first-deploy notes ("v0.25.6 realities"): handed over
-  separately with `wp-knowledge/` (Tom).
+- Deploy scripts + full first-deploy notes ("v0.25.6 realities"): [`deploy/`](deploy/)
+  in this project.
+
+## Project layout
+
+`AGENTS.md` — directory map for agents · `TODO.md` — live operational checklist ·
+`kb-setup-log.json` — machine-readable build log · `deploy/` — deploy scripts +
+monitoring · `specs/` — decision record (architecture, bake-off, strategy) ·
+`tools/wp-kb` — ops CLI.
 
 ## Hard rules
 

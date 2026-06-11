@@ -11,7 +11,7 @@ engine plan (RAGFlow on `onyx01`), the CMS MCP, and the open PRs.
 | **Aldus** — Hermes agent v0.16.0, profile `internal` | ✅ live on `hermes01.wepublish.cloud`, terminal chat works |
 | LLM | ✅ `anthropic/claude-sonnet-4.6` via OpenRouter (key in profile `.env`, chmod 600) |
 | Slack gateway | ✅ running (`hermes-gateway-internal.service`, systemd, boot-enabled), connected via Socket Mode |
-| Slack app scopes/events | ⏳ **blocker** — app has 2/14 scopes; apply `aldus-slack-manifest.json` (App Manifest → paste → reinstall). See `aldus-slack-setup.html`. |
+| Slack app scopes/events | ⏳ **blocker** — app has 2/14 scopes; apply `../hermes/slack/aldus-slack-manifest.json` (App Manifest → paste → reinstall). |
 | Channel allowlist | ⏳ pin `#dev-aldus` + `#support-aldus` IDs in `SLACK_ALLOWED_CHANNELS` once scopes exist (until then Aldus answers in any channel it is invited to; all workspace users are allowed) |
 | `kb-ingest` skill | ✅ installed **and live** — RAGFlow wired, full ingest path validated 2026-06-11 |
 | `kb-retrieve` skill | ✅ built + deployed to the `internal` profile (PR #46) — scoped read mirror of kb-ingest; validated end-to-end |
@@ -124,7 +124,7 @@ write-ups, small triage-derived patches — but **can never merge, approve, or v
 
 - `labs/src/hermes/` — Hermes configuration: profiles, skills, README (architecture + decisions).
 - `labs/src/knowledge-engine/` — KB access + ops documentation, `wp-kb` CLI.
-- `aldus-slack-setup.html` / `aldus-slack-manifest.json` — Slack setup doc for the workspace admin.
+- `../hermes/slack/aldus-slack-manifest.json` — the Slack app manifest for the workspace admin.
 - `labs/wepublish-cms-mcp/` — CMS MCP (README + `docs/staging-and-token.md`).
 - Open PRs: wepublish/wepublish#2801, #2802.
-- RAGFlow deploy scripts + engine bake-off evidence: handed over separately (`wp-knowledge/`).
+- `../knowledge-engine/` — RAGFlow deploy scripts (`deploy/`), specs + bake-off evidence (`specs/`), ops CLI (`tools/wp-kb`), setup log (`kb-setup-log.json`).
