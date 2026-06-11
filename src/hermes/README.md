@@ -41,10 +41,10 @@ multi-profile isolation, persistent memory, and cron. The only thing salvaged fr
 
 ## Profiles ↔ surfaces
 
-| Profile | Surface | Knowledge scope | Tools |
-|---|---|---|---|
-| `internal` | staff/dev Slack channels | `public` + `internal` + all newsroom datasets | RAGFlow MCP, CMS MCP, wepublish-mcp, `kb-ingest` (all datasets), GitHub Issues |
-| `support-<slug>` | that newsroom's dedicated channel | `public` + `newsroom:<slug>` via scoped retrieval skill | read-only CMS MCP (their deployment), `kb-ingest` (their dataset only, tags forced), GitHub Issues drafting |
+| Profile | Persona | Surface | Knowledge scope | Tools |
+|---|---|---|---|---|
+| `internal` | **Aldus**, the We.Publish librarian (after Aldus Manutius) | staff/dev Slack channels | `public` + `internal` + all newsroom datasets | RAGFlow MCP, CMS MCP, wepublish-mcp, `kb-ingest` (all datasets), GitHub Issues |
+| `support-<slug>` | TBD per newsroom | that newsroom's dedicated channel | `public` + `newsroom:<slug>` via scoped retrieval skill | read-only CMS MCP (their deployment), `kb-ingest` (their dataset only, tags forced), GitHub Issues drafting |
 
 ## Knowledge flow (garbage-in rule, operationalized)
 
