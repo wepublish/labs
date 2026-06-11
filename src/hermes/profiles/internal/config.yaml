@@ -4,7 +4,7 @@
 
 model:
   provider: openrouter
-  default: anthropic/claude-haiku-4.5   # bump to a sonnet-class model if answer quality needs it
+  default: anthropic/claude-sonnet-4.6  # production choice 2026-06-11 (was haiku-4.5)
 
 # Slack: restrict via SLACK_ALLOWED_CHANNELS in .env (internal channels only)
 platforms:
