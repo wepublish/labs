@@ -14,11 +14,12 @@ tags by asking the user if unclear, then run the script.
 | Tag | Values | Rule |
 |---|---|---|
 | dataset | a dataset ID from `RAGFLOW_ALLOWED_DATASET_IDS` | the namespace; script refuses anything else |
-| `type` | `doc` / `support_pattern` / `decision` / `media_profile` / `setup_summary` / `architecture` / `issue_summary` | required |
+| `type` | `doc` / `support_pattern` / `decision` / `media_profile` / `setup_summary` / `architecture` / `issue_summary` / `api_reference` / `implementation_profile` | required |
 | `source` | URL, system name, or `newsroom-asserted` | required — no source, no ingest |
 | `confidence` | `confirmed` / `likely` / `unverified` | `confirmed` requires `--reviewed-by` (a human name). Never invent one. |
 | `owner` | team or person responsible | required |
 | `newsroom` | slug | only for newsroom-related chunks |
+| `repo_path` / `commit` | repo-relative path + short SHA | required for derived code knowledge (`api_reference`, `implementation_profile`) |
 | `last_updated` | — | set automatically by the script |
 
 ## Hard rules
@@ -32,6 +33,10 @@ tags by asking the user if unclear, then run the script.
    point to the CMS.
 4. One topic per chunk. Split mixed content; don't dump raw threads — summarize first
    and show the user the summary before ingesting.
+5. **Raw source code, GraphQL SDL, and Prisma schema are never ingested.** Derived
+   *prose* about code (`api_reference`, `implementation_profile`) is allowed only with
+   `--repo-path` + `--commit` provenance and `confidence: likely` (never `confirmed`
+   without human review). Live code lookup belongs to the Developer Context MCP.
 
 ## Usage
 

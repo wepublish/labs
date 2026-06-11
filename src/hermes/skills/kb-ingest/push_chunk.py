@@ -22,7 +22,8 @@ import urllib.request
 import uuid
 
 VALID_TYPES = {"doc", "support_pattern", "decision", "media_profile",
-               "setup_summary", "architecture", "issue_summary"}
+               "setup_summary", "architecture", "issue_summary",
+               "api_reference", "implementation_profile"}
 VALID_CONFIDENCE = {"confirmed", "likely", "unverified"}
 
 
@@ -64,6 +65,8 @@ def main():
     p.add_argument("--confidence", required=True)
     p.add_argument("--newsroom", default="")
     p.add_argument("--reviewed-by", default="")
+    p.add_argument("--repo-path", default="", help="repo-relative path the chunk was derived from")
+    p.add_argument("--commit", default="", help="short SHA the chunk was derived from")
     p.add_argument("--content-file", required=True)
     a = p.parse_args()
 
@@ -107,6 +110,10 @@ def main():
         meta["newsroom"] = a.newsroom
     if a.reviewed_by:
         meta["reviewed_by"] = a.reviewed_by
+    if a.repo_path:
+        meta["repo_path"] = a.repo_path
+    if a.commit:
+        meta["commit"] = a.commit
     st, resp = http("PUT", f"{base}/api/v1/datasets/{a.dataset_id}/documents/{doc_id}",
                     key, {"meta_fields": meta})
     if st != 200:

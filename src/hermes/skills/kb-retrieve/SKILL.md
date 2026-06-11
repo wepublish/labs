@@ -31,7 +31,9 @@ that is a valid answer.
 2. **Report confidence honestly.** Chunk metadata carries `confidence`
    (`confirmed` / `likely` / `unverified`) and `source` tags — surface them when the
    user is making decisions based on the answer. `newsroom-asserted` content is the
-   newsroom's claim, not verified fact.
+   newsroom's claim, not verified fact. Derived code knowledge (`api_reference` /
+   `implementation_profile` types) carries a `commit` tag — mention it when answering
+   implementation questions, so readers know which code state the answer describes.
 3. **Scope is policy, not preference.** The allowlist in `RAGFLOW_ALLOWED_DATASET_IDS`
    is the profile's read boundary. Never work around a refusal by switching profiles
    or asking another agent.

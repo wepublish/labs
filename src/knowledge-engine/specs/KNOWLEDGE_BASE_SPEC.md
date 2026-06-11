@@ -19,7 +19,7 @@ Do **not** dump every source raw into the index. Route each by what it actually 
 
 | Source | Handling | Why |
 |---|---|---|
-| **Code (GitHub repos)** | **Live MCP at HEAD — never embedded** | code embeddings go stale fast; code-RAG is weak. Use Developer Context MCP for live lookup. |
+| **Code (GitHub repos)** | **Raw code: live MCP at HEAD — never embedded.** Derived **prose** about code (API domain references, newsroom implementation profiles) MAY be embedded — see "Derived code knowledge" below | code embeddings go stale fast; code-RAG is weak. Use Developer Context MCP for live lookup. Derived prose carries provenance that makes staleness detectable. |
 | **Issues / tickets (Jira now → Linear later)** | Hermes ingests **reviewed summaries** (resolved → support-pattern), or live-query at answer time | raw ticket dumps make a noisy KB; switching Jira→Linear = swap Hermes's adapter, engine untouched |
 | **Docs (GitBook, repo markdown, wepublish.ch)** | small scheduled **scrape → ingest** into `public`/`internal` | stable; auto-refresh via a cron-style Hermes job (RAGFlow has no turnkey connector — this is the only real ingestion we build, and it's tiny) |
 | **Slack** | Hermes **lives on Slack** → ingests reviewed summaries | Hermes is the Slack app; summary-first, not raw |
@@ -40,7 +40,19 @@ Isolation is enforced by **Hermes scoping each query to a namespace** (RAGFlow d
 
 ## Schema-on-ingest
 
-Every chunk carries: `namespace`, `type` (`doc`/`support_pattern`/`decision`/`media_profile`/`setup_summary`/`architecture`/`issue_summary`), `newsroom` (when applicable), `source` (URL/system/`newsroom-asserted`), `confidence` (`confirmed`/`likely`/`unverified`), `owner`, `last_updated`.
+Every chunk carries: `namespace`, `type` (`doc`/`support_pattern`/`decision`/`media_profile`/`setup_summary`/`architecture`/`issue_summary`/`api_reference`/`implementation_profile`), `newsroom` (when applicable), `source` (URL/system/`newsroom-asserted`), `confidence` (`confirmed`/`likely`/`unverified`), `owner`, `last_updated`, and — for derived code knowledge — `repo_path` + `commit`.
+
+### Derived code knowledge (amendment, 2026-06-11)
+
+*Raw source code, GraphQL SDL, and Prisma schema are never embedded* (unchanged).
+**Derived prose about code MAY be embedded** when every chunk carries: `source`
+(GitHub URL), `commit` (short SHA it was derived from), `confidence: likely`
+(machine-generated — never `confirmed` without human review), and an entry in the
+ingest refresh manifest (`src/knowledge-engine/ingest/manifest.yaml`). Two types use
+this: `api_reference` (per-domain API prose) and `implementation_profile`
+(per-newsroom CMS implementation summaries). This extends the existing
+"issues → reviewed summaries" pattern; provenance makes staleness detectable, the
+manifest makes refresh mechanical. Rationale + decision: plans/2026-06-11-001 (KTD2).
 
 ### Garbage-in rule (required)
 Newsroom-asserted knowledge is tagged `source: newsroom-asserted, confidence: unverified` and kept categorically separate from We.Publish-verified knowledge. Hermes must distinguish "you told us X" from "We.Publish confirms X" in every answer. Never auto-promote to `confirmed` without human review.
