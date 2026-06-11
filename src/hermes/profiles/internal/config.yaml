@@ -1,0 +1,32 @@
+# Hermes profile: internal — We.Publish staff/dev support
+# Copy into ~/.hermes/profiles/internal/config.yaml on hermes01.
+# Secrets go in the profile's .env (see .env.example), never here.
+
+model:
+  provider: openrouter
+  default: anthropic/claude-haiku-4.5   # bump to a sonnet-class model if answer quality needs it
+
+# Slack: restrict via SLACK_ALLOWED_CHANNELS in .env (internal channels only)
+platforms:
+  slack:
+    reply_to_mode: "first"
+    extra:
+      reply_in_thread: true
+      reply_broadcast: false
+
+mcp_servers:
+  # RAGFlow knowledge engine (internal profile may search all datasets)
+  ragflow:
+    url: "http://onyx01.wepublish.cloud:9382/mcp"   # verify port against the deployed RAGFlow MCP
+    headers:
+      Authorization: "Bearer ${RAGFLOW_API_KEY}"
+
+  # Live CMS diagnostics (read-only tools; labs/wepublish-cms-mcp, internal-only deployment)
+  cms:
+    url: "${CMS_MCP_URL}"
+    headers:
+      Authorization: "Bearer ${CMS_MCP_AUTH_TOKEN}"
+
+  # Developer context: live GitHub/GitBook/wepublish.ch lookup (already deployed)
+  devcontext:
+    url: "https://mcp.wepublish.cloud/mcp"

@@ -1,0 +1,28 @@
+# Hermes profile template: support-<slug> — one instance per newsroom
+# Copy to ~/.hermes/profiles/support-<slug>/config.yaml; replace placeholders.
+# NOTE: support profiles do NOT get the RAGFlow MCP (tenant-wide key = no dataset
+# scoping). Retrieval goes through a scoped skill that calls /api/v1/retrieval with
+# this profile's dataset IDs pinned; writes only via the kb-ingest skill, which this
+# profile's .env restricts to the newsroom's own dataset with forced
+# source=newsroom-asserted / confidence=unverified (see ../../README.md).
+
+model:
+  provider: openrouter
+  default: anthropic/claude-haiku-4.5
+
+platforms:
+  slack:
+    reply_to_mode: "first"
+    extra:
+      reply_in_thread: true
+      reply_broadcast: false
+
+mcp_servers:
+  # Read-only CMS diagnostics for THIS newsroom's deployment only
+  # (single-newsroom mode: the MCP instance/config pins the upstream API URL + token)
+  cms:
+    url: "${CMS_MCP_URL}"
+    headers:
+      Authorization: "Bearer ${CMS_MCP_AUTH_TOKEN}"
+    tools:
+      include: [cms_check_payment_setup, cms_check_subscription_setup]
