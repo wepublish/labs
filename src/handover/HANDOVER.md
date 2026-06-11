@@ -53,8 +53,16 @@ Hermes runtime: <https://github.com/NousResearch/hermes-agent> (install: pip fro
    which passed 2026-06-11).
 4. **Merge #2801**, mint a scoped read-only token, validate the CMS MCP's two gated tools
    live, deploy it internal-only, add it to Aldus's `mcp_servers`.
-5. **First newsroom pilot**: instantiate `profiles/support-template/` as `support-<slug>`
-   (own Slack channel, own gateway service, forced `newsroom-asserted/unverified` tags).
+5. **First newsroom pilot** (routing revised 2026-06-11 — one Slack app means one
+   gateway, so **Aldus serves all channels**; per-newsroom profiles are superseded, see
+   `../hermes/README.md`): create the newsroom's private channel + RAGFlow dataset, add
+   a `RAGFLOW_CHANNEL_MAP` entry to the skills (own dataset only, forced
+   `newsroom-asserted/unverified` tags), fold the `support-template` wording into the
+   SOUL, and pass the isolation probes. **Prerequisites to build first:** channel-map
+   support in `kb-retrieve`/`kb-ingest`, and the upstream hermes-agent contribution that
+   injects the trusted Slack channel ID into the skill execution env (without it,
+   channel scoping rests on the model relaying the channel ID — not acceptable as a
+   security boundary). Also restrict profile memory from storing newsroom facts.
 
 ## Suggested tasks for Aldus (roadmap)
 
