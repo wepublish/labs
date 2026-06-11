@@ -1,0 +1,620 @@
+{
+  "abo-pl-ne-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2c055174659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "b9df6519e8d6eacfe21a8fe16e4bd1c11fbb9cc1535627fbaf0b1a23fbfcec74"
+  },
+  "abonennt-innen-zur-ckgewinnen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2c9f31b8659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "62782dbea432bbe287b8ab8ceaa2119865ce3e22ef9a477a3ff593a52f4f603f"
+  },
+  "abonnements-verwalten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2b6b4c46659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "996fa022396c19394e74085b57482fe258396d75f2003c9e8d911d25866a12c6"
+  },
+  "abos-audience-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2a37e028659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "128657bbfb96d87a0bf62c37c1ee07033012c086ff14403ce190f79b0b9619af"
+  },
+  "ai-integration-v0-developers.md": {
+    "dataset": "public",
+    "doc_id": "4c7a3c12659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "3a5f8c30d49ba34da038ea364178791a4af4cb7494f3f64b636d4172bb6f27c8"
+  },
+  "alle-bl-cke-im-berblick-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1b286e5e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "89651ae36a2ae1cfa6143783e029ee5cedee62d1b0096616daf17900ddb087b7"
+  },
+  "api-client-datenfetching-developers.md": {
+    "dataset": "public",
+    "doc_id": "42424bc2659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "35dd7af60377dd83812b60ad6a85f44ad26c7e44ebfb33dad18d2dd7dc2facf0"
+  },
+  "api-developers.md": {
+    "dataset": "public",
+    "doc_id": "4979683a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "392d11b7139bd1ee8c485d880b2ce98cc479cbacea40274fdb92ab1edc683b0a"
+  },
+  "artikel-erstellen-und-bearbeiten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1959d446659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "d235c9f3a342f0cda2e32be121df9baf18297ddeb7901611e8f654cc2265b1f4"
+  },
+  "audience-dashboard-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2ad186ce659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "113885a336d9026d4f47edb254e8894f07767dfb9c7e3ee7ecf2facaf63a7b2d"
+  },
+  "autor-innen-verwalten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1ec5f52c659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "e8d12afc65462817119148429f02ab4213e2ab52f9a32225739c389bf5b33f70"
+  },
+  "banner-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "27359960659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f5c60156b2f94feca6b9804ff6829ff2567b8a825ff9295d81607c1bbd920866"
+  },
+  "beispiele-f-r-mailtemplates-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "30d4cdec659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c7b8c9fd86fbcbb0bc0305fb3c76b092c4d02e3a5c8ee862eef0293704bd0430"
+  },
+  "benutzer-in-l-schen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2dd33dcc659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "857a3112fc15faf305ae8c3ca1fd3b375f11cb7740eb4d0b34f43ad63d7305c3"
+  },
+  "benutzereinwilligungen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "22fc31ba659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8f492afcb44788c4acbc9cff0e9866776d9ebd6aa3fc8b940339f82362906d00"
+  },
+  "benutzerrollen-und-berechtigungen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "212e322a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "6a9a97d4ed6130d1a6c1fd027f9ac2c25cb83b3d94158eb3963938aabcf89548"
+  },
+  "bexio-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "39d967d6659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "7766dc707de9d29691b179a064cbfe3103ad388325f9ad2390d62ebaf1b4e2c1"
+  },
+  "bilder-medien-developers.md": {
+    "dataset": "public",
+    "doc_id": "42dc4d58659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "d05e94e3ff155a667208cc4d269fd32d22d9ae4ef4c99c360dd99f528775a13d"
+  },
+  "bilder-verwalten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1f5f9fba659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f19c0f170250121298f531dcb94f6a6ae85c0390fb2e448c63d9fbacf748169f"
+  },
+  "bl-cke-standard-massgeschneidert-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "24ca79a2659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "635c13a4a8ca98e3a8542cfeeb4bb1f692abc93e72ac9e95746e14209e464bd2"
+  },
+  "block-anpassen-developers.md": {
+    "dataset": "public",
+    "doc_id": "3fda726a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c5fa4275169baaec8e0ba6bc91ab8b27153de332379c562b983cf72582cb9c0c"
+  },
+  "block-referenz-developers.md": {
+    "dataset": "public",
+    "doc_id": "46783aee659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "92c3a3517daa418f17887406e645968af1cd163d82b6ae7dd5fab5f23580c7da"
+  },
+  "block-styling-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2564bf1c659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0fe99d30bc79a81dff36c986d75f6827f8762d1036d069c7229ff7965d5fc8b1"
+  },
+  "block-system-developers.md": {
+    "dataset": "public",
+    "doc_id": "3f4070ca659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "b68c7c1a6cf505fd7f9a930eea172e967593dec1707030d7f375578da4cbcffd"
+  },
+  "breaking-changes-developers.md": {
+    "dataset": "public",
+    "doc_id": "531727f6659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "e795b6baafbce86876eb5d23d1b38e91683b6a3a6e99f12207a9b306fc00d4a6"
+  },
+  "challenge-developers.md": {
+    "dataset": "public",
+    "doc_id": "4d14d54c659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "846ddd95cffafb6fe9a303bf11ca9265f7b9e4a9cf647ec16e0f5bb70ce0b4c2"
+  },
+  "cookbook-developers.md": {
+    "dataset": "public",
+    "doc_id": "514920f0659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "132fa4cadb23a484d514a7729d51a856c1ec95f203cccc15369ff97179fdb282"
+  },
+  "crowdfunding-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "333d14a4659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "6cad31b81a23ec20be13e23a73323e9236bbfc0fb88c9680f1f8190c72f7aefd"
+  },
+  "database-with-prisma-developers.md": {
+    "dataset": "public",
+    "doc_id": "4a139d38659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "fdb36cc8012ffbdf270661f0ed6c7616184e118f750a64cab7f070512a797cce"
+  },
+  "datenschutz-seite-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "178b988e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a81d09d06da48a1a8a05715df04732bd1b88b1418b541761bc6aec1f1d702f6a"
+  },
+  "deployment-developers.md": {
+    "dataset": "public",
+    "doc_id": "45ddfc68659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "077f950993de5394249f5f6ddc50fc3bcfbc2df0c468afcad7d52ea9071b1305"
+  },
+  "dokumente-verwalten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1ffa565e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "94c448f7ce9f656d4f5ad486c4243bbab424ae67d76128ba8c43a310c9b205c2"
+  },
+  "e-mail-vorlagen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "303b276e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "12e2d4756e0806299a8b2f6589335dbbb6eb9f08a6387e64d12f753a6a7d7a10"
+  },
+  "editor-developers.md": {
+    "dataset": "public",
+    "doc_id": "50156220659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "266ad9e8c75fd628da5d3a3dc46c7d94391e59d1ba59c04188f6d8c30c31bb41"
+  },
+  "editor-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "18bf7b12659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c7a592620f809a52d01925dfc9bb9c302b223f3533cfab6ac95e031c654abecf"
+  },
+  "eigenen-block-erstellen-developers.md": {
+    "dataset": "public",
+    "doc_id": "407474dc659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "6834001260d3c3b8490f41a68588fc5f39aa7163924c08678401b6c616320e51"
+  },
+  "einstellungen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2430571e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "d8770689b250a7aeb1a75cb2eaedf61550eaee8258f18ba2421085171923da37"
+  },
+  "einwilligungen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "22626300659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "7ee7ac1fe6c4c0773b81eb77ffd88fefc9cc9f61424142fdff6dd4945dff2144"
+  },
+  "events-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "209407f4659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a9c68e626fc0e4dfbfa1e8ed5e7a0da6d7cbc5e9c7b0db5feeec4c43bf843987"
+  },
+  "external-apps-token-authentication-developers.md": {
+    "dataset": "public",
+    "doc_id": "4be0c438659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "5a1464320ab1d0dbd5234a5209801de757ae30359abb0ca1a9adee9646a1d161"
+  },
+  "externe-apps-we-publish-apps-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "380c2c4a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "189ff03c18c58ccb331ba5bbcbb2204eb32ce709e3a0ca55b0362d18cafd6024"
+  },
+  "externe-belohunungen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2e6d0308659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9bbcfabd7b7e31ef4f688dc5209add8d4186364437858fdcb13403deae8da1c7"
+  },
+  "features-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1659166c659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9568c0ead5c68ff27929093aa2dbd57a7a5fb40c58809755b56cf05994f6edb0"
+  },
+  "fehlerseite-404-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "29039ad0659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "df0356a8e37a3c9c71f4c0ce0ea7d6c9dabb4be70af7734dfdfbedd974ad51c4"
+  },
+  "framework-bersicht-developers.md": {
+    "dataset": "public",
+    "doc_id": "3c3f1174659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "655bf22e4503c2fb28a01d9d0955085d42dfa23ec16a11a8a3cc93010dbd925f"
+  },
+  "get-started-developers.md": {
+    "dataset": "public",
+    "doc_id": "3b0c8c1e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "852559f8c42341e527dc4963cd381cb77a85d7725d9c94738b72e4b9b58c1e64"
+  },
+  "get-started-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "16f2ba42659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9b5404209c326c9ef0993fda3c0fc9f510e8e29cb4ac0fceaaa2d2d9d26f4c26"
+  },
+  "hcaptcha-developers.md": {
+    "dataset": "public",
+    "doc_id": "4e479d0a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "582d39483d84a4a74df6553433b0f54c93ff5e96b53f170b104722df9642268b"
+  },
+  "hosting-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "363ebd92659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "e3402a131fc2f17a2c0e3a54b2f6fd7104cd340a9cee277cbd93581692cebac1"
+  },
+  "integrationen-konfigurieren-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "3772889c659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "4c2e9e96322947874d42fb1e40c09316f6be28a2ed3da4222406b44625d99da4"
+  },
+  "ios-und-android-apps-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "350b5368659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a531a2d42085b4a168e3ec45e13f500c3924ebbc80148e86c2b1e74f77e129f7"
+  },
+  "kommentare-developers.md": {
+    "dataset": "public",
+    "doc_id": "44aa2a10659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "88dad1eb136851c1e7e64c7b08ddb7fadc9c6c86ca943d1082a65894521a011c"
+  },
+  "kommentare-verwalten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1e2c4a80659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "6c34158c67384585983f4a8fbd0f1b744c5d90d77bbe7c5189c1e755a455d1f5"
+  },
+  "kommunikation-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2fa144d2659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "03b42b49dd5270e7002682bc63b959c72c108d39814f593d9cafc0fdd405f430"
+  },
+  "kommunikationsflows-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "32a3981a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "87174aab1c86aa73810c065ade5f5780778587db987be2cfa817c2082e688070"
+  },
+  "konfigurationen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2f0712a4659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "ea4c1ce74cc1d8af9110a21a192a2dc09bf36c162ef8d45ba0c5ea33d3348826"
+  },
+  "login-registrierung-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2869903e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "2f25061a06b7ebb33f0fae226b838a3ee7d695bb74892f3e4cffaa783e4cc332"
+  },
+  "lokale-entwicklung-developers.md": {
+    "dataset": "public",
+    "doc_id": "3d72c8b0659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "89a85b34e3e2c490e4605dc691745c546e16d90e1d1014f380a6b9a712b9bcba"
+  },
+  "mailchimp-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "38a602ac659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "7d92d808094e4ec36d035077308d31ca8c0323b5421b6a17aa372185ec429c08"
+  },
+  "mailchimp-synchronisation-developers.md": {
+    "dataset": "public",
+    "doc_id": "4f7bd1be659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "351e207dc9723eb93d9a3a56ebca6c2fa46c674b22f9dcb6862bd36bd41e3af6"
+  },
+  "mailing-kommunikation-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "3471b938659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "104e8174f9359aaecb69552b42de076a511f8345434ffc4f8a22deb0e5a35ed6"
+  },
+  "membership-paywall-developers.md": {
+    "dataset": "public",
+    "doc_id": "441017fe659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "410fd11bc6e5758f4bf669c6fa78125fd6b62d2d90476fbd6036bc2847add416"
+  },
+  "metadaten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1a8e0094659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "085aefeb8306136f29c1bc43e42102f8ec5f352210f65011c3bafa39fd486095"
+  },
+  "monorepo-struktur-developers.md": {
+    "dataset": "public",
+    "doc_id": "3cd93678659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0aa2ba01f311c8f57fe173a6745650a83906dfd24d1eb6209ca9b3a567c05490"
+  },
+  "navigation-logo-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "27cf5758659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "710c3bdf0ef437012110ccc93c6785fed00e7d174982519258f9f45294fef57a"
+  },
+  "neue-website-einrichten-developers.md": {
+    "dataset": "public",
+    "doc_id": "3e0ca200659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "5841dd049bc389e49b67baba415cbe40fffcb5052d4c603aec3961549d7b79e2"
+  },
+  "onboarding-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "182596aa659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8ba2f241e91d618c214f1de23a050ecff4ee082e7111a9b9e495495452ed4bab"
+  },
+  "paket-referenz-developers.md": {
+    "dataset": "public",
+    "doc_id": "471214ca659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8b734dfa11c8c4066ffa5dc8eaa61cae1eae042a53479908627d251f4211ddab"
+  },
+  "paywall-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1d91751e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "52db6b19beb48bb3ce20ab7d680d94920f59474c4988ad5af29ac22e18c5c5e0"
+  },
+  "peering-artikel-sharing-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "299da972659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "79ba6d61b7f323d8472d57e114ab2a6a980db53c0762005df306c1f5c53a0b82"
+  },
+  "plugins-und-integrationen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "36d87b80659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "db6faa3eb1dd7064add52ac86db832d29abb1a17c747e0a2155851181ee85d3e"
+  },
+  "prolitteris-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "393f9444659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "16bc1d12ed1cc1c69b347884fc28266c15c5303bfef54cd7b99f067a0f2e0fd8"
+  },
+  "push-benachrichtigungen-mit-onesignal-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "35a4d150659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9b31d0b9b35e75add423fdcc670a7ce26738ec05e00e32d9fa7b4cf00f1095b9"
+  },
+  "richtext-rendering-developers.md": {
+    "dataset": "public",
+    "doc_id": "4376b078659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "fd622f4480adacbb340c1d5c0dea3308e1438da78146b08b59a84a1d79803364"
+  },
+  "routing-pages-developers.md": {
+    "dataset": "public",
+    "doc_id": "41a87b96659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "8055fe04d4ec265bdc90dcf72d1b413e14ae77307cf8fa8743eefe8e5d598443"
+  },
+  "seiten-erstellen-und-bearbeiten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "19f44080659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "c156f146f60bf41b8512c10b060609f6ea959d32df8e96a900d166e872080eb1"
+  },
+  "seo-feeds-developers.md": {
+    "dataset": "public",
+    "doc_id": "4543f69a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "61a9eba29fe28481d4eb705f736719a9e464fa30ebaf4ed1ed4c69be028a4eba"
+  },
+  "seo-optimieren-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1cf6a0d4659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "a11663fe2c6de9e5c65bc3eaf299ecf09dc3f212facdacc2382e0d302b633d24"
+  },
+  "slotteasersloader-developers.md": {
+    "dataset": "public",
+    "doc_id": "4b4747b8659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "6742882846260a94e7f3dad871652b15b1b7a4977757faf9434a769695051c77"
+  },
+  "specs-info-for-designers-developers.md": {
+    "dataset": "public",
+    "doc_id": "527d2c1e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "4e80bde9ad545d0dbcffa9f01b6bad055aedb4e35b8bee98bdc65aaa83e9bdb9"
+  },
+  "standard-mailing-mail-provider-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "32099f94659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "3a93b76d947135d6d8d1a2ba289d9fbac63f1edb0418a8a4e8a8ea856ff82500"
+  },
+  "systemmails-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "316efd18659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "feb7760437bec7e1a75f21ddf6c50e269b3ed0f871280b110a205e3866ca307c"
+  },
+  "tags-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "25fed1ec659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "feeae8f828c0d283a53b25b5bcb0092e5666acf492b127e69dc8abb3a26aaaf6"
+  },
+  "theming-styling-developers.md": {
+    "dataset": "public",
+    "doc_id": "410ecb36659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0b6d48bfed77fc8f68d9d68ef14f2490b1019df9a43cb61c6f6ddc6e8847a981"
+  },
+  "tokens-zugriffsschl-ssel-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "239638be659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "651a8fc9447a5c2e00f10114a6472d63e1cdc4f1c3d1a901bb75665518b0ac98"
+  },
+  "troubleshooting-developers.md": {
+    "dataset": "public",
+    "doc_id": "47abd2e0659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f4143a45f7370cda032efe43b0715bf2dde70bda03b8fd88bacf1bd192de1da7"
+  },
+  "troubleshooting-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "33d76edc659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "057011bc8b587e8395d90a3634b15edce62f67e9a288b2a1f1db6b5311c4f346"
+  },
+  "turnstile-developers.md": {
+    "dataset": "public",
+    "doc_id": "4daea320659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "51f58f90f9c65bffc3034448dbca79538dd2dad1b4cdf19ed86cf9a460d60503"
+  },
+  "umfragen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "269b8a14659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "70c6bbea347de5744a57434c624aab2226aaed16703e628c136fda2709b3f384"
+  },
+  "use-storybook-to-craft-and-test-beautiful-components-developers.md": {
+    "dataset": "public",
+    "doc_id": "4845cb8e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "9b7a92f0ca371478214aa016b56541b7e40ba6499672a2366f127fb35d0e985d"
+  },
+  "user-redaktions-benutzer-innen-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "21c8265a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "bfdf6aeb51103d936df4a885aed8ebcdac957855c29a73e8d012dfd42d21599a"
+  },
+  "ver-ffentlichung-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1bc29bc8659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "baa20aa82366b71849ced68b47e36ad6b9659976b3096f49bdff75a8b0f097a7"
+  },
+  "vorschau-von-artikeln-und-seiten-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "1c5cf2ea659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "0a0904aa43a482fc32d2e101306c5c8325ea574375e6f19b42e7954bc6cd4d75"
+  },
+  "was-ist-die-we-publish-academy-we-publish-academy.md": {
+    "dataset": "public",
+    "doc_id": "3a71f3c0659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f2c2b14eba26c5f79b30ed5130878140b44055597a82583bc81128530f3ed892"
+  },
+  "website-builder-developers.md": {
+    "dataset": "public",
+    "doc_id": "3ba66d2a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "e47f46ca57af37a96075ba43cfef84006ce2e8c5c76b7e60376dff22386456cf"
+  },
+  "website-konfiguration-developers.md": {
+    "dataset": "public",
+    "doc_id": "3ea71bd2659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "04aa93adbf68626262b98bd048ac004808f85f7e0fcdc93234c59361b3a224ce"
+  },
+  "willkommen-bei-we-publish-start.md": {
+    "dataset": "public",
+    "doc_id": "15f91302659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "bf3e5410164b5e17390ec9d0d46e8f2c8f6724c7f68343106c8ef1198a076d90"
+  },
+  "writing-tests-api-developers.md": {
+    "dataset": "public",
+    "doc_id": "4aadd678659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "dfaa5f3a9052ab3496bbad69c23d95be4346c91c85ba973fd08c8942c0f3b79b"
+  },
+  "writing-tests-cookbook-developers.md": {
+    "dataset": "public",
+    "doc_id": "51e3599a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "dfaa5f3a9052ab3496bbad69c23d95be4346c91c85ba973fd08c8942c0f3b79b"
+  },
+  "writing-tests-developers.md": {
+    "dataset": "public",
+    "doc_id": "48dfd26a659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "dfaa5f3a9052ab3496bbad69c23d95be4346c91c85ba973fd08c8942c0f3b79b"
+  },
+  "writing-tests-editor-developers.md": {
+    "dataset": "public",
+    "doc_id": "50af73ec659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "dfaa5f3a9052ab3496bbad69c23d95be4346c91c85ba973fd08c8942c0f3b79b"
+  },
+  "zahlungsmethoden-publisher-dokumentation.md": {
+    "dataset": "public",
+    "doc_id": "2d391b02659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "f17b5772ef473d9b33c9ac6c6124ff8fe24c1aa34e29586a4a19aff942336d2f"
+  },
+  "zwei-faktor-authentifizierung-totp-developers.md": {
+    "dataset": "public",
+    "doc_id": "4ee14f0e659211f1936c8ba3f0b2a214",
+    "ingested": "2026-06-11",
+    "sha": "950eaf8c8b067fa799e343be556c5eaa1258b0a214099d56e576efcc5a398af1"
+  }
+}

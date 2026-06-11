@@ -135,15 +135,25 @@ for item in job:
     except Exception as e:  # keep going; report at the end
         report["failed"].append({"fname": fname, "stage": "exception", "resp": str(e)[:200]})
 
+def all_docs(ds_id):
+    out, page = [], 1
+    while True:
+        r = http("GET", "/api/v1/datasets/%s/documents?page=%d&page_size=100" % (ds_id, page))
+        data = r.get("data") or {}
+        docs = data.get("docs") if isinstance(data, dict) else data
+        if not docs:
+            return out
+        out.extend(docs)
+        if isinstance(data, dict) and len(out) >= data.get("total", 0):
+            return out
+        page += 1
+
 def wait_parsed(ds_id, ids, timeout=900):
     deadline = time.time() + timeout
     pending = set(ids)
     while pending and time.time() < deadline:
-        time.sleep(10)
-        r = http("GET", "/api/v1/datasets/%s/documents?page=1&page_size=100" % ds_id)
-        data = r.get("data") or {}
-        docs = data.get("docs") if isinstance(data, dict) else data
-        for d in docs or []:
+        time.sleep(15)
+        for d in all_docs(ds_id):  # MUST page past 100 docs or batch-1 ids are never seen
             if d["id"] in pending and d.get("run") in ("DONE", "FAIL", "3", "4"):
                 if d.get("run") in ("FAIL", "4"):
                     report["failed"].append({"fname": d["name"], "stage": "parse", "resp": "run=FAIL"})
