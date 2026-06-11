@@ -1,0 +1,18 @@
+[
+ {"file": "internal-ops/support-boundaries.md", "title": "Support boundaries — refusals and answer contract",
+  "dataset": "internal", "type": "decision",
+  "source": "labs/src/knowledge-engine/specs/HERMES_SUPPORT_CHAT_SPEC.md",
+  "owner": "it", "confidence": "likely"},
+ {"file": "internal-ops/ticket-pr-conventions.md", "title": "Ticket and PR conventions — support to developer routing",
+  "dataset": "internal", "type": "decision",
+  "source": "labs/src/knowledge-engine/specs/HERMES_SUPPORT_CHAT_SPEC.md",
+  "owner": "it", "confidence": "likely"},
+ {"file": "internal-ops/newsroom-onboarding-checklist.md", "title": "Newsroom onboarding launch-readiness checklist",
+  "dataset": "internal", "type": "setup_summary",
+  "source": "labs/src/knowledge-engine/specs/MCP_DELIVERY_SPEC.md",
+  "owner": "it", "confidence": "likely"},
+ {"file": "internal-ops/ai-stack-overview.md", "title": "We.Publish AI stack — what runs where",
+  "dataset": "internal", "type": "architecture",
+  "source": "labs/src/knowledge-engine/README.md",
+  "owner": "it", "confidence": "likely"}
+]

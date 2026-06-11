@@ -1,0 +1,1032 @@
+[
+ {
+  "file": "gitbook:README.md",
+  "title": "Willkommen bei We.Publish – Start",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/features.md",
+  "title": "Features – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/features",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/get-started/README.md",
+  "title": "Get Started – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/get-started",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/get-started/datenschutz-seite.md",
+  "title": "Datenschutz-Seite – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/get-started/datenschutz-seite",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/get-started/onboarding.md",
+  "title": "Onboarding – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/get-started/onboarding",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/README.md",
+  "title": "Editor – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/artikel-erstellen-und-bearbeiten.md",
+  "title": "Artikel erstellen und bearbeiten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/artikel-erstellen-und-bearbeiten",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/seiten-erstellen-und-bearbeiten.md",
+  "title": "Seiten erstellen und bearbeiten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/seiten-erstellen-und-bearbeiten",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/metadaten.md",
+  "title": "Metadaten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/metadaten",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/alle-bloecke.md",
+  "title": "Alle Blöcke im Überblick – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/alle-bloecke",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/veroeffentlichung.md",
+  "title": "Veröffentlichung – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/veroeffentlichung",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/vorschau-von-artikeln-und-seiten.md",
+  "title": "Vorschau von Artikeln und Seiten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/vorschau-von-artikeln-und-seiten",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/seo-optimieren.md",
+  "title": "SEO optimieren – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/seo-optimieren",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/paywall.md",
+  "title": "Paywall – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/paywall",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/kommentare.md",
+  "title": "Kommentare verwalten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/kommentare",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/autoren.md",
+  "title": "Autor:innen verwalten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/autoren",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/bilder.md",
+  "title": "Bilder verwalten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/bilder",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/dokumente.md",
+  "title": "Dokumente verwalten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/dokumente",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/events.md",
+  "title": "Events – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/events",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/benutzerrollen-und-berechtigungen.md",
+  "title": "Benutzerrollen und Berechtigungen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/benutzerrollen-und-berechtigungen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/user.md",
+  "title": "User (Redaktions-Benutzer:innen) – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/user",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/einwilligungen.md",
+  "title": "Einwilligungen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/einwilligungen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/benutzereinwilligungen.md",
+  "title": "Benutzereinwilligungen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/benutzereinwilligungen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/tokens.md",
+  "title": "Tokens (Zugriffsschlüssel) – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/tokens",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/einstellungen.md",
+  "title": "Einstellungen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/einstellungen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/blocke.md",
+  "title": "Blöcke (Standard & Massgeschneidert) – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/blocke",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/block-styling.md",
+  "title": "Block-Styling – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/block-styling",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/tags.md",
+  "title": "Tags – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/tags",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/umfragen.md",
+  "title": "Umfragen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/umfragen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/banner.md",
+  "title": "Banner – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/banner",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/navigation-and-logo.md",
+  "title": "Navigation & Logo – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/navigation-and-logo",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/login-and-registration.md",
+  "title": "Login & Registrierung – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/login-and-registration",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/editor/fehlerseite-404.md",
+  "title": "Fehlerseite 404 – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/editor/fehlerseite-404",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/peering-artikel-sharing.md",
+  "title": "Peering (Artikel-Sharing) – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/peering-artikel-sharing",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/README.md",
+  "title": "Abos & Audience – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/audience-dashboard.md",
+  "title": "Audience Dashboard – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/audience-dashboard",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/abonnements.md",
+  "title": "Abonnements verwalten – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/abonnements",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/abo-plaene.md",
+  "title": "Abo-Pläne – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/abo-plaene",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/abonennt-innen-zuruckgewinnen.md",
+  "title": "Abonennt:innen zurückgewinnen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/abonennt-innen-zuruckgewinnen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/zahlungsmethoden.md",
+  "title": "Zahlungsmethoden – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/zahlungsmethoden",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/benutzer-in-loschen.md",
+  "title": "Benutzer:in löschen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/benutzer-in-loschen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/externe-belohunungen.md",
+  "title": "Externe Belohunungen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/externe-belohunungen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/abos-and-audience/konfigurationen.md",
+  "title": "Konfigurationen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/abos-and-audience/konfigurationen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/README.md",
+  "title": "Kommunikation – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/e-mail-vorlagen/README.md",
+  "title": "E-Mail-Vorlagen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation/e-mail-vorlagen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/e-mail-vorlagen/beispiele-fur-mailtemplates.md",
+  "title": "Beispiele für Mailtemplates – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation/e-mail-vorlagen/beispiele-fur-mailtemplates",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/system-mails.md",
+  "title": "Systemmails – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation/system-mails",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/mail-provider.md",
+  "title": "Standard-Mailing & Mail-Provider – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation/mail-provider",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/kommunikation/communication-flows.md",
+  "title": "Kommunikationsflows – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/kommunikation/communication-flows",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/crowdfunding.md",
+  "title": "Crowdfunding – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/crowdfunding",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/troubleshooting.md",
+  "title": "Troubleshooting – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/troubleshooting",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/troubleshooting/troubleshooting-mailing.md",
+  "title": "Mailing & Kommunikation – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/troubleshooting/troubleshooting-mailing",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/ios-und-android-apps/README.md",
+  "title": "IOS- und Android-Apps – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/ios-und-android-apps",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/ios-und-android-apps/push-benachrichtigungen-mit-onesignal.md",
+  "title": "Push-Benachrichtigungen mit OneSignal – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/ios-und-android-apps/push-benachrichtigungen-mit-onesignal",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/hosting.md",
+  "title": "Hosting – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/hosting",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/README.md",
+  "title": "Plugins und Integrationen – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/integrationen.md",
+  "title": "Integrationen konfigurieren – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen/integrationen",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/externe-apps.md",
+  "title": "Externe Apps (We.Publish Apps) – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen/externe-apps",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/mailchimp.md",
+  "title": "Mailchimp – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen/mailchimp",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/prolitteris.md",
+  "title": "ProLitteris – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen/prolitteris",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:publisher-dokumentation/plugins-und-integrationen/bexio.md",
+  "title": "Bexio – Publisher-Dokumentation",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/publisher-dokumentation/plugins-und-integrationen/bexio",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:we.publish-academy/was-ist-die-we.publish-academy.md",
+  "title": "Was ist die We.Publish-Academy? – We.Publish-Academy",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/we.publish-academy/was-ist-die-we.publish-academy",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/get-started.md",
+  "title": "Get Started – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/get-started",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/README.md",
+  "title": "Website Builder – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/framework-overview.md",
+  "title": "Framework-Übersicht – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/framework-overview",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/monorepo-structure.md",
+  "title": "Monorepo-Struktur – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/monorepo-structure",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/local-development.md",
+  "title": "Lokale Entwicklung – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/local-development",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/new-website-setup.md",
+  "title": "Neue Website einrichten – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/new-website-setup",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/website-configuration.md",
+  "title": "Website-Konfiguration – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/website-configuration",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/block-system.md",
+  "title": "Block-System – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/block-system",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/block-customization.md",
+  "title": "Block anpassen – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/block-customization",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/custom-blocks.md",
+  "title": "Eigenen Block erstellen – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/custom-blocks",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/theming.md",
+  "title": "Theming & Styling – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/theming",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/routing-pages.md",
+  "title": "Routing & Pages – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/routing-pages",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/api-client.md",
+  "title": "API-Client & Datenfetching – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/api-client",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/images-media.md",
+  "title": "Bilder & Medien – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/images-media",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/richtext.md",
+  "title": "Richtext-Rendering – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/richtext",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/membership-paywall.md",
+  "title": "Membership & Paywall – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/membership-paywall",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/comments.md",
+  "title": "Kommentare – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/comments",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/seo-feed.md",
+  "title": "SEO & Feeds – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/seo-feed",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/deployment.md",
+  "title": "Deployment – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/deployment",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/block-reference.md",
+  "title": "Block-Referenz – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/block-reference",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/package-reference.md",
+  "title": "Paket-Referenz – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/package-reference",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/troubleshooting-website-builder.md",
+  "title": "Troubleshooting – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/troubleshooting-website-builder",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/use-storybook-to-craft-and-test-beautiful-components.md",
+  "title": "Use Storybook to craft and test beautiful components – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/use-storybook-to-craft-and-test-beautiful-components",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/website-builder/writing-tests.md",
+  "title": "Writing Tests – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/website-builder/writing-tests",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/README.md",
+  "title": "API – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/database-with-prisma.md",
+  "title": "Database with Prisma – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/database-with-prisma",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/writing-tests.md",
+  "title": "Writing Tests (api) – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/writing-tests",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/slot-teasers-loader.md",
+  "title": "SlotTeasersLoader – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/slot-teasers-loader",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/external-apps.md",
+  "title": "External Apps & Token Authentication – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/external-apps",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/ai-integration.md",
+  "title": "AI-Integration (V0) – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/ai-integration",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/challenge/README.md",
+  "title": "Challenge – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/challenge",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/challenge/turnstile.md",
+  "title": "Turnstile – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/challenge/turnstile",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/challenge/hcaptcha.md",
+  "title": "hCaptcha – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/challenge/hcaptcha",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/totp.md",
+  "title": "Zwei-Faktor-Authentifizierung (TOTP) – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/totp",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/api/mailchimp-sync.md",
+  "title": "Mailchimp-Synchronisation – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/api/mailchimp-sync",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/editor/README.md",
+  "title": "Editor – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/editor",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/editor/writing-tests.md",
+  "title": "Writing Tests (editor) – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/editor/writing-tests",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/cookbook/README.md",
+  "title": "Cookbook – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/cookbook",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/cookbook/writing-tests.md",
+  "title": "Writing Tests (cookbook) – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/cookbook/writing-tests",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/specs-and-info-for-designers.md",
+  "title": "Specs & Info for Designers – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/specs-and-info-for-designers",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ },
+ {
+  "file": "gitbook:developers/breaking-changes.md",
+  "title": "Breaking Changes – Developers",
+  "dataset": "public",
+  "type": "doc",
+  "source": "https://docs.wepublish.ch/developers/breaking-changes",
+  "owner": "wepublish-docs",
+  "confidence": "confirmed",
+  "reviewed_by": "wepublish-docs"
+ }
+]
