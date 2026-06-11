@@ -1,8 +1,11 @@
-# Knowledge base access — RAGFlow on `onyx01`
+# Knowledge engine — RAGFlow on `onyx01`
 
-For We.Publish developers and IT. How to query, ingest into, and operate the
-knowledge engine. Newsrooms never touch any of this — they talk to Aldus on
-Slack, and Aldus's profile enforces the scoping.
+Documentation project for the We.Publish knowledge base: how developers and IT
+query it, ingest into it, and operate it. Not an app — nothing here is built or
+deployed by the monorepo. Hermes configuration and the agent-side skills
+(`kb-ingest`, `kb-retrieve`) live in [`../hermes/`](../hermes/); this project
+covers the engine itself. Newsrooms never touch any of this — they talk to
+Aldus on Slack, and Aldus's profile enforces the scoping.
 
 ## Architecture in one paragraph
 
@@ -69,11 +72,12 @@ API shape (v0.25.6): everything under `/api/v1/...`. Ingest = upload
 (`POST /api/v1/datasets/{id}/documents`, multipart) → metadata
 (`PUT .../documents/{doc_id}`, `meta_fields`) → parse
 (`POST .../chunks`, `{"document_ids": [...]}`). Prefer `tools/wp-kb` or the
-`kb-ingest` script over hand-rolling this — they enforce the tagging schema.
+`kb-ingest` script (`../hermes/skills/kb-ingest/`) over hand-rolling this —
+they enforce the tagging schema.
 
 ## Option 3 — `wp-kb` CLI (ops + quick checks)
 
-`tools/wp-kb` in this directory runs everything over SSH (no tunnel needed):
+`tools/wp-kb` in this project runs everything over SSH (no tunnel needed):
 
 ```bash
 tools/wp-kb health                      # containers + dataset doc/chunk counts + MCP probe

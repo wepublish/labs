@@ -15,7 +15,7 @@ engine plan (RAGFlow on `onyx01`), the CMS MCP, and the open PRs.
 | Channel allowlist | ⏳ pin `#dev-aldus` + `#support-aldus` IDs in `SLACK_ALLOWED_CHANNELS` once scopes exist (until then Aldus answers in any channel it is invited to; all workspace users are allowed) |
 | `kb-ingest` skill | ✅ installed **and live** — RAGFlow wired, full ingest path validated 2026-06-11 |
 | `kb-retrieve` skill | ✅ built + deployed to the `internal` profile (PR #46) — scoped read mirror of kb-ingest; validated end-to-end |
-| RAGFlow (knowledge engine) | ✅ **deployed 2026-06-11** on `onyx01` (16 GB): v0.25.6 headless, datasets `public` / `internal` / `newsroom:pilot` (empty — ingestion deliberately deferred), `bge-m3` via TEI sidecar, built-in MCP server on loopback :9382. See `KB_ACCESS.md` for how to use it. |
+| RAGFlow (knowledge engine) | ✅ **deployed 2026-06-11** on `onyx01` (16 GB): v0.25.6 headless, datasets `public` / `internal` / `newsroom:pilot` (empty — ingestion deliberately deferred), `bge-m3` via TEI sidecar, built-in MCP server on loopback :9382. See `../knowledge-engine/README.md` for how to use it. |
 | Hermes → RAGFlow wire | ✅ systemd `ragflow-tunnel.service` on `hermes01` (restricted-key SSH tunnel → onyx01 loopback :9380/:9382); `RAGFLOW_*` env in the internal profile |
 | CMS MCP | ✅ merged into `labs/wepublish-cms-mcp/` (PR #43) — mock-tested only, needs live validation against a real deployment |
 | Upstream PRs | ⏳ open, do not self-merge: wepublish/wepublish **#2801** (token `roleIDs` — unblocks CMS MCP auth) and **#2802** (`llms.txt`) |
@@ -47,7 +47,7 @@ Hermes runtime: <https://github.com/NousResearch/hermes-agent> (install: pip fro
 
 1. **Slack**: apply the manifest, reinstall the app, invite `@Aldus` to both channels →
    then pin the two channel IDs in `SLACK_ALLOWED_CHANNELS` and restart.
-2. ~~Resize `onyx01` + deploy RAGFlow~~ — **done 2026-06-11** (see `KB_ACCESS.md`).
+2. ~~Resize `onyx01` + deploy RAGFlow~~ — **done 2026-06-11** (see `../knowledge-engine/README.md`).
 3. **Index** public docs + `llms.txt` into `public` (the wire and skills are live;
    only the content pull remains — deliberately deferred until after MCP/Hermes validation,
    which passed 2026-06-11).
@@ -114,7 +114,8 @@ write-ups, small triage-derived patches — but **can never merge, approve, or v
 
 ## Pointers
 
-- This directory (`labs/src/hermes/`) — profiles, skills, README (architecture + decisions).
+- `labs/src/hermes/` — Hermes configuration: profiles, skills, README (architecture + decisions).
+- `labs/src/knowledge-engine/` — KB access + ops documentation, `wp-kb` CLI.
 - `aldus-slack-setup.html` / `aldus-slack-manifest.json` — Slack setup doc for the workspace admin.
 - `labs/wepublish-cms-mcp/` — CMS MCP (README + `docs/staging-and-token.md`).
 - Open PRs: wepublish/wepublish#2801, #2802.
