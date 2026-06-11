@@ -19,58 +19,71 @@ multi-profile isolation, persistent memory, and cron. The only thing salvaged fr
 `wepublish-ai-support-agent` is its editorial system-prompt wording, now folded into
 `profiles/support-template/SOUL.md`.
 
-## Architecture (phase 1)
+## Architecture
 
-- **Two profile kinds, nothing else**: `internal` (one instance, staff/devs) and
-  `support-<slug>` (one instance per newsroom, from `profiles/support-template/`).
+- **One Slack app ⇒ one gateway ⇒ one Slack-facing profile.** (Routing decision,
+  2026-06-11.) Slack Socket Mode load-balances events across all open connections from
+  one app, so two Hermes gateways sharing the app would receive messages at random; and
+  multiple Slack apps are ruled out. Therefore the **`internal` profile (Aldus) serves
+  every Slack channel** — staff channels now, newsroom channels later. The earlier
+  one-profile-per-newsroom design is superseded.
 - **Newsrooms never touch RAGFlow in any form** — no login, no MCP, no API. They talk to
-  their support profile in **their dedicated Slack channel**; the profile retrieves on
-  their behalf through the scoped retrieval skill.
-- **One profile per newsroom** (not one shared support profile): Hermes memory, sessions,
-  `.env`, and the gateway service are per-profile, so per-newsroom profiles give hard
-  isolation of conversational memory — RAGFlow dataset scoping alone would not prevent
-  newsroom A context surfacing in newsroom B answers through a shared profile's memory.
+  Aldus in **their dedicated Slack channel**; scoping happens per channel (below).
+- **Per-channel scoping (newsroom phase):** the `kb-retrieve`/`kb-ingest` scripts gain a
+  channel→dataset map (`RAGFLOW_CHANNEL_MAP` env: channel ID → readable datasets,
+  writable dataset, forced tags). The map is enforced in code. The channel ID itself
+  must come from a **trusted source**: an upstream `hermes-agent` contribution that
+  injects the Slack channel ID into the skill execution env (the runtime already has
+  env-passthrough machinery; this extends it). Until that lands, the model relays the
+  channel ID — acceptable for staff channels, not for newsroom isolation.
+- **Memory:** Hermes persistent memory (`MEMORY.md`) is profile-global, i.e. shared
+  across channels. Before any newsroom channel goes live: restrict the memory tool so
+  newsroom-specific facts are never stored in profile memory (they belong in the KB,
+  tagged) — and verify via isolation probes.
 - **Ingest is chat-driven and IT-owned** via the hardened `kb-ingest` skill (below).
   Scheduled scrapes (cron) come later and are run separately by IT.
 - **Tracker = GitHub Issues for now** (simplification, 2026-06-11; replaces the
-  Jira-now/Linear-later plan). Support requests that need engineering are routed as
-  GitHub Issues in the configured repo. Swapping tracker later = swapping the routing
-  skill, nothing else.
-- Developer/coding-agent access to the KB (RAGFlow MCP with dev tokens): **deferred**,
-  not part of phase 1.
+  Jira-now/Linear-later plan). Swapping tracker later = swapping the routing skill.
+- Developer/coding-agent access to the KB (RAGFlow MCP with dev tokens): **deferred**.
 
-## Profiles ↔ surfaces
+## Surfaces (all served by the `internal` profile / Aldus)
 
-| Profile | Persona | Surface | Knowledge scope | Tools |
-|---|---|---|---|---|
-| `internal` | **Aldus**, the We.Publish librarian (after Aldus Manutius) | staff/dev Slack channels | `public` + `internal` + all newsroom datasets | RAGFlow MCP, CMS MCP, wepublish-mcp, `kb-ingest` (all datasets), GitHub Issues |
-| `support-<slug>` | TBD per newsroom | that newsroom's dedicated channel | `public` + `newsroom:<slug>` via scoped retrieval skill | read-only CMS MCP (their deployment), `kb-ingest` (their dataset only, tags forced), GitHub Issues drafting |
+| Surface | Channels | Knowledge scope | Tools |
+|---|---|---|---|
+| Staff / devs | `#dev-aldus`, `#support-aldus` | `public` + `internal` + all newsroom datasets | `kb-retrieve`, `kb-ingest` (all datasets), CMS MCP, wepublish-mcp, GitHub Issues |
+| Newsroom (phase 2) | one dedicated channel per newsroom | `public` + `newsroom:<slug>` only, via the channel map | `kb-retrieve`/`kb-ingest` (channel-mapped: own dataset, tags forced), read-only CMS MCP (their deployment), GitHub Issue drafting |
+
+`profiles/support-template/` is **retained for its editorial wording** (newsroom tone
+rules, cooperation talking points) — at the newsroom phase that content folds into the
+unified SOUL as channel-conditional behavior. It is no longer instantiated as separate
+profiles.
 
 ## Knowledge flow (garbage-in rule, operationalized)
 
-1. Newsroom shares knowledge in their channel → their support profile ingests it
-   **immediately** via `kb-ingest` — but the profile's env **forces**
-   `source=newsroom-asserted, confidence=unverified` and restricts the writable dataset
-   to that newsroom's own. The data is useful right away; it is never presented as
-   We.Publish-verified.
-2. IT reviews unverified chunks (weekly maintenance) and promotes via the internal
-   profile's `kb-ingest` — `confidence=confirmed` is only accepted by the script with an
-   explicit `--reviewed-by <human>`.
-3. The script (`skills/kb-ingest/push_chunk.py`) enforces all of this **in code**, not in
-   the prompt: dataset allowlist, required tags, forced tags, fail-closed.
+1. Newsroom shares knowledge in their channel → Aldus ingests it **immediately** via
+   `kb-ingest` — the channel map **forces** `source=newsroom-asserted,
+   confidence=unverified` and restricts the writable dataset to that newsroom's own.
+   The data is useful right away; it is never presented as We.Publish-verified.
+2. IT reviews unverified chunks (weekly maintenance) and promotes from a staff channel —
+   `confidence=confirmed` is only accepted by the script with an explicit
+   `--reviewed-by <human>`.
+3. The scripts (`skills/kb-ingest/push_chunk.py`, `skills/kb-retrieve/query.py`) enforce
+   all of this **in code**, not in the prompt: dataset allowlist, required tags, forced
+   tags, fail-closed.
 
-## Isolation model
+## Isolation model (layered)
 
-RAGFlow API keys are **tenant-wide, not dataset-scoped**, so isolation is enforced at the
-profile boundary:
+RAGFlow API keys are **tenant-wide, not dataset-scoped**, so isolation is enforced above
+the engine:
 
-- `internal` may use RAGFlow's MCP directly — it is allowed to see everything indexed.
-- **Support profiles get no RAGFlow MCP.** Retrieval goes through a skill calling
-  `/api/v1/retrieval` with that profile's `dataset_ids` pinned from its `.env`
-  (retrieval skill: TBD, mirrors the kb-ingest pattern). Writes go through `kb-ingest`
-  with the dataset allowlist + forced tags.
-- Acceptance gate before any support profile goes live: isolation probes (newsroom A
-  asking for newsroom B content) must return "not found".
+1. **Skills enforce dataset allowlists in code** — today profile-wide
+   (`RAGFLOW_ALLOWED_DATASET_IDS`); newsroom phase: per-channel via `RAGFLOW_CHANNEL_MAP`.
+2. **Trusted channel identity** — the upstream hermes-agent env-injection contribution is
+   what makes the map deterministic instead of model-relayed. Build it before the first
+   newsroom channel.
+3. **Memory restrictions** — no newsroom facts in profile-global memory.
+4. **Acceptance gate:** isolation probes (ask in newsroom A's channel for newsroom B
+   content → must return "not found") before any newsroom channel goes live.
 
 ## Deployment (hermes01)
 
@@ -78,16 +91,17 @@ profile boundary:
 2. Install Hermes; `hermes profile create internal`; copy `profiles/internal/` contents
    into `~/.hermes/profiles/internal/`, fill `.env`, `internal setup`,
    `internal gateway install`, `internal gateway start`.
-3. Per pilot newsroom: `hermes profile create support-<slug>`, instantiate
-   `profiles/support-template/` (replace `{NEWSROOM_NAME}`/`{SLUG}`), create their Slack
-   channel, pin `SLACK_ALLOWED_CHANNELS` to it.
+3. Per pilot newsroom: create their private channel, invite `@Aldus`, add the channel to
+   `SLACK_ALLOWED_CHANNELS`, add a `RAGFLOW_CHANNEL_MAP` entry (+ their RAGFlow dataset),
+   fold the support-template wording into the SOUL, run the isolation probes.
 4. Pilot order per the support spec: internal-only first → one newsroom → (optional)
    public docs surface.
 
 ## What is deliberately NOT here
 
-- **RAGFlow deploy** — separate deliverable (gated on the `onyx01` resize).
+- **RAGFlow deploy + ops** — `src/knowledge-engine/` (deployed 2026-06-11 on `onyx01`).
 - **CMS MCP** — `labs/wepublish-cms-mcp/` (merged, mock-tested; needs live validation).
 - **Secrets** — every profile dir has `.env.example` only.
-- **Scoped retrieval skill + doc-scrape cron** — next builds; both follow the
-  `kb-ingest` pattern (deterministic script owns the API call, prompt never composes it).
+- **Next builds** — channel-map support in the two skills + the upstream hermes-agent
+  channel-ID env injection (prerequisites for newsroom channels); doc-scrape cron;
+  GitHub Issue routing skill.

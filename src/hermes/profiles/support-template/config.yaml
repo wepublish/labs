@@ -1,10 +1,9 @@
-# Hermes profile template: support-<slug> — one instance per newsroom
-# Copy to ~/.hermes/profiles/support-<slug>/config.yaml; replace placeholders.
-# NOTE: support profiles do NOT get the RAGFlow MCP (tenant-wide key = no dataset
-# scoping). Retrieval goes through a scoped skill that calls /api/v1/retrieval with
-# this profile's dataset IDs pinned; writes only via the kb-ingest skill, which this
-# profile's .env restricts to the newsroom's own dataset with forced
-# source=newsroom-asserted / confidence=unverified (see ../../README.md).
+# SUPERSEDED (2026-06-11, single-gateway routing decision — see ../../README.md):
+# per-newsroom profiles are no longer instantiated. One Slack app = one gateway, so
+# the `internal` profile (Aldus) serves all channels; newsroom scoping happens via
+# RAGFLOW_CHANNEL_MAP in the kb-retrieve/kb-ingest skills. This directory is RETAINED
+# for its editorial wording (SOUL.md) — fold into the unified SOUL when a newsroom
+# channel goes live.
 
 model:
   provider: openrouter
