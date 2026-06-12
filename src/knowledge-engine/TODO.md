@@ -8,11 +8,16 @@ Infrastructure is DONE and validated: engine, wire, skills, monitoring, backups.
 The app manifest (`../hermes/slack/aldus-slack-manifest.json`) must be pasted into
 the Slack app settings (App Manifest → paste → reinstall). One action unblocks all of:
 
-- [ ] Bot renamed `demo_app` → **Aldus**; scopes 2/14 → full set
+- [ ] Bot renamed `demo_app` → **Aldus**; scopes 2 → 11 (DM-less manifest, 2026-06-12: channels-only — no `im:history`/`im:write`/assistant scopes, Messages tab disabled)
 - [ ] Verify scopes after: `curl -D- -H "Authorization: Bearer $TOKEN" https://slack.com/api/auth.test` → `x-oauth-scopes` header
 - [ ] Invite Aldus to `#dev-aldus` + `#support-aldus`
-- [ ] Pin channel IDs in `SLACK_ALLOWED_CHANNELS` + set the user allowlist in the
-      internal profile `.env` on hermes01; `systemctl restart hermes-gateway-internal`
+- [ ] Pin channel IDs in `SLACK_ALLOWED_CHANNELS` in the internal profile `.env` on
+      hermes01; `systemctl restart hermes-gateway-internal`
+      (user allowlist already done: `SLACK_ALLOW_ALL_USERS=true`, Tom-approved 2026-06-11)
+- [ ] End-to-end smoke test: @mention Aldus in `#dev-aldus` → expect a KB-grounded
+      answer with the contract block (Source / Confidence / CMS state / Provenance / Next step)
+- [ ] Verify off-allowlist behavior: messages + slash commands in a non-allowed channel
+      are ignored (not provable from docs — must be tested live)
 - [ ] Verify the monitoring alert path posts: on hermes01,
       `echo critical > /opt/kb-watch/state && bash /opt/kb-watch/kb-watch.sh`
       → expect the ✅ recovery message in `#dev-aldus`
