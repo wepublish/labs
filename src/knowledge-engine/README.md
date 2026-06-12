@@ -54,8 +54,11 @@ RAGFlow's built-in MCP server runs on `onyx01` loopback `:9382`
 tunnel *is* the auth). It exposes one tool: `ragflow_retrieval` (read-only).
 
 ```bash
-# 1. open a tunnel (keep it running)
-ssh -fN -L 9382:127.0.0.1:9382 root@onyx01.wepublish.cloud
+# 1. open a tunnel (keep it running). -i = your authorized key for onyx01 —
+#    omitting it is the #1 cause of "Permission denied (publickey)"
+ssh -i ~/.ssh/<your-onyx01-key> -fN \
+  -L 9382:127.0.0.1:9382 -L 9380:127.0.0.1:9380 \
+  root@onyx01.wepublish.cloud
 
 # 2. point your MCP client at it — .mcp.json:
 {
@@ -71,10 +74,10 @@ Ingest and health are **not** MCP tools — use the HTTP API (option 2) or the
 ## Option 2 — HTTP API (scripts, services)
 
 The API key lives on the box at `/opt/ragflow-deploy/ragflow-api-key.txt`.
-With a tunnel on `:9380` (same pattern as above):
+The tunnel command above already forwards `:9380` alongside the MCP port:
 
 ```bash
-KEY=$(ssh root@onyx01.wepublish.cloud cat /opt/ragflow-deploy/ragflow-api-key.txt)
+KEY=$(ssh -i ~/.ssh/<your-onyx01-key> root@onyx01.wepublish.cloud cat /opt/ragflow-deploy/ragflow-api-key.txt)
 
 # list datasets (names + ids + doc/chunk counts)
 curl -s -H "Authorization: Bearer $KEY" "http://127.0.0.1:9380/api/v1/datasets?page_size=100"
