@@ -6,61 +6,63 @@
 <title>We.Publish — Knowledge Infrastructure Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --font-display: 'Instrument Serif', Georgia, serif;
-    --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+    --font-body: 'Instrument Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
 
-    --bg: #faf7f1;
+    --paper: #fffdf9;
+    --soft: #f7f3ef;
     --surface: #ffffff;
-    --surface2: #f3eee4;
-    --border: rgba(30, 41, 59, 0.10);
-    --border-bright: rgba(30, 41, 59, 0.18);
-    --text: #1f2a37;
-    --text-dim: #6b7280;
+    --ink: #161616;
+    --muted: #686868;
+    --line: #ded7cf;
+    --line-bright: #cfc5ba;
 
-    --navy: #1e3a5f;          /* newsroom-facing */
-    --navy-dim: rgba(30, 58, 95, 0.08);
-    --terra: #c2410c;         /* knowledge engine */
-    --terra-dim: rgba(194, 65, 12, 0.08);
-    --gold: #b8860b;          /* sources / ingest */
-    --gold-dim: rgba(184, 134, 11, 0.10);
-    --sage: #4d7c0f;          /* people */
-    --sage-dim: rgba(77, 124, 15, 0.09);
+    --coral: #ea726e;         /* Aldus · the gateway */
+    --coral-dark: #c95652;
+    --coral-dim: rgba(234, 114, 110, 0.10);
+    --blue: #286f8f;          /* knowledge engine */
+    --blue-dim: rgba(40, 111, 143, 0.09);
+    --green: #3c7a58;         /* people */
+    --green-dim: rgba(60, 122, 88, 0.09);
+    --violet: #665a9e;        /* sources · tracker */
+    --violet-dim: rgba(102, 90, 158, 0.09);
+
+    --shadow: 0 16px 50px rgba(30, 24, 18, 0.08);
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14191f;
-      --surface: #1b222b;
-      --surface2: #222b36;
-      --border: rgba(255, 255, 255, 0.09);
-      --border-bright: rgba(255, 255, 255, 0.16);
-      --text: #e8e4da;
-      --text-dim: #98a1ad;
+      --paper: #1a1816;
+      --soft: #242019;
+      --surface: #211e1b;
+      --ink: #f0e8df;
+      --muted: #a39a8f;
+      --line: #3a342d;
+      --line-bright: #4c453c;
 
-      --navy: #7da7d9;
-      --navy-dim: rgba(125, 167, 217, 0.12);
-      --terra: #e8845a;
-      --terra-dim: rgba(232, 132, 90, 0.12);
-      --gold: #d9b35a;
-      --gold-dim: rgba(217, 179, 90, 0.12);
-      --sage: #9bbf5e;
-      --sage-dim: rgba(155, 191, 94, 0.12);
+      --coral: #f08a7a;
+      --coral-dark: #ea726e;
+      --coral-dim: rgba(240, 138, 122, 0.13);
+      --blue: #6aa7c4;
+      --blue-dim: rgba(106, 167, 196, 0.13);
+      --green: #7db897;
+      --green-dim: rgba(125, 184, 151, 0.13);
+      --violet: #a294d6;
+      --violet-dim: rgba(162, 148, 214, 0.13);
+
+      --shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
     }
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    background-color: var(--bg);
-    background-image: linear-gradient(var(--border) 1px, transparent 1px),
-                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 56px 56px;
-    background-position: -1px -1px;
-    color: var(--text);
+    background-color: var(--paper);
+    color: var(--ink);
     font-family: var(--font-body);
     padding: 56px 32px 80px;
     min-height: 100vh;
@@ -88,7 +90,7 @@
     font-size: 12px;
     letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--coral-dark);
     margin-bottom: 14px;
   }
 
@@ -101,12 +103,12 @@
     margin-bottom: 14px;
     text-wrap: balance;
   }
-  h1 em { font-style: italic; color: var(--terra); }
+  h1 em { font-style: italic; color: var(--coral); }
 
   .subtitle {
     font-family: var(--font-mono);
     font-size: 12.5px;
-    color: var(--text-dim);
+    color: var(--muted);
     margin-bottom: 28px;
   }
 
@@ -114,7 +116,7 @@
     font-size: 17px;
     line-height: 1.65;
     max-width: 740px;
-    color: var(--text);
+    color: var(--ink);
     margin-bottom: 8px;
   }
   .lead strong { font-weight: 600; }
@@ -123,7 +125,7 @@
     font-size: 14px;
     line-height: 1.65;
     max-width: 740px;
-    color: var(--text-dim);
+    color: var(--muted);
     margin-bottom: 48px;
   }
 
@@ -136,7 +138,7 @@
   .section-label .num {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--gold);
+    color: var(--coral-dark);
   }
   .section-label h2 {
     font-family: var(--font-display);
@@ -146,7 +148,7 @@
   }
   .section-note {
     font-size: 14px;
-    color: var(--text-dim);
+    color: var(--muted);
     max-width: 720px;
     margin-bottom: 22px;
     line-height: 1.65;
@@ -154,8 +156,8 @@
   .section-note code {
     font-family: var(--font-mono);
     font-size: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
+    background: var(--soft);
+    border: 1px solid var(--line);
     padding: 1px 6px;
     border-radius: 4px;
   }
@@ -164,22 +166,24 @@
   .mermaid-wrap {
     position: relative;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--line);
     border-radius: 14px;
-    padding: 34px 22px;
-    overflow: auto;
+    padding: 0;
+    overflow: hidden;
+    min-height: 500px;
+    box-shadow: var(--shadow);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .diagram-stage {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 420px;
-    box-shadow: 0 1px 2px rgba(30,41,59,0.04), 0 8px 28px -18px rgba(30,41,59,0.25);
-    cursor: grab;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    min-height: 500px;
+    padding: 40px 24px;
+    transform-origin: center center;
   }
-  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
-  .mermaid-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
-  .mermaid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .zoom-controls {
     position: absolute;
@@ -187,24 +191,24 @@
     display: flex; gap: 2px;
     z-index: 10;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--line);
     border-radius: 7px;
     padding: 2px;
   }
   .zoom-controls button {
     width: 28px; height: 28px;
     border: none; background: transparent;
-    color: var(--text-dim);
+    color: var(--muted);
     font-family: var(--font-mono); font-size: 14px;
     cursor: pointer; border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s ease, color 0.15s ease;
   }
-  .zoom-controls button:hover { background: var(--surface2); color: var(--text); }
+  .zoom-controls button:hover { background: var(--soft); color: var(--ink); }
 
-  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; color: var(--text) !important; line-height: 1.35 !important; }
-  .mermaid .nodeLabel small { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
-  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; color: var(--text-dim) !important; background-color: var(--surface) !important; }
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; color: var(--ink) !important; line-height: 1.35 !important; }
+  .mermaid .nodeLabel small { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); font-weight: 400; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; color: var(--muted) !important; background-color: var(--surface) !important; }
   .mermaid .edgeLabel rect { fill: var(--surface) !important; }
   .mermaid .cluster-label, .mermaid .cluster-label .nodeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; letter-spacing: 1px; }
   .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
@@ -214,14 +218,14 @@
     bottom: 10px; left: 12px;
     z-index: 10;
     display: flex; gap: 16px; flex-wrap: wrap;
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
     backdrop-filter: blur(3px);
-    border: 1px solid var(--border);
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 7px 12px;
     pointer-events: none;
   }
-  .legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
   .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
 
   /* ---------- Access cards ---------- */
@@ -233,13 +237,14 @@
   }
   .access-card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--navy);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--coral);
     border-radius: 12px;
     padding: 22px 24px;
     min-width: 0;
+    box-shadow: var(--shadow);
   }
-  .access-card.engine { border-top-color: var(--terra); }
+  .access-card.engine { border-top-color: var(--blue); }
   .access-card h3 {
     font-family: var(--font-display);
     font-size: 22px;
@@ -251,66 +256,68 @@
     font-size: 11px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--muted);
     margin-bottom: 12px;
   }
-  .access-card p { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+  .access-card p { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
   .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 2px; }
   .chip {
     font-family: var(--font-mono);
     font-size: 11px;
     padding: 3px 9px;
     border-radius: 99px;
-    border: 1px solid var(--border-bright);
-    background: var(--navy-dim);
-    color: var(--text);
+    border: 1px solid var(--line-bright);
+    background: var(--coral-dim);
+    color: var(--ink);
     white-space: nowrap;
   }
-  .access-card.engine .chip { background: var(--terra-dim); }
+  .access-card.engine .chip { background: var(--blue-dim); }
   .chip.planned { border-style: dashed; opacity: 0.75; }
 
   .invariants {
     margin-top: 18px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
+    background: var(--soft);
+    border: 1px solid var(--line);
     border-radius: 10px;
     padding: 14px 18px;
     font-size: 12.5px;
-    color: var(--text-dim);
+    color: var(--muted);
     line-height: 1.7;
   }
-  .invariants strong { color: var(--text); font-weight: 600; }
+  .invariants strong { color: var(--ink); font-weight: 600; }
 
   /* ---------- Status ---------- */
   .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 4px; }
   .status-card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--sage);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--green);
     border-radius: 10px;
     padding: 18px 22px;
     min-width: 0;
+    box-shadow: var(--shadow);
   }
-  .status-card.pending { border-left-color: var(--gold); }
-  .status-card h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .status-card.pending { border-left-color: var(--coral); }
+  .status-card h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
   .status-card ul { list-style: none; }
-  .status-card li { font-size: 13.5px; padding: 5px 0 5px 20px; position: relative; color: var(--text); }
-  .status-card li::before { content: "●"; position: absolute; left: 0; font-size: 9px; top: 9px; color: var(--sage); }
-  .status-card.pending li::before { color: var(--gold); }
-  .status-card li small { display: block; font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono); }
+  .status-card li { font-size: 13.5px; padding: 5px 0 5px 20px; position: relative; color: var(--ink); }
+  .status-card li::before { content: "●"; position: absolute; left: 0; font-size: 9px; top: 9px; color: var(--green); }
+  .status-card.pending li::before { color: var(--coral); }
+  .status-card li small { display: block; font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); }
+  .status-card li code { font-family: var(--font-mono); font-size: 12px; }
 
   footer.colophon {
     margin-top: 46px;
     font-family: var(--font-mono);
     font-size: 11px;
-    color: var(--text-dim);
+    color: var(--muted);
     text-align: center;
   }
 
   @media (max-width: 760px) {
     body { padding: 28px 14px 50px; }
     .access-grid, .status-grid { grid-template-columns: 1fr; }
-    .mermaid-wrap { padding: 18px 10px; }
+    .diagram-stage { padding: 18px 10px; }
   }
 </style>
 </head>
@@ -320,6 +327,16 @@
   <div class="kicker animate" style="--i:0">We.Publish · knowledge infrastructure</div>
   <h1 class="animate" style="--i:1">One knowledge base,<br>one librarian: <em>Aldus</em></h1>
   <p class="subtitle animate" style="--i:2">architecture map · june 2026</p>
+
+  <p class="lead animate" style="--i:3">
+    <strong>One knowledge base</strong> holds everything We.Publish knows — every entry tagged on
+    ingest, access scoped by namespace. <strong>One librarian — Aldus —</strong> is the only thing
+    people talk to.
+  </p>
+  <p class="lead-sub animate" style="--i:4">
+    Nobody logs into the engine: reads and writes go through skills that enforce scoping in code,
+    and every answer carries its sources and confidence.
+  </p>
 
   <p class="lead animate" style="--i:3">
     <strong>One headless knowledge engine</strong> holds everything We.Publish knows — public docs,
@@ -339,11 +356,9 @@
     <h2>The system</h2>
   </div>
   <p class="section-note animate" style="--i:6">
-    <strong>RAGFlow</strong> runs headless on <code>onyx01</code> with three dataset families;
-    <strong>Aldus</strong> (Hermes runtime) runs on <code>hermes01</code> as a single Slack gateway
-    serving every channel. Aldus reaches the engine only through two hardened skills over a
-    restricted SSH tunnel; live CMS state and live code are fetched from their own MCPs, never
-    indexed. Drag to pan · ctrl-scroll to zoom · click to open full-size.
+    The namespace tag is the access scope — <code>public</code>, <code>internal</code>, or
+    <code>newsroom:{slug}</code>. Staff sit on top with full scope; newsrooms reach the KB only
+    through their Slack channel, pinned to their own tag. Drag to pan · ctrl-scroll to zoom · double-click to open full-size.
   </p>
 
   <div class="access-grid">
@@ -353,7 +368,7 @@
       <div class="chips">
         <span class="chip">dedicated Slack channel</span>
         <span class="chip">CMS diagnostics (read)</span>
-        <span class="chip planned">phase 2</span>
+        <span class="chip planned">phase 2 · pilot: Bajour</span>
       </div>
       <p>Ask anything in your channel — setup, payments, peering, onboarding. Aldus answers from
       public docs plus <em>your</em> newsroom's knowledge only, checks your live CMS state when it
@@ -378,56 +393,60 @@
     <div class="zoom-controls">
       <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
       <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
-      <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
+      <button onclick="resetZoom(this)" title="Reset view">&#8634;</button>
       <button onclick="openDiagramFullscreen(this)" title="Open full size">&#x26F6;</button>
     </div>
     <div class="canvas-legend">
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--sage)"></div> people</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--navy)"></div> gateway · live state</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--terra)"></div> knowledge engine</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--gold)"></div> sources · tracker</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div> people</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--coral)"></div> Aldus · gateway · Slack</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--blue)"></div> knowledge engine</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--violet)"></div> sources · tracker</div>
     </div>
+    <div class="diagram-stage">
     <pre class="mermaid">
-flowchart BT
-  NR(["Newsrooms<br/><small>one dedicated private channel each · phase 2</small>"])
-  ST(["Staff · developers<br/><small>#dev-aldus · #support-aldus</small>"])
-  DEV(["Coding agents<br/><small>Claude Code · Cursor — planned</small>"])
+flowchart TD
+  ST(["We.Publish staff &amp; developers<br/><small>and their coding agents — same people, same access</small>"])
 
-  ALD["Aldus — the librarian<br/><small>Hermes runtime · hermes01 · ONE gateway, all channels<br/>channel→dataset scoping · answer contract · human gates</small>"]
-  SKL["Hardened skills<br/><small>kb-retrieve · kb-ingest — dataset allowlists enforced in code</small>"]
-
-  subgraph RF["  RAGFLOW — onyx01 · HEADLESS · bge-m3 multilingual  "]
-    PUB[("public<br/><small>docs · llms.txt</small>")]
-    INT[("internal<br/><small>support patterns · decisions</small>")]
-    NRD[("newsroom:{slug}<br/><small>one per newsroom · isolated</small>")]
-    MCP["RAGFlow MCP<br/><small>loopback :9382 · retrieval-only</small>"]
+  subgraph RF["  THE KNOWLEDGE BASE — RAGFLOW · onyx01 · HEADLESS · bge-m3 multilingual  "]
+    KB[("One collection, tagged<br/><small>every entry carries: namespace · type · source · confidence · owner</small>")]
+    TAGS["Namespace tags = access scopes<br/><small>public — docs, llms.txt<br/>internal — support patterns, decisions<br/>newsroom:{slug} — one per newsroom, isolated</small>"]
   end
+  SRC["Sources<br/><small>docs.wepublish.ch · wepublish.ch · llms.txt<br/>support threads · newsroom conversations</small>"]
 
-  CMS["CMS MCP<br/><small>live tenant state · read-only · per-deployment</small>"]
-  DCM["wepublish-mcp<br/><small>dev context · live GitHub + GitBook at HEAD</small>"]
-  GHI["GitHub Issues<br/><small>support → engineering · phase-1 tracker</small>"]
-  SRC["Doc sources<br/><small>docs.wepublish.ch · wepublish.ch · llms.txt</small>"]
+  ALD["Aldus — the librarian<br/><small>Hermes runtime · hermes01 · one gateway, all channels<br/>LLM: sonnet-4.6 via OpenRouter · answer contract · human gates</small>"]
+  SKL["Hardened skills<br/><small>kb-retrieve · kb-ingest<br/>tag/dataset allowlists enforced in code</small>"]
 
-  NR ==>|"Slack · their channel only"| ALD
-  ST ==>|"Slack · Socket Mode"| ALD
-  ALD ==> SKL
-  SKL ==>|"/api/v1 · restricted SSH tunnel"| RF
+  SLK["Slack — one app<br/><small>#dev-aldus · #support-aldus<br/>one private channel per newsroom</small>"]
+  CMS["CMS MCP<br/><small>live tenant state · read-only<br/>phase 2: gated writes — onboarding, dry-run + approval + audit</small>"]
+  DCM["wepublish-mcp<br/><small>live code + docs at HEAD</small>"]
+  GHI["GitHub Issues<br/><small>support → engineering</small>"]
+  NR(["Newsrooms<br/><small>pilot: Bajour — their channel only, scoped to their tag</small>"])
+
+  ST -. "direct MCP · planned" .-> KB
+  ST ~~~ SRC
+  KB --- TAGS
+  SRC -->|"ingest, tagged on entry"| KB
+  KB &lt;-->|"read · write"| SKL
+  RF ~~~ ALD
+  ALD ---|"uses"| SKL
+  ST &lt;==>|"Slack"| SLK
+  ALD &lt;==>|"Socket Mode"| SLK
   ALD -->|"live state when it matters"| CMS
   ALD -->|"live code · never embedded"| DCM
   ALD -->|"drafts shown before filing"| GHI
-  SRC -->|"scheduled scrape → kb-ingest<br/>planned"| SKL
-  MCP -. "scoped token · planned" .-> DEV
+  SLK &lt;==>|"their dedicated channel"| NR
 
-  classDef gateway fill:#1e3a5f22,stroke:#1e3a5f,stroke-width:1.5px
-  classDef engine fill:#c2410c1f,stroke:#c2410c,stroke-width:1.5px
-  classDef people fill:#4d7c0f1c,stroke:#4d7c0f,stroke-width:1.5px
-  classDef source fill:#b8860b1a,stroke:#b8860b,stroke-width:1.5px
+  classDef gateway fill:#ea726e1f,stroke:#ea726e,stroke-width:1.5px
+  classDef engine fill:#286f8f1c,stroke:#286f8f,stroke-width:1.5px
+  classDef people fill:#3c7a581c,stroke:#3c7a58,stroke-width:1.5px
+  classDef source fill:#665a9e1a,stroke:#665a9e,stroke-width:1.5px
 
-  class ALD,SKL,CMS,DCM gateway
-  class PUB,INT,NRD,MCP engine
-  class NR,ST,DEV people
+  class ALD,SKL,CMS,DCM,SLK gateway
+  class KB,TAGS engine
+  class ST,NR people
   class SRC,GHI source
     </pre>
+    </div>
   </div>
 
   <div class="invariants animate" style="--i:10">
@@ -454,9 +473,10 @@ flowchart BT
     <div class="zoom-controls">
       <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
       <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
-      <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
+      <button onclick="resetZoom(this)" title="Reset view">&#8634;</button>
       <button onclick="openDiagramFullscreen(this)" title="Open full size">&#x26F6;</button>
     </div>
+    <div class="diagram-stage">
     <pre class="mermaid">
 flowchart TD
   Q["Question in a channel<br/><small>newsroom or staff</small>"]
@@ -475,11 +495,11 @@ flowchart TD
   HIT -->|"no"| NF --> GHX --> RES --> PAT --> REV ==> CONF
   CONF -.->|"next time: answered from the KB"| RET
 
-  classDef gateway fill:#1e3a5f22,stroke:#1e3a5f,stroke-width:1.5px
-  classDef engine fill:#c2410c1f,stroke:#c2410c,stroke-width:1.5px
-  classDef gate fill:#b8860b22,stroke:#b8860b,stroke-width:1.5px
-  classDef good fill:#4d7c0f1c,stroke:#4d7c0f,stroke-width:1.5px
-  classDef plain fill:#1f2a3708,stroke:#6b7280
+  classDef gateway fill:#ea726e1f,stroke:#ea726e,stroke-width:1.5px
+  classDef engine fill:#286f8f1c,stroke:#286f8f,stroke-width:1.5px
+  classDef gate fill:#665a9e22,stroke:#665a9e,stroke-width:1.5px
+  classDef good fill:#3c7a581c,stroke:#3c7a58,stroke-width:1.5px
+  classDef plain fill:#16161608,stroke:#686868
 
   class Q plain
   class RET,ANS gateway
@@ -488,6 +508,7 @@ flowchart TD
   class PAT engine
   class CONF good
     </pre>
+    </div>
   </div>
 
   <!-- ============ SECTION 03 — STATUS ============ -->
@@ -500,19 +521,21 @@ flowchart TD
     <div class="status-card animate" style="--i:15">
       <h3>Live</h3>
       <ul>
-        <li>Aldus on <code style="font-size:12px">hermes01</code> <small>Hermes runtime · sonnet-4.6 via OpenRouter · systemd gateway</small></li>
-        <li>RAGFlow on <code style="font-size:12px">onyx01</code> <small>headless · three datasets · loopback-only + SSH tunnel</small></li>
+        <li>Aldus on <code>hermes01</code> <small>Hermes runtime · sonnet-4.6 via OpenRouter · systemd gateway</small></li>
+        <li>RAGFlow on <code>onyx01</code> <small>headless · loopback-only + SSH tunnel</small></li>
+        <li>KB content <small>public: 125 docs / 704 chunks · internal: 45 docs / 118 chunks</small></li>
         <li>kb-ingest + kb-retrieve <small>validated end-to-end · allowlists enforced in code</small></li>
-        <li>Slack gateway connected <small>Socket Mode · all workspace users · channels-only (no DMs)</small></li>
+        <li>Slack gateway connected <small>Socket Mode · channels-only (no DMs)</small></li>
       </ul>
     </div>
     <div class="status-card pending animate" style="--i:16">
       <h3>Pending</h3>
       <ul>
         <li>Slack app scopes <small>manifest paste + reinstall → then channel pinning</small></li>
-        <li>KB content <small>llms.txt + doc scrape → public / internal · datasets are live but empty</small></li>
-        <li>CMS MCP live validation <small>gated on wepublish#2801 (scoped tokens)</small></li>
-        <li>First newsroom channel <small>channel map + trusted channel-ID + isolation probes</small></li>
+        <li>CMS MCP token <small>public tools validated live against Bajour · gated tools need wepublish#2801</small></li>
+        <li>Bajour pilot channel <small>newsroom:bajour dataset created · channel map + isolation probes next</small></li>
+        <li>Backups + restore drill <small>KB index + profiles · off-server copies · tested restore before pilot</small></li>
+        <li>Dev MCP access <small>scoped token for coding agents · later phase</small></li>
       </ul>
     </div>
   </div>
@@ -533,37 +556,43 @@ flowchart TD
     look: 'classic',
     layout: 'elk',
     themeVariables: {
-      primaryColor: isDark ? '#222b36' : '#ffffff',
-      primaryBorderColor: isDark ? '#98a1ad' : '#6b7280',
-      primaryTextColor: isDark ? '#e8e4da' : '#1f2a37',
-      lineColor: isDark ? '#98a1ad' : '#9aa1ab',
-      clusterBkg: isDark ? '#1b222b88' : '#f3eee466',
-      clusterBorder: isDark ? '#d9b35a' : '#b8860b',
+      primaryColor: isDark ? '#242019' : '#ffffff',
+      primaryBorderColor: isDark ? '#a39a8f' : '#686868',
+      primaryTextColor: isDark ? '#f0e8df' : '#161616',
+      lineColor: isDark ? '#a39a8f' : '#9a9088',
+      clusterBkg: isDark ? '#24201988' : '#f7f3ef66',
+      clusterBorder: isDark ? '#6aa7c4' : '#286f8f',
       fontSize: '15px',
-      fontFamily: "'IBM Plex Sans', 'Segoe UI', sans-serif",
-      edgeLabelBackground: isDark ? '#1b222b' : '#ffffff',
-    }
+      fontFamily: "'Instrument Sans', system-ui, sans-serif",
+      edgeLabelBackground: isDark ? '#211e1b' : '#ffffff',
+    },
+    flowchart: { useMaxWidth: false },
   });
 </script>
 <script>
-  var INITIAL_ZOOM = 1.15;
+  // Transform-based pan/zoom: works regardless of overflow, true dragging.
+  var INITIAL_ZOOM = 1.0;
 
+  function getState(wrap) {
+    if (!wrap._view) wrap._view = { x: 0, y: 0, s: INITIAL_ZOOM };
+    return wrap._view;
+  }
+  function apply(wrap) {
+    var v = getState(wrap);
+    var stage = wrap.querySelector('.diagram-stage');
+    stage.style.transform = 'translate(' + v.x + 'px,' + v.y + 'px) scale(' + v.s + ')';
+  }
   function zoomDiagram(btn, factor) {
     var wrap = btn.closest('.mermaid-wrap');
-    var target = wrap.querySelector('.mermaid');
-    var current = parseFloat(target.dataset.zoom || INITIAL_ZOOM);
-    var next = Math.min(Math.max(current * factor, 0.5), 5);
-    target.dataset.zoom = next;
-    target.style.zoom = next;
+    var v = getState(wrap);
+    v.s = Math.min(Math.max(v.s * factor, 0.4), 5);
+    apply(wrap);
   }
-
   function resetZoom(btn) {
     var wrap = btn.closest('.mermaid-wrap');
-    var target = wrap.querySelector('.mermaid');
-    target.dataset.zoom = INITIAL_ZOOM;
-    target.style.zoom = INITIAL_ZOOM;
+    wrap._view = { x: 0, y: 0, s: INITIAL_ZOOM };
+    apply(wrap);
   }
-
   function openDiagramFullscreen(btn) {
     openMermaidInNewTab(btn.closest('.mermaid-wrap'));
   }
@@ -575,7 +604,7 @@ flowchart TD
     clone.style.zoom = '';
     clone.style.transform = '';
     var styles = getComputedStyle(document.documentElement);
-    var bg = styles.getPropertyValue('--bg').trim() || '#ffffff';
+    var bg = styles.getPropertyValue('--paper').trim() || '#ffffff';
     var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Diagram</title><style>' +
       'body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: ' + bg + '; padding: 40px; box-sizing: border-box; }' +
@@ -586,40 +615,59 @@ flowchart TD
   }
 
   document.querySelectorAll('.mermaid-wrap').forEach(function(wrap) {
-    var initial = INITIAL_ZOOM;
-    var m = wrap.querySelector('.mermaid');
-    if (m) { m.dataset.zoom = initial; m.style.zoom = initial; }
+    apply(wrap);
 
     wrap.addEventListener('wheel', function(e) {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
-      var target = wrap.querySelector('.mermaid');
-      var current = parseFloat(target.dataset.zoom || initial);
-      var factor = e.deltaY < 0 ? 1.1 : 0.9;
-      var next = Math.min(Math.max(current * factor, 0.5), 5);
-      target.dataset.zoom = next;
-      target.style.zoom = next;
+      var v = getState(wrap);
+      v.s = Math.min(Math.max(v.s * (e.deltaY < 0 ? 1.1 : 0.9), 0.4), 5);
+      apply(wrap);
     }, { passive: false });
 
-    var startX, startY, scrollL, scrollT, startTime, didPan;
+    var startX, startY, origX, origY, dragging = false;
     wrap.addEventListener('mousedown', function(e) {
       if (e.target.closest('.zoom-controls')) return;
+      var v = getState(wrap);
+      dragging = true;
       wrap.classList.add('is-panning');
       startX = e.clientX; startY = e.clientY;
-      scrollL = wrap.scrollLeft; scrollT = wrap.scrollTop;
-      startTime = Date.now(); didPan = false;
+      origX = v.x; origY = v.y;
+      e.preventDefault();
     });
     window.addEventListener('mousemove', function(e) {
-      if (!wrap.classList.contains('is-panning')) return;
-      var dx = e.clientX - startX, dy = e.clientY - startY;
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPan = true;
-      wrap.scrollLeft = scrollL - dx;
-      wrap.scrollTop = scrollT - dy;
+      if (!dragging) return;
+      var v = getState(wrap);
+      v.x = origX + (e.clientX - startX);
+      v.y = origY + (e.clientY - startY);
+      apply(wrap);
     });
     window.addEventListener('mouseup', function() {
-      if (!wrap.classList.contains('is-panning')) return;
+      if (!dragging) return;
+      dragging = false;
       wrap.classList.remove('is-panning');
-      if (!didPan && (Date.now() - startTime) < 300) openMermaidInNewTab(wrap);
+    });
+
+    // touch support
+    var tStartX, tStartY, tOrigX, tOrigY;
+    wrap.addEventListener('touchstart', function(e) {
+      if (e.touches.length !== 1) return;
+      var v = getState(wrap);
+      tStartX = e.touches[0].clientX; tStartY = e.touches[0].clientY;
+      tOrigX = v.x; tOrigY = v.y;
+    }, { passive: true });
+    wrap.addEventListener('touchmove', function(e) {
+      if (e.touches.length !== 1) return;
+      var v = getState(wrap);
+      v.x = tOrigX + (e.touches[0].clientX - tStartX);
+      v.y = tOrigY + (e.touches[0].clientY - tStartY);
+      apply(wrap);
+      e.preventDefault();
+    }, { passive: false });
+
+    wrap.addEventListener('dblclick', function(e) {
+      if (e.target.closest('.zoom-controls')) return;
+      openMermaidInNewTab(wrap);
     });
   });
 </script>
