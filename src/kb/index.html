@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>We.Publish — Knowledge Infrastructure Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #faf7f1;
+    --surface: #ffffff;
+    --surface2: #f3eee4;
+    --border: rgba(30, 41, 59, 0.10);
+    --border-bright: rgba(30, 41, 59, 0.18);
+    --text: #1f2a37;
+    --text-dim: #6b7280;
+
+    --navy: #1e3a5f;          /* newsroom-facing */
+    --navy-dim: rgba(30, 58, 95, 0.08);
+    --terra: #c2410c;         /* knowledge engine */
+    --terra-dim: rgba(194, 65, 12, 0.08);
+    --gold: #b8860b;          /* sources / ingest */
+    --gold-dim: rgba(184, 134, 11, 0.10);
+    --sage: #4d7c0f;          /* people */
+    --sage-dim: rgba(77, 124, 15, 0.09);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14191f;
+      --surface: #1b222b;
+      --surface2: #222b36;
+      --border: rgba(255, 255, 255, 0.09);
+      --border-bright: rgba(255, 255, 255, 0.16);
+      --text: #e8e4da;
+      --text-dim: #98a1ad;
+
+      --navy: #7da7d9;
+      --navy-dim: rgba(125, 167, 217, 0.12);
+      --terra: #e8845a;
+      --terra-dim: rgba(232, 132, 90, 0.12);
+      --gold: #d9b35a;
+      --gold-dim: rgba(217, 179, 90, 0.12);
+      --sage: #9bbf5e;
+      --sage-dim: rgba(155, 191, 94, 0.12);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 56px 32px 80px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.07s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .container { max-width: 1060px; margin: 0 auto; }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5.5vw, 58px);
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    line-height: 1.05;
+    margin-bottom: 14px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--terra); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+
+  .lead {
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 740px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .lead strong { font-weight: 600; }
+
+  .lead-sub {
+    font-size: 14px;
+    line-height: 1.65;
+    max-width: 740px;
+    color: var(--text-dim);
+    margin-bottom: 48px;
+  }
+
+  .section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 10px;
+  }
+  .section-label .num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+  }
+  .section-label h2 {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3.4vw, 36px);
+    font-weight: 400;
+    letter-spacing: -0.3px;
+  }
+  .section-note {
+    font-size: 14px;
+    color: var(--text-dim);
+    max-width: 720px;
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+  .section-note code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ---------- Mermaid container ---------- */
+  .mermaid-wrap {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 34px 22px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 420px;
+    box-shadow: 0 1px 2px rgba(30,41,59,0.04), 0 8px 28px -18px rgba(30,41,59,0.25);
+    cursor: grab;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .mermaid-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+  .mermaid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 10px; right: 10px;
+    display: flex; gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 2px;
+  }
+  .zoom-controls button {
+    width: 28px; height: 28px;
+    border: none; background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 14px;
+    cursor: pointer; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--text); }
+
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; color: var(--text) !important; line-height: 1.35 !important; }
+  .mermaid .nodeLabel small { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; color: var(--text-dim) !important; background-color: var(--surface) !important; }
+  .mermaid .edgeLabel rect { fill: var(--surface) !important; }
+  .mermaid .cluster-label, .mermaid .cluster-label .nodeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; letter-spacing: 1px; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+
+  .canvas-legend {
+    position: absolute;
+    bottom: 10px; left: 12px;
+    z-index: 10;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(3px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    pointer-events: none;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* ---------- Access cards ---------- */
+  .access-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 4px 0 22px;
+  }
+  .access-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--navy);
+    border-radius: 12px;
+    padding: 22px 24px;
+    min-width: 0;
+  }
+  .access-card.engine { border-top-color: var(--terra); }
+  .access-card h3 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+  .access-card .who {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .access-card p { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 2px; }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 99px;
+    border: 1px solid var(--border-bright);
+    background: var(--navy-dim);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .access-card.engine .chip { background: var(--terra-dim); }
+  .chip.planned { border-style: dashed; opacity: 0.75; }
+
+  .invariants {
+    margin-top: 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .invariants strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Status ---------- */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 4px; }
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--sage);
+    border-radius: 10px;
+    padding: 18px 22px;
+    min-width: 0;
+  }
+  .status-card.pending { border-left-color: var(--gold); }
+  .status-card h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .status-card ul { list-style: none; }
+  .status-card li { font-size: 13.5px; padding: 5px 0 5px 20px; position: relative; color: var(--text); }
+  .status-card li::before { content: "●"; position: absolute; left: 0; font-size: 9px; top: 9px; color: var(--sage); }
+  .status-card.pending li::before { color: var(--gold); }
+  .status-card li small { display: block; font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono); }
+
+  footer.colophon {
+    margin-top: 46px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    body { padding: 28px 14px 50px; }
+    .access-grid, .status-grid { grid-template-columns: 1fr; }
+    .mermaid-wrap { padding: 18px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="kicker animate" style="--i:0">We.Publish · knowledge infrastructure</div>
+  <h1 class="animate" style="--i:1">One knowledge base,<br>one librarian: <em>Aldus</em></h1>
+  <p class="subtitle animate" style="--i:2">architecture map · june 2026</p>
+
+  <p class="lead animate" style="--i:3">
+    <strong>One headless knowledge engine</strong> holds everything We.Publish knows — public docs,
+    internal support patterns and decisions, and each newsroom's own knowledge, in isolated datasets.
+    <strong>One librarian agent — Aldus —</strong> is the only thing people talk to: newsrooms in their
+    dedicated Slack channel, staff and developers in theirs.
+  </p>
+  <p class="lead-sub animate" style="--i:4">
+    Nobody logs into the engine. Every read and write goes through skills that enforce dataset
+    scoping in code, every answer carries its sources and confidence, and everything a newsroom
+    tells us stays marked as theirs until a human reviews it.
+  </p>
+
+  <!-- ============ SECTION 01 — THE MAP ============ -->
+  <div class="section-label animate" style="--i:5">
+    <span class="num">01</span>
+    <h2>The system</h2>
+  </div>
+  <p class="section-note animate" style="--i:6">
+    <strong>RAGFlow</strong> runs headless on <code>onyx01</code> with three dataset families;
+    <strong>Aldus</strong> (Hermes runtime) runs on <code>hermes01</code> as a single Slack gateway
+    serving every channel. Aldus reaches the engine only through two hardened skills over a
+    restricted SSH tunnel; live CMS state and live code are fetched from their own MCPs, never
+    indexed. Drag to pan · ctrl-scroll to zoom · click to open full-size.
+  </p>
+
+  <div class="access-grid">
+    <div class="access-card animate" style="--i:7">
+      <h3>Newsrooms</h3>
+      <div class="who">publishers in the network</div>
+      <div class="chips">
+        <span class="chip">dedicated Slack channel</span>
+        <span class="chip">CMS diagnostics (read)</span>
+        <span class="chip planned">phase 2</span>
+      </div>
+      <p>Ask anything in your channel — setup, payments, peering, onboarding. Aldus answers from
+      public docs plus <em>your</em> newsroom's knowledge only, checks your live CMS state when it
+      matters, and routes engineering work to the team. You never touch the engine.</p>
+    </div>
+    <div class="access-card engine animate" style="--i:8">
+      <h3>We.Publish staff &amp; developers</h3>
+      <div class="who">internal · #dev-aldus · #support-aldus</div>
+      <div class="chips">
+        <span class="chip">Slack · live</span>
+        <span class="chip">kb-ingest · kb-retrieve</span>
+        <span class="chip">GitHub Issues</span>
+        <span class="chip planned">dev MCP · planned</span>
+      </div>
+      <p>Full collection access: search everything, file knowledge on demand, promote reviewed
+      entries to confirmed, triage support into GitHub Issues. Direct MCP access from coding
+      agents (Claude Code, Cursor) to the engine is planned for a later phase.</p>
+    </div>
+  </div>
+
+  <div class="mermaid-wrap animate" style="--i:9">
+    <div class="zoom-controls">
+      <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
+      <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
+      <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
+      <button onclick="openDiagramFullscreen(this)" title="Open full size">&#x26F6;</button>
+    </div>
+    <div class="canvas-legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--sage)"></div> people</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--navy)"></div> gateway · live state</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--terra)"></div> knowledge engine</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--gold)"></div> sources · tracker</div>
+    </div>
+    <pre class="mermaid">
+flowchart BT
+  NR(["Newsrooms<br/><small>one dedicated private channel each · phase 2</small>"])
+  ST(["Staff · developers<br/><small>#dev-aldus · #support-aldus</small>"])
+  DEV(["Coding agents<br/><small>Claude Code · Cursor — planned</small>"])
+
+  ALD["Aldus — the librarian<br/><small>Hermes runtime · hermes01 · ONE gateway, all channels<br/>channel→dataset scoping · answer contract · human gates</small>"]
+  SKL["Hardened skills<br/><small>kb-retrieve · kb-ingest — dataset allowlists enforced in code</small>"]
+
+  subgraph RF["  RAGFLOW — onyx01 · HEADLESS · bge-m3 multilingual  "]
+    PUB[("public<br/><small>docs · llms.txt</small>")]
+    INT[("internal<br/><small>support patterns · decisions</small>")]
+    NRD[("newsroom:{slug}<br/><small>one per newsroom · isolated</small>")]
+    MCP["RAGFlow MCP<br/><small>loopback :9382 · retrieval-only</small>"]
+  end
+
+  CMS["CMS MCP<br/><small>live tenant state · read-only · per-deployment</small>"]
+  DCM["wepublish-mcp<br/><small>dev context · live GitHub + GitBook at HEAD</small>"]
+  GHI["GitHub Issues<br/><small>support → engineering · phase-1 tracker</small>"]
+  SRC["Doc sources<br/><small>docs.wepublish.ch · wepublish.ch · llms.txt</small>"]
+
+  NR ==>|"Slack · their channel only"| ALD
+  ST ==>|"Slack · Socket Mode"| ALD
+  ALD ==> SKL
+  SKL ==>|"/api/v1 · restricted SSH tunnel"| RF
+  ALD -->|"live state when it matters"| CMS
+  ALD -->|"live code · never embedded"| DCM
+  ALD -->|"drafts shown before filing"| GHI
+  SRC -->|"scheduled scrape → kb-ingest<br/>planned"| SKL
+  MCP -. "scoped token · planned" .-> DEV
+
+  classDef gateway fill:#1e3a5f22,stroke:#1e3a5f,stroke-width:1.5px
+  classDef engine fill:#c2410c1f,stroke:#c2410c,stroke-width:1.5px
+  classDef people fill:#4d7c0f1c,stroke:#4d7c0f,stroke-width:1.5px
+  classDef source fill:#b8860b1a,stroke:#b8860b,stroke-width:1.5px
+
+  class ALD,SKL,CMS,DCM gateway
+  class PUB,INT,NRD,MCP engine
+  class NR,ST,DEV people
+  class SRC,GHI source
+    </pre>
+  </div>
+
+  <div class="invariants animate" style="--i:10">
+    <strong>Isolation, enforced in layers:</strong> nobody logs into the engine — Aldus holds the only credentials ·
+    the skills refuse any dataset outside their allowlist, <strong>in code, not in the prompt</strong> ·
+    newsroom channels are scoped to <strong>public + their own dataset only</strong> ·
+    everything a newsroom tells us is tagged <strong>newsroom-asserted / unverified</strong> until a named human reviews it ·
+    payments, credentials and member data never enter the index — live CMS state is fetched, not stored ·
+    isolation probes must pass before any newsroom channel goes live.
+  </div>
+
+  <!-- ============ SECTION 02 — KNOWLEDGE LOOP ============ -->
+  <div class="section-label animate" style="--i:11">
+    <span class="num">02</span>
+    <h2>The knowledge loop</h2>
+  </div>
+  <p class="section-note animate" style="--i:12">
+    Every support exchange makes the collection better. Questions are answered from the narrowest
+    valid scope with sources and confidence; what can't be answered becomes a GitHub Issue; what
+    gets resolved comes back as a support pattern — so the same question is never escalated twice.
+  </p>
+
+  <div class="mermaid-wrap animate" style="--i:13">
+    <div class="zoom-controls">
+      <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
+      <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
+      <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
+      <button onclick="openDiagramFullscreen(this)" title="Open full size">&#x26F6;</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+  Q["Question in a channel<br/><small>newsroom or staff</small>"]
+  RET["kb-retrieve<br/><small>narrowest valid scope · hybrid search</small>"]
+  HIT{"Found,<br/>with a source?"}
+  ANS["Answer + contract<br/><small>Source · Confidence · CMS state · Provenance · Next step</small>"]
+  NF["'Not found' — said plainly<br/><small>never improvised</small>"]
+  GHX["GitHub Issue drafted<br/><small>shown in channel before filing</small>"]
+  RES["Resolved by the team"]
+  PAT["Support pattern ingested<br/><small>kb-ingest · tagged unverified</small>"]
+  REV["Human review<br/><small>--reviewed-by required</small>"]
+  CONF["Confirmed knowledge<br/><small>answers this question forever after</small>"]
+
+  Q ==> RET ==> HIT
+  HIT ==>|"yes"| ANS
+  HIT -->|"no"| NF --> GHX --> RES --> PAT --> REV ==> CONF
+  CONF -.->|"next time: answered from the KB"| RET
+
+  classDef gateway fill:#1e3a5f22,stroke:#1e3a5f,stroke-width:1.5px
+  classDef engine fill:#c2410c1f,stroke:#c2410c,stroke-width:1.5px
+  classDef gate fill:#b8860b22,stroke:#b8860b,stroke-width:1.5px
+  classDef good fill:#4d7c0f1c,stroke:#4d7c0f,stroke-width:1.5px
+  classDef plain fill:#1f2a3708,stroke:#6b7280
+
+  class Q plain
+  class RET,ANS gateway
+  class HIT,REV gate
+  class NF,GHX,RES plain
+  class PAT engine
+  class CONF good
+    </pre>
+  </div>
+
+  <!-- ============ SECTION 03 — STATUS ============ -->
+  <div class="section-label animate" style="--i:14">
+    <span class="num">03</span>
+    <h2>Where it stands</h2>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-card animate" style="--i:15">
+      <h3>Live</h3>
+      <ul>
+        <li>Aldus on <code style="font-size:12px">hermes01</code> <small>Hermes runtime · sonnet-4.6 via OpenRouter · systemd gateway</small></li>
+        <li>RAGFlow on <code style="font-size:12px">onyx01</code> <small>headless · three datasets · loopback-only + SSH tunnel</small></li>
+        <li>kb-ingest + kb-retrieve <small>validated end-to-end · allowlists enforced in code</small></li>
+        <li>Slack gateway connected <small>Socket Mode · all workspace users · channels-only (no DMs)</small></li>
+      </ul>
+    </div>
+    <div class="status-card pending animate" style="--i:16">
+      <h3>Pending</h3>
+      <ul>
+        <li>Slack app scopes <small>manifest paste + reinstall → then channel pinning</small></li>
+        <li>KB content <small>llms.txt + doc scrape → public / internal · datasets are live but empty</small></li>
+        <li>CMS MCP live validation <small>gated on wepublish#2801 (scoped tokens)</small></li>
+        <li>First newsroom channel <small>channel map + trusted channel-ID + isolation probes</small></li>
+      </ul>
+    </div>
+  </div>
+
+  <footer class="colophon">we.publish knowledge infrastructure · architecture map · june 2026</footer>
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs';
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  mermaid.registerLayoutLoaders(elkLayouts);
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    look: 'classic',
+    layout: 'elk',
+    themeVariables: {
+      primaryColor: isDark ? '#222b36' : '#ffffff',
+      primaryBorderColor: isDark ? '#98a1ad' : '#6b7280',
+      primaryTextColor: isDark ? '#e8e4da' : '#1f2a37',
+      lineColor: isDark ? '#98a1ad' : '#9aa1ab',
+      clusterBkg: isDark ? '#1b222b88' : '#f3eee466',
+      clusterBorder: isDark ? '#d9b35a' : '#b8860b',
+      fontSize: '15px',
+      fontFamily: "'IBM Plex Sans', 'Segoe UI', sans-serif",
+      edgeLabelBackground: isDark ? '#1b222b' : '#ffffff',
+    }
+  });
+</script>
+<script>
+  var INITIAL_ZOOM = 1.15;
+
+  function zoomDiagram(btn, factor) {
+    var wrap = btn.closest('.mermaid-wrap');
+    var target = wrap.querySelector('.mermaid');
+    var current = parseFloat(target.dataset.zoom || INITIAL_ZOOM);
+    var next = Math.min(Math.max(current * factor, 0.5), 5);
+    target.dataset.zoom = next;
+    target.style.zoom = next;
+  }
+
+  function resetZoom(btn) {
+    var wrap = btn.closest('.mermaid-wrap');
+    var target = wrap.querySelector('.mermaid');
+    target.dataset.zoom = INITIAL_ZOOM;
+    target.style.zoom = INITIAL_ZOOM;
+  }
+
+  function openDiagramFullscreen(btn) {
+    openMermaidInNewTab(btn.closest('.mermaid-wrap'));
+  }
+
+  function openMermaidInNewTab(wrap) {
+    var svg = wrap.querySelector('.mermaid svg');
+    if (!svg) return;
+    var clone = svg.cloneNode(true);
+    clone.style.zoom = '';
+    clone.style.transform = '';
+    var styles = getComputedStyle(document.documentElement);
+    var bg = styles.getPropertyValue('--bg').trim() || '#ffffff';
+    var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Diagram</title><style>' +
+      'body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: ' + bg + '; padding: 40px; box-sizing: border-box; }' +
+      'svg { max-width: 100%; max-height: 92vh; height: auto; }' +
+      '</style></head><body>' + clone.outerHTML + '</body></html>';
+    var blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  document.querySelectorAll('.mermaid-wrap').forEach(function(wrap) {
+    var initial = INITIAL_ZOOM;
+    var m = wrap.querySelector('.mermaid');
+    if (m) { m.dataset.zoom = initial; m.style.zoom = initial; }
+
+    wrap.addEventListener('wheel', function(e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      var target = wrap.querySelector('.mermaid');
+      var current = parseFloat(target.dataset.zoom || initial);
+      var factor = e.deltaY < 0 ? 1.1 : 0.9;
+      var next = Math.min(Math.max(current * factor, 0.5), 5);
+      target.dataset.zoom = next;
+      target.style.zoom = next;
+    }, { passive: false });
+
+    var startX, startY, scrollL, scrollT, startTime, didPan;
+    wrap.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.zoom-controls')) return;
+      wrap.classList.add('is-panning');
+      startX = e.clientX; startY = e.clientY;
+      scrollL = wrap.scrollLeft; scrollT = wrap.scrollTop;
+      startTime = Date.now(); didPan = false;
+    });
+    window.addEventListener('mousemove', function(e) {
+      if (!wrap.classList.contains('is-panning')) return;
+      var dx = e.clientX - startX, dy = e.clientY - startY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) didPan = true;
+      wrap.scrollLeft = scrollL - dx;
+      wrap.scrollTop = scrollT - dy;
+    });
+    window.addEventListener('mouseup', function() {
+      if (!wrap.classList.contains('is-panning')) return;
+      wrap.classList.remove('is-panning');
+      if (!didPan && (Date.now() - startTime) < 300) openMermaidInNewTab(wrap);
+    });
+  });
+</script>
+</body>
+</html>
