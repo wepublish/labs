@@ -320,7 +320,7 @@ flowchart TD
   CMS["CMS MCP<br/><small>live tenant state · read-only support queries</small>"]
   FRM["Secure setup form<br/><small>newsroom payment + setup → CMS DB · not via Aldus</small>"]
   DCM["wepublish-mcp<br/><small>live code + docs at HEAD</small>"]
-  GHI["GitHub<br/><small>Issues + PRs · phase-1 tracker</small>"]
+  GHI["GitHub<br/><small>issues drafted in chat · filing not built yet</small>"]
   NR(["Newsrooms<br/><small>pilot: Bajour — their channel, scoped to their tag</small>"])
 
   ST -. "direct MCP · planned" .-> KB
@@ -334,7 +334,7 @@ flowchart TD
   ALD &lt;==>|"Socket Mode"| SLK
   ALD -->|"live state"| CMS
   ALD -->|"live code"| DCM
-  ALD -->|"drafts → issues"| GHI
+  ALD -->|"drafts text · filing TODO"| GHI
   SLK &lt;==>|"their channel"| NR
   NR -->|"payment + setup · secure"| FRM
 
@@ -460,11 +460,14 @@ flowchart TD
       setup data is handled by the secure form below.</p>
     </div>
     <div class="card accent-blue">
-      <div class="ct"><h3>GitHub</h3><span class="pill partial">design ready</span></div>
-      <p><strong>Issues now, PRs next.</strong> A fine-grained PAT (selected repos, <code>Issues: rw</code>)
-      lets Aldus turn support requests into well-formed issues. PR creation adds <code>Contents/PRs: rw</code>
-      — with <strong>branch protection</strong> (require a review; bot is no reviewer) as the hard "can't
-      merge" guarantee, since GitHub has no open-PR-but-not-merge permission.</p>
+      <div class="ct"><h3>GitHub</h3><span class="pill planned">not built — remaining TODO</span></div>
+      <p><strong>Today Aldus only drafts issue <em>text</em> in the Slack thread — it cannot file.</strong>
+      There is no GitHub skill, no token, and no <code>gh</code> on the box; the SOUL's "draft an issue"
+      instruction has no tool behind it yet. <strong>To build:</strong> a deterministic <code>github-issue</code>
+      skill (same hardened pattern as <code>kb-ingest</code>) + a fine-grained PAT (selected repos,
+      <code>Issues: rw</code>) in the profile env. PRs come later — with <strong>branch protection</strong>
+      (require a review; bot is no reviewer) as the hard "can't-merge" guarantee, since GitHub has no
+      open-PR-but-not-merge permission.</p>
     </div>
   </div>
 
@@ -481,7 +484,7 @@ flowchart TD
       <ul>
         <li>Read: search tickets to dedupe + answer "is this known/planned?"</li>
         <li>Write (gated): draft a Share Board entry from a support thread, shown before filing</li>
-        <li>Swappable adapter — GitHub Issues remains the phase-1 tracker until this lands</li>
+        <li>Swappable adapter — GitHub Issues is the intended phase-1 tracker (skill still to build, see GitHub above)</li>
       </ul>
     </div>
     <div class="card accent-violet">
