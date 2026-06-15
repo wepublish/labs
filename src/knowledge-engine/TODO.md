@@ -1,23 +1,29 @@
 # KB — remaining todos (operational, Tom + agent)
 
-Working checklist, separate from the handover doc (`../handover/HANDOVER.md`).
+Working checklist, separate from the handover artifact (`handover.html`, deployed at
+`/labs/knowledge-engine/handover.html`).
 Infrastructure is DONE and validated: engine, wire, skills, monitoring, backups.
 
-## Blocked on the Slack manifest (CTO action)
+## Slack manifest applied 2026-06-15 — integration verified, 2 human actions left
 
-The app manifest (`../hermes/slack/aldus-slack-manifest.json`) must be pasted into
-the Slack app settings (App Manifest → paste → reinstall). One action unblocks all of:
+Manifest pasted + reinstalled by the CTO. Gateway verified live on hermes01.
 
-- [ ] Bot renamed `demo_app` → **Aldus**; scopes 2 → 11 (DM-less manifest, 2026-06-12: channels-only — no `im:history`/`im:write`/assistant scopes, Messages tab disabled)
-- [ ] Verify scopes after: `curl -D- -H "Authorization: Bearer $TOKEN" https://slack.com/api/auth.test` → `x-oauth-scopes` header
-- [ ] Invite Aldus to `#dev-aldus` + `#support-aldus`
-- [ ] Pin channel IDs in `SLACK_ALLOWED_CHANNELS` in the internal profile `.env` on
-      hermes01; `systemctl restart hermes-gateway-internal`
-      (user allowlist already done: `SLACK_ALLOW_ALL_USERS=true`, Tom-approved 2026-06-11)
-- [ ] End-to-end smoke test: @mention Aldus in `#dev-aldus` → expect a KB-grounded
-      answer with the contract block (Source / Confidence / CMS state / Provenance / Next step)
-- [ ] Verify off-allowlist behavior: messages + slash commands in a non-allowed channel
-      are ignored (not provable from docs — must be tested live)
+- [x] Scopes 2 → 11 (DM-less set confirmed via `auth.test` x-oauth-scopes:
+      chat:write, app_mentions:read, files:write, commands, channels:history/read,
+      files:read, groups:history/read, im:read, users:read). Same bot B0B9SF92N30.
+- [x] Gateway restarted, holds a live Socket Mode WebSocket to Slack (verified via `ss`);
+      no `missing_scope` errors. `SLACK_ALLOW_ALL_USERS=true` set.
+- [x] `#support-aldus` (C0B9R7CQU4V): bot is a member; pinned in `SLACK_ALLOWED_CHANNELS`;
+      chat:write confirmed (posted liveness message).
+- [x] Agent brain re-verified end-to-end via terminal: KB retrieval (4 real docs) +
+      full answer contract (peering question → Confirmed, We.Publish-verified).
+- [x] `#dev-aldus` (C0B9Y68V2DA) invited + pinned. Both channels now in
+      `SLACK_ALLOWED_CHANNELS=C0B9R7CQU4V,C0B9Y68V2DA`.
+- [x] Round-trip confirmed live in Slack (Tom interacted; Aldus responding).
+- [x] Home channel set: `SLACK_HOME_CHANNEL=C0B9Y68V2DA` (dev-aldus) for cron/monitoring
+      delivery — silences the "no home channel" prompt; no slash command needed.
+- [ ] Off-allowlist behavior: a message/slash command in a non-allowed channel is ignored
+      (test live with a throwaway channel — both real channels are now allowlisted).
 - [ ] Verify the monitoring alert path posts: on hermes01,
       `echo critical > /opt/kb-watch/state && bash /opt/kb-watch/kb-watch.sh`
       → expect the ✅ recovery message in `#dev-aldus`
@@ -62,6 +68,19 @@ backing repo instead of a scrape). Unit checklist:
       `/opt/ragflow-deploy/watchdog.env` (email dead-man channel)
 - [ ] Hardening: run the Hermes gateway as a dedicated user instead of root
 - [ ] Gate A follow-ups when We.Publish merges them: #2801 (token roleIDs → mint scoped
-      read-only token → validate CMS MCP gated tools live), #2802 (verify live llms.txt)
+      read-only token → validate CMS MCP gated **read** tools — payment/subscription
+      **status** diagnostics for support — live; payment/setup **writes** go through the
+      secure setup form, NOT the MCP), #2802 (verify live llms.txt)
 - [ ] Memory-pressure fallback if ingestion strains the box: documented model swap in
       `README.md` (multilingual-e5-base) or CPX51 resize
+
+## Suggested additions to complete the vision (roadmap — detail in `handover.html`)
+
+- [ ] **Secure setup form** — single secure web page: a newsroom enters payment + setup
+      details, validated and written correctly into their CMS DB. Sensitive structured
+      data belongs in a deterministic form, never an LLM-composed write. Aldus assists
+      around it (CMS MCP reads verify the result) but never performs the write.
+- [ ] **Jira Share Board adapter** — developer-support loop: read to dedupe/answer
+      "is this known/planned?", gated write to draft entries from support threads.
+- [ ] **GitHub PAT** — Issues (read+create) first; PR creation later with branch
+      protection as the hard no-merge guarantee.

@@ -27,7 +27,7 @@ headless on `onyx01.wepublish.cloud`, queried by the Hermes agent (Aldus) on
 | Path | What |
 |---|---|
 | `../hermes/` | Hermes/Aldus configuration: profiles (SOUL.md), skills (`kb-ingest`, `kb-retrieve`), `slack/` (app manifest) |
-| `../handover/HANDOVER.md` | departing-contractor handover (whole AI stack) |
+| `handover.html` | the handover artifact (whole AI stack) — deployed at `/labs/knowledge-engine/handover.html` |
 | `../../wepublish-cms-mcp/` | CMS MCP (read-only admin diagnostics over the We.Publish GraphQL API) |
 
 ## The two boxes

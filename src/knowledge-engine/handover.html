@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>We.Publish — Aldus &amp; the Knowledge Engine · Handover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'Instrument Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --paper: #fffdf9;
+    --soft: #f7f3ef;
+    --surface: #ffffff;
+    --ink: #161616;
+    --muted: #686868;
+    --line: #ded7cf;
+    --line-bright: #cfc5ba;
+
+    --coral: #ea726e;         /* Aldus · the gateway */
+    --coral-dark: #c95652;
+    --coral-dim: rgba(234, 114, 110, 0.10);
+    --blue: #286f8f;          /* knowledge engine */
+    --blue-dim: rgba(40, 111, 143, 0.09);
+    --green: #3c7a58;         /* live / people */
+    --green-dim: rgba(60, 122, 88, 0.09);
+    --violet: #665a9e;        /* sources · tracker */
+    --violet-dim: rgba(102, 90, 158, 0.09);
+
+    --shadow: 0 16px 50px rgba(30, 24, 18, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1a1816;
+      --soft: #242019;
+      --surface: #211e1b;
+      --ink: #f0e8df;
+      --muted: #a39a8f;
+      --line: #3a342d;
+      --line-bright: #4c453c;
+
+      --coral: #f08a7a;
+      --coral-dark: #ea726e;
+      --coral-dim: rgba(240, 138, 122, 0.13);
+      --blue: #6aa7c4;
+      --blue-dim: rgba(106, 167, 196, 0.13);
+      --green: #7db897;
+      --green-dim: rgba(125, 184, 151, 0.13);
+      --violet: #a294d6;
+      --violet-dim: rgba(162, 148, 214, 0.13);
+
+      --shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    padding: 56px 32px 80px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .container { max-width: 1060px; margin: 0 auto; }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--coral-dark);
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5.5vw, 58px);
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    line-height: 1.05;
+    margin-bottom: 14px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--coral); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  .lead {
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 760px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .lead strong { font-weight: 600; }
+
+  .lead-sub {
+    font-size: 14px;
+    line-height: 1.65;
+    max-width: 760px;
+    color: var(--muted);
+    margin-bottom: 40px;
+  }
+  .lead-sub code, .section-note code, td code, li code, .schema-grid code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 60px 0 10px;
+  }
+  .section-label .num { font-family: var(--font-mono); font-size: 13px; color: var(--coral-dark); }
+  .section-label h2 {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3.4vw, 36px);
+    font-weight: 400;
+    letter-spacing: -0.3px;
+  }
+  .section-note { font-size: 14px; color: var(--muted); max-width: 740px; margin-bottom: 22px; line-height: 1.65; }
+
+  /* ---------- Mermaid container (draggable) ---------- */
+  .mermaid-wrap {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0;
+    overflow: hidden;
+    min-height: 520px;
+    box-shadow: var(--shadow);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .diagram-stage {
+    display: flex; justify-content: center; align-items: center;
+    min-height: 520px; padding: 40px 24px;
+    transform-origin: center center;
+  }
+  .zoom-controls {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 2px; z-index: 10;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 2px;
+  }
+  .zoom-controls button {
+    width: 28px; height: 28px; border: none; background: transparent;
+    color: var(--muted); font-family: var(--font-mono); font-size: 14px;
+    cursor: pointer; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--soft); color: var(--ink); }
+
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; color: var(--ink) !important; line-height: 1.35 !important; }
+  .mermaid .nodeLabel small { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); font-weight: 400; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; color: var(--muted) !important; background-color: var(--surface) !important; }
+  .mermaid .edgeLabel rect { fill: var(--surface) !important; }
+  .mermaid .cluster-label, .mermaid .cluster-label .nodeLabel { font-family: var(--font-mono) !important; font-size: 11.5px !important; letter-spacing: 1px; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+
+  .canvas-legend {
+    position: absolute; bottom: 10px; left: 12px; z-index: 10;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(3px);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; pointer-events: none;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* ---------- status pills ---------- */
+  .pill { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; letter-spacing: 0.3px; }
+  .pill.live { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .pill.partial { background: var(--coral-dim); color: var(--coral-dark); border: 1px solid var(--coral); }
+  .pill.planned { background: var(--violet-dim); color: var(--violet); border: 1px solid var(--violet); border-style: dashed; }
+
+  /* ---------- skills / cards ---------- */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 4px 0 8px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; min-width: 0; box-shadow: var(--shadow);
+  }
+  .card.accent-coral { border-top: 3px solid var(--coral); }
+  .card.accent-blue { border-top: 3px solid var(--blue); }
+  .card.accent-violet { border-top: 3px solid var(--violet); }
+  .card.accent-green { border-top: 3px solid var(--green); }
+  .card .ct { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+  .card h3 { font-family: var(--font-display); font-size: 21px; font-weight: 400; }
+  .card .code-name { font-family: var(--font-mono); font-size: 12px; color: var(--blue); }
+  .card p { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-top: 6px; }
+  .card p strong { color: var(--ink); font-weight: 600; }
+  .card ul { margin: 8px 0 0 2px; list-style: none; }
+  .card li { font-size: 13px; color: var(--muted); padding: 3px 0 3px 16px; position: relative; line-height: 1.5; }
+  .card li::before { content: "›"; position: absolute; left: 0; color: var(--coral); font-family: var(--font-mono); }
+
+  /* ---------- schema table ---------- */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); background: var(--soft); }
+  td { padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .req { color: var(--coral-dark); font-size: 11px; font-family: var(--font-mono); }
+  td small { color: var(--muted); }
+
+  /* sources strip */
+  .sources-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 4px; }
+  .source-cell { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .source-cell .big { font-family: var(--font-display); font-size: 30px; color: var(--blue); line-height: 1; }
+  .source-cell .lbl { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 6px; }
+  .source-cell p { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  .invariants { margin-top: 18px; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .invariants strong { color: var(--ink); font-weight: 600; }
+
+  /* operating box */
+  .opbox { background: var(--ink); border-radius: 12px; padding: 22px 24px; margin-top: 4px; overflow-x: auto; box-shadow: var(--shadow); }
+  @media (prefers-color-scheme: dark) { .opbox { background: #100e0c; border: 1px solid var(--line); } }
+  .opbox pre { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: #f0e8df; white-space: pre; }
+  .opbox .cmt { color: #9a8f82; }
+
+  footer.colophon { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: center; line-height: 1.8; }
+
+  @media (max-width: 760px) {
+    body { padding: 28px 14px 50px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .diagram-stage { padding: 18px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="kicker animate" style="--i:0">We.Publish · knowledge infrastructure · handover</div>
+  <h1 class="animate" style="--i:1">Aldus &amp; the <em>knowledge engine</em></h1>
+  <p class="subtitle animate" style="--i:2">handover · Tom Vaillant → We.Publish team · june 2026</p>
+
+  <p class="lead animate" style="--i:3">
+    <strong>One knowledge base</strong> (RAGFlow, headless on <code>onyx01</code>) holds everything
+    We.Publish knows, every entry tagged on ingest. <strong>One librarian — Aldus —</strong> (the
+    Hermes runtime on <code>hermes01</code>) is the only thing people talk to, in Slack. This document
+    is the operating handover: what's built, how it's wired, and what closes the vision.
+  </p>
+  <p class="lead-sub animate" style="--i:4">
+    <strong>Live today:</strong> Aldus answers staff in Slack from a populated KB, with a strict
+    answer contract (every reply carries its sources, confidence, and provenance). The architecture
+    map below is interactive — drag to pan, ctrl-scroll to zoom.
+  </p>
+
+  <!-- ============ 01 — THE MAP ============ -->
+  <div class="section-label animate" style="--i:5"><span class="num">01</span><h2>The system, end to end</h2></div>
+  <p class="section-note animate" style="--i:6">
+    Staff and their coding agents sit on top. The knowledge base is one tagged collection; the
+    namespace tag (<code>public</code> / <code>internal</code> / <code>newsroom:{slug}</code>) is the
+    access scope. Aldus reaches it only through two hardened skills; live CMS state and live code come
+    from their own MCPs, never indexed.
+  </p>
+
+  <div class="mermaid-wrap animate" style="--i:7">
+    <div class="zoom-controls">
+      <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
+      <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
+      <button onclick="resetZoom(this)" title="Reset view">&#8634;</button>
+      <button onclick="openDiagramFullscreen(this)" title="Open full size">&#x26F6;</button>
+    </div>
+    <div class="canvas-legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div> people</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--coral)"></div> Aldus · gateway</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--blue)"></div> knowledge engine</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--violet)"></div> sources · tools</div>
+    </div>
+    <div class="diagram-stage">
+    <pre class="mermaid">
+flowchart TD
+  ST(["We.Publish staff &amp; developers<br/><small>and their coding agents — same people, same access</small>"])
+
+  subgraph RF["  THE KNOWLEDGE BASE — RAGFLOW · onyx01 · HEADLESS · bge-m3 multilingual  "]
+    KB[("One collection, tagged<br/><small>namespace · type · source · confidence · owner</small>")]
+    TAGS["Namespace tag = access scope<br/><small>public · internal · newsroom:{slug}</small>"]
+  end
+  SRC["Sources<br/><small>GitBook · llms.txt · repo + API refs · newsroom profiles</small>"]
+
+  ALD["Aldus — the librarian<br/><small>Hermes runtime · hermes01 · sonnet-4.6 via OpenRouter<br/>one gateway, all channels · answer contract · human gates</small>"]
+  SKL["Hardened skills<br/><small>kb-retrieve · kb-ingest — allowlists enforced in code</small>"]
+
+  SLK["Slack — one app<br/><small>#dev-aldus · #support-aldus · one channel per newsroom</small>"]
+  CMS["CMS MCP<br/><small>live tenant state · read-only support queries</small>"]
+  FRM["Secure setup form<br/><small>newsroom payment + setup → CMS DB · not via Aldus</small>"]
+  DCM["wepublish-mcp<br/><small>live code + docs at HEAD</small>"]
+  GHI["GitHub<br/><small>Issues + PRs · phase-1 tracker</small>"]
+  NR(["Newsrooms<br/><small>pilot: Bajour — their channel, scoped to their tag</small>"])
+
+  ST -. "direct MCP · planned" .-> KB
+  ST ~~~ SRC
+  KB --- TAGS
+  SRC -->|"ingest, tagged on entry"| KB
+  KB &lt;-->|"read · write"| SKL
+  RF ~~~ ALD
+  ALD ---|"uses"| SKL
+  ST &lt;==>|"Slack"| SLK
+  ALD &lt;==>|"Socket Mode"| SLK
+  ALD -->|"live state"| CMS
+  ALD -->|"live code"| DCM
+  ALD -->|"drafts → issues"| GHI
+  SLK &lt;==>|"their channel"| NR
+  NR -->|"payment + setup · secure"| FRM
+
+  classDef gateway fill:#ea726e1f,stroke:#ea726e,stroke-width:1.5px
+  classDef engine fill:#286f8f1c,stroke:#286f8f,stroke-width:1.5px
+  classDef people fill:#3c7a581c,stroke:#3c7a58,stroke-width:1.5px
+  classDef source fill:#665a9e1a,stroke:#665a9e,stroke-width:1.5px
+
+  class ALD,SKL,CMS,DCM,SLK gateway
+  class KB,TAGS engine
+  class ST,NR people
+  class SRC,GHI,FRM source
+    </pre>
+    </div>
+  </div>
+
+  <!-- ============ 02 — SKILLS ============ -->
+  <div class="section-label animate" style="--i:8"><span class="num">02</span><h2>Skills Aldus runs</h2></div>
+  <p class="section-note animate" style="--i:9">
+    Every read and write goes through a <strong>deterministic script</strong>, never raw API calls.
+    The skills enforce the rules in code — dataset allowlists, required tags, fail-closed — so a
+    prompt-injection or a model slip can't widen access. Two skills live in Aldus's profile; two CLI
+    tools support ingestion and ops from the box.
+  </p>
+
+  <div class="card-grid animate" style="--i:10">
+    <div class="card accent-coral">
+      <div class="ct"><h3>kb-retrieve</h3><span class="pill live">live</span></div>
+      <div class="code-name">skills/kb-retrieve/query.py</div>
+      <p>The <strong>scoped read path</strong>. Aldus phrases a search question; the script runs hybrid
+      search against RAGFlow with the queryable namespaces pinned, and fails closed. Aldus grounds every
+      answer in what comes back — retrieve before answering from memory.</p>
+    </div>
+    <div class="card accent-coral">
+      <div class="ct"><h3>kb-ingest</h3><span class="pill live">live</span></div>
+      <div class="code-name">skills/kb-ingest/push_chunk.py</div>
+      <p>The <strong>hardened write path</strong>. Validates the full tag schema, refuses any dataset
+      outside its allowlist, and gates promotion: <code>confidence=confirmed</code> requires an explicit
+      <code>--reviewed-by</code> human. In newsroom contexts it force-tags <code>newsroom-asserted</code>.</p>
+    </div>
+    <div class="card accent-blue">
+      <div class="ct"><h3>kb-bulk</h3><span class="pill live">tool</span></div>
+      <div class="code-name">knowledge-engine/tools/kb-bulk</div>
+      <p>Batch ingestion used to <strong>populate the KB</strong> — corpus-scale loads (GitBook, API
+      references, newsroom profiles) with pagination and tagging. Run by IT from the box, not by Aldus.</p>
+    </div>
+    <div class="card accent-blue">
+      <div class="ct"><h3>wp-kb</h3><span class="pill live">tool</span></div>
+      <div class="code-name">knowledge-engine/tools/wp-kb</div>
+      <p>The <strong>ops CLI</strong>: <code>health</code>, <code>datasets</code>, <code>query</code>,
+      <code>ingest</code>. How an operator inspects or queries the engine over SSH without touching the
+      RAGFlow UI.</p>
+    </div>
+  </div>
+
+  <!-- ============ 03 — KB SCHEMA + SOURCES ============ -->
+  <div class="section-label animate" style="--i:11"><span class="num">03</span><h2>Knowledge base — schema &amp; sources</h2></div>
+  <p class="section-note animate" style="--i:12">
+    The schema <em>is</em> the catalogue. Every chunk carries these tags on ingest; structure comes from
+    tagging, not folders. The namespace tag doubles as the access scope.
+  </p>
+
+  <div class="tbl-wrap animate" style="--i:13">
+    <table>
+      <thead><tr><th>Tag</th><th>Values</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td><code>namespace</code> <span class="req">req</span></td><td><code>public</code> · <code>internal</code> · <code>newsroom:{slug}</code></td><td>The dataset = the access scope. Skills refuse anything off the allowlist.</td></tr>
+        <tr><td><code>type</code> <span class="req">req</span></td><td>doc · support_pattern · decision · setup_summary · architecture · issue_summary · api_reference · implementation_profile · media_profile</td><td>What kind of knowledge this is.</td></tr>
+        <tr><td><code>source</code> <span class="req">req</span></td><td>URL · system name · <code>newsroom-asserted</code></td><td>No source, no ingest.</td></tr>
+        <tr><td><code>confidence</code> <span class="req">req</span></td><td>confirmed · likely · unverified</td><td><code>confirmed</code> requires <code>--reviewed-by</code> (a named human).</td></tr>
+        <tr><td><code>owner</code> <span class="req">req</span></td><td>team or person</td><td>Who's responsible for the entry.</td></tr>
+        <tr><td><code>newsroom</code></td><td>slug</td><td>Only on newsroom-related chunks.</td></tr>
+        <tr><td><code>repo_path</code> · <code>commit</code></td><td>path + short SHA</td><td>Required for code-derived knowledge (api_reference, implementation_profile).</td></tr>
+        <tr><td><code>last_updated</code></td><td>—</td><td>Stamped automatically.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="section-note animate" style="--i:14" style="margin-top:26px">
+    <strong>What's loaded today</strong> — the corpus is in, not just the wiring:
+  </p>
+  <div class="sources-grid animate" style="--i:15">
+    <div class="source-cell"><div class="big">125</div><div class="lbl">public · docs</div><p>GitBook (from its backing repo), llms.txt ×2, marketing pages, repo + CMS knowledge. 704 chunks.</p></div>
+    <div class="source-cell"><div class="big">45</div><div class="lbl">internal · docs</div><p>API-domain references (SDL-verified) + a reviewed ops seed (<code>confirmed</code>, reviewed by Tom). 118 chunks.</p></div>
+    <div class="source-cell"><div class="big">17</div><div class="lbl">newsroom profiles</div><p>Every We.Publish newsroom app profiled for developer support — held ready, copied into <code>newsroom:{slug}</code> when its channel goes live.</p></div>
+    <div class="source-cell"><div class="big">96%</div><div class="lbl">retrieval eval</div><p>Public-answerable questions answered correctly (30/32 overall). <code>vector_similarity_weight 0.7</code>.</p></div>
+  </div>
+
+  <div class="invariants animate" style="--i:16">
+    <strong>Isolation, enforced in layers:</strong> nobody logs into the engine — Aldus holds the only
+    credentials · the skills refuse any dataset outside their allowlist <strong>in code, not in the
+    prompt</strong> · newsroom-asserted knowledge is never presented as We.Publish-verified · payments,
+    credentials and member data never enter the index — live CMS state is fetched, not stored.
+  </div>
+
+  <!-- ============ 04 — ACCESS POINTS ============ -->
+  <div class="section-label animate" style="--i:17"><span class="num">04</span><h2>Access points — and what completes the vision</h2></div>
+  <p class="section-note animate" style="--i:18">
+    Aldus reaches the world through narrow, purpose-built surfaces. Three are live or built; two more
+    close the loop — one for <strong>developer support</strong>, one for <strong>newsroom support</strong>.
+  </p>
+
+  <div class="card-grid animate" style="--i:19">
+    <div class="card accent-green">
+      <div class="ct"><h3>Slack</h3><span class="pill live">live</span></div>
+      <p>The front door. One app, channels-only (no DMs). <strong>#dev-aldus</strong> and
+      <strong>#support-aldus</strong> are pinned and live; one private channel per newsroom is added the
+      same way. Home channel set for cron/monitoring delivery.</p>
+    </div>
+    <div class="card accent-green">
+      <div class="ct"><h3>wepublish-mcp</h3><span class="pill live">live</span></div>
+      <p>Developer context — <strong>live code and docs at HEAD</strong> from GitHub/GitBook. Code is
+      never embedded in the KB (embeddings go stale); it's always fetched live through this MCP.</p>
+    </div>
+    <div class="card accent-blue">
+      <div class="ct"><h3>CMS MCP</h3><span class="pill partial">read validated</span></div>
+      <p><strong>Live tenant diagnostics for general support</strong> over the We.Publish GraphQL API —
+      curated tools, no arbitrary queries, <strong>gated to safe read-only uses</strong>. Lets Aldus answer
+      "is this newsroom's setup correct right now?" Read tools <strong>validated live against Bajour's
+      production API</strong> (<code>api-bajour.wepublish.cloud/v1</code>): site profile, member plans,
+      navigation all resolve, zero schema drift. The permission-gated reads (payment/subscription status)
+      need the scoped token from <code>wepublish#2801</code>. <strong>It never writes</strong> — sensitive
+      setup data is handled by the secure form below.</p>
+    </div>
+    <div class="card accent-blue">
+      <div class="ct"><h3>GitHub</h3><span class="pill partial">design ready</span></div>
+      <p><strong>Issues now, PRs next.</strong> A fine-grained PAT (selected repos, <code>Issues: rw</code>)
+      lets Aldus turn support requests into well-formed issues. PR creation adds <code>Contents/PRs: rw</code>
+      — with <strong>branch protection</strong> (require a review; bot is no reviewer) as the hard "can't
+      merge" guarantee, since GitHub has no open-PR-but-not-merge permission.</p>
+    </div>
+  </div>
+
+  <p class="section-note animate" style="--i:20" style="margin-top:30px">
+    <strong>Two additions complete the picture:</strong>
+  </p>
+  <div class="card-grid animate" style="--i:21">
+    <div class="card accent-violet">
+      <div class="ct"><h3>Jira — Share Board</h3><span class="pill planned">suggested · dev support</span></div>
+      <p>To complete <strong>developer support</strong>: wire Aldus to the We.Publish <strong>Jira Share
+      Board</strong>, where member feature requests and ideas live. Then Aldus can answer "is this on the
+      roadmap / has someone asked for this?", surface related tickets during triage, and file new ones —
+      closing the loop between a newsroom's need and the network's shared backlog.</p>
+      <ul>
+        <li>Read: search tickets to dedupe + answer "is this known/planned?"</li>
+        <li>Write (gated): draft a Share Board entry from a support thread, shown before filing</li>
+        <li>Swappable adapter — GitHub Issues remains the phase-1 tracker until this lands</li>
+      </ul>
+    </div>
+    <div class="card accent-violet">
+      <div class="ct"><h3>Secure setup form</h3><span class="pill planned">suggested · newsroom support</span></div>
+      <p>To complete <strong>newsroom onboarding</strong>: a <strong>single secure web page</strong> where a
+      newsroom enters its payment and setup details — and the page writes them <strong>correctly and
+      directly into their CMS database</strong>. Sensitive structured data (payment-provider keys, member
+      plans) belongs in a purpose-built, validated form, <strong>not in an LLM-composed write</strong> — so
+      this stays a deterministic, auditable path, separate from Aldus.</p>
+      <ul>
+        <li>Handles secrets securely — payment credentials never pass through the agent or the KB</li>
+        <li>Validates + maps fields to the right CMS mutations; correct-by-construction</li>
+        <li>Aldus assists around it (CMS MCP reads check the result), but never performs the write</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ 05 — OPERATING ============ -->
+  <div class="section-label animate" style="--i:22"><span class="num">05</span><h2>Operating the box</h2></div>
+  <p class="section-note animate" style="--i:23">
+    Everything is on two Hetzner VPS, key-based SSH. Config + secrets live in
+    <code>/root/.hermes/profiles/internal/</code> (<code>chmod 600</code>, never in git).
+  </p>
+  <div class="opbox animate" style="--i:24">
+<pre>ssh root@hermes01.wepublish.cloud            <span class="cmt"># the gateway box (Aldus)</span>
+
+hermes -p internal chat                       <span class="cmt"># talk to Aldus in the terminal</span>
+systemctl status hermes-gateway-internal      <span class="cmt"># Slack gateway (systemd, boot-enabled)</span>
+journalctl -u hermes-gateway-internal -f      <span class="cmt"># live logs</span>
+systemctl restart hermes-gateway-internal     <span class="cmt"># after any .env / config change</span>
+
+<span class="cmt"># profile dir holds:  .env (secrets) · config.yaml (model, Slack) · SOUL.md (Aldus) · skills/</span>
+hermes -p internal config set model.default &lt;model&gt;   <span class="cmt"># change LLM</span>
+
+<span class="cmt"># knowledge engine on onyx01, reached via the ragflow-tunnel.service SSH tunnel:</span>
+knowledge-engine/tools/wp-kb datasets         <span class="cmt"># inspect the KB</span></pre>
+  </div>
+  <div class="invariants animate" style="--i:25">
+    <strong>Hard boundaries (do not relax):</strong> KB writes only through <code>kb-ingest</code>;
+    <code>confirmed</code> needs a human reviewer · newsrooms never get RAGFlow access in any form ·
+    no CMS writes without dry-run + approval + audit · agents never merge PRs · secrets stay in
+    <code>chmod 600</code> <code>.env</code> on the server.
+  </div>
+
+  <!-- ============ 06 — STATUS ============ -->
+  <div class="section-label animate" style="--i:26"><span class="num">06</span><h2>Status &amp; what's next</h2></div>
+  <div class="card-grid animate" style="--i:27">
+    <div class="card accent-green">
+      <div class="ct"><h3>Live now</h3></div>
+      <ul>
+        <li>Aldus on hermes01 — sonnet-4.6, systemd gateway, live Slack WebSocket</li>
+        <li>KB populated &amp; eval-passed (125 public / 45 internal docs)</li>
+        <li>kb-retrieve + kb-ingest validated end-to-end with the answer contract</li>
+        <li>#dev-aldus + #support-aldus pinned; home channel set</li>
+        <li>CMS MCP read tools validated against Bajour production</li>
+      </ul>
+    </div>
+    <div class="card accent-violet">
+      <div class="ct"><h3>To complete the vision</h3></div>
+      <ul>
+        <li>GitHub PAT → Issues (then PRs with branch protection)</li>
+        <li>Jira Share Board adapter — developer support loop</li>
+        <li>Secure setup form — newsroom payment/setup → CMS DB (not via Aldus)</li>
+        <li>CMS MCP gated reads — unblock with wepublish#2801</li>
+        <li>First newsroom channel (Bajour): channel→dataset map + isolation probes</li>
+        <li>Hardening: gateway as a dedicated user; off-box backups</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer class="colophon">
+    We.Publish knowledge infrastructure · handover · june 2026 · prepared by Tom Vaillant<br>
+    architecture map &amp; live status: <code>/labs/kb/</code> retired into this document · runtime: github.com/NousResearch/hermes-agent
+  </footer>
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs';
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.registerLayoutLoaders(elkLayouts);
+  mermaid.initialize({
+    startOnLoad: true, theme: 'base', look: 'classic', layout: 'elk',
+    themeVariables: {
+      primaryColor: isDark ? '#242019' : '#ffffff',
+      primaryBorderColor: isDark ? '#a39a8f' : '#686868',
+      primaryTextColor: isDark ? '#f0e8df' : '#161616',
+      lineColor: isDark ? '#a39a8f' : '#9a9088',
+      clusterBkg: isDark ? '#24201988' : '#f7f3ef66',
+      clusterBorder: isDark ? '#6aa7c4' : '#286f8f',
+      fontSize: '15px',
+      fontFamily: "'Instrument Sans', system-ui, sans-serif",
+      edgeLabelBackground: isDark ? '#211e1b' : '#ffffff',
+    },
+    flowchart: { useMaxWidth: false },
+  });
+</script>
+<script>
+  var INITIAL_ZOOM = 1.0;
+  function getState(wrap){ if(!wrap._view) wrap._view={x:0,y:0,s:INITIAL_ZOOM}; return wrap._view; }
+  function apply(wrap){ var v=getState(wrap); wrap.querySelector('.diagram-stage').style.transform='translate('+v.x+'px,'+v.y+'px) scale('+v.s+')'; }
+  function zoomDiagram(btn,f){ var w=btn.closest('.mermaid-wrap'); var v=getState(w); v.s=Math.min(Math.max(v.s*f,0.4),5); apply(w); }
+  function resetZoom(btn){ var w=btn.closest('.mermaid-wrap'); w._view={x:0,y:0,s:INITIAL_ZOOM}; apply(w); }
+  function openDiagramFullscreen(btn){ openMermaidInNewTab(btn.closest('.mermaid-wrap')); }
+  function openMermaidInNewTab(wrap){
+    var svg=wrap.querySelector('.mermaid svg'); if(!svg) return;
+    var clone=svg.cloneNode(true); clone.style.zoom=''; clone.style.transform='';
+    var bg=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()||'#fff';
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Diagram</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:'+bg+';padding:40px;box-sizing:border-box}svg{max-width:100%;max-height:92vh;height:auto}</style></head><body>'+clone.outerHTML+'</body></html>';
+    window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');
+  }
+  document.querySelectorAll('.mermaid-wrap').forEach(function(wrap){
+    apply(wrap);
+    wrap.addEventListener('wheel',function(e){ if(!e.ctrlKey&&!e.metaKey) return; e.preventDefault(); var v=getState(wrap); v.s=Math.min(Math.max(v.s*(e.deltaY<0?1.1:0.9),0.4),5); apply(wrap); },{passive:false});
+    var sx,sy,ox,oy,drag=false;
+    wrap.addEventListener('mousedown',function(e){ if(e.target.closest('.zoom-controls')) return; var v=getState(wrap); drag=true; wrap.classList.add('is-panning'); sx=e.clientX; sy=e.clientY; ox=v.x; oy=v.y; e.preventDefault(); });
+    window.addEventListener('mousemove',function(e){ if(!drag) return; var v=getState(wrap); v.x=ox+(e.clientX-sx); v.y=oy+(e.clientY-sy); apply(wrap); });
+    window.addEventListener('mouseup',function(){ if(!drag) return; drag=false; wrap.classList.remove('is-panning'); });
+    var tx,ty,tox,toy;
+    wrap.addEventListener('touchstart',function(e){ if(e.touches.length!==1) return; var v=getState(wrap); tx=e.touches[0].clientX; ty=e.touches[0].clientY; tox=v.x; toy=v.y; },{passive:true});
+    wrap.addEventListener('touchmove',function(e){ if(e.touches.length!==1) return; var v=getState(wrap); v.x=tox+(e.touches[0].clientX-tx); v.y=toy+(e.touches[0].clientY-ty); apply(wrap); e.preventDefault(); },{passive:false});
+    wrap.addEventListener('dblclick',function(e){ if(e.target.closest('.zoom-controls')) return; openMermaidInNewTab(wrap); });
+  });
+</script>
+</body>
+</html>

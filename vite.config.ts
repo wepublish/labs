@@ -22,6 +22,14 @@ export default defineConfig(({ mode }) => {
     return [`${parts[1]}/${parts[2]}`, resolve(__dirname, file)];
   });
 
+  // Standalone doc pages under knowledge-engine (e.g. handover.html)
+  const knowledgeEngineEntries = globSync('src/knowledge-engine/*.html').map((file) => {
+    const normalizedPath = file.replace(/\\/g, '/');
+    const parts = normalizedPath.split('/');
+    const base = parts[parts.length - 1].replace(/\.html$/, '');
+    return [`knowledge-engine/${base}`, resolve(__dirname, file)];
+  });
+
   return {
     // Conditional base: /labs/ for prod, / for dev
     base: mode === 'production' ? '/labs/' : '/',
@@ -57,7 +65,7 @@ export default defineConfig(({ mode }) => {
       outDir: resolve(__dirname, 'dist'),
       emptyOutDir: true,
       rollupOptions: {
-        input: Object.fromEntries([...appEntries, ...slideEntries]),
+        input: Object.fromEntries([...appEntries, ...slideEntries, ...knowledgeEngineEntries]),
         output: {
           // Shared vendor chunks to reduce duplication
           manualChunks: {
