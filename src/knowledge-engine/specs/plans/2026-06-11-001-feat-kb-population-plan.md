@@ -9,7 +9,7 @@ supersedes_partially: TODO.md "Next session: populate the KB" checklist (this pl
 
 # feat: Populate the We.Publish knowledge base
 
-**Context:** Infrastructure is DONE and validated (engine, wire, skills, monitoring — see `../../kb-setup-log.json`). This plan fills the empty datasets so the KB carries a thorough understanding of the **wepublish monorepo, the CMS, and the documentation**, serving three consumers: (1) Hermes answering newsroom support questions, (2) Hermes drafting PRs and handling newsroom tickets (write guardrails already spec'd in `../../../handover/HANDOVER.md` — PAT scopes + branch protection; the KB's job is to make those drafts *correct*), and (3) developers needing context on newsrooms and their CMS implementations.
+**Context:** Infrastructure is DONE and validated (engine, wire, skills, monitoring — see `../../kb-setup-log.json`). This plan fills the empty datasets so the KB carries a thorough understanding of the **wepublish monorepo, the CMS, and the documentation**, serving three consumers: (1) Hermes answering newsroom support questions, (2) Hermes drafting PRs and handling newsroom tickets (write guardrails already spec'd in `../../handover.html` — PAT scopes + branch protection; the KB's job is to make those drafts *correct*), and (3) developers needing context on newsrooms and their CMS implementations.
 
 ## Summary
 
